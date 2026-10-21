@@ -372,7 +372,7 @@ public final class Comparison {
         int asFarAsTheLongerOfThem =
                 Math.max(left.segmentCount(), right.segmentCount());
         for (int at = 1; at <= asFarAsTheLongerOfThem; at++) {
-            int difference = left.readTheOctetAt(at) - right.readTheOctetAt(at);
+            int difference = left.readOctetAt(at) - right.readOctetAt(at);
             if (difference != 0) {
                 return difference > 0 ? 1 : -1;
             }

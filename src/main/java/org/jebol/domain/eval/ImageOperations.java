@@ -18,7 +18,7 @@ public final class ImageOperations {
         for (int pixel = 1;
                 pixel <= countEveryPixelOfTheRectangle(storage);
                 pixel++) {
-            int[] rgba = storage.readThePixelAt(pixel);
+            int[] rgba = storage.readPixelAt(pixel);
             int alpha = rgba[3];
             if (alpha == OPAQUE) {
                 continue;
@@ -160,7 +160,7 @@ public final class ImageOperations {
         byte[] channels = new byte[(wide * high * CHANNELS)
                 + measureTheRoomTheBlurRunsInto(wide)];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
-            int[] rgba = storage.readThePixelAt(pixel);
+            int[] rgba = storage.readPixelAt(pixel);
             for (int channel = 0; channel < CHANNELS; channel++) {
                 channels[((pixel - 1) * CHANNELS) + channel] = (byte) rgba[channel];
             }
@@ -205,7 +205,7 @@ public final class ImageOperations {
 
     private static int[] readTheNearestPixelOf(
             ImageStorage from, int row, int column, int wide, int high) {
-        return from.readThePixelAt(((row * from.high() / high) * from.wide())
+        return from.readPixelAt(((row * from.high() / high) * from.wide())
                 + (column * from.wide() / wide) + 1);
     }
 
@@ -277,8 +277,8 @@ public final class ImageOperations {
             rightCursor += fromX;
             for (int column = 0; column < wide; column++) {
                 apart += measureTheRedmeanDistance(
-                        left.readThePixelAt((int) leftCursor + 1),
-                        right.readThePixelAt((int) rightCursor + 1));
+                        left.readPixelAt((int) leftCursor + 1),
+                        right.readPixelAt((int) rightCursor + 1));
                 leftCursor++;
                 rightCursor++;
             }

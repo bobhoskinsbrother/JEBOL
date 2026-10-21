@@ -42,7 +42,7 @@ final class BrotliDictionaryMatches {
     private static int measureHowMuchOfTheWordMatches(byte[] data, int at, int id,
                                                       int length, int mostThatCouldMatch) {
 
-        byte[] words = BrotliDictionary.readTheWords();
+        byte[] words = BrotliDictionary.readWords();
         int wordAt = BrotliDictionary.findTheOffsetFor(length) + length * id;
         int limit = Math.min(length, mostThatCouldMatch);
         int agreeing = 0;
@@ -58,7 +58,7 @@ final class BrotliDictionaryMatches {
         if (wordLength > mostThatCouldMatch) {
             return false;
         }
-        byte[] words = BrotliDictionary.readTheWords();
+        byte[] words = BrotliDictionary.readWords();
         int wordAt = BrotliDictionary.findTheOffsetFor(wordLength)
                 + wordLength * wordIndex;
         if (wordTransform == 0) {
@@ -104,7 +104,7 @@ final class BrotliDictionaryMatches {
           int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
           int l = wordLength & 0x1F;
-          int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
+          int n = 1 << BrotliDictionary.readSizeBitsFor(l);
           int id = wordIndex;
           end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
           wordLength = l;
@@ -345,7 +345,7 @@ final class BrotliDictionaryMatches {
           int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
           int l = wordLength & 0x1F;
-          int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
+          int n = 1 << BrotliDictionary.readSizeBitsFor(l);
           int id = wordIndex;
           end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
           wordLength = l;
@@ -434,7 +434,7 @@ final class BrotliDictionaryMatches {
           int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
             int l = wordLength & 0x1F;
-            int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
+            int n = 1 << BrotliDictionary.readSizeBitsFor(l);
             int id = wordIndex;
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;
@@ -466,7 +466,7 @@ final class BrotliDictionaryMatches {
           int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
             int l = wordLength & 0x1F;
-            int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
+            int n = 1 << BrotliDictionary.readSizeBitsFor(l);
             int id = wordIndex;
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;

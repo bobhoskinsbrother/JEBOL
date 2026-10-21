@@ -95,7 +95,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public AnyBlockValue readTheSource(String source) {
+        public AnyBlockValue readSource(String source) {
             asked.add("read " + source);
             return BlockValue.of();
         }

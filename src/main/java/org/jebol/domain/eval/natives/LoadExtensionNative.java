@@ -55,7 +55,7 @@ public class LoadExtensionNative extends DefaultNative {
                 throw refuseNativeCode(name, evaluator);
             }
             return makeAnExtensionHolding(makeAFreshExtensionHandleFor((HandleValue) dispatcher.get(), evaluator),
-                    readTheSourceIn(name), evaluator);
+                    readSourceIn(name), evaluator);
         };
     }
 
@@ -75,7 +75,7 @@ public class LoadExtensionNative extends DefaultNative {
         return Raised.of(EvaluationFailure.NO_EXTENSION, library, StringValue.of(WHY_NATIVE_CODE_CANNOT_BE_LOADED));
     }
 
-    private BinaryValue readTheSourceIn(Value name) {
+    private BinaryValue readSourceIn(Value name) {
         return name instanceof BinaryValue source
                 ? source
                 : BinaryValue.ofBytes(((AnyStringValue) name).text().getBytes(StandardCharsets.UTF_8));

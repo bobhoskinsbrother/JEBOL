@@ -71,23 +71,23 @@ public final class XxHash3 extends XxHashFamily {
     private long ofAtMostSixteen(byte[] message) {
         int length = message.length;
         if (length > 8) {
-            long flipLow = octets.readTheLittleEndianLongAt(SECRET, 24) ^ octets.readTheLittleEndianLongAt(SECRET, 32);
-            long flipHigh = octets.readTheLittleEndianLongAt(SECRET, 40) ^ octets.readTheLittleEndianLongAt(SECRET, 48);
-            long low = octets.readTheLittleEndianLongAt(message, 0) ^ flipLow;
-            long high = octets.readTheLittleEndianLongAt(message, length - 8) ^ flipHigh;
+            long flipLow = octets.readLittleEndianLongAt(SECRET, 24) ^ octets.readLittleEndianLongAt(SECRET, 32);
+            long flipHigh = octets.readLittleEndianLongAt(SECRET, 40) ^ octets.readLittleEndianLongAt(SECRET, 48);
+            long low = octets.readLittleEndianLongAt(message, 0) ^ flipLow;
+            long high = octets.readLittleEndianLongAt(message, length - 8) ^ flipHigh;
             return avalanche(length + Long.reverseBytes(low) + high
                     + foldTheProductOf(low, high));
         }
         if (length >= 4) {
-            long first = octets.readTheLittleEndianWordAt(message, 0) & 0xFFFFFFFFL;
-            long second = octets.readTheLittleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
-            long flip = octets.readTheLittleEndianLongAt(SECRET, 8) ^ octets.readTheLittleEndianLongAt(SECRET, 16);
+            long first = octets.readLittleEndianWordAt(message, 0) & 0xFFFFFFFFL;
+            long second = octets.readLittleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
+            long flip = octets.readLittleEndianLongAt(SECRET, 8) ^ octets.readLittleEndianLongAt(SECRET, 16);
             return rrmxmx((second + (first << 32)) ^ flip, length);
         }
         if (length > 0) {
             return avalanche64(combineShort(message) ^ shortFlip());
         }
-        return avalanche64(octets.readTheLittleEndianLongAt(SECRET, 56) ^ octets.readTheLittleEndianLongAt(SECRET, 64));
+        return avalanche64(octets.readLittleEndianLongAt(SECRET, 56) ^ octets.readLittleEndianLongAt(SECRET, 64));
     }
 
     private long combineShort(byte[] message) {
@@ -99,13 +99,13 @@ public final class XxHash3 extends XxHashFamily {
     }
 
     private long shortFlip() {
-        return (octets.readTheLittleEndianWordAt(SECRET, 0) ^ octets.readTheLittleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
+        return (octets.readLittleEndianWordAt(SECRET, 0) ^ octets.readLittleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
     }
 
     private long mixSixteen(byte[] message, int at, int secretAt) {
         return foldTheProductOf(
-                octets.readTheLittleEndianLongAt(message, at) ^ octets.readTheLittleEndianLongAt(SECRET, secretAt),
-                octets.readTheLittleEndianLongAt(message, at + 8) ^ octets.readTheLittleEndianLongAt(SECRET, secretAt + 8));
+                octets.readLittleEndianLongAt(message, at) ^ octets.readLittleEndianLongAt(SECRET, secretAt),
+                octets.readLittleEndianLongAt(message, at + 8) ^ octets.readLittleEndianLongAt(SECRET, secretAt + 8));
     }
 
     private long ofSeventeenToAHundredAndTwentyEight(byte[] message) {
@@ -177,8 +177,8 @@ public final class XxHash3 extends XxHashFamily {
             long[] accumulators, byte[] message, int from, int secretAt) {
 
         for (int lane = 0; lane < LANES; lane++) {
-            long data = octets.readTheLittleEndianLongAt(message, from + lane * 8);
-            long keyed = data ^ octets.readTheLittleEndianLongAt(SECRET, secretAt + lane * 8);
+            long data = octets.readLittleEndianLongAt(message, from + lane * 8);
+            long keyed = data ^ octets.readLittleEndianLongAt(SECRET, secretAt + lane * 8);
             accumulators[lane ^ 1] += data;
             accumulators[lane] += (keyed & 0xFFFFFFFFL) * (keyed >>> 32 & 0xFFFFFFFFL);
         }
@@ -187,7 +187,7 @@ public final class XxHash3 extends XxHashFamily {
     private void scramble(long[] accumulators, int secretAt) {
         for (int lane = 0; lane < LANES; lane++) {
             long scrambled = accumulators[lane] ^ accumulators[lane] >>> 47;
-            scrambled ^= octets.readTheLittleEndianLongAt(SECRET, secretAt + lane * 8);
+            scrambled ^= octets.readLittleEndianLongAt(SECRET, secretAt + lane * 8);
             accumulators[lane] = scrambled * (P32_1 & 0xFFFFFFFFL);
         }
     }
@@ -196,8 +196,8 @@ public final class XxHash3 extends XxHashFamily {
         long running = start;
         for (int pair = 0; pair < 4; pair++) {
             running += foldTheProductOf(
-                    accumulators[2 * pair] ^ octets.readTheLittleEndianLongAt(SECRET, secretAt + 16 * pair),
-                    accumulators[2 * pair + 1] ^ octets.readTheLittleEndianLongAt(SECRET, secretAt + 16 * pair + 8));
+                    accumulators[2 * pair] ^ octets.readLittleEndianLongAt(SECRET, secretAt + 16 * pair),
+                    accumulators[2 * pair + 1] ^ octets.readLittleEndianLongAt(SECRET, secretAt + 16 * pair + 8));
         }
         return avalanche(running);
     }
@@ -237,24 +237,24 @@ public final class XxHash3 extends XxHashFamily {
             long combinedLow = combineShort(message);
             long combinedHigh = Integer.rotateLeft(
                     Integer.reverseBytes((int) combinedLow), 13) & 0xFFFFFFFFL;
-            long flipLow = (octets.readTheLittleEndianWordAt(SECRET, 0) ^ octets.readTheLittleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
-            long flipHigh = (octets.readTheLittleEndianWordAt(SECRET, 8) ^ octets.readTheLittleEndianWordAt(SECRET, 12)) & 0xFFFFFFFFL;
+            long flipLow = (octets.readLittleEndianWordAt(SECRET, 0) ^ octets.readLittleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
+            long flipHigh = (octets.readLittleEndianWordAt(SECRET, 8) ^ octets.readLittleEndianWordAt(SECRET, 12)) & 0xFFFFFFFFL;
             return new long[] {
                 avalanche64(combinedLow ^ flipLow),
                 avalanche64(combinedHigh ^ flipHigh),
             };
         }
         return new long[] {
-            avalanche64(octets.readTheLittleEndianLongAt(SECRET, 64) ^ octets.readTheLittleEndianLongAt(SECRET, 72)),
-            avalanche64(octets.readTheLittleEndianLongAt(SECRET, 80) ^ octets.readTheLittleEndianLongAt(SECRET, 88)),
+            avalanche64(octets.readLittleEndianLongAt(SECRET, 64) ^ octets.readLittleEndianLongAt(SECRET, 72)),
+            avalanche64(octets.readLittleEndianLongAt(SECRET, 80) ^ octets.readLittleEndianLongAt(SECRET, 88)),
         };
     }
 
     private long[] ofFourToEightAsTwoHalves(byte[] message) {
         int length = message.length;
-        long low = octets.readTheLittleEndianWordAt(message, 0) & 0xFFFFFFFFL;
-        long high = octets.readTheLittleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
-        long flip = octets.readTheLittleEndianLongAt(SECRET, 16) ^ octets.readTheLittleEndianLongAt(SECRET, 24);
+        long low = octets.readLittleEndianWordAt(message, 0) & 0xFFFFFFFFL;
+        long high = octets.readLittleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
+        long flip = octets.readLittleEndianLongAt(SECRET, 16) ^ octets.readLittleEndianLongAt(SECRET, 24);
         long keyed = (low + (high << 32)) ^ flip;
         long productLow = keyed * (P64_1 + ((long) length << 2));
         long productHigh = UnsignedProducts.multiplyForTheHighHalf(keyed, P64_1 + ((long) length << 2));
@@ -269,10 +269,10 @@ public final class XxHash3 extends XxHashFamily {
 
     private long[] ofNineToSixteenAsTwoHalves(byte[] message) {
         int length = message.length;
-        long flipLow = octets.readTheLittleEndianLongAt(SECRET, 32) ^ octets.readTheLittleEndianLongAt(SECRET, 40);
-        long flipHigh = octets.readTheLittleEndianLongAt(SECRET, 48) ^ octets.readTheLittleEndianLongAt(SECRET, 56);
-        long low = octets.readTheLittleEndianLongAt(message, 0);
-        long high = octets.readTheLittleEndianLongAt(message, length - 8);
+        long flipLow = octets.readLittleEndianLongAt(SECRET, 32) ^ octets.readLittleEndianLongAt(SECRET, 40);
+        long flipHigh = octets.readLittleEndianLongAt(SECRET, 48) ^ octets.readLittleEndianLongAt(SECRET, 56);
+        long low = octets.readLittleEndianLongAt(message, 0);
+        long high = octets.readLittleEndianLongAt(message, length - 8);
         long mixed = low ^ high ^ flipLow;
         long productLow = mixed * P64_1;
         long productHigh = UnsignedProducts.multiplyForTheHighHalf(mixed, P64_1);
@@ -292,9 +292,9 @@ public final class XxHash3 extends XxHashFamily {
             long[] accumulators, byte[] message, int first, int second, int secretAt) {
 
         accumulators[0] += mixSixteen(message, first, secretAt);
-        accumulators[0] ^= octets.readTheLittleEndianLongAt(message, second) + octets.readTheLittleEndianLongAt(message, second + 8);
+        accumulators[0] ^= octets.readLittleEndianLongAt(message, second) + octets.readLittleEndianLongAt(message, second + 8);
         accumulators[1] += mixSixteen(message, second, secretAt + 16);
-        accumulators[1] ^= octets.readTheLittleEndianLongAt(message, first) + octets.readTheLittleEndianLongAt(message, first + 8);
+        accumulators[1] ^= octets.readLittleEndianLongAt(message, first) + octets.readLittleEndianLongAt(message, first + 8);
         return accumulators;
     }
 

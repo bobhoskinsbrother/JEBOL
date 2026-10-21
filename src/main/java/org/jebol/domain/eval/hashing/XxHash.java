@@ -22,10 +22,10 @@ public final class XxHash extends XxHashFamily {
             int third = 0;
             int fourth = -P32_1;
             while (at + 16 <= message.length) {
-                first = stir32(first, octets.readTheLittleEndianWordAt(message, at));
-                second = stir32(second, octets.readTheLittleEndianWordAt(message, at + 4));
-                third = stir32(third, octets.readTheLittleEndianWordAt(message, at + 8));
-                fourth = stir32(fourth, octets.readTheLittleEndianWordAt(message, at + 12));
+                first = stir32(first, octets.readLittleEndianWordAt(message, at));
+                second = stir32(second, octets.readLittleEndianWordAt(message, at + 4));
+                third = stir32(third, octets.readLittleEndianWordAt(message, at + 8));
+                fourth = stir32(fourth, octets.readLittleEndianWordAt(message, at + 12));
                 at += 16;
             }
             running = Integer.rotateLeft(first, 1) + Integer.rotateLeft(second, 7)
@@ -35,7 +35,7 @@ public final class XxHash extends XxHashFamily {
         }
         running += message.length;
         while (at + 4 <= message.length) {
-            running = Integer.rotateLeft(running + octets.readTheLittleEndianWordAt(message, at) * P32_3, 17) * P32_4;
+            running = Integer.rotateLeft(running + octets.readLittleEndianWordAt(message, at) * P32_3, 17) * P32_4;
             at += 4;
         }
         while (at < message.length) {
@@ -67,10 +67,10 @@ public final class XxHash extends XxHashFamily {
             long third = 0;
             long fourth = -P64_1;
             while (at + 32 <= message.length) {
-                first = stir64(first, octets.readTheLittleEndianLongAt(message, at));
-                second = stir64(second, octets.readTheLittleEndianLongAt(message, at + 8));
-                third = stir64(third, octets.readTheLittleEndianLongAt(message, at + 16));
-                fourth = stir64(fourth, octets.readTheLittleEndianLongAt(message, at + 24));
+                first = stir64(first, octets.readLittleEndianLongAt(message, at));
+                second = stir64(second, octets.readLittleEndianLongAt(message, at + 8));
+                third = stir64(third, octets.readLittleEndianLongAt(message, at + 16));
+                fourth = stir64(fourth, octets.readLittleEndianLongAt(message, at + 24));
                 at += 32;
             }
             running = Long.rotateLeft(first, 1) + Long.rotateLeft(second, 7)
@@ -85,12 +85,12 @@ public final class XxHash extends XxHashFamily {
         running += message.length;
         while (at + 8 <= message.length) {
             running = Long.rotateLeft(
-                    running ^ stir64(0, octets.readTheLittleEndianLongAt(message, at)), 27) * P64_1 + P64_4;
+                    running ^ stir64(0, octets.readLittleEndianLongAt(message, at)), 27) * P64_1 + P64_4;
             at += 8;
         }
         if (at + 4 <= message.length) {
             running = Long.rotateLeft(
-                    running ^ (octets.readTheLittleEndianWordAt(message, at) & 0xFFFFFFFFL) * P64_1, 23)
+                    running ^ (octets.readLittleEndianWordAt(message, at) & 0xFFFFFFFFL) * P64_1, 23)
                     * P64_2 + P64_3;
             at += 4;
         }

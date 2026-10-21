@@ -32,10 +32,10 @@ final class BrotliDictionarySearch {
         int howManySlots = onlyTheFirstSlot ? 1 : 2;
         for (int tried = 0; tried < howManySlots; tried++, slot++) {
             lookups++;
-            if (BrotliDictionaryHash.readTheWordLengthAt(slot) != 0
+            if (BrotliDictionaryHash.readWordLengthAt(slot) != 0
                     && fitsTheWord(data, at, maxLength, maxBackward, maxDistance,
-                            best, BrotliDictionaryHash.readTheWordLengthAt(slot),
-                            BrotliDictionaryHash.readTheWordIndexAt(slot))) {
+                            best, BrotliDictionaryHash.readWordLengthAt(slot),
+                            BrotliDictionaryHash.readWordIndexAt(slot))) {
                 matches++;
             }
         }
@@ -48,7 +48,7 @@ final class BrotliDictionarySearch {
         if (wordLength > maxLength) {
             return false;
         }
-        byte[] words = BrotliDictionary.readTheWords();
+        byte[] words = BrotliDictionary.readWords();
         int wordAt = BrotliDictionary.findTheOffsetFor(wordLength) + wordLength * wordIndex;
         int agreeing = countTheAgreeingBytes(data, at, words, wordAt, wordLength);
         if (agreeing == 0 || agreeing + MOST_THAT_MAY_BE_CUT <= wordLength) {
@@ -58,7 +58,7 @@ final class BrotliDictionarySearch {
         long whichTransform = ((long) cut << 2)
                 + ((CUTTING_TRANSFORM_FOR_EACH_AMOUNT >>> (cut * 6)) & 0x3F);
         long backward = maxBackward + 1 + wordIndex
-                + (whichTransform << BrotliDictionary.readTheSizeBitsFor(wordLength));
+                + (whichTransform << BrotliDictionary.readSizeBitsFor(wordLength));
         if (backward > maxDistance) {
             return false;
         }

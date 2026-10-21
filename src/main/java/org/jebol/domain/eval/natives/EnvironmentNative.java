@@ -21,7 +21,7 @@ public abstract class EnvironmentNative extends HostNative {
         return Set.of(StringValue.TYPE, WordValue.TYPE, LitWordValue.TYPE);
     }
 
-    protected String readTheVariableNamedBy(Value asked) {
+    protected String readVariableNamedBy(Value asked) {
         return asked instanceof AnyWordValue word ? word.spelling() : ((AnyStringValue) asked).text();
     }
 }

@@ -19,7 +19,7 @@ public abstract class CipherNative extends DefaultNative {
         return HandleValue.wrapAContext(type, evaluator.nextCipherIdentity(), JavaObjectValue.of(key));
     }
 
-    protected <K> Optional<K> readTheKeyHeldBy(Value given, String type, Class<K> kind) {
+    protected <K> Optional<K> readKeyHeldBy(Value given, String type, Class<K> kind) {
         if (!(given instanceof HandleValue held)
                 || !type.equals(held.typeName())
                 || !(held.payload() instanceof JavaObjectValue carried)) {

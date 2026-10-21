@@ -47,7 +47,7 @@ public class RsaNative extends CipherNative {
         return (arguments, evaluator, context, refinements) -> {
             List<String> asked = WHAT_RSA_DOES.stream().filter(refinements::contains).toList();
             refuseAnythingButOneThing(asked, refinements);
-            RsaKey key = readTheKeyHeldBy(arguments.getFirst(), RSA_HANDLE_TYPE, RsaKey.class)
+            RsaKey key = readKeyHeldBy(arguments.getFirst(), RSA_HANDLE_TYPE, RsaKey.class)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE,
                             arguments.getFirst() instanceof HandleValue other
                                     ? other.typeName() : "rsa-key"));
@@ -83,7 +83,7 @@ public class RsaNative extends CipherNative {
                 case "sign" -> BinaryValue.ofBytes(key.sign(data,
                         digestNamedIn(arguments, refinements), refinements.contains("pss")));
                 default -> LogicValue.of(key.verifies(data,
-                        readTheSignatureGivenTo(arguments, refinements),
+                        readSignatureGivenTo(arguments, refinements),
                         digestNamedIn(arguments, refinements),
                         refinements.contains("pss")));
             };
@@ -99,7 +99,7 @@ public class RsaNative extends CipherNative {
                 .orElse(THE_DIGEST_WHEN_NONE_IS_NAMED);
     }
 
-    private byte[] readTheSignatureGivenTo(List<Value> arguments, Set<String> refinements) {
+    private byte[] readSignatureGivenTo(List<Value> arguments, Set<String> refinements) {
         return readTheArgumentOf("verify", 0, arguments, refinements)
                 .filter(BinaryValue.class::isInstance)
                 .map(signature -> ((BinaryValue) signature).octetsFromHere())

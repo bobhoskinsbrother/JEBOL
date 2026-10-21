@@ -27,10 +27,10 @@ public final class GobText {
 
     private RichText.Line readTheLineOf(GobValue written) {
         return switch (written.storage().contentKind()) {
-            case TEXT -> written.storage().readTheContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue rich
+            case TEXT -> written.storage().readContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue rich
                     ? new RichText(Colour.BLACK).lineIn(rich)
                     : writeNothing();
-            case STRING -> written.storage().readTheContentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue plain
+            case STRING -> written.storage().readContentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue plain
                     ? new RichText.Line(
                             List.of(new TextRun(plain.text(), Colour.BLACK,
                                     PaintInstruction.Writing.THE_ORDINARY_SIZE, false, false)),
@@ -77,8 +77,8 @@ public final class GobText {
 
     private List<Value> readTheRichTextAsWritten() {
         Value content = gob.storage().contentKind() == GobStorage.Content.TEXT
-                ? gob.storage().readTheContentIfKind(GobStorage.Content.TEXT)
-                : gob.storage().readTheContentIfKind(GobStorage.Content.STRING);
+                ? gob.storage().readContentIfKind(GobStorage.Content.TEXT)
+                : gob.storage().readContentIfKind(GobStorage.Content.STRING);
         if (content instanceof AnyBlockValue rich) {
             return rich.storage().snapshot();
         }

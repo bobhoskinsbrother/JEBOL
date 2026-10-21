@@ -82,7 +82,7 @@ public final class EventCatalogue {
     }
 
     /** The word at a type index, for reading one back. */
-    public static String readTheTypeAt(int index) {
+    public static String readTypeAt(int index) {
         return TYPES.get(index);
     }
 

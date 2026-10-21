@@ -65,11 +65,11 @@ final class BrotliDictionaryHash {
         }
     }
 
-    static int readTheWordLengthAt(int slot) {
+    static int readWordLengthAt(int slot) {
         return unpack().wordLengths()[slot];
     }
 
-    static int readTheWordIndexAt(int slot) {
+    static int readWordIndexAt(int slot) {
         return unpack().wordIndexes()[slot];
     }
 

@@ -12,7 +12,7 @@ public final class GobPath {
 
     static Value read(GobValue gob, Value selector) {
         if (selector instanceof AnyWordValue asked) {
-            return readTheField(gob, asked);
+            return readField(gob, asked);
         }
         if (!(selector instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
@@ -27,7 +27,7 @@ public final class GobPath {
         if (isACountBelowOne(at, gob)) {
             return NoneValue.none();
         }
-        return gob.storage().readTheChildAt((int) at);
+        return gob.storage().readChildAt((int) at);
     }
 
     private static boolean isACountBelowOne(
@@ -35,19 +35,19 @@ public final class GobPath {
         return at < 1 || at > gob.storage().length();
     }
 
-    static Value readTheField(GobValue gob, AnyWordValue asked) {
+    static Value readField(GobValue gob, AnyWordValue asked) {
         GobStorage storage = gob.storage();
         return switch (asked.canonical()) {
             case "offset" -> storage.offset();
             case "size" -> storage.size();
             case "alpha" -> IntegerValue.of(storage.alpha());
-            case "image" -> storage.readTheContentIfKind(GobStorage.Content.IMAGE);
-            case "draw" -> storage.readTheContentIfKind(GobStorage.Content.DRAW);
+            case "image" -> storage.readContentIfKind(GobStorage.Content.IMAGE);
+            case "draw" -> storage.readContentIfKind(GobStorage.Content.DRAW);
             case "text" -> storage.contentKind() == GobStorage.Content.STRING
-                    ? storage.readTheContentIfKind(GobStorage.Content.STRING)
-                    : storage.readTheContentIfKind(GobStorage.Content.TEXT);
-            case "effect" -> storage.readTheContentIfKind(GobStorage.Content.EFFECT);
-            case "color" -> storage.readTheContentIfKind(GobStorage.Content.COLOUR);
+                    ? storage.readContentIfKind(GobStorage.Content.STRING)
+                    : storage.readContentIfKind(GobStorage.Content.TEXT);
+            case "effect" -> storage.readContentIfKind(GobStorage.Content.EFFECT);
+            case "color" -> storage.readContentIfKind(GobStorage.Content.COLOUR);
             case "pane" -> BlockValue.of(storage.pane());
             case "parent" -> findTheParentOf(storage);
             case "data" -> storage.data();

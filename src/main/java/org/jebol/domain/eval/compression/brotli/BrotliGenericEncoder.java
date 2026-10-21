@@ -385,7 +385,7 @@ final class BrotliGenericEncoder {
         commands.setTheCommandPrefix(which, BrotliCommand.codeTheLength(
                 commands.insertLengthAt(which),
                 commands.copyLengthPlusItsModifierReadPlainlyAsTheCReadsIt(which),
-                (commands.readTheDistancePrefixAt(which) & 0x3FF) == 0));
+                (commands.readDistancePrefixAt(which) & 0x3FF) == 0));
         return at;
     }
 }

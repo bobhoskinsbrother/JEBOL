@@ -47,7 +47,7 @@ public class EcdhNative extends CipherNative {
                 return makeACurveKeyOn(arguments.getFirst(),
                         ((AnyWordValue) arguments.get(1)).canonical(), evaluator);
             }
-            Optional<EllipticCurveKey> key = readTheKeyHeldBy(
+            Optional<EllipticCurveKey> key = readKeyHeldBy(
                     arguments.getFirst(), ECDH_HANDLE_TYPE, EllipticCurveKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {
@@ -75,7 +75,7 @@ public class EcdhNative extends CipherNative {
 
     private Value makeACurveKeyOn(Value given, String curveName, Evaluator evaluator) {
         Optional<EllipticCurveKey> standing =
-                readTheKeyHeldBy(given, ECDH_HANDLE_TYPE, EllipticCurveKey.class);
+                readKeyHeldBy(given, ECDH_HANDLE_TYPE, EllipticCurveKey.class);
         if (standing.isPresent()) {
             return standing.get().startAgainOn(curveName) ? given : NoneValue.none();
         }

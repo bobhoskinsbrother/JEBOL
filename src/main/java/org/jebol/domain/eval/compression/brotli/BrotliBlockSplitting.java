@@ -61,7 +61,7 @@ final class BrotliBlockSplitting {
 
         int[] commandRun = new int[commands.count()];
         for (int which = 0; which < commands.count(); which++) {
-            commandRun[which] = commands.readTheCommandPrefixAt(which);
+            commandRun[which] = commands.readCommandPrefixAt(which);
         }
         split(commandRun, commands.count(), BrotliCodes.COMMAND_SYMBOLS,
                 SYMBOLS_PER_COMMAND_HISTOGRAM, MOST_COMMAND_HISTOGRAMS,
@@ -71,9 +71,9 @@ final class BrotliBlockSplitting {
         int howManyDistances = 0;
         for (int which = 0; which < commands.count(); which++) {
             if (commands.copyLengthAt(which) != 0
-                    && commands.readTheCommandPrefixAt(which) >= 128) {
+                    && commands.readCommandPrefixAt(which) >= 128) {
                 distanceRun[howManyDistances++] =
-                        commands.readTheDistancePrefixAt(which) & 0x3FF;
+                        commands.readDistancePrefixAt(which) & 0x3FF;
             }
         }
         split(distanceRun, howManyDistances, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS,

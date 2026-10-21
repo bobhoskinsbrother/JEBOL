@@ -43,14 +43,14 @@ public class InNative extends DefaultNative {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();
             case ModuleValue module -> module.context();
-            case ErrorValue raised -> readTheFieldsAnErrorHolds(raised);
+            case ErrorValue raised -> readFieldsErrorHolds(raised);
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "in wanted an object, an error, a port or a block, not "
                             + value.datatype().literalSpelling());
         };
     }
 
-    private Context readTheFieldsAnErrorHolds(ErrorValue raised) {
+    private Context readFieldsErrorHolds(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
             raised.readTheField(name).ifPresent(value -> fields.register(name, value));

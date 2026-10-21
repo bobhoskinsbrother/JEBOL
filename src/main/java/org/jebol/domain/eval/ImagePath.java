@@ -15,7 +15,7 @@ final class ImagePath {
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             return NoneValue.none();
         }
-        int[] channels = image.readThePixelAt(pixel);
+        int[] channels = image.readPixelAt(pixel);
         return makeFourParts(channels);
     }
 
@@ -36,7 +36,7 @@ final class ImagePath {
             storage.setAlphaAt(pixelFromHead, partOr(parts, 3, OPAQUE_WHERE_NO_FOURTH_PART));
             return;
         }
-        int alpha = readTheAlphaFrom(written);
+        int alpha = readAlphaFrom(written);
         storage.setAlphaAt(pixelFromHead, alpha);
     }
 
@@ -243,7 +243,7 @@ final class ImagePath {
         return at < parts.length ? parts[at] : otherwise;
     }
 
-    private static int readTheAlphaFrom(Value written) {
+    private static int readAlphaFrom(Value written) {
         long octet = switch (written) {
             case IntegerValue number -> number.magnitude();
             case CharacterValue letter -> letter.codepoint();
@@ -262,17 +262,17 @@ final class ImagePath {
             case "size" -> image.size();
             case "width" -> IntegerValue.of(image.storage().wide());
             case "height" -> IntegerValue.of(image.storage().high());
-            case "rgb" -> readTheChannels(image, 0, 1, 2);
-            case "bgr" -> readTheChannels(image, 2, 1, 0);
-            case "rgba", "rgbo" -> readTheChannels(image, 0, 1, 2, 3);
-            case "bgra", "bgro" -> readTheChannels(image, 2, 1, 0, 3);
-            case "argb", "orgb" -> readTheChannels(image, 3, 0, 1, 2);
-            case "abgr", "obgr" -> readTheChannels(image, 3, 2, 1, 0);
-            case "alpha" -> readTheChannels(image, 3);
+            case "rgb" -> readChannels(image, 0, 1, 2);
+            case "bgr" -> readChannels(image, 2, 1, 0);
+            case "rgba", "rgbo" -> readChannels(image, 0, 1, 2, 3);
+            case "bgra", "bgro" -> readChannels(image, 2, 1, 0, 3);
+            case "argb", "orgb" -> readChannels(image, 3, 0, 1, 2);
+            case "abgr", "obgr" -> readChannels(image, 3, 2, 1, 0);
+            case "alpha" -> readChannels(image, 3);
             case "opacity" -> readTheOpacitiesOf(image);
-            case "red" -> readTheChannels(image, 0);
-            case "green" -> readTheChannels(image, 1);
-            case "blue" -> readTheChannels(image, 2);
+            case "red" -> readChannels(image, 0);
+            case "green" -> readChannels(image, 1);
+            case "blue" -> readChannels(image, 2);
             case "color" -> averageTheColourOf(image);
             case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheLuminosityOf);
             case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheGreyOf);
@@ -290,7 +290,7 @@ final class ImagePath {
         long blue = 0;
         long alpha = 0;
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.readThePixelAt(pixel);
+            int[] channels = image.readPixelAt(pixel);
             red += channels[0];
             green += channels[1];
             blue += channels[2];
@@ -308,7 +308,7 @@ final class ImagePath {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            octets[pixel - 1] = convertTheAlphaToOpacity(image.readThePixelAt(pixel)[3]);
+            octets[pixel - 1] = convertTheAlphaToOpacity(image.readPixelAt(pixel)[3]);
         }
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
@@ -331,7 +331,7 @@ final class ImagePath {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.readThePixelAt(pixel);
+            int[] channels = image.readPixelAt(pixel);
             octets[pixel - 1] = squeeze.of(channels[0], channels[1], channels[2]);
         }
         return new BinaryValue(BinaryStorage.of(octets), 1);
@@ -342,12 +342,12 @@ final class ImagePath {
         int of(int red, int green, int blue);
     }
 
-    private static BinaryValue readTheChannels(ImageValue image, int... order) {
+    private static BinaryValue readChannels(ImageValue image, int... order) {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels * order.length];
         int written = 0;
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.readThePixelAt(pixel);
+            int[] channels = image.readPixelAt(pixel);
             for (int which : order) {
                 octets[written++] = channels[which];
             }

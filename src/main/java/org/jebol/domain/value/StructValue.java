@@ -90,7 +90,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     public byte[] octets() {
-        return data.readTheBytesFrom(offset, spec.size());
+        return data.readBytesFrom(offset, spec.size());
     }
 
     public Optional<StructField> findTheFieldCalled(String name) {
@@ -114,7 +114,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         int at = addressOf(field, element);
         return switch (field.type()) {
             case StructFieldType.Numeric number ->
-                    number.kind().read(data.readTheNumberAt(at, number.kind()));
+                    number.kind().read(data.readNumberAt(at, number.kind()));
             case StructFieldType.NamedWord ignored ->
                     data.liveValueAt(at).orElseGet(NoneValue::none);
             case StructFieldType.LiveValue ignored ->
@@ -138,7 +138,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (field.type() instanceof StructFieldType.Numeric(VectorKind kind)) {
             long[] stored = new long[field.dimension()];
             for (int element = 0; element < stored.length; element++) {
-                stored[element] = data.readTheNumberAt(addressOf(field, element), kind);
+                stored[element] = data.readNumberAt(addressOf(field, element), kind);
             }
             return VectorValue.hold(kind, stored);
         }
@@ -262,7 +262,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
                     "the field " + field.name() + " takes " + field.dimension()
                             + " values of its own width and this vector is not that");
         }
-        data.write(addressOf(field, 0), given.readTheOctetsFromHere(), field.width());
+        data.write(addressOf(field, 0), given.readOctetsFromHere(), field.width());
     }
 
     /**
@@ -275,7 +275,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      */
     public void startWith(Value given) {
         if (given instanceof BinaryValue octets) {
-            changeFrom(octets.readTheBytesFromHere());
+            changeFrom(octets.readBytesFromHere());
             return;
         }
         AnyBlockValue written = (AnyBlockValue) given;
@@ -363,7 +363,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!acceptsRawBytes()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
-        changeFrom(octets.readTheBytesFromHere());
+        changeFrom(octets.readBytesFromHere());
         return this;
     }
 

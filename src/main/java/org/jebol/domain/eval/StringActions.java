@@ -27,11 +27,11 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value poke(Value position, Value written) {
-        text.storage().set(findThePokedStoragePosition(position), readTheCodepointPokedFrom(written));
+        text.storage().set(findThePokedStoragePosition(position), readCodepointPokedFrom(written));
         return written;
     }
 
-    private int readTheCodepointPokedFrom(Value written) {
+    private int readCodepointPokedFrom(Value written) {
         return switch (written) {
             case CharacterValue letter -> letter.codepoint();
             case IntegerValue number

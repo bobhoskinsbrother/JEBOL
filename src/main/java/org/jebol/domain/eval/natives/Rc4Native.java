@@ -53,12 +53,12 @@ public class Rc4Native extends CipherNative {
     }
 
     private Value encipherThroughTheStreamInPlace(HandleValue held, BinaryValue data) {
-        StreamCipher cipher = readTheKeyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
+        StreamCipher cipher = readKeyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName()));
         data.requireChangeable();
         for (int at = data.index(); at <= data.storageLength(); at++) {
             data.storage().set(at, data.storage().at(at)
-                    ^ cipher.readTheNextKeystreamByte());
+                    ^ cipher.readNextKeystreamByte());
         }
         return data;
     }

@@ -42,15 +42,15 @@ public class UnfilterNative extends PngFilterNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            int width = readTheWidthIn(arguments.get(1));
+            int width = readWidthIn(arguments.get(1));
             boolean filterGiven = refinements.contains("as");
             requireTheLinesFit(filterGiven ? width : width + THE_BYTE_NAMING_THE_FILTER,
                     data.length, arguments, refinements);
             int filter = readTheArgumentOf("as", 0, arguments, refinements)
-                    .map(this::readTheFilterNamedBy)
+                    .map(this::readFilterNamedBy)
                     .orElse(EACH_LINE_NAMES_ITS_OWN_FILTER);
             return BinaryValue.ofBytes(encodings.pngUnfilter(
-                    data, width, filter, readTheBytesPerPixelIn(arguments, refinements)));
+                    data, width, filter, readBytesPerPixelIn(arguments, refinements)));
         };
     }
 }

@@ -39,7 +39,7 @@ public final class SeekableFilePort {
     }
 
     public long position() {
-        return switch (port.readTheFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
+        return switch (port.readFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case AnyBlockValue kept
                     when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
@@ -53,7 +53,7 @@ public final class SeekableFilePort {
     }
 
     public boolean mayWriteThrough() {
-        return !(port.readTheFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
+        return !(port.readFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
@@ -67,7 +67,7 @@ public final class SeekableFilePort {
     }
 
     public String path() {
-        if (!(port.readTheFieldValue("spec") instanceof ObjectValue spec)) {
+        if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
             return "";
         }
         if (!spec.context().holds(WHAT_THE_PORT_WAS_MADE_FROM)) {
@@ -75,7 +75,7 @@ public final class SeekableFilePort {
         }
         Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
         if (made instanceof UrlValue) {
-            return spec.readTheFieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
+            return spec.readFieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
         }
         if (!(made instanceof FileValue file)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, made);

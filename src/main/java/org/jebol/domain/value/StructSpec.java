@@ -112,7 +112,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
                     layOutInside(name, declared, registry));
             at = 2;
         } else {
-            type = readTheScalarNamed(name, declared, typeWord.canonical());
+            type = readScalarNamed(name, declared, typeWord.canonical());
         }
         int dimension = 1;
         boolean declaredAsAnArray = false;
@@ -156,7 +156,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
                         + "nor a registered name");
     }
 
-    private static StructFieldType readTheScalarNamed(String name, AnyBlockValue declared, String typeWord) {
+    private static StructFieldType readScalarNamed(String name, AnyBlockValue declared, String typeWord) {
         return switch (typeWord) {
             case "word!" -> new StructFieldType.NamedWord();
             case "rebval!" -> new StructFieldType.LiveValue();

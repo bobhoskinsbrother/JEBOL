@@ -48,7 +48,7 @@ public class CheckCertificatesNative extends HostNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.CERTIFICATES);
             List<byte[]> chain = readTheCertificates((AnyBlockValue) arguments.get(0));
-            String host = readTheHostName(arguments.get(1));
+            String host = readHostName(arguments.get(1));
             if (chain.isEmpty()) {
                 throw refuseAsMistrusted(CertificateMistrust.NO_CERTIFICATE, host);
             }
@@ -68,17 +68,17 @@ public class CheckCertificatesNative extends HostNative {
     }
 
     private List<byte[]> readTheCertificates(AnyBlockValue chain) {
-        return chain.remaining().stream().map(this::readTheBytes).toList();
+        return chain.remaining().stream().map(this::readBytes).toList();
     }
 
-    private byte[] readTheBytes(Value certificate) {
+    private byte[] readBytes(Value certificate) {
         if (!(certificate instanceof BinaryValue binary)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, certificate);
         }
-        return binary.readTheBytesFromHere();
+        return binary.readBytesFromHere();
     }
 
-    private String readTheHostName(Value host) {
+    private String readHostName(Value host) {
         return host instanceof TupleValue address
                 ? Arrays.stream(address.segments()).mapToObj(String::valueOf).collect(Collectors.joining("."))
                 : ((AnyStringValue) host).text();

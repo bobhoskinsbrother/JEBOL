@@ -47,7 +47,7 @@ public class CompressNative extends CompressionNative {
                     .map(asked -> (int) ((IntegerValue) asked).magnitude())
                     .orElse(Deflater.DEFAULT_COMPRESSION);
             return BinaryValue.ofBytes(encodings.compress(
-                    readTheOctetsWithinAnyPart(data, arguments, refinements),
+                    readOctetsWithinAnyPart(data, arguments, refinements),
                     method, level));
         };
     }

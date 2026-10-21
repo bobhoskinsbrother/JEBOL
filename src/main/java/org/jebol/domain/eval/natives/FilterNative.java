@@ -38,11 +38,11 @@ public class FilterNative extends PngFilterNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            int width = readTheWidthIn(arguments.get(1));
-            int filter = readTheFilterNamedBy(arguments.get(2));
+            int width = readWidthIn(arguments.get(1));
+            int filter = readFilterNamedBy(arguments.get(2));
             requireTheLinesFit(width, data.length, arguments, refinements);
             return BinaryValue.ofBytes(encodings.pngFilter(
-                    data, width, filter, readTheBytesPerPixelIn(arguments, refinements)));
+                    data, width, filter, readBytesPerPixelIn(arguments, refinements)));
         };
     }
 }

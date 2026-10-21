@@ -309,7 +309,7 @@ public final class Java2DSurface implements Surface {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         for (int down = 0; down < high; down++) {
             for (int across = 0; across < wide; across++) {
-                int[] parts = pixels.readThePixelAt(down * wide + across + 1);
+                int[] parts = pixels.readPixelAt(down * wide + across + 1);
                 drawable.setRGB(across, down, new Color(
                         parts[0], parts[1], parts[2],
                         parts.length >= 4 ? parts[3] : OPAQUE).getRGB());

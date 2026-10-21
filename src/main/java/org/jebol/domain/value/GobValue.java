@@ -86,8 +86,8 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public Value readTheItemAt(int positionFromTheHead) {
-        return storage.readTheChildAt(positionFromTheHead);
+    public Value readItemAt(int positionFromTheHead) {
+        return storage.readChildAt(positionFromTheHead);
     }
 
     @Override
@@ -120,7 +120,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
         long at = index - 1 + count;
         return at < 1 || at > storage.length()
                 ? NoneValue.none()
-                : storage.readTheChildAt((int) at);
+                : storage.readChildAt((int) at);
     }
 
     @Override

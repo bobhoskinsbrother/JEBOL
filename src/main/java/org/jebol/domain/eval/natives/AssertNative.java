@@ -38,7 +38,7 @@ public class AssertNative extends DefaultNative {
         List<Value> items = pairs.remaining();
         for (int at = 0; at < items.size(); at += 2) {
             Value subject = items.get(at);
-            Value held = readTheValueNamedBy(subject, evaluator, context);
+            Value held = readValueNamedBy(subject, evaluator, context);
             if (at + 1 >= items.size()) {
                 throw Raised.of(EvaluationFailure.MISSING_ARG);
             }
@@ -49,7 +49,7 @@ public class AssertNative extends DefaultNative {
         return LogicValue.of(true);
     }
 
-    private Value readTheValueNamedBy(Value subject, Evaluator evaluator, Context context) {
+    private Value readValueNamedBy(Value subject, Evaluator evaluator, Context context) {
         boolean namesAValue = subject instanceof WordValue || subject instanceof PathValue;
         if (!namesAValue) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, subject);

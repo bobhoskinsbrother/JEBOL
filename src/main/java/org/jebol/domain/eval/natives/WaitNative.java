@@ -112,12 +112,12 @@ public class WaitNative extends PortWakingNative {
 
     private Value findWhicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
         if (!(evaluator.findTheHostPort("system") instanceof PortValue queue)
-                || !(queue.readTheFieldValue("awake") instanceof AnyFunctionValue)) {
+                || !(queue.readFieldValue("awake") instanceof AnyFunctionValue)) {
             return NoneValue.none();
         }
         AnyBlockValue ports = BlockValue.of(new ArrayList<>(waitedOn));
         while (true) {
-            Value said = evaluator.applyFunction(queue.readTheFieldValue("awake"), List.of(queue, ports));
+            Value said = evaluator.applyFunction(queue.readFieldValue("awake"), List.of(queue, ports));
             if (said instanceof LogicValue(boolean truth) && truth) {
                 return takeTheFirstWokenAndEmptyTheWakeList(waitedOn, queue);
             }
@@ -139,7 +139,7 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Optional<AnyBlockValue> findTheWakeListOf(PortValue queue) {
-        return queue.readTheFieldValue("data") instanceof AnyBlockValue list
+        return queue.readFieldValue("data") instanceof AnyBlockValue list
                 ? Optional.of(list)
                 : Optional.empty();
     }

@@ -203,7 +203,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     @Override
     public Value stepIntoBy(Value selector) {
         Optional<Value> half = switch (selector) {
-            case IntegerValue position -> readTheHalfAt((int) position.magnitude());
+            case IntegerValue position -> readHalfAt((int) position.magnitude());
             case AnyWordValue name -> readTheHalf(name.canonical());
             default -> Optional.empty();
         };
@@ -240,10 +240,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public Value pick(int oneBasedPosition) {
-        return readTheHalfAt(oneBasedPosition).orElseGet(NoneValue::none);
+        return readHalfAt(oneBasedPosition).orElseGet(NoneValue::none);
     }
 
-    public Optional<Value> readTheHalfAt(int position) {
+    public Optional<Value> readHalfAt(int position) {
         return switch (position) {
             case 1 -> Optional.of(DecimalValue.of(x));
             case 2 -> Optional.of(DecimalValue.of(y));

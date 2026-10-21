@@ -17,7 +17,7 @@ final class PicturesWorkedOutHere {
         int high = (int) Math.round(picture.size().y());
         int[] copied = new int[wide * high * CHANNELS];
         for (int pixel = 0; pixel < wide * high; pixel++) {
-            int[] parts = picture.readThePixelAt(pixel + 1);
+            int[] parts = picture.readPixelAt(pixel + 1);
             boolean matches = parts[0] == key.red()
                     && parts[1] == key.green() && parts[2] == key.blue();
             copied[pixel * CHANNELS] = parts[0];
@@ -47,7 +47,7 @@ final class PicturesWorkedOutHere {
                 int fromAcross = Math.clamp(
                         (int) (found[0] * fromWide), 0, fromWide - 1);
                 int fromDown = Math.clamp((int) (found[1] * fromHigh), 0, fromHigh - 1);
-                int[] parts = picture.readThePixelAt(fromDown * fromWide + fromAcross + 1);
+                int[] parts = picture.readPixelAt(fromDown * fromWide + fromAcross + 1);
                 made[at] = parts[0];
                 made[at + 1] = parts[1];
                 made[at + 2] = parts[2];

@@ -131,7 +131,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
             int wide = (int) Math.round(shown.pixels().size().x());
             int high = (int) Math.round(shown.pixels().size().y());
             for (int pixel = 1; pixel <= wide * high; pixel++) {
-                int[] parts = shown.pixels().readThePixelAt(pixel);
+                int[] parts = shown.pixels().readPixelAt(pixel);
                 seen.add(parts[0] + "," + parts[1] + "," + parts[2]);
             }
             return seen;

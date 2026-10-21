@@ -162,17 +162,17 @@ final class BlockEncoder {
         }
         computeFullLengthCodewords(chosen);
         content.writeWith(this, chosen, out, input, begin);
-        out.add(chosen.litlenCodewords[END_OF_BLOCK], chosen.readTheLitlenLength(END_OF_BLOCK));
+        out.add(chosen.litlenCodewords[END_OF_BLOCK], chosen.readLitlenLength(END_OF_BLOCK));
     }
 
     private long priceTheDynamicBlock() {
         long cost = BLOCK_HEADER_BITS + priceTheHeader();
         for (int symbol = 0; symbol < FIRST_LENGTH_SYMBOL; symbol++) {
-            cost += (long) litlenFrequencies[symbol] * codes.readTheLitlenLength(symbol);
+            cost += (long) litlenFrequencies[symbol] * codes.readLitlenLength(symbol);
         }
         for (int slot = 0; slot < EXTRA_LENGTH_BITS.length; slot++) {
             cost += (long) litlenFrequencies[FIRST_LENGTH_SYMBOL + slot]
-                    * (EXTRA_LENGTH_BITS[slot] + codes.readTheLitlenLength(FIRST_LENGTH_SYMBOL + slot));
+                    * (EXTRA_LENGTH_BITS[slot] + codes.readLitlenLength(FIRST_LENGTH_SYMBOL + slot));
         }
         for (int slot = 0; slot < EXTRA_OFFSET_BITS.length; slot++) {
             cost += (long) offsetFrequencies[slot] * (EXTRA_OFFSET_BITS[slot] + codes.readTheOffsetLength(slot));
@@ -196,7 +196,7 @@ final class BlockEncoder {
         }
         for (int slot = 0; slot < EXTRA_LENGTH_BITS.length; slot++) {
             cost += (long) litlenFrequencies[FIRST_LENGTH_SYMBOL + slot]
-                    * (EXTRA_LENGTH_BITS[slot] + staticCodes.readTheLitlenLength(FIRST_LENGTH_SYMBOL + slot));
+                    * (EXTRA_LENGTH_BITS[slot] + staticCodes.readLitlenLength(FIRST_LENGTH_SYMBOL + slot));
         }
         for (int slot = 0; slot < EXTRA_OFFSET_BITS.length; slot++) {
             cost += (long) offsetFrequencies[slot] * (EXTRA_OFFSET_BITS[slot] + STATIC_OFFSET_BITS);
@@ -242,7 +242,7 @@ final class BlockEncoder {
     }
 
     void writeLiteral(BitWriter out, HuffmanCodes with, int literal) {
-        out.add(with.litlenCodewords[literal], with.readTheLitlenLength(literal));
+        out.add(with.litlenCodewords[literal], with.readLitlenLength(literal));
     }
 
     void writeMatch(BitWriter out, HuffmanCodes with, int length, int offset, int offsetSlot) {
@@ -256,8 +256,8 @@ final class BlockEncoder {
             int slot = LENGTH_SLOT[length];
             int symbol = FIRST_LENGTH_SYMBOL + slot;
             int extra = length - LENGTH_SLOT_BASE[slot];
-            fullLengthCodewords[length] = with.litlenCodewords[symbol] | (extra << with.readTheLitlenLength(symbol));
-            fullLengthLengths[length] = with.readTheLitlenLength(symbol) + EXTRA_LENGTH_BITS[slot];
+            fullLengthCodewords[length] = with.litlenCodewords[symbol] | (extra << with.readLitlenLength(symbol));
+            fullLengthLengths[length] = with.readLitlenLength(symbol) + EXTRA_LENGTH_BITS[slot];
         }
     }
 
@@ -266,11 +266,11 @@ final class BlockEncoder {
         Arrays.fill(codes.lengths, litlenSymbolsSent, LITLEN_SYMBOL_COUNT, 0);
         long cost = priceTheHeader();
         for (int symbol = 0; symbol < FIRST_LENGTH_SYMBOL; symbol++) {
-            cost += (long) litlenFrequencies[symbol] * codes.readTheLitlenLength(symbol);
+            cost += (long) litlenFrequencies[symbol] * codes.readLitlenLength(symbol);
         }
         for (int slot = 0; slot < EXTRA_LENGTH_BITS.length; slot++) {
             cost += (long) litlenFrequencies[FIRST_LENGTH_SYMBOL + slot]
-                    * (codes.readTheLitlenLength(FIRST_LENGTH_SYMBOL + slot) + EXTRA_LENGTH_BITS[slot]);
+                    * (codes.readLitlenLength(FIRST_LENGTH_SYMBOL + slot) + EXTRA_LENGTH_BITS[slot]);
         }
         for (int slot = 0; slot < EXTRA_OFFSET_BITS.length; slot++) {
             cost += (long) offsetFrequencies[slot] * (codes.readTheOffsetLength(slot) + EXTRA_OFFSET_BITS[slot]);

@@ -60,7 +60,7 @@ final class RichText {
         }
         Line withoutACaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
         return new Line(withoutACaret.runs(), withoutACaret.placeOfEachRun(), layout,
-                theCaretObject.map(fields -> readTheCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
+                theCaretObject.map(fields -> readCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
     }
 
     private void obeyTheWord(AnyWordValue command) {
@@ -85,11 +85,11 @@ final class RichText {
         theNextObject = WhatTheNextObjectIs.A_FONT;
     }
 
-    private TextCaret readTheCaretIn(ObjectValue fields, Line line) {
+    private TextCaret readCaretIn(ObjectValue fields, Line line) {
         return new TextCaret(
-                findThePlaceNamedBy(readTheField(fields, "caret"), line),
-                findThePlaceNamedBy(readTheField(fields, "start"), line),
-                findThePlaceNamedBy(readTheField(fields, "end"), line));
+                findThePlaceNamedBy(readField(fields, "caret"), line),
+                findThePlaceNamedBy(readField(fields, "start"), line),
+                findThePlaceNamedBy(readField(fields, "end"), line));
     }
 
     private TextLines.RunAndCharacter findThePlaceNamedBy(Optional<Value> field, Line line) {
@@ -113,12 +113,12 @@ final class RichText {
     }
 
     private void takeTheFontIn(ObjectValue fields) {
-        readTheField(fields, "size").flatMap(this::readASizeIn).ifPresent(asked -> size = asked);
-        readTheField(fields, "color").filter(TupleValue.class::isInstance)
+        readField(fields, "size").flatMap(this::readASizeIn).ifPresent(asked -> size = asked);
+        readField(fields, "color").filter(TupleValue.class::isInstance)
                 .map(TupleValue.class::cast)
                 .ifPresent(parts -> colour = Colour.ofTuple(parts));
-        readTheField(fields, "style").ifPresent(this::takeTheStyle);
-        PairValue shadow = readTheField(fields, "shadow").flatMap(this::readTheShadowsOffsetIn)
+        readField(fields, "style").ifPresent(this::takeTheStyle);
+        PairValue shadow = readField(fields, "shadow").flatMap(this::readTheShadowsOffsetIn)
                 .orElse(PairValue.of(0, 0));
         layout = layout.withShadow(roundToWholePixels(shadow.x()), roundToWholePixels(shadow.y()));
     }
@@ -133,16 +133,16 @@ final class RichText {
     }
 
     private void takeTheParaIn(ObjectValue fields) {
-        readTheField(fields, "origin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
+        readField(fields, "origin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
                 .ifPresent(origin -> layout = layout.withOrigin(roundToWholePixels(origin.x()), roundToWholePixels(origin.y())));
-        readTheField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
+        readField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
                 .ifPresent(margin -> layout = layout.withMargin(roundToWholePixels(margin.x()), roundToWholePixels(margin.y())));
-        TextAlignment across = readTheField(fields, "align").flatMap(this::readTheWordsSpelling)
+        TextAlignment across = readField(fields, "align").flatMap(this::readTheWordsSpelling)
                 .flatMap(TextAlignment::findTheAlignmentSpelt).orElse(TextAlignment.LEFT);
-        TextVerticalAlignment down = readTheField(fields, "valign").flatMap(this::readTheWordsSpelling)
+        TextVerticalAlignment down = readField(fields, "valign").flatMap(this::readTheWordsSpelling)
                 .flatMap(TextVerticalAlignment::findTheAlignmentSpelt).orElse(TextVerticalAlignment.TOP);
         layout = layout.align(across, down);
-        readTheField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
+        readField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
                 .ifPresent(wraps -> layout = layout.wrap(wraps.truth()));
     }
 
@@ -172,7 +172,7 @@ final class RichText {
         return word instanceof AnyWordValue said && said.canonical().equals(spelling);
     }
 
-    private Optional<Value> readTheField(ObjectValue fields, String name) {
+    private Optional<Value> readField(ObjectValue fields, String name) {
         return fields.context().holds(name)
                 ? Optional.of(fields.context().ownSlotFor(name).value())
                 : Optional.empty();

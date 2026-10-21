@@ -38,19 +38,19 @@ public class RsaInitNative extends CipherNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            byte[] modulus = readTheOctetsAt(arguments, 0);
-            byte[] publicExponent = readTheOctetsAt(arguments, 1);
+            byte[] modulus = readOctetsAt(arguments, 0);
+            byte[] publicExponent = readOctetsAt(arguments, 1);
             Optional<RsaKey> built = refinements.contains("private")
                     ? RsaKey.makeAPrivateKeyFrom(modulus, publicExponent,
-                            readTheOctetsAt(arguments, 2), readTheOctetsAt(arguments, 3),
-                            readTheOctetsAt(arguments, 4))
+                            readOctetsAt(arguments, 2), readOctetsAt(arguments, 3),
+                            readOctetsAt(arguments, 4))
                     : RsaKey.makeAPublicKeyFrom(modulus, publicExponent);
             return built.map(key -> wrapInAHandle(RSA_HANDLE_TYPE, key, evaluator))
                     .orElseGet(NoneValue::none);
         };
     }
 
-    private byte[] readTheOctetsAt(List<Value> arguments, int at) {
+    private byte[] readOctetsAt(List<Value> arguments, int at) {
         return ((BinaryValue) arguments.get(at)).octetsFromHere();
     }
 }

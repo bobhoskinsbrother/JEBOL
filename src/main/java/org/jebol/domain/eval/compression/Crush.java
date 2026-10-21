@@ -97,7 +97,7 @@ public final class Crush {
         return penalty;
     }
 
-    private static int readTheOctetAt(byte[] source, int at) {
+    private static int readOctetAt(byte[] source, int at) {
         return at < source.length && at >= 0 ? source[at] & 0xFF : 0;
     }
 
@@ -115,10 +115,10 @@ public final class Crush {
         int hash1 = 0;
         int hash2 = 0;
         for (int at = 0; at < HASH1_LEN; at++) {
-            hash1 = updateHash1(hash1, readTheOctetAt(source, at));
+            hash1 = updateHash1(hash1, readOctetAt(source, at));
         }
         for (int at = 0; at < HASH2_LEN; at++) {
-            hash2 = updateHash2(hash2, readTheOctetAt(source, at));
+            hash2 = updateHash2(hash2, readOctetAt(source, at));
         }
 
         int at = 0;
@@ -130,11 +130,11 @@ public final class Crush {
 
             if (head[hash1] >= oldest) {
                 int start = head[hash1];
-                if (readTheOctetAt(source, start) == readTheOctetAt(source, at)) {
+                if (readOctetAt(source, start) == readOctetAt(source, at)) {
                     int matched = 1;
                     while (matched < longestPossible
-                            && readTheOctetAt(source, start + matched)
-                                    == readTheOctetAt(source, at + matched)) {
+                            && readOctetAt(source, start + matched)
+                                    == readOctetAt(source, at + matched)) {
                         matched++;
                     }
                     if (matched > length) {
@@ -148,12 +148,12 @@ public final class Crush {
                 int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
                 int start = head[hash2 + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {
-                    if (readTheOctetAt(source, start + length) == readTheOctetAt(source, at + length)
-                            && readTheOctetAt(source, start) == readTheOctetAt(source, at)) {
+                    if (readOctetAt(source, start + length) == readOctetAt(source, at + length)
+                            && readOctetAt(source, start) == readOctetAt(source, at)) {
                         int matched = 1;
                         while (matched < longestPossible
-                                && readTheOctetAt(source, start + matched)
-                                        == readTheOctetAt(source, at + matched)) {
+                                && readOctetAt(source, start + matched)
+                                        == readOctetAt(source, at + matched)) {
                             matched++;
                         }
                         if (matched > length
@@ -179,14 +179,14 @@ public final class Crush {
                 int lazily = Math.min(length + 4, longestPossible);
                 int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
                 int start = head[updateHash2(hash2,
-                        readTheOctetAt(source, next + HASH2_LEN - 1)) + HASH1_SIZE];
+                        readOctetAt(source, next + HASH2_LEN - 1)) + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {
-                    if (readTheOctetAt(source, start + length) == readTheOctetAt(source, next + length)
-                            && readTheOctetAt(source, start) == readTheOctetAt(source, next)) {
+                    if (readOctetAt(source, start + length) == readOctetAt(source, next + length)
+                            && readOctetAt(source, start) == readOctetAt(source, next)) {
                         int matched = 1;
                         while (matched < lazily
-                                && readTheOctetAt(source, start + matched)
-                                        == readTheOctetAt(source, next + matched)) {
+                                && readOctetAt(source, start + matched)
+                                        == readOctetAt(source, next + matched)) {
                             matched++;
                         }
                         if (matched > length
@@ -211,7 +211,7 @@ public final class Crush {
                 writeTheOffset(bits, offset - 1);
             } else {
                 length = 1;
-                bits.put(9, readTheOctetAt(source, at) << 1);
+                bits.put(9, readOctetAt(source, at) << 1);
             }
 
             while (length-- != 0) {
@@ -219,8 +219,8 @@ public final class Crush {
                 previous[at & W_MASK] = head[hash2 + HASH1_SIZE];
                 head[hash2 + HASH1_SIZE] = at;
                 at++;
-                hash1 = updateHash1(hash1, readTheOctetAt(source, at + HASH1_LEN - 1));
-                hash2 = updateHash2(hash2, readTheOctetAt(source, at + HASH2_LEN - 1));
+                hash1 = updateHash1(hash1, readOctetAt(source, at + HASH1_LEN - 1));
+                hash2 = updateHash2(hash2, readOctetAt(source, at + HASH2_LEN - 1));
             }
         }
         bits.put(7, 0);
@@ -281,7 +281,7 @@ public final class Crush {
                 into[at++] = (byte) bits.take(8);
                 continue;
             }
-            int length = readTheLength(bits);
+            int length = readLength(bits);
             int slot = bits.take(SLOT_BITS) + (W_BITS - NUM_SLOTS);
             int start = ~(slot > W_BITS - NUM_SLOTS
                     ? bits.take(slot) + (1 << slot)
@@ -299,7 +299,7 @@ public final class Crush {
         return into;
     }
 
-    private static int readTheLength(Bits bits) {
+    private static int readLength(Bits bits) {
         if (bits.take(1) != 0) {
             return bits.take(A_BITS);
         }

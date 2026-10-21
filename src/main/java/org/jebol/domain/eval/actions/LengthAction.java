@@ -60,7 +60,7 @@ public class LengthAction extends SeriesOrFileAction {
         return switch (port.schemeName()) {
             case "clipboard" -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                     SetWordValue.of(nativeName()));
-            case "udp" -> IntegerValue.of(port.readTheFieldValue("data") instanceof RebolSeries held
+            case "udp" -> IntegerValue.of(port.readFieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);
             case "file", "dir" -> findTheFileBehind(port, evaluator).measureTheLengthLeft();

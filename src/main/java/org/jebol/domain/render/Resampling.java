@@ -66,7 +66,7 @@ public enum Resampling {
     private int[] pickTheNearestIn(
             int[] source, int wide, int high, double across, double down) {
 
-        return readThePixelIn(source, wide, high,
+        return readPixelIn(source, wide, high,
                 (int) Math.round(across), (int) Math.round(down));
     }
 
@@ -79,11 +79,11 @@ public enum Resampling {
         double downIt = down - above;
         int[] blended = new int[CHANNELS];
         for (int channel = 0; channel < CHANNELS; channel++) {
-            double topLeft = readThePixelIn(source, wide, high, leftOf, above)[channel];
-            double topRight = readThePixelIn(source, wide, high, leftOf + 1, above)[channel];
-            double bottomLeft = readThePixelIn(source, wide, high, leftOf, above + 1)[channel];
+            double topLeft = readPixelIn(source, wide, high, leftOf, above)[channel];
+            double topRight = readPixelIn(source, wide, high, leftOf + 1, above)[channel];
+            double bottomLeft = readPixelIn(source, wide, high, leftOf, above + 1)[channel];
             double bottomRight =
-                    readThePixelIn(source, wide, high, leftOf + 1, above + 1)[channel];
+                    readPixelIn(source, wide, high, leftOf + 1, above + 1)[channel];
             double acrossTheTop = topLeft + (topRight - topLeft) * alongIt;
             double acrossTheBottom = bottomLeft + (bottomRight - bottomLeft) * alongIt;
             double mixed = acrossTheTop + (acrossTheBottom - acrossTheTop) * downIt;
@@ -108,7 +108,7 @@ public enum Resampling {
                     int counted = 0;
                     for (int downBy = -1; downBy <= 1; downBy++) {
                         for (int acrossBy = -1; acrossBy <= 1; acrossBy++) {
-                            total += readThePixelIn(source, wide, high,
+                            total += readPixelIn(source, wide, high,
                                     across + acrossBy, down + downBy)[channel];
                             counted++;
                         }
@@ -121,7 +121,7 @@ public enum Resampling {
         return blurred;
     }
 
-    private static int[] readThePixelIn(int[] source, int wide, int high, int across, int down) {
+    private static int[] readPixelIn(int[] source, int wide, int high, int across, int down) {
         int atAcross = Math.clamp(across, 0, wide - 1);
         int atDown = Math.clamp(down, 0, high - 1);
         int at = (atDown * wide + atAcross) * CHANNELS;
@@ -131,7 +131,7 @@ public enum Resampling {
     private static int[] readTheChannelsOf(ImageValue picture, int wide, int high) {
         int[] channels = new int[wide * high * CHANNELS];
         for (int pixel = 0; pixel < wide * high; pixel++) {
-            int[] parts = picture.readThePixelAt(pixel + 1);
+            int[] parts = picture.readPixelAt(pixel + 1);
             channels[pixel * CHANNELS] = parts[0];
             channels[pixel * CHANNELS + 1] = parts[1];
             channels[pixel * CHANNELS + 2] = parts[2];

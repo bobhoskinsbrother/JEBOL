@@ -160,7 +160,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             gathered.addAll(
                     paintItsDrawBlock(gob, where, wide, high, drawDialect));
         } else if (gob.contentKind() == GobStorage.Content.TEXT
-                && gob.readTheContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue richText) {
+                && gob.readContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue richText) {
             if (titledDepths <= 0) {
                 gathered.addAll(writeAsRichText(richText, where));
             }
@@ -188,7 +188,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             ObjectValue drawDialect) {
 
         if (drawDialect == null
-                || !(gob.readTheContentIfKind(GobStorage.Content.DRAW)
+                || !(gob.readContentIfKind(GobStorage.Content.DRAW)
                         instanceof AnyBlockValue block)) {
             return List.of();
         }
@@ -204,10 +204,10 @@ public record PaintList(List<PaintInstruction> instructions) {
             GobStorage gob, Placement where) {
 
         return switch (gob.contentKind()) {
-            case COLOUR -> fillWith(gob.readTheContentIfKind(GobStorage.Content.COLOUR), where);
-            case STRING -> write(gob.readTheContentIfKind(GobStorage.Content.STRING), where);
-            case TEXT -> write(gob.readTheContentIfKind(GobStorage.Content.TEXT), where);
-            case IMAGE -> picture(gob.readTheContentIfKind(GobStorage.Content.IMAGE), where);
+            case COLOUR -> fillWith(gob.readContentIfKind(GobStorage.Content.COLOUR), where);
+            case STRING -> write(gob.readContentIfKind(GobStorage.Content.STRING), where);
+            case TEXT -> write(gob.readContentIfKind(GobStorage.Content.TEXT), where);
+            case IMAGE -> picture(gob.readContentIfKind(GobStorage.Content.IMAGE), where);
             case NONE, DRAW, EFFECT, WIDGET -> Optional.empty();
         };
     }

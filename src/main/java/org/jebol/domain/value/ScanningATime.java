@@ -43,9 +43,9 @@ final class ScanningATime {
         return readsAnyMeridian();
     }
 
-    long readTheNanoseconds() {
+    long readNanoseconds() {
         long counted = itCountsTheFirstNumberAsHours()
-                ? readTheHoursMinutesAndSeconds()
+                ? readHoursMinutesAndSeconds()
                 : minutesAndSeconds();
         if (fractionInNanoseconds > 0) {
             counted += fractionInNanoseconds;
@@ -57,7 +57,7 @@ final class ScanningATime {
         return thirdNumber >= 0 || fractionInNanoseconds < 0;
     }
 
-    private long readTheHoursMinutesAndSeconds() {
+    private long readHoursMinutesAndSeconds() {
         int hours = firstNumber;
         if (afternoonOrMorning != 0) {
             hours = hours == NOON ? 0 : hours;

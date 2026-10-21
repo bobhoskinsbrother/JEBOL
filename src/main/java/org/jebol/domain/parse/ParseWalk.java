@@ -70,9 +70,9 @@ public interface ParseWalk {
 
     Value textSliceBetween(int from, int to);
 
-    Value readTheFirstItemBetween(int from, int to);
+    Value readFirstItemBetween(int from, int to);
 
-    Value readTheFirstCharacterMatchedFrom(int before);
+    Value readFirstCharacterMatchedFrom(int before);
 
     Optional<Value> readWhatMatchedBetween(int from, int to);
 

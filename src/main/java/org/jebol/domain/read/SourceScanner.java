@@ -1583,7 +1583,7 @@ final class SourceScanner {
                 return StringValue.of(scannedText());
             }
             case TOKEN_BINARY -> {
-                return decodeABinary(scanned.readTheBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                return decodeABinary(scanned.readBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_PAIR -> {
                 return scanned.scanAPair(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));

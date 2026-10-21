@@ -80,12 +80,12 @@ public abstract class QueriedFields {
 
     protected ObjectValue withEveryFieldIn(ObjectValue described) {
         for (String part : names()) {
-            described.context().register(part, readTheFieldInTheObject(part));
+            described.context().register(part, readFieldInObject(part));
         }
         return described;
     }
 
-    protected Value readTheFieldInTheObject(String part) {
+    protected Value readFieldInObject(String part) {
         return findTheFieldNamed(part).orElseGet(NoneValue::none);
     }
 

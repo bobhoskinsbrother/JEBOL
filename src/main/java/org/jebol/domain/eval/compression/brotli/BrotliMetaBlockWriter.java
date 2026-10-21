@@ -321,7 +321,7 @@ final class BrotliMetaBlockWriter {
             this.howManyTypes = split.countTheTypes();
             this.split = split;
             this.leftInTheBlock =
-                    split.countTheBlocks() == 0 ? 0 : split.readTheLengthAt(0);
+                    split.countTheBlocks() == 0 ? 0 : split.readLengthAt(0);
         }
 
         private int findTheNextTypeCode(int type) {
@@ -336,11 +336,11 @@ final class BrotliMetaBlockWriter {
             int[] lengthHistogram = new int[BLOCK_LENGTH_SYMBOLS];
             OneAlphabet counting = new OneAlphabet(alphabetLength, split);
             for (int block = 0; block < split.countTheBlocks(); block++) {
-                int code = counting.findTheNextTypeCode(split.readTheTypeAt(block));
+                int code = counting.findTheNextTypeCode(split.readTypeAt(block));
                 if (block != 0) {
                     typeHistogram[code]++;
                 }
-                lengthHistogram[codeTheBlockLength(split.readTheLengthAt(block))]++;
+                lengthHistogram[codeTheBlockLength(split.readLengthAt(block))]++;
             }
 
             writeNumberNoLargerThanAByte(howManyTypes - 1, into);
@@ -356,7 +356,7 @@ final class BrotliMetaBlockWriter {
             writeATreeFor(lengthHistogram, BLOCK_LENGTH_SYMBOLS,
                     BLOCK_LENGTH_SYMBOLS, tree, lengthDepth, 0, lengthBits, 0,
                     into);
-            writeASwitch(split.readTheLengthAt(0), split.readTheTypeAt(0), true, into);
+            writeASwitch(split.readLengthAt(0), split.readTypeAt(0), true, into);
         }
 
         private void writeASwitch(int blockLength, int blockType,
@@ -389,8 +389,8 @@ final class BrotliMetaBlockWriter {
                 return -1;
             }
             whichBlock++;
-            int length = split.readTheLengthAt(whichBlock);
-            int type = split.readTheTypeAt(whichBlock);
+            int length = split.readLengthAt(whichBlock);
+            int type = split.readTypeAt(whichBlock);
             leftInTheBlock = length;
             writeASwitch(length, type, false, into);
             return type;
@@ -490,7 +490,7 @@ final class BrotliMetaBlockWriter {
         int previous = previousByte;
         int beforeThat = theByteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
-            commandSymbols.write(commands.readTheCommandPrefixAt(which), into);
+            commandSymbols.write(commands.readCommandPrefixAt(which), into);
             writeTheExtraBitsOfALength(commands, which, into);
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = data[at & mask] & 0xFF;
@@ -513,20 +513,20 @@ final class BrotliMetaBlockWriter {
             }
             beforeThat = data[(at - 2) & mask] & 0xFF;
             previous = data[(at - 1) & mask] & 0xFF;
-            if (commands.readTheCommandPrefixAt(which) < 128) {
+            if (commands.readCommandPrefixAt(which) < 128) {
                 continue;
             }
-            int distanceCode = commands.readTheDistancePrefixAt(which) & 0x3FF;
-            int extraBits = commands.readTheDistancePrefixAt(which) >>> 10;
+            int distanceCode = commands.readDistancePrefixAt(which) & 0x3FF;
+            int extraBits = commands.readDistancePrefixAt(which) >>> 10;
             if (distancesCarryContext) {
                 distanceSymbols.writeInContext(distanceCode,
-                        commands.readTheDistanceContextAt(which),
+                        commands.readDistanceContextAt(which),
                         split.distanceContextMap, DISTANCE_CONTEXT_BITS, into);
             } else {
                 distanceSymbols.write(distanceCode, into);
             }
             into.write(extraBits,
-                    commands.readTheDistanceExtraAt(which) & 0xFFFFFFFFL);
+                    commands.readDistanceExtraAt(which) & 0xFFFFFFFFL);
         }
         if (isLast) {
             into.jumpToByteBoundary();
@@ -546,15 +546,15 @@ final class BrotliMetaBlockWriter {
                 new BrotliHistogram(distanceAlphabetSize));
         int at = from;
         for (int which = 0; which < commands.count(); which++) {
-            counted.commands.add(commands.readTheCommandPrefixAt(which));
+            counted.commands.add(commands.readCommandPrefixAt(which));
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 counted.literals.add(data[at & mask] & 0xFF);
                 at++;
             }
             int copyLength = commands.copyLengthAt(which);
             at += copyLength;
-            if (copyLength != 0 && commands.readTheCommandPrefixAt(which) >= 128) {
-                counted.distances.add(commands.readTheDistancePrefixAt(which) & 0x3FF);
+            if (copyLength != 0 && commands.readCommandPrefixAt(which) >= 128) {
+                counted.distances.add(commands.readDistancePrefixAt(which) & 0x3FF);
             }
         }
         return counted;
@@ -567,7 +567,7 @@ final class BrotliMetaBlockWriter {
 
         int at = from;
         for (int which = 0; which < commands.count(); which++) {
-            int commandCode = commands.readTheCommandPrefixAt(which);
+            int commandCode = commands.readCommandPrefixAt(which);
             into.write(commandDepth[commandCode], commandBits[commandCode]);
             writeTheExtraBitsOfALength(commands, which, into);
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
@@ -577,13 +577,13 @@ final class BrotliMetaBlockWriter {
             }
             int copyLength = commands.copyLengthAt(which);
             at += copyLength;
-            if (copyLength == 0 || commands.readTheCommandPrefixAt(which) < 128) {
+            if (copyLength == 0 || commands.readCommandPrefixAt(which) < 128) {
                 continue;
             }
-            int distanceCode = commands.readTheDistancePrefixAt(which) & 0x3FF;
+            int distanceCode = commands.readDistancePrefixAt(which) & 0x3FF;
             into.write(distanceDepth[distanceCode], distanceBits[distanceCode]);
-            into.write(commands.readTheDistancePrefixAt(which) >>> 10,
-                    commands.readTheDistanceExtraAt(which) & 0xFFFFFFFFL);
+            into.write(commands.readDistancePrefixAt(which) >>> 10,
+                    commands.readDistanceExtraAt(which) & 0xFFFFFFFFL);
         }
     }
 

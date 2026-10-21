@@ -54,7 +54,7 @@ final class Qoi {
         if (wide <= 0 || high <= 0) {
             return null;
         }
-        return new Decoded(wide, high, readThePixelsIn(bytes, wide * high));
+        return new Decoded(wide, high, readPixelsIn(bytes, wide * high));
     }
 
     record Decoded(int wide, int high, byte[] pixels) {
@@ -64,7 +64,7 @@ final class Qoi {
         return bytes.length < HEADER_LENGTH + END_MARKER.length;
     }
 
-    private static byte[] readThePixelsIn(byte[] bytes, int howMany) {
+    private static byte[] readPixelsIn(byte[] bytes, int howMany) {
         byte[] pixels = fillWhatAShortStreamLeaves(howMany);
         Colour[] seen = new Colour[TABLE_SIZE];
         java.util.Arrays.fill(seen, new Colour(0, 0, 0, 0));

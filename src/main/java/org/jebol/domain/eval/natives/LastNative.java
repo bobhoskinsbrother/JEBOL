@@ -21,7 +21,7 @@ public class LastNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case TupleValue parts -> IntegerValue.of(parts.readTheOctetAt(parts.segmentCount()));
+            case TupleValue parts -> IntegerValue.of(parts.readOctetAt(parts.segmentCount()));
             case RebolSeries series -> series.pick(series.lengthFromHere());
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };

@@ -18,7 +18,7 @@ abstract class Md4FamilyDigest {
         int[] block = new int[WORDS_IN_A_BLOCK];
         for (int at = 0; at < padded.length; at += BLOCK_BYTES) {
             for (int word = 0; word < WORDS_IN_A_BLOCK; word++) {
-                block[word] = octets.readTheLittleEndianWordAt(padded, at + word * 4);
+                block[word] = octets.readLittleEndianWordAt(padded, at + word * 4);
             }
             compress(words, block);
         }

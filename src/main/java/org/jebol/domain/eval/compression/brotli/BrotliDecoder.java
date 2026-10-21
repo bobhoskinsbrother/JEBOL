@@ -296,7 +296,7 @@ final class BrotliDecoder {
                     int symbol = code.read(bits);
                     howFarTheRecentDistanceCursorWasRolledBack = 0;
                     if (symbol < DISTANCE_SHORT_CODES) {
-                        distance = readTheDistanceFromTheRecentOnes(symbol);
+                        distance = readDistanceFromRecentOnes(symbol);
                     } else {
                         distance = distanceOffset[symbol]
                                 + (bits.take(distanceExtraBits[symbol]) << postfixBits);
@@ -326,7 +326,7 @@ final class BrotliDecoder {
 
         private int howFarTheRecentDistanceCursorWasRolledBack;
 
-        private int readTheDistanceFromTheRecentOnes(int code) {
+        private int readDistanceFromRecentOnes(int code) {
             if (code <= 3) {
                 int distance = recentDistances[(recentDistanceAt - (code - 3)) & 3];
                 howFarTheRecentDistanceCursorWasRolledBack = 1 >> code;
@@ -352,7 +352,7 @@ final class BrotliDecoder {
                 throw new IllegalArgumentException(
                         "Brotli distance reaches past the start of the answer");
             }
-            int shift = BrotliDictionary.readTheSizeBitsFor(wordLength);
+            int shift = BrotliDictionary.readSizeBitsFor(wordLength);
             if (shift == 0) {
                 throw new IllegalArgumentException(
                         "Brotli asks for a dictionary word of a length there are none of");

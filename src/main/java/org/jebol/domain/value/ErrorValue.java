@@ -368,7 +368,7 @@ public record ErrorValue(
         StringBuilder written = new StringBuilder("\n** ")
                 .append(reportTheTypeWord())
                 .append(" error: ")
-                .append(readTheCataloguesMessage())
+                .append(readCataloguesMessage())
                 .append('\n');
         readTheField("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
                 written.append("** Where: ").append(Molder.form(chain)).append('\n'));
@@ -377,7 +377,7 @@ public record ErrorValue(
         return written.toString();
     }
 
-    private String readTheCataloguesMessage() {
+    private String readCataloguesMessage() {
         return wording.wordTheId(category.spelling(), errorId)
                 .map(this::writeTheMessageFrom)
                 .orElseGet(this::fallBackToPlainWords);

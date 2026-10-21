@@ -104,7 +104,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public AnyBlockValue readTheSource(String source) {
+    public AnyBlockValue readSource(String source) {
         TranscodeResult read = Transcoder.transcode(source, this);
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());

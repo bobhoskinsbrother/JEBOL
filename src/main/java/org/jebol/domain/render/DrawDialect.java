@@ -111,7 +111,7 @@ public final class DrawDialect {
                         arguments.getFirst() instanceof LogicValue(boolean truth) && truth);
                 case "line-pattern" -> {
                     state = state.withDashes(read.collectEveryNumberIn(arguments));
-                    gapColour = read.readTheColourAt(arguments, THE_DASH_COLOUR);
+                    gapColour = read.readColourAt(arguments, THE_DASH_COLOUR);
                 }
                 case "arrow" -> {
                     state = state.withArrowEnds(read.readThePairAt(arguments, 1)
@@ -378,7 +378,7 @@ public final class DrawDialect {
                     || !(arguments.getFirst() instanceof ImageValue given)) {
                 return;
             }
-            ImageValue pixels = read.readTheColourAt(arguments, THE_IMAGE_KEY_COLOUR)
+            ImageValue pixels = read.readColourAt(arguments, THE_IMAGE_KEY_COLOUR)
                     .map(key -> PicturesWorkedOutHere.withThatColourSeeThrough(given, key))
                     .orElse(given);
             List<PairValue> corners = read.collectEveryPairIn(arguments);
@@ -728,10 +728,10 @@ public final class DrawDialect {
             path.add(new PathStep.MoveTo(knots.getFirst().x(), knots.getFirst().y()));
             int spans = closes ? knots.size() : knots.size() - 1;
             for (int span = 0; span < spans; span++) {
-                PairValue before = readTheKnotAt(knots, span - 1, closes);
-                PairValue from = readTheKnotAt(knots, span, closes);
-                PairValue to = readTheKnotAt(knots, span + 1, closes);
-                PairValue after = readTheKnotAt(knots, span + 2, closes);
+                PairValue before = readKnotAt(knots, span - 1, closes);
+                PairValue from = readKnotAt(knots, span, closes);
+                PairValue to = readKnotAt(knots, span + 1, closes);
+                PairValue after = readKnotAt(knots, span + 2, closes);
                 path.add(new PathStep.CubicTo(
                         from.x() + (to.x() - before.x()) / THE_CATMULL_ROM_SIXTH,
                         from.y() + (to.y() - before.y()) / THE_CATMULL_ROM_SIXTH,
@@ -745,7 +745,7 @@ public final class DrawDialect {
             return List.copyOf(path);
         }
 
-        private PairValue readTheKnotAt(List<PairValue> knots, int at, boolean closes) {
+        private PairValue readKnotAt(List<PairValue> knots, int at, boolean closes) {
             if (closes) {
                 return knots.get(Math.floorMod(at, knots.size()));
             }

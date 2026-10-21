@@ -275,7 +275,7 @@ public record TimeValue(long nanoseconds) implements Value {
             if (!scanning.readsATime()) {
                 throw refuse(given);
             }
-            return ofNanoseconds(scanning.readTheNanoseconds());
+            return ofNanoseconds(scanning.readNanoseconds());
         }
     }
 

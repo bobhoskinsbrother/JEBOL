@@ -97,7 +97,7 @@ public final class SeriesContents {
             }
             case TupleValue tuple -> {
                 for (int at = 1; at <= tuple.segmentCount(); at++) {
-                    into.add(tuple.readTheOctetAt(at));
+                    into.add(tuple.readOctetAt(at));
                 }
             }
             case AnyBlockValue several -> {

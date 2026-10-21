@@ -173,7 +173,7 @@ public record EventValue(
     public List<Value> moldTheSpec() {
         List<Value> spec = new ArrayList<>();
         if (typeIndex != 0) {
-            setWord(spec,"type", WordValue.of(EventCatalogue.readTheTypeAt(typeIndex)));
+            setWord(spec,"type", WordValue.of(EventCatalogue.readTypeAt(typeIndex)));
         }
         if (model == Model.PORT || model == Model.OBJECT || model == Model.MIDI) {
             setWord(spec,"port", attached);
@@ -184,7 +184,7 @@ public record EventValue(
         if (has(Flag.HAS_XY)) {
             setWord(spec,"offset", PairValue.of(offsetX(), offsetY()));
         }
-        readTheKey().ifPresent(key -> setWord(spec, "key", key));
+        readKey().ifPresent(key -> setWord(spec, "key", key));
         if (!listTheRaisedFlagWords().isEmpty()) {
             setWord(spec,"flags", BlockValue.of(listTheRaisedFlagWords()));
         }
@@ -207,7 +207,7 @@ public record EventValue(
      * as a position in {@code event-keys}. Every other type answers none, even
      * though the number is still there and {@code e/code} will hand it over.
      */
-    public Optional<Value> readTheKey() {
+    public Optional<Value> readKey() {
         if (typeIndex == EventCatalogue.KEY || typeIndex == EventCatalogue.KEY_UP) {
             if (!Character.isValidCodePoint(data)) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

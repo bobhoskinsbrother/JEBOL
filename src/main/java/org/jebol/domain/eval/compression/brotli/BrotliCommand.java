@@ -66,15 +66,15 @@ final class BrotliCommand {
         return insertLength[which];
     }
 
-    int readTheDistanceExtraAt(int which) {
+    int readDistanceExtraAt(int which) {
         return distanceExtra[which];
     }
 
-    int readTheCommandPrefixAt(int which) {
+    int readCommandPrefixAt(int which) {
         return commandPrefix[which];
     }
 
-    int readTheDistancePrefixAt(int which) {
+    int readDistancePrefixAt(int which) {
         return distancePrefixAndItsExtraBitsInTheTopSixBits[which];
     }
 
@@ -101,7 +101,7 @@ final class BrotliCommand {
                 + (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] >>> 25);
     }
 
-    int readTheDistanceContextAt(int which) {
+    int readDistanceContextAt(int which) {
         int row = commandPrefix[which] >> 6;
         int column = commandPrefix[which] & 7;
         if ((row == 0 || row == 2 || row == 4 || row == 7) && column <= 2) {

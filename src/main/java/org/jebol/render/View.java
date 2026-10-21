@@ -90,7 +90,7 @@ public final class View {
     }
 
     private void rebuild() {
-        faces = Layout.readTheFacesIn(description, this::valueOf);
+        faces = Layout.readFacesIn(description, this::valueOf);
         rememberActions();
     }
 

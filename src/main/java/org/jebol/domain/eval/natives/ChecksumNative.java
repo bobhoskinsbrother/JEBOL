@@ -56,7 +56,7 @@ public class ChecksumNative extends EncodingNative {
             if (data instanceof FileValue) {
                 return sumTheContentsOfThatFile(data, method, evaluator, refinements);
             }
-            return sum(data, readTheOctetsWithinAnyPart(data, arguments, refinements), method,
+            return sum(data, readOctetsWithinAnyPart(data, arguments, refinements), method,
                     arguments, refinements);
         };
     }

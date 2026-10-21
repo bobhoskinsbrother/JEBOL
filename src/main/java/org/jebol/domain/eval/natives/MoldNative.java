@@ -50,7 +50,7 @@ public class MoldNative extends DefaultNative {
 
     private Function<Value, String> writeInTheSystemBase(Evaluator evaluator,
                                                          Function<Value, String> written) {
-        return value -> Molder.writeBinariesInBase(readTheBinaryBaseNamedBy(evaluator),
+        return value -> Molder.writeBinariesInBase(readBinaryBaseNamedBy(evaluator),
                 () -> written.apply(value));
     }
 
@@ -65,7 +65,7 @@ public class MoldNative extends DefaultNative {
         return Math.clamp(limit, 0, Integer.MAX_VALUE);
     }
 
-    private int readTheBinaryBaseNamedBy(Evaluator evaluator) {
+    private int readBinaryBaseNamedBy(Evaluator evaluator) {
         return evaluator.systemContext().findSlotFor("system").value() instanceof ObjectValue(Context system)
                 && system.findSlotFor("options").value() instanceof ObjectValue(Context options)
                 && options.findSlotFor("binary-base").value() instanceof IntegerValue(long base)

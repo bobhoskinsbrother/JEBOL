@@ -35,7 +35,7 @@ public abstract class ColourNative extends DefaultNative {
         }
         ImageValue image = (ImageValue) target;
         for (int pixel = 1; pixel <= image.lengthFromHere(); pixel++) {
-            int[] channels = image.readThePixelAt(pixel);
+            int[] channels = image.readPixelAt(pixel);
             int[] recoloured = ofAPixel.apply(new int[] {channels[0], channels[1], channels[2]});
             image.storage().setColourAt(image.index() + pixel - 1,
                     recoloured[0], recoloured[1], recoloured[2]);

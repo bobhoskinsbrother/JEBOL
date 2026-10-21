@@ -106,14 +106,14 @@ final class LzmaDecoder {
 
         LzmaDecoder decoder =
                 new LzmaDecoder(properties, input, from, length, wanted);
-        decoder.readTheOpeningCode();
+        decoder.readOpeningCode();
         decoder.run();
         return decoder.outputAt == wanted
                 ? decoder.output
                 : Arrays.copyOf(decoder.output, decoder.outputAt);
     }
 
-    private void readTheOpeningCode() {
+    private void readOpeningCode() {
         if (inputEnd - inputAt < RANGE_CODER_INITIAL_BYTES) {
             throw new IllegalArgumentException("LZMA data ends before it starts");
         }
@@ -155,11 +155,11 @@ final class LzmaDecoder {
     private void normalize() {
         if (Long.compareUnsigned(range, TOP_VALUE) < 0) {
             range = (range << 8) & 0xFFFFFFFFL;
-            code = ((code << 8) | (readTheNextByte() & 0xFFL)) & 0xFFFFFFFFL;
+            code = ((code << 8) | (readNextByte() & 0xFFL)) & 0xFFFFFFFFL;
         }
     }
 
-    private int readTheNextByte() {
+    private int readNextByte() {
         if (inputAt >= inputEnd) {
             throw new IllegalArgumentException("LZMA data ends part way through");
         }
@@ -312,7 +312,7 @@ final class LzmaDecoder {
                 distance += readLeastSignificantBitFirst(
                         specialPositions, distance, directBits);
             } else {
-                distance = readTheBitsWithNoModelBehindThem(
+                distance = readBitsWithNoModelBehindThem(
                         distance, directBits - ALIGN_BITS);
                 distance = (distance << ALIGN_BITS)
                         | readLeastSignificantBitFirst(align, 0, ALIGN_BITS);
@@ -349,7 +349,7 @@ final class LzmaDecoder {
         return symbol;
     }
 
-    private int readTheBitsWithNoModelBehindThem(int startingFrom, int howManyBits) {
+    private int readBitsWithNoModelBehindThem(int startingFrom, int howManyBits) {
         int distance = startingFrom;
         for (int each = 0; each < howManyBits; each++) {
             normalize();

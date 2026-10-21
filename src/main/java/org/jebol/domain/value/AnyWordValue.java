@@ -88,8 +88,8 @@ public abstract sealed class AnyWordValue implements Value
                 case AnyWordValue word -> spell(word.spelling(), word.binding());
                 case LogicValue(boolean truth) -> spell(Boolean.toString(truth));
                 case CharacterValue letter -> spell(spellTheWordOfACharacter(letter));
-                case AnyStringValue text -> spell(readTheSpellingFrom(text.text(), maker));
-                case Datatype asked -> spell(readTheSpellingFrom(asked.literalSpelling(), maker));
+                case AnyStringValue text -> spell(readSpellingFrom(text.text(), maker));
+                case Datatype asked -> spell(readSpellingFrom(asked.literalSpelling(), maker));
                 default -> throw Raised.of(EvaluationFailure.EXPECT_VAL, WordValue.TYPE, from.datatype());
             };
         }
@@ -107,7 +107,7 @@ public abstract sealed class AnyWordValue implements Value
                     || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
         }
 
-        private String readTheSpellingFrom(String text, Maker maker) {
+        private String readSpellingFrom(String text, Maker maker) {
             String trimmed = new WrittenText(text).findOneWord();
             List<Value> read;
             try {

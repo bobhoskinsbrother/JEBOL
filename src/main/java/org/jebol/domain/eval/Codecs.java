@@ -89,7 +89,7 @@ public final class Codecs {
         int high = picture.storage().high();
         byte[] pixels = new byte[wide * high * 4];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
-            int[] channels = picture.storage().readThePixelAt(pixel);
+            int[] channels = picture.storage().readPixelAt(pixel);
             int at = (pixel - 1) * 4;
             pixels[at] = (byte) channels[2];
             pixels[at + 1] = (byte) channels[1];

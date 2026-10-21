@@ -325,7 +325,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public Value readTheFirstItemBetween(int from, int to) {
+    public Value readFirstItemBetween(int from, int to) {
         return takeTheFirstOf(List.copyOf(input.subList(from, to)));
     }
 
@@ -358,7 +358,7 @@ public final class Parser implements ParseWalk {
         for (int added = putting.size(); added > 0; added--) {
             input.add(where, putting.get(added - 1));
             if (source != null) {
-                readTheBlockBeingWalked().storage().insertAt(source.index() + where, putting.get(added - 1));
+                readBlockBeingWalked().storage().insertAt(source.index() + where, putting.get(added - 1));
             }
         }
     }
@@ -468,7 +468,7 @@ public final class Parser implements ParseWalk {
         return walkingABlock ? sliceOfTheInputKeepingItsOwnDatatype(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
     }
 
-    private AnyBlockValue readTheBlockBeingWalked() {
+    private AnyBlockValue readBlockBeingWalked() {
         return (AnyBlockValue) source;
     }
 
@@ -504,7 +504,7 @@ public final class Parser implements ParseWalk {
             return;
         }
         input.clear();
-        input.addAll(readTheBlockBeingWalked().remaining());
+        input.addAll(readBlockBeingWalked().remaining());
         position = Math.min(position, input.size());
     }
 
@@ -624,7 +624,7 @@ public final class Parser implements ParseWalk {
         for (int taken = begin + count; taken > begin; taken--) {
             input.remove(taken - 1);
             if (source != null) {
-                readTheBlockBeingWalked().storage().removeAt(source.index() + taken - 1);
+                readBlockBeingWalked().storage().removeAt(source.index() + taken - 1);
             }
         }
     }
@@ -667,7 +667,7 @@ public final class Parser implements ParseWalk {
         slot.setValue(value);
     }
 
-    Value readTheFollowing(List<Value> rules, int at, String keyword) {
+    Value readFollowing(List<Value> rules, int at, String keyword) {
         if (at + 1 >= rules.size()) {
             throw Raised.of(EvaluationFailure.PARSE_END, keyword + " has no rule after it to apply to");
         }
@@ -899,7 +899,7 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public Value readTheFirstCharacterMatchedFrom(int before) {
+    public Value readFirstCharacterMatchedFrom(int before) {
         if (position == before) {
             return NoneValue.none();
         }

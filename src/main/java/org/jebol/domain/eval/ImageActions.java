@@ -35,7 +35,7 @@ public final class ImageActions extends SeriesActions {
         ImageStorage flipped = ImageStorage.of(
                 picture.storage().wide(), picture.storage().high());
         for (int pixel = 1; pixel <= picture.storage().length(); pixel++) {
-            int[] channels = picture.storage().readThePixelAt(pixel);
+            int[] channels = picture.storage().readPixelAt(pixel);
             flipped.setColourAt(pixel,
                     ~channels[0] & 0xFF, ~channels[1] & 0xFF, ~channels[2] & 0xFF);
             flipped.setAlphaAt(pixel, ~channels[3] & 0xFF);

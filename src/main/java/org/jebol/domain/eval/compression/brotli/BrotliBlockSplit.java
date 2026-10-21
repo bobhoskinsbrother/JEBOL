@@ -17,11 +17,11 @@ final class BrotliBlockSplit {
         lengths = java.util.Arrays.copyOf(lengths, howMany);
     }
 
-    int readTheTypeAt(int which) {
+    int readTypeAt(int which) {
         return types[which];
     }
 
-    int readTheLengthAt(int which) {
+    int readLengthAt(int which) {
         return lengths[which];
     }
 

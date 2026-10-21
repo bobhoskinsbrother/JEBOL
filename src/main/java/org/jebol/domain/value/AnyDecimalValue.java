@@ -150,8 +150,8 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             if (both.size() != 2) {
                 throw refuse(parts);
             }
-            double scaled = readTheNumberInTheBlock(both.get(0));
-            double exponent = readTheNumberInTheBlock(both.get(1));
+            double scaled = readNumberInBlock(both.get(0));
+            double exponent = readNumberInBlock(both.get(1));
             while (exponent >= 1) {
                 exponent--;
                 scaled *= 10.0;
@@ -163,7 +163,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             return scaled;
         }
 
-        private double readTheNumberInTheBlock(Value part) {
+        private double readNumberInBlock(Value part) {
             return switch (part) {
                 case IntegerValue(long magnitude) -> magnitude;
                 case DecimalValue number -> number.quantity();

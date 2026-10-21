@@ -34,7 +34,7 @@ public class NewLineNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue block = (AnyBlockValue) arguments.getFirst();
             boolean wanted = arguments.get(1).isTruthy();
-            OptionalInt stride = readTheStride(arguments, refinements);
+            OptionalInt stride = readStride(arguments, refinements);
             if (stride.isEmpty()) {
                 if (!block.atTail()) {
                     block.storage().setLineBreakAt(block.index(), wanted);
@@ -49,7 +49,7 @@ public class NewLineNative extends DefaultNative {
         };
     }
 
-    private OptionalInt readTheStride(List<Value> arguments, Set<String> refinements) {
+    private OptionalInt readStride(List<Value> arguments, Set<String> refinements) {
         if (refinements.contains("skip") && arguments.size() > WHERE_THE_SKIP_SIZE_ARRIVES
                 && arguments.get(WHERE_THE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
             if (size.magnitude() < 1) {

@@ -74,7 +74,7 @@ public class DecompressNative extends CompressionNative {
             int wanted = readTheArgumentOf("size", 0, arguments, refinements)
                     .map(this::readASizeAboveNothing)
                     .orElse(AS_MUCH_AS_IT_HOLDS);
-            byte[] compressed = readTheOctetsWithinAnyPart(data, arguments, refinements);
+            byte[] compressed = readOctetsWithinAnyPart(data, arguments, refinements);
             if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
                 throw Raised.of(EvaluationFailure.BAD_PRESS, arguments.get(1));
             }

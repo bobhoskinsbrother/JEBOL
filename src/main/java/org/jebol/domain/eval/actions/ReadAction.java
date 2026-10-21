@@ -46,7 +46,7 @@ public class ReadAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortRequest asked = readTheRequest(arguments, refinements);
+            PortRequest asked = readRequest(arguments, refinements);
             Value source = arguments.getFirst();
             if (source instanceof PortValue port) {
                 return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
@@ -59,7 +59,7 @@ public class ReadAction extends PortAction {
                 return ports.readFrom(ports.openAPortFor(source, evaluator, context),
                         evaluator, arguments, asked);
             }
-            return ports.readTheFile(
+            return ports.readFile(
                     behindTheUrl.orElseGet(() -> ((AnyStringValue) source).text()), evaluator, asked);
         };
     }

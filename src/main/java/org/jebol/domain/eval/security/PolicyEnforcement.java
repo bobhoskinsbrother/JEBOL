@@ -33,7 +33,7 @@ public final class PolicyEnforcement {
         if (state.isEmpty()) {
             return;
         }
-        PolicyLevel level = new SecurityPolicies(readTheField(state.get(), "policies"), fileNamesFoldCase())
+        PolicyLevel level = new SecurityPolicies(readField(state.get(), "policies"), fileNamesFoldCase())
                 .findTheLevelFor(kind, access, subject);
         switch (level) {
             case ALLOW -> letTheAccessGoAhead();
@@ -55,7 +55,7 @@ public final class PolicyEnforcement {
         return Optional.of(state);
     }
 
-    private Value readTheField(Context state, String field) {
+    private Value readField(Context state, String field) {
         return state.hasItsOwnSlotFor(field) ? state.ownSlotFor(field).value() : NoneValue.none();
     }
 
@@ -67,7 +67,7 @@ public final class PolicyEnforcement {
     private void refuseUnlessConfirmed(
             Context state, PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
 
-        Value confirming = readTheField(state, "confirm-policy");
+        Value confirming = readField(state, "confirm-policy");
         Value answer = evaluator.applyFunction(confirming, List.of(
                 WordValue.of(kind.word()),
                 IntegerValue.of(access.asConfirmPolicyCountsIt()),

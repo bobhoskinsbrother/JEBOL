@@ -19,14 +19,14 @@ final class DrawArguments {
                 .toList();
     }
 
-    Optional<Colour> readTheColourAt(List<Value> arguments, int slot) {
+    Optional<Colour> readColourAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof TupleValue parts
                 ? Optional.of(Colour.ofTuple(parts))
                 : Optional.empty();
     }
 
     Optional<Colour> findTheColourIn(List<Value> arguments) {
-        return readTheColourAt(arguments, 0);
+        return readColourAt(arguments, 0);
     }
 
     Optional<PairValue> readThePairAt(List<Value> arguments, int slot) {

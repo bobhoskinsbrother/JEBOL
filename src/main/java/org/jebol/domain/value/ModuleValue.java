@@ -34,7 +34,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
             case "spec" -> header;
-            case "title" -> readTheHeaderField("title");
+            case "title" -> readHeaderField("title");
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> context.wordsExcludingSelf();
             case "values" -> context.valuesExcludingSelf();
@@ -43,7 +43,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     }
 
     public List<String> listTheExportedNames() {
-        if (!(readTheHeaderField("exports") instanceof AnyBlockValue exports)) {
+        if (!(readHeaderField("exports") instanceof AnyBlockValue exports)) {
             return List.of();
         }
         return exports.remaining().stream()
@@ -53,8 +53,8 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
                 .toList();
     }
 
-    public Value readTheHeaderField(String name) {
-        return header.readTheFieldValue(name);
+    public Value readHeaderField(String name) {
+        return header.readFieldValue(name);
     }
 
     @Override
@@ -112,7 +112,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            if (!(readTheSpecificationIn(contents) instanceof AnyBlockValue parts)) {
+            if (!(readSpecificationIn(contents) instanceof AnyBlockValue parts)) {
                 throw refuseTheConstruction(contents);
             }
             List<Value> given = parts.remaining();
@@ -132,7 +132,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
 
     @Override
     public String toString() {
-        Value declared = readTheHeaderField("name");
+        Value declared = readHeaderField("name");
         return declared instanceof AnyWordValue word
                 ? "module " + word.canonical()
                 : "module with " + context.slotCount() + " words";

@@ -54,7 +54,7 @@ public record Colour(int red, int green, int blue, int opacity) {
     }
 
     public static Colour ofTuple(TupleValue parts) {
-        return new Colour(parts.readTheOctetAt(1), parts.readTheOctetAt(2), parts.readTheOctetAt(3), readTheOpacityOfTuple(parts));
+        return new Colour(parts.readOctetAt(1), parts.readOctetAt(2), parts.readOctetAt(3), readTheOpacityOfTuple(parts));
     }
 
     public Colour solid() {
@@ -70,7 +70,7 @@ public record Colour(int red, int green, int blue, int opacity) {
      * a tuple written with three is opaque.
      */
     public static int readTheOpacityOfTuple(TupleValue parts) {
-        return parts.segments().length >= 4 ? parts.readTheOctetAt(4) : WIDEST_OCTET;
+        return parts.segments().length >= 4 ? parts.readOctetAt(4) : WIDEST_OCTET;
     }
 
     /** As {@code #rrggbb}, which is what a browser wants. */

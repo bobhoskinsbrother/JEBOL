@@ -35,7 +35,7 @@ public abstract class PngFilterNative extends EncodingNative {
         return Set.of(IntegerValue.TYPE, WordValue.TYPE);
     }
 
-    protected int readTheFilterNamedBy(Value asked) {
+    protected int readFilterNamedBy(Value asked) {
         return switch (asked) {
             case IntegerValue(long magnitude) -> Math.clamp((int) magnitude, NO_FILTER, findTheLastFilter());
             case AnyWordValue word when Encodings.PNG_FILTERS.contains(word.canonical()) ->
@@ -48,11 +48,11 @@ public abstract class PngFilterNative extends EncodingNative {
         return Encodings.PNG_FILTERS.size();
     }
 
-    protected int readTheWidthIn(Value asked) {
+    protected int readWidthIn(Value asked) {
         return (int) Comparison.asDouble(asked);
     }
 
-    protected int readTheBytesPerPixelIn(List<Value> arguments, Set<String> refinements) {
+    protected int readBytesPerPixelIn(List<Value> arguments, Set<String> refinements) {
         return findTheBytesPerPixelAsked(arguments, refinements)
                 .map(asked -> (int) ((IntegerValue) asked).magnitude())
                 .orElse(ONE_BYTE_PER_PIXEL);
@@ -68,7 +68,7 @@ public abstract class PngFilterNative extends EncodingNative {
         if (lineLength <= 1 || lineLength > length) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(1));
         }
-        int bytesPerPixel = readTheBytesPerPixelIn(arguments, refinements);
+        int bytesPerPixel = readBytesPerPixelIn(arguments, refinements);
         if (bytesPerPixel < 1 || bytesPerPixel > lineLength) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     findTheBytesPerPixelAsked(arguments, refinements).orElseThrow());

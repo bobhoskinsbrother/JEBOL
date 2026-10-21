@@ -39,7 +39,7 @@ public final class DeciReading {
         return at;
     }
 
-    private char readTheCharacterAt(int position) {
+    private char readCharacterAt(int position) {
         return position < text.length() ? text.charAt(position) : '\0';
     }
 
@@ -50,13 +50,13 @@ public final class DeciReading {
     public Deci readFrom(int start) {
         at = start;
         boolean negative = false;
-        if (readTheCharacterAt(at) == '+') {
+        if (readCharacterAt(at) == '+') {
             at++;
-        } else if (readTheCharacterAt(at) == '-') {
+        } else if (readCharacterAt(at) == '-') {
             negative = true;
             at++;
         }
-        if (readTheCharacterAt(at) == '$') {
+        if (readCharacterAt(at) == '$') {
             at++;
         }
         BigInteger significand = BigInteger.ZERO;
@@ -65,7 +65,7 @@ public final class DeciReading {
         boolean pointSeen = false;
         int truncation = EXACT;
         while (true) {
-            char here = readTheCharacterAt(at);
+            char here = readCharacterAt(at);
             if (isDigit(here)) {
                 int digit = here - '0';
                 if (significand.compareTo(TEN_TO_THE_25) < 0) {
@@ -101,7 +101,7 @@ public final class DeciReading {
             }
             at++;
         }
-        int exponent = readTheExponent();
+        int exponent = readExponent();
         exponent += shifted;
         if (SIGNIFICANDS.roundsTheTruncationUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
             if (significand.compareTo(THE_LARGEST_SIGNIFICAND) < 0) {
@@ -117,21 +117,21 @@ public final class DeciReading {
         return new Deci(scaled.significand(), scaled.exponent(), negative);
     }
 
-    private int readTheExponent() {
-        if (readTheCharacterAt(at) != 'e' && readTheCharacterAt(at) != 'E') {
+    private int readExponent() {
+        if (readCharacterAt(at) != 'e' && readCharacterAt(at) != 'E') {
             return 0;
         }
         at++;
         int sign = 1;
-        if (readTheCharacterAt(at) == '+') {
+        if (readCharacterAt(at) == '+') {
             at++;
-        } else if (readTheCharacterAt(at) == '-') {
+        } else if (readCharacterAt(at) == '-') {
             at++;
             sign = -1;
         }
         int exponent = 0;
-        while (isDigit(readTheCharacterAt(at))) {
-            exponent = exponent * 10 + (readTheCharacterAt(at) - '0');
+        while (isDigit(readCharacterAt(at))) {
+            exponent = exponent * 10 + (readCharacterAt(at) - '0');
             if (exponent > THE_LARGEST_EXPONENT_WRITTEN) {
                 if (sign == 1) {
                     throw Raised.of(EvaluationFailure.OVERFLOW);

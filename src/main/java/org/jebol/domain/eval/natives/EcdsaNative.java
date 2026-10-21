@@ -48,7 +48,7 @@ public class EcdsaNative extends CipherNative {
                         hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere()));
             }
-            Optional<EllipticCurveKey> key = readTheKeyHeldBy(
+            Optional<EllipticCurveKey> key = readKeyHeldBy(
                     arguments.getFirst(), ECDH_HANDLE_TYPE, EllipticCurveKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {

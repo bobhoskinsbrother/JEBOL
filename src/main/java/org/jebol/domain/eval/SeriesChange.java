@@ -173,7 +173,7 @@ public final class SeriesChange {
         List<int[]> pixels = new ArrayList<>();
         if (value instanceof ImageValue added) {
             for (int at = 1; at <= added.lengthFromHere(); at++) {
-                pixels.add(added.readThePixelAt(at));
+                pixels.add(added.readPixelAt(at));
             }
         } else if (value instanceof TupleValue colour) {
             int[] parts = colour.segments();

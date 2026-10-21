@@ -32,7 +32,7 @@ public final class VectorPath {
         if (chosen < 1 || chosen > vector.storageLength()) {
             return NoneValue.none();
         }
-        return vector.readTheItemAt(chosen);
+        return vector.readItemAt(chosen);
     }
 
     public static void write(VectorValue vector, Value selector, Value written) {

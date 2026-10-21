@@ -46,7 +46,7 @@ public class WriteAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortRequest asked = readTheRequest(arguments, refinements);
+            PortRequest asked = readRequest(arguments, refinements);
             Value destination = arguments.getFirst();
             Value data = arguments.get(1);
             if (destination instanceof PortValue port) {

@@ -32,12 +32,12 @@ public final class Lzma {
         }
         byte[] properties = new byte[PROPERTIES_LENGTH];
         System.arraycopy(octets, 0, properties, 0, PROPERTIES_LENGTH);
-        int howLong = wanted > 0 ? wanted : readTheLengthTaggedOnTheEnd(octets);
+        int howLong = wanted > 0 ? wanted : readLengthTaggedOnEnd(octets);
         return LzmaDecoder.decode(properties, octets, PROPERTIES_LENGTH,
                 octets.length - PROPERTIES_LENGTH, howLong);
     }
 
-    private static int readTheLengthTaggedOnTheEnd(byte[] octets) {
+    private static int readLengthTaggedOnEnd(byte[] octets) {
         int at = octets.length - LENGTH_TRAILER;
         int length = 0;
         for (int each = 0; each < LENGTH_TRAILER; each++) {

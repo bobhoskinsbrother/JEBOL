@@ -29,5 +29,5 @@ public interface Maker {
 
     Optional<List<Value>> readTheValuesFrom(String source);
 
-    AnyBlockValue readTheSource(String source);
+    AnyBlockValue readSource(String source);
 }

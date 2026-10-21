@@ -34,7 +34,7 @@ public final class SecurityPolicies {
     }
 
     public PolicyLevel findTheLevelFor(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
-        int written = findTheTupleFor(kind, subject).readTheOctetAt(access.ordinal() + 1);
+        int written = findTheTupleFor(kind, subject).readOctetAt(access.ordinal() + 1);
         PolicyLevel[] levels = PolicyLevel.values();
         return written < levels.length ? levels[written] : PolicyLevel.ALLOW;
     }

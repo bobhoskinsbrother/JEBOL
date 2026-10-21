@@ -86,7 +86,7 @@ public class DoCommandsNative extends DefaultNative {
             List<Value> gathered = new ArrayList<>();
             for (Parameter parameter : command.parameters()) {
                 if (parameter.consumesAnArgument() && parameter.owningRefinement().isEmpty()) {
-                    gathered.add(readTheArgumentFor(parameter, named));
+                    gathered.add(readArgumentFor(parameter, named));
                 }
             }
             try {
@@ -99,7 +99,7 @@ public class DoCommandsNative extends DefaultNative {
             }
         }
 
-        private Value readTheArgumentFor(Parameter parameter, Value named) {
+        private Value readArgumentFor(Parameter parameter, Value named) {
             if (at >= items.size()) {
                 throw Raised.of(EvaluationFailure.NO_ARG, named, parameter.asWrittenInTheSpec());
             }

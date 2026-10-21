@@ -78,8 +78,8 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public AnyBlockValue readTheSource(String source) {
-        return withoutEvaluating.readTheSource(source);
+    public AnyBlockValue readSource(String source) {
+        return withoutEvaluating.readSource(source);
     }
 
     @Override
@@ -199,7 +199,7 @@ public final class InterpreterMaker implements Maker {
     public Value makeStructFrom(StructValue prototype, Value spec) {
         StructValue made = prototype.separateCopy();
         if (spec instanceof BinaryValue octets) {
-            byte[] bytes = octets.readTheBytesFromHere();
+            byte[] bytes = octets.readBytesFromHere();
             if (bytes.length < made.size()) {
                 throw StructValue.TYPE.refuse(spec);
             }

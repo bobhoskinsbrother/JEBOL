@@ -26,7 +26,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public String schemeName() {
-        return readTheFieldValue("scheme").readTheFieldValue("name") instanceof AnyWordValue word
+        return readFieldValue("scheme").readFieldValue("name") instanceof AnyWordValue word
                 ? word.canonical()
                 : "";
     }
@@ -35,7 +35,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
         if (!THE_SCHEMES_THAT_ARE_QUEUES.contains(schemeName())) {
             return Optional.empty();
         }
-        if (!(readTheFieldValue("state") instanceof AnyBlockValue queue)) {
+        if (!(readFieldValue("state") instanceof AnyBlockValue queue)) {
             AnyBlockValue made = BlockValue.of(List.of());
             setField("state", made);
             return Optional.of(made);
@@ -71,19 +71,19 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public Optional<ObjectValue> actorWrittenInRebol() {
-        return readTheFieldValue("actor") instanceof ObjectValue actor
+        return readFieldValue("actor") instanceof ObjectValue actor
                 ? Optional.of(actor)
                 : Optional.empty();
     }
 
     public void refuseASpecThatIsNotAnObject() {
-        if (!(readTheFieldValue("spec") instanceof ObjectValue)) {
+        if (!(readFieldValue("spec") instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_PORT);
         }
     }
 
     public void refuseAnActorThatIsNeitherANativeNorAnObject() {
-        Value actor = readTheFieldValue("actor");
+        Value actor = readFieldValue("actor");
         if (actor instanceof ObjectValue || actor instanceof NativeValue
                 || actor instanceof NoneValue) {
             return;
@@ -92,11 +92,11 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public boolean hasNoActor() {
-        return readTheFieldValue("actor") instanceof NoneValue;
+        return readFieldValue("actor") instanceof NoneValue;
     }
 
     public boolean isOpen() {
-        Value whatTheActorLeft = readTheFieldValue("state");
+        Value whatTheActorLeft = readFieldValue("state");
         return !(whatTheActorLeft instanceof ObjectValue)
                 && whatTheActorLeft.isTruthy();
     }

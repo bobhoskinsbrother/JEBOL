@@ -47,13 +47,13 @@ public class GuiMetricNative extends ScreenNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            ScreenMetric metric = readTheMetricNamedBy(arguments.getFirst());
+            ScreenMetric metric = readMetricNamedBy(arguments.getFirst());
             int display = displayAskedFor(arguments, refinements);
             return measure(evaluator.ports().screen(), metric, display);
         };
     }
 
-    private ScreenMetric readTheMetricNamedBy(Value asked) {
+    private ScreenMetric readMetricNamedBy(Value asked) {
         if (!(asked instanceof WordValue word)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "gui-metric takes a word, not " + asked.datatype().literalSpelling());

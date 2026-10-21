@@ -42,7 +42,7 @@ public class SelectAction extends SeriesSearchAction {
             case MapValue map -> map.select(wanted, refinements.contains("case"));
             case VectorValue numbers -> refuseTheDatatype(numbers);
             case NoneValue nothing -> nothing;
-            case Value object when object.isAnyObject() -> readTheFieldWanted(object, wanted);
+            case Value object when object.isAnyObject() -> readFieldWanted(object, wanted);
             case RebolSeries series -> {
                 series.refuseANeedleItCannotHold(wanted, nativeName());
                 yield findTheItemAfterTheMatch(series, wanted, arguments, refinements);
@@ -51,11 +51,11 @@ public class SelectAction extends SeriesSearchAction {
         };
     }
 
-    private Value readTheFieldWanted(Value object, Value wanted) {
+    private Value readFieldWanted(Value object, Value wanted) {
         if (!object.declaresAFieldFindCanReachBy(wanted)) {
             return NoneValue.none();
         }
-        return object.readTheFieldValue(((AnyWordValue) wanted).canonical());
+        return object.readFieldValue(((AnyWordValue) wanted).canonical());
     }
 
     private Value findTheItemAfterTheMatch(

@@ -176,7 +176,7 @@ public record CharacterValue(int codepoint) implements Value {
         }
 
         private Value decodeTheLeadingCharacter(BinaryValue octets) {
-            byte[] bytes = octets.readTheBytesFromHere();
+            byte[] bytes = octets.readBytesFromHere();
             if (bytes.length == 0) {
                 throw refuse(octets);
             }

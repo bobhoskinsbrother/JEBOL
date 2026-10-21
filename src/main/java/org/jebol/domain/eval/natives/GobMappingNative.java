@@ -29,7 +29,7 @@ public abstract class GobMappingNative extends DefaultNative {
             GobValue parent, PairValue point, double takenX, double takenY) {
 
         for (int at = parent.storage().length(); at >= 1; at--) {
-            if (parent.storage().readTheChildAt(at) instanceof GobValue child
+            if (parent.storage().readChildAt(at) instanceof GobValue child
                     && holds(child, point, takenX, takenY)) {
                 return Optional.of(child);
             }

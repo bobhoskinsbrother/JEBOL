@@ -32,7 +32,7 @@ final class Capture extends DeclaredKeyword {
         }
         walk.assign(word, wholeSlice
                 ? walk.sliceBetween(startedAt, walk.position())
-                : walk.readTheFirstItemBetween(startedAt, walk.position()));
+                : walk.readFirstItemBetween(startedAt, walk.position()));
         return 2 + consumed;
     }
 
@@ -50,7 +50,7 @@ final class Capture extends DeclaredKeyword {
         }
         walk.assign(target, wholeSlice
                 ? walk.textSliceBetween(before, walk.position())
-                : walk.readTheFirstCharacterMatchedFrom(before));
+                : walk.readFirstCharacterMatchedFrom(before));
         return (ruleAt - at) + walk.ruleSpan(rules, ruleAt);
     }
 

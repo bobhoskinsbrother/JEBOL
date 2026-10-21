@@ -148,7 +148,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value readTheItemAt(int positionFromTheHead) {
+    public Value readItemAt(int positionFromTheHead) {
         return CharacterValue.of(storage.at(positionFromTheHead));
     }
 

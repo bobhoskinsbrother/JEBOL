@@ -288,7 +288,7 @@ final class JsonConverter {
         int high = (int) Math.round(pixels.size().y());
         byte[] octets = new byte[wide * high * CHANNELS_A_PIXEL];
         for (int pixel = 0; pixel < wide * high; pixel++) {
-            int[] parts = pixels.readThePixelAt(pixel + 1);
+            int[] parts = pixels.readPixelAt(pixel + 1);
             octets[pixel * CHANNELS_A_PIXEL] = (byte) parts[0];
             octets[pixel * CHANNELS_A_PIXEL + 1] = (byte) parts[1];
             octets[pixel * CHANNELS_A_PIXEL + 2] = (byte) parts[2];

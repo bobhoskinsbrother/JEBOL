@@ -66,16 +66,16 @@ public abstract class EncodingNative extends DefaultNative {
         return upTo.index() - from.index();
     }
 
-    protected byte[] readTheOctetsWithinAnyPart(Value source, List<Value> arguments, Set<String> refinements) {
+    protected byte[] readOctetsWithinAnyPart(Value source, List<Value> arguments, Set<String> refinements) {
         byte[] octets = source.asOctets();
         return countHowManyWanted(source, arguments, refinements)
                 .map(count -> count < 0
-                        ? readTheOctetsBehind(source, octets, -count)
+                        ? readOctetsBehind(source, octets, -count)
                         : Arrays.copyOf(octets, (int) Math.min(count, octets.length)))
                 .orElse(octets);
     }
 
-    private byte[] readTheOctetsBehind(Value source, byte[] octets, long count) {
+    private byte[] readOctetsBehind(Value source, byte[] octets, long count) {
         if (!(source instanceof RebolSeries positioned)) {
             return new byte[0];
         }
@@ -84,16 +84,16 @@ public abstract class EncodingNative extends DefaultNative {
         return Arrays.copyOf(fromThere, fromThere.length - octets.length);
     }
 
-    protected byte[] readTheUnitsAskedFor(Value value, List<Value> arguments, Set<String> refinements) {
+    protected byte[] readUnitsAskedFor(Value value, List<Value> arguments, Set<String> refinements) {
         Optional<Long> asked = countHowManyWanted(value, arguments, refinements);
         if (asked.isPresent() && asked.get() < 0) {
-            return readTheUnitsBehind(value, -asked.get());
+            return readUnitsBehind(value, -asked.get());
         }
         int howMany = asked.map(Long::intValue).orElse(SeriesContents.EVERY_ONE);
         return asBytes(SeriesContents.collectTheOctetsContributedBy(value, howMany));
     }
 
-    private byte[] readTheUnitsBehind(Value value, long count) {
+    private byte[] readUnitsBehind(Value value, long count) {
         if (!(value instanceof RebolSeries positioned)) {
             return new byte[0];
         }
@@ -114,13 +114,13 @@ public abstract class EncodingNative extends DefaultNative {
         String text = textOf(value);
         Optional<Long> asked = countHowManyWanted(value, arguments, refinements);
         if (asked.isPresent() && asked.get() < 0) {
-            return readTheTextBehind(value, -asked.get());
+            return readTextBehind(value, -asked.get());
         }
         return asked.map(count -> text.substring(0, (int) Math.min(count, text.length())))
                 .orElse(text);
     }
 
-    private String readTheTextBehind(Value value, long count) {
+    private String readTextBehind(Value value, long count) {
         if (!(value instanceof RebolSeries positioned)) {
             return "";
         }

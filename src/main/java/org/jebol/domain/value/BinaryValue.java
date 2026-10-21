@@ -62,7 +62,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value readTheItemAt(int positionFromTheHead) {
+    public Value readItemAt(int positionFromTheHead) {
         return IntegerValue.of(storage.at(positionFromTheHead));
     }
 
@@ -201,7 +201,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return this;
     }
 
-    public byte[] readTheBytesFromHere() {
+    public byte[] readBytesFromHere() {
         int howMany = lengthFromHere();
         byte[] bytes = new byte[howMany];
         for (int at = 0; at < howMany; at++) {
@@ -239,7 +239,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             return false;
         }
         for (int at = 0; at < expected.length; at++) {
-            if (readTheOctetAt(index + at) != expected[at]) {
+            if (readOctetAt(index + at) != expected[at]) {
                 return false;
             }
         }
@@ -250,7 +250,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         int end = storageLength() + 1;
         int at = index;
         while (at < end) {
-            int width = measureTheUtf8Sequence(readTheOctetAt(at));
+            int width = measureTheUtf8Sequence(readOctetAt(at));
             if (width > 0 && at + width <= end && continuesCorrectly(at, width)) {
                 at += width;
                 continue;
@@ -265,7 +265,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return Optional.empty();
     }
 
-    private int readTheOctetAt(int position) {
+    private int readOctetAt(int position) {
         return storage.at(position) & 0xFF;
     }
 
@@ -283,17 +283,17 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     private boolean continuesCorrectly(int at, int width) {
-        int lead = readTheOctetAt(at);
+        int lead = readOctetAt(at);
         if (width == 1) {
             return true;
         }
         for (int step = 1; step < width; step++) {
-            int following = readTheOctetAt(at + step);
+            int following = readOctetAt(at + step);
             if (following < 0x80 || following > 0xBF) {
                 return false;
             }
         }
-        int second = readTheOctetAt(at + 1);
+        int second = readOctetAt(at + 1);
         if (lead == 0xE0 && second < 0xA0) {
             return false;
         }
@@ -307,16 +307,16 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     private boolean isSurrogateHalfAt(int at, int end) {
-        if (at + 3 > end || readTheOctetAt(at) != 0xED) {
+        if (at + 3 > end || readOctetAt(at) != 0xED) {
             return false;
         }
-        int second = readTheOctetAt(at + 1);
-        int third = readTheOctetAt(at + 2);
+        int second = readOctetAt(at + 1);
+        int third = readOctetAt(at + 2);
         return second >= 0xA0 && second <= 0xBF && third >= 0x80 && third <= 0xBF;
     }
 
     private boolean isLowSurrogateAt(int at) {
-        return readTheOctetAt(at + 1) >= 0xB0;
+        return readOctetAt(at + 1) >= 0xB0;
     }
 
     public String asStrictText() {
@@ -380,8 +380,8 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         int written = 0;
         int at = 0;
         while (at < bytes.length) {
-            int high = readTheSurrogateAt(bytes, at, 0xA0);
-            int low = high < 0 ? -1 : readTheSurrogateAt(bytes, at + 3, 0xB0);
+            int high = readSurrogateAt(bytes, at, 0xA0);
+            int low = high < 0 ? -1 : readSurrogateAt(bytes, at + 3, 0xB0);
             if (low < 0) {
                 joined[written] = bytes[at];
                 written++;
@@ -395,7 +395,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return Arrays.copyOf(joined, written);
     }
 
-    private int readTheSurrogateAt(byte[] bytes, int at, int leadingHalf) {
+    private int readSurrogateAt(byte[] bytes, int at, int leadingHalf) {
         if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
             return -1;
         }
@@ -468,7 +468,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                         .putLong(Double.doubleToRawLongBits(fractional.quantity())).array());
                 case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
                 case BlockValue block -> collectTheBytesOfEach(block);
-                case VectorValue vector -> BinaryValue.ofBytes(vector.readTheOctetsFromHere());
+                case VectorValue vector -> BinaryValue.ofBytes(vector.readOctetsFromHere());
                 case StructValue struct -> BinaryValue.ofBytes(struct.octets());
                 case TupleValue segments -> BinaryValue.ofBytes(readTheOctetsOf(segments));
                 case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
@@ -501,7 +501,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         private byte[] readTheOctetsOf(TupleValue segments) {
             byte[] octets = new byte[segments.segmentCount()];
             for (int at = 0; at < octets.length; at++) {
-                octets[at] = (byte) segments.readTheOctetAt(at + 1);
+                octets[at] = (byte) segments.readOctetAt(at + 1);
             }
             return octets;
         }

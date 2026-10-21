@@ -237,14 +237,14 @@ class BrotliFromTheSourceTest {
         @Test
         @DisplayName("is 122,784 bytes long")
         void isTheRightLength() {
-            assertThat(BrotliDictionary.readTheWords())
+            assertThat(BrotliDictionary.readWords())
                     .hasSize(BrotliDictionary.wordsLength());
         }
 
         @Test
         @DisplayName("opens with the shortest words, which are four letters")
         void opensWithFourLetterWords() {
-            assertThat(new String(BrotliDictionary.readTheWordAt(0, 24),
+            assertThat(new String(BrotliDictionary.readWordAt(0, 24),
                     java.nio.charset.StandardCharsets.US_ASCII))
                     .isEqualTo("timedownlifeleftbackcode");
         }
@@ -253,7 +253,7 @@ class BrotliFromTheSourceTest {
         @DisplayName("and each length starts where the table says it does")
         void eachLengthStartsWhereItShould() {
             assertThat(new String(
-                    BrotliDictionary.readTheWordAt(BrotliDictionary.findTheOffsetFor(5), 15),
+                    BrotliDictionary.readWordAt(BrotliDictionary.findTheOffsetFor(5), 15),
                     java.nio.charset.StandardCharsets.US_ASCII))
                     .isEqualTo("firstvideolight");
         }

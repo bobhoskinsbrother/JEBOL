@@ -520,7 +520,7 @@ public final class Encodings {
         return mixed ^ (mixed >>> 16);
     }
 
-    private int readTheLittleEndianWordAt(byte[] octets, int from) {
+    private int readLittleEndianWordAt(byte[] octets, int from) {
         return (octets[from] & 0xFF)
                 | ((octets[from + 1] & 0xFF) << 8)
                 | ((octets[from + 2] & 0xFF) << 16)
@@ -531,7 +531,7 @@ public final class Encodings {
         int hash = 0;
         int wholeWords = octets.length / 4;
         for (int word = 0; word < wholeWords; word++) {
-            hash = mixABlockInto(hash, readTheLittleEndianWordAt(octets, word * 4));
+            hash = mixABlockInto(hash, readLittleEndianWordAt(octets, word * 4));
         }
         int over = octets.length & 3;
         if (over > 0) {

@@ -37,7 +37,7 @@ public final class StructData {
         return bytes.length;
     }
 
-    public byte[] readTheBytesFrom(int offset, int howMany) {
+    public byte[] readBytesFrom(int offset, int howMany) {
         byte[] taken = new byte[howMany];
         System.arraycopy(bytes, offset, taken, 0, howMany);
         return taken;
@@ -47,7 +47,7 @@ public final class StructData {
         System.arraycopy(written, 0, bytes, offset, howMany);
     }
 
-    public long readTheNumberAt(int offset, VectorKind kind) {
+    public long readNumberAt(int offset, VectorKind kind) {
         return kind.fromOctets(bytes, offset);
     }
 
@@ -72,7 +72,7 @@ public final class StructData {
     /** A separate copy of one span, which is what COPY on a struct gives. */
     public StructData copyOf(int offset, int howMany) {
         StructData taken = new StructData(howMany);
-        taken.write(0, readTheBytesFrom(offset, howMany), howMany);
+        taken.write(0, readBytesFrom(offset, howMany), howMany);
         liveValues.forEach((at, held) -> {
             if (at >= offset && at < offset + howMany) {
                 taken.liveValues.put(at - offset, held);

@@ -129,7 +129,7 @@ final class BrotliBlockSplitter {
 
     private void giveTheBatchToTheTypeBeforeLast(double mergedEntropy) {
         split.setTheLength(howManyBlocks, blockSize);
-        split.setTheType(howManyBlocks, split.readTheTypeAt(howManyBlocks - 2));
+        split.setTheType(howManyBlocks, split.readTypeAt(howManyBlocks - 2));
         int swapped = lastHistogram[0];
         lastHistogram[0] = lastHistogram[1];
         lastHistogram[1] = swapped;

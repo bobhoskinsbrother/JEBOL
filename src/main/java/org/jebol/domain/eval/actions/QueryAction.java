@@ -134,7 +134,7 @@ public class QueryAction extends PortAction {
     }
 
     private Optional<Value> listTheNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
-        if (!(port.readTheFieldValue("actor") instanceof ServesPortActions served)) {
+        if (!(port.readFieldValue("actor") instanceof ServesPortActions served)) {
             return Optional.empty();
         }
         return served.answers(nativeName(), List.of(port, NoneValue.none()), Set.of(), evaluator);
@@ -267,7 +267,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value readTheFieldInTheObject(String part) {
+        protected Value readFieldInObject(String part) {
             return IntegerValue.of(A_MEASURE_THE_HOST_DOES_NOT_REPORT);
         }
 
@@ -311,8 +311,8 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value readTheFieldInTheObject(String part) {
-            return part.equals("date") ? NoneValue.none() : super.readTheFieldInTheObject(part);
+        protected Value readFieldInObject(String part) {
+            return part.equals("date") ? NoneValue.none() : super.readFieldInObject(part);
         }
 
         private Value asDateValue(Optional<Instant> moment) {

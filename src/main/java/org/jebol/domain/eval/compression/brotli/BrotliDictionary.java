@@ -98,7 +98,7 @@ final class BrotliDictionary {
 
     private static byte[] words;
 
-    static byte[] readTheWords() {
+    static byte[] readWords() {
         byte[] known = words;
         if (known != null) {
             return known;
@@ -952,7 +952,7 @@ final class BrotliDictionary {
                     29oUrNZXqX3Ghr8TuigkT48Q+TXwvXvGjv0foSWBhw==""",
     };
 
-    static int readTheSizeBitsFor(int wordLength) {
+    static int readSizeBitsFor(int wordLength) {
         return SIZE_BITS_BY_LENGTH[wordLength];
     }
 
@@ -963,7 +963,7 @@ final class BrotliDictionary {
     static int writeTransformedWord(byte[] into, int at, int wordAt,
             int wordLength, int transform) {
 
-        byte[] dictionary = readTheWords();
+        byte[] dictionary = readWords();
         int prefix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3]];
         int kind = A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 1];
         int suffix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 2]];
@@ -1025,7 +1025,7 @@ final class BrotliDictionary {
         return WORDS_LENGTH;
     }
 
-    static byte[] readTheWordAt(int offset, int length) {
-        return Arrays.copyOfRange(readTheWords(), offset, offset + length);
+    static byte[] readWordAt(int offset, int length) {
+        return Arrays.copyOfRange(readWords(), offset, offset + length);
     }
 }

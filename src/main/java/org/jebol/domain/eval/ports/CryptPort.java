@@ -250,7 +250,7 @@ public final class CryptPort {
     }
 
     private Working findTheWorkInProgress(PortValue port) {
-        if (port.readTheFieldValue("state") instanceof HandleValue held
+        if (port.readFieldValue("state") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped
                 && wrapped.held().orElse(null) instanceof Working working) {
@@ -268,8 +268,8 @@ public final class CryptPort {
             return;
         }
         throw Raised.of(EvaluationFailure.NOT_OPEN,
-                port.readTheFieldValue("spec") instanceof ObjectValue spec
-                        ? spec.readTheFieldValue("ref")
+                port.readFieldValue("spec") instanceof ObjectValue spec
+                        ? spec.readFieldValue("ref")
                         : NoneValue.none());
     }
 
@@ -511,7 +511,7 @@ public final class CryptPort {
                 byte[] whole = fitTo(working.vector, WIDEST_VECTOR);
                 cipher.init(direction, key, new javax.crypto.spec.ChaCha20ParameterSpec(
                         Arrays.copyOf(whole, CHACHA20_COUNTER_AT),
-                        readTheCounterMostSignificantFirstAfterTheNonce(whole)));
+                        readCounterMostSignificantFirstAfterNonce(whole)));
             } else if (needsAVector) {
                 cipher.init(direction, key, new IvParameterSpec(
                         fitTo(working.vector, works.blockOctets())));
@@ -525,7 +525,7 @@ public final class CryptPort {
         }
     }
 
-    private int readTheCounterMostSignificantFirstAfterTheNonce(byte[] vector) {
+    private int readCounterMostSignificantFirstAfterNonce(byte[] vector) {
         int counter = 0;
         for (int at = CHACHA20_COUNTER_AT; at < WIDEST_VECTOR; at++) {
             counter = counter << 8 | vector[at] & 0xFF;
@@ -623,7 +623,7 @@ public final class CryptPort {
             return;
         }
         addToWhatIsReady(working,
-                Arrays.copyOf(readTheWholeTag(working), working.tagOctets));
+                Arrays.copyOf(readWholeTag(working), working.tagOctets));
     }
 
     private static final int SHORTEST_TAG = 4;
@@ -660,7 +660,7 @@ public final class CryptPort {
         }
     }
 
-    private byte[] readTheWholeTag(Working working) {
+    private byte[] readWholeTag(Working working) {
         return sealWithGalois(working).tag();
     }
 

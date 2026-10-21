@@ -132,8 +132,8 @@ public final class JavaImage implements ImagePort {
                     child != null; child = child.getNextSibling()) {
                 if (child.getNodeName().equals("ImageDescriptor")) {
                     return new Point(
-                            readTheNumberIn(child, "imageLeftPosition"),
-                            readTheNumberIn(child, "imageTopPosition"));
+                            readNumberIn(child, "imageLeftPosition"),
+                            readNumberIn(child, "imageTopPosition"));
                 }
             }
         } catch (IOException | RuntimeException noMetadata) {
@@ -142,7 +142,7 @@ public final class JavaImage implements ImagePort {
         return AT_THE_CORNER;
     }
 
-    private int readTheNumberIn(Node descriptor, String attribute) {
+    private int readNumberIn(Node descriptor, String attribute) {
         Node held = descriptor.getAttributes().getNamedItem(attribute);
         return held == null ? 0 : Integer.parseInt(held.getNodeValue());
     }

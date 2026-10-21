@@ -111,12 +111,12 @@ final class BrotliClusteredMetaBlock {
                 && asWritten.directCodes() == candidate.directCodes();
         for (int which = 0; which < commands.count(); which++) {
             if (commands.copyLengthAt(which) == 0
-                    || commands.readTheCommandPrefixAt(which) < 128) {
+                    || commands.readCommandPrefixAt(which) < 128) {
                 continue;
             }
             int prefix;
             if (unchanged) {
-                prefix = commands.readTheDistancePrefixAt(which);
+                prefix = commands.readDistancePrefixAt(which);
             } else {
                 int code = commands.restoreTheDistanceCodeAt(which,
                         asWritten.directCodes(), asWritten.postfixBits());
@@ -142,7 +142,7 @@ final class BrotliClusteredMetaBlock {
         }
         for (int which = 0; which < commands.count(); which++) {
             if (commands.copyLengthAt(which) == 0
-                    || commands.readTheCommandPrefixAt(which) < 128) {
+                    || commands.readCommandPrefixAt(which) < 128) {
                 continue;
             }
             int code = commands.restoreTheDistanceCodeAt(which,
@@ -165,10 +165,10 @@ final class BrotliClusteredMetaBlock {
             this.split = split;
         }
 
-        int readTheNextType() {
+        int readNextType() {
             if (leftInTheBlock == 0) {
-                leftInTheBlock = split.readTheLengthAt(whichBlock);
-                type = split.readTheTypeAt(whichBlock);
+                leftInTheBlock = split.readLengthAt(whichBlock);
+                type = split.readTypeAt(whichBlock);
                 whichBlock++;
             }
             leftInTheBlock--;
@@ -189,10 +189,10 @@ final class BrotliClusteredMetaBlock {
         int beforeThat = theByteBeforeThatGiven;
 
         for (int which = 0; which < commands.count(); which++) {
-            built.commandHistograms[commandWalk.readTheNextType()]
-                    .add(commands.readTheCommandPrefixAt(which));
+            built.commandHistograms[commandWalk.readNextType()]
+                    .add(commands.readCommandPrefixAt(which));
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
-                int type = literalWalk.readTheNextType();
+                int type = literalWalk.readNextType();
                 int context = (type << LITERAL_CONTEXT_BITS)
                         + BrotliContext.of(contextMode, previous, beforeThat);
                 int literal = data[at & mask] & 0xFF;
@@ -208,11 +208,11 @@ final class BrotliClusteredMetaBlock {
             }
             beforeThat = data[(at - 2) & mask] & 0xFF;
             previous = data[(at - 1) & mask] & 0xFF;
-            if (commands.readTheCommandPrefixAt(which) >= 128) {
-                int context = (distanceWalk.readTheNextType() << DISTANCE_CONTEXT_BITS)
-                        + commands.readTheDistanceContextAt(which);
+            if (commands.readCommandPrefixAt(which) >= 128) {
+                int context = (distanceWalk.readNextType() << DISTANCE_CONTEXT_BITS)
+                        + commands.readDistanceContextAt(which);
                 distanceByContext[context]
-                        .add(commands.readTheDistancePrefixAt(which) & 0x3FF);
+                        .add(commands.readDistancePrefixAt(which) & 0x3FF);
             }
         }
     }

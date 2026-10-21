@@ -38,8 +38,8 @@ public final class Transcoder {
         List<SourceSpan> spans = new ArrayList<>();
         int[] codepoints = source.codePoints().toArray();
         for (int at = 0; at < reader.scanner.topStarts().size(); at++) {
-            int from = reader.readTheCodepointAt(reader.scanner.topStarts().get(at));
-            int to = reader.readTheCodepointAt(reader.scanner.topEnds().get(at));
+            int from = reader.readCodepointAt(reader.scanner.topStarts().get(at));
+            int to = reader.readCodepointAt(reader.scanner.topEnds().get(at));
             spans.add(new SourceSpan(new String(codepoints, from, to - from), from, to));
         }
         return List.copyOf(spans);
@@ -127,18 +127,18 @@ public final class Transcoder {
         codepointAtByte[encoded.length] = codepoint;
     }
 
-    private int readTheCodepointAt(int byteOffset) {
+    private int readCodepointAt(int byteOffset) {
         return codepointAtByte[Math.max(0, Math.min(byteOffset, codepointAtByte.length - 1))];
     }
 
     private Reading beginReading() {
         try {
             SourceScanner.ScannedBlock whole = scanner.scanTheWholeSource();
-            return new Reading(whole.values(), Optional.empty(), readTheCodepointAt(scanner.end()),
+            return new Reading(whole.values(), Optional.empty(), readCodepointAt(scanner.end()),
                     scanner.lineCount(), scanner.topLineStarts());
         } catch (ScanFailure malformed) {
             return new Reading(List.copyOf(scanner.topValues()), Optional.of(malformed.asAFailure()),
-                    readTheCodepointAt(scanner.end()), scanner.lineCount(), scanner.topLineStarts());
+                    readCodepointAt(scanner.end()), scanner.lineCount(), scanner.topLineStarts());
         }
     }
 

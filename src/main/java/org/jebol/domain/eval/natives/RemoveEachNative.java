@@ -122,7 +122,7 @@ public class RemoveEachNative extends LoopingNative {
         List<Value> kept = new ArrayList<>();
         int taken = 0;
         for (int at = series.index(); at <= series.storageLength(); at++) {
-            Value item = readTheItemAt(series, at);
+            Value item = readItemAt(series, at);
             locals.register(word.spelling(), item);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 taken++;
@@ -139,10 +139,10 @@ public class RemoveEachNative extends LoopingNative {
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    private Value readTheItemAt(RebolSeries series, int at) {
+    private Value readItemAt(RebolSeries series, int at) {
         return switch (series) {
             case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
-            case VectorValue numbers -> numbers.readTheItemAt(at);
+            case VectorValue numbers -> numbers.readItemAt(at);
             default -> CharacterValue.of(((AnyStringValue) series).storage().at(at));
         };
     }

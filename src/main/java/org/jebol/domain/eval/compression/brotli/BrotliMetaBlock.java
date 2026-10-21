@@ -207,7 +207,7 @@ final class BrotliMetaBlock {
         int previous = previousByte;
         int beforeThat = theByteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
-            commandSymbols.add(commands.readTheCommandPrefixAt(which));
+            commandSymbols.add(commands.readCommandPrefixAt(which));
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = ringBuffer[at & mask] & 0xFF;
                 if (howManyContexts == 1) {
@@ -226,8 +226,8 @@ final class BrotliMetaBlock {
             if (copyLength != 0) {
                 beforeThat = ringBuffer[(at - 2) & mask] & 0xFF;
                 previous = ringBuffer[(at - 1) & mask] & 0xFF;
-                if (commands.readTheCommandPrefixAt(which) >= 128) {
-                    distanceSymbols.add(commands.readTheDistancePrefixAt(which) & 0x3FF);
+                if (commands.readCommandPrefixAt(which) >= 128) {
+                    distanceSymbols.add(commands.readDistancePrefixAt(which) & 0x3FF);
                 }
             }
         }

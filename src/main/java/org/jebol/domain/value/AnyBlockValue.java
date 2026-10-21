@@ -121,10 +121,10 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                         : wrap(List.of(from));
             }
             if (from instanceof StringValue text) {
-                return readTheSourceToANoughtByte(text.text(), maker);
+                return readSourceToNoughtByte(text.text(), maker);
             }
             if (from instanceof BinaryValue octets) {
-                return readTheSourceToANoughtByte(octets.decodeAsText(), maker);
+                return readSourceToNoughtByte(octets.decodeAsText(), maker);
             }
             if (from instanceof PairValue) {
                 return wrap(List.of());
@@ -132,9 +132,9 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             throw Raised.of(EvaluationFailure.INVALID_ARG, from);
         }
 
-        private Value readTheSourceToANoughtByte(String source, Maker maker) {
+        private Value readSourceToNoughtByte(String source, Maker maker) {
             int endsAt = source.indexOf('\0');
-            return as(maker.readTheSource(endsAt < 0 ? source : source.substring(0, endsAt)));
+            return as(maker.readSource(endsAt < 0 ? source : source.substring(0, endsAt)));
         }
     }
 
@@ -209,7 +209,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value readTheItemAt(int positionFromTheHead) {
+    public Value readItemAt(int positionFromTheHead) {
         return storage.at(positionFromTheHead);
     }
 

@@ -13,7 +13,7 @@ public sealed interface RebolSeries extends Value
 
     boolean sharesStorageWith(RebolSeries other);
 
-    Value readTheItemAt(int positionFromTheHead);
+    Value readItemAt(int positionFromTheHead);
 
     RebolSeries reverseTheFront(int howMany);
 
@@ -25,8 +25,8 @@ public sealed interface RebolSeries extends Value
 
     default RebolSeries swapFirstItemWith(RebolSeries there) {
         if (!atTail() && !there.atTail()) {
-            Value mine = readTheItemAt(index());
-            putItemAt(index(), there.readTheItemAt(there.index()));
+            Value mine = readItemAt(index());
+            putItemAt(index(), there.readItemAt(there.index()));
             there.putItemAt(there.index(), mine);
         }
         return this;
@@ -59,7 +59,7 @@ public sealed interface RebolSeries extends Value
         if (at < 1 || at > storageLength()) {
             return NoneValue.none();
         }
-        return readTheItemAt(at);
+        return readItemAt(at);
     }
 
     default int lengthFromHere() {

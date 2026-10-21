@@ -78,7 +78,7 @@ final class ChecksumPort {
 
     private Optional<RunningSumThatAReadDoesNotEnd> findTheSumInProgress(PortValue port) {
         if (port.isOpen()
-                && port.readTheFieldValue("extra") instanceof HandleValue held
+                && port.readFieldValue("extra") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped) {
             return wrapped.held()
@@ -133,7 +133,7 @@ final class ChecksumPort {
     }
 
     String readTheMethodOf(PortValue port) {
-        if (!(port.readTheFieldValue("spec") instanceof ObjectValue(Context context))
+        if (!(port.readFieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
                 || !(context.ownSlotFor("method").value() instanceof AnyWordValue method)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");

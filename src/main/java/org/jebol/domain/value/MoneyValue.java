@@ -261,7 +261,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
                 case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
                 case AnyDecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
                 case AnyStringValue text -> readMoney(text);
-                case BinaryValue bytes -> MoneyValue.fromBytes(bytes.readTheBytesFromHere());
+                case BinaryValue bytes -> MoneyValue.fromBytes(bytes.readBytesFromHere());
                 case LogicValue truth when asking.builds() ->
                         new MoneyValue(new Deci(truth.truth() ? 1 : 0));
                 default -> throw refuse(from);

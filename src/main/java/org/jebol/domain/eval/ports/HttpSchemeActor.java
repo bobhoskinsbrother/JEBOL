@@ -230,7 +230,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
 
     private Optional<String> findThePhraseFor(int status, Evaluator evaluator) {
         Value system = evaluator.systemContext().findSlotFor("system").value();
-        Value codes = system.readTheFieldValue("catalog").readTheFieldValue("http-status-codes");
+        Value codes = system.readFieldValue("catalog").readFieldValue("http-status-codes");
         if (!(codes instanceof MapValue phrases)) {
             return Optional.empty();
         }
@@ -240,8 +240,8 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private String readTheUrlOf(PortValue port) {
-        Value spec = port.readTheFieldValue("spec");
-        Value reference = spec.readTheFieldValue("ref");
+        Value spec = port.readFieldValue("spec");
+        Value reference = spec.readFieldValue("ref");
         if (reference instanceof AnyStringValue written && !(reference instanceof FileValue)) {
             return written.text();
         }
@@ -253,7 +253,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private String readTheMethodOf(PortValue port) {
-        Value method = port.readTheFieldValue("spec").readTheFieldValue("method");
+        Value method = port.readFieldValue("spec").readFieldValue("method");
         return method instanceof AnyWordValue word ? word.spelling() : "GET";
     }
 
@@ -278,7 +278,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private List<Value> flattenTheHeadersOf(PortValue port) {
-        Value headers = port.readTheFieldValue("spec").readTheFieldValue("headers");
+        Value headers = port.readFieldValue("spec").readFieldValue("headers");
         if (!(headers instanceof AnyBlockValue written)) {
             return List.of();
         }
@@ -294,7 +294,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private byte[] readTheContentOf(PortValue port) {
-        Value content = port.readTheFieldValue("spec").readTheFieldValue("content");
+        Value content = port.readFieldValue("spec").readFieldValue("content");
         return switch (content) {
             case AnyStringValue written -> written.asOctets();
             case BinaryValue carried -> carried.octetsFromHere();
@@ -303,23 +303,23 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private boolean followsRedirects(PortValue port) {
-        Value redirects = port.readTheFieldValue("spec").readTheFieldValue("redirect?");
+        Value redirects = port.readFieldValue("spec").readFieldValue("redirect?");
         return !(redirects instanceof NoneValue) && redirects.isTruthy();
     }
 
     private Optional<Duration> readTheTimeoutOf(PortValue port) {
-        return readAnIntegerIn(port.readTheFieldValue("spec"), "timeout")
+        return readAnIntegerIn(port.readFieldValue("spec"), "timeout")
                 .filter(seconds -> seconds > 0)
                 .map(Duration::ofSeconds);
     }
 
     private static String readAnyStringIn(Value spec, String field) {
-        Value held = spec.readTheFieldValue(field);
+        Value held = spec.readFieldValue(field);
         return held instanceof AnyStringValue written ? written.text() : "";
     }
 
     private static Optional<Long> readAnIntegerIn(Value spec, String field) {
-        Value held = spec.readTheFieldValue(field);
+        Value held = spec.readFieldValue(field);
         return held instanceof IntegerValue(long magnitude)
                 ? Optional.of(magnitude)
                 : Optional.empty();

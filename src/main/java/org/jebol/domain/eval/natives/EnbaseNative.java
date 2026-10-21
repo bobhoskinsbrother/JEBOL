@@ -43,7 +43,7 @@ public class EnbaseNative extends BinaryBaseNative {
         return (arguments, evaluator, context, refinements) -> {
             int base = readAKnownBase(arguments);
             Value value = arguments.getFirst();
-            byte[] octets = readTheOctetsToEncode(value, arguments, refinements);
+            byte[] octets = readOctetsToEncode(value, arguments, refinements);
             String encoded = encodeOrRefuse(value, octets, base, refinements.contains("url"));
             return StringValue.of(refinements.contains("flat")
                     ? encoded
@@ -56,14 +56,14 @@ public class EnbaseNative extends BinaryBaseNative {
         return Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(1));
     }
 
-    private byte[] readTheOctetsToEncode(Value value, List<Value> arguments, Set<String> refinements) {
+    private byte[] readOctetsToEncode(Value value, List<Value> arguments, Set<String> refinements) {
         if (value instanceof IntegerValue number) {
             byte[] octets = number.asFewOctetsAsHoldIt();
             return countHowManyWanted(value, arguments, refinements)
                     .map(count -> Arrays.copyOf(octets, Math.clamp(count, 0, octets.length)))
                     .orElse(octets);
         }
-        return readTheUnitsAskedFor(value, arguments, refinements);
+        return readUnitsAskedFor(value, arguments, refinements);
     }
 
     private String encodeOrRefuse(Value value, byte[] octets, int base, boolean urlSafe) {

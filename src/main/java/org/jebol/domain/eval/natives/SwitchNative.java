@@ -57,7 +57,7 @@ public class SwitchNative extends DefaultNative {
             if (matchedSomething) {
                 return lastBranchTaken;
             }
-            return readTheFallbackAskedFor(arguments, refinements) instanceof AnyBlockValue fallback
+            return readFallbackAskedFor(arguments, refinements) instanceof AnyBlockValue fallback
                     ? evaluator.evaluateOrRaise(fallback, context)
                     : NoneValue.none();
         };
@@ -81,7 +81,7 @@ public class SwitchNative extends DefaultNative {
         return value instanceof BlockValue;
     }
 
-    private Value readTheFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
+    private Value readFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("default") && arguments.size() > WHERE_THE_FALLBACK_ARRIVES
                 ? arguments.get(WHERE_THE_FALLBACK_ARRIVES)
                 : NoneValue.none();

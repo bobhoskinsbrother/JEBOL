@@ -218,7 +218,7 @@ public enum VectorKind {
         return switch (value) {
             case VectorValue source -> source.listTheRemaining();
             case AnyBlockValue block -> block.remaining();
-            case BinaryValue bytes -> readTheNumbersSpeltBy(bytes, bytes.lengthFromHere());
+            case BinaryValue bytes -> readNumbersSpeltBy(bytes, bytes.lengthFromHere());
             default -> List.of(value);
         };
     }
@@ -230,13 +230,13 @@ public enum VectorKind {
         RebolSeries run = source.reachBackIfNegative(limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
-            return readTheNumbersSpeltBy(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
+            return readNumbersSpeltBy(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
         }
         List<Value> offered = collectTheNumbersContributedBy(run);
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    private List<Value> readTheNumbersSpeltBy(BinaryValue bytes, int taking) {
+    private List<Value> readNumbersSpeltBy(BinaryValue bytes, int taking) {
         int wholeNumbers = Math.max(0, taking) / bytes();
         if (wholeNumbers == 0) {
             throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);

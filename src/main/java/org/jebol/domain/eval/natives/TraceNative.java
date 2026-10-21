@@ -39,12 +39,12 @@ public class TraceNative extends DefaultNative {
                 return UnsetValue.unset();
             }
             tracing.keepRatherThanPrint(refinements.contains("back") && mode.isTruthy());
-            tracing.setTheLevel(readTheLevelAskedFor(mode), refinements.contains("function"));
+            tracing.setTheLevel(readLevelAskedFor(mode), refinements.contains("function"));
             return UnsetValue.unset();
         };
     }
 
-    private int readTheLevelAskedFor(Value mode) {
+    private int readLevelAskedFor(Value mode) {
         if (mode instanceof IntegerValue(long level)) {
             return (int) level;
         }

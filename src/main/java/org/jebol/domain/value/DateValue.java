@@ -114,7 +114,7 @@ public record DateValue(
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            Value specification = readTheSpecificationIn(contents);
+            Value specification = readSpecificationIn(contents);
             if (!(specification instanceof AnyBlockValue || specification instanceof DateValue)) {
                 throw refuseTheConstruction(contents);
             }

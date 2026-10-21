@@ -21,13 +21,13 @@ public final class EventPath {
         return switch (asked.canonical()) {
             case "type" -> event.typeIndex() == 0
                     ? NoneValue.none()
-                    : WordValue.of(EventCatalogue.readTheTypeAt(event.typeIndex()));
+                    : WordValue.of(EventCatalogue.readTypeAt(event.typeIndex()));
             case "port" -> findThePortOf(event, guiPort, callbackPort, consolePort);
             case "window", "gob" -> findTheGobOf(event);
             case "offset" -> event.has(EventValue.Flag.HAS_XY)
                     ? PairValue.of(event.offsetX(), event.offsetY())
                     : NoneValue.none();
-            case "key" -> event.readTheKey().orElseGet(NoneValue::none);
+            case "key" -> event.readKey().orElseGet(NoneValue::none);
             case "flags" -> event.listTheRaisedFlagWords().isEmpty()
                     ? NoneValue.none()
                     : BlockValue.of(event.listTheRaisedFlagWords());

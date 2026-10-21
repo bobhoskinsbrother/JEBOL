@@ -269,16 +269,16 @@ public final class Ports {
     }
 
     private Value readTheReferenceOf(PortValue port) {
-        return port.readTheFieldValue("spec") instanceof ObjectValue spec
-                ? spec.readTheFieldValue("ref")
+        return port.readFieldValue("spec") instanceof ObjectValue spec
+                ? spec.readFieldValue("ref")
                 : NoneValue.none();
     }
 
     private Optional<String> readTheNameABundledUrlAsksFor(PortValue port) {
-        if (!(port.readTheFieldValue("spec") instanceof ObjectValue spec)
-                || !(spec.readTheFieldValue("host") instanceof AnyStringValue host)
-                || !(spec.readTheFieldValue("path") instanceof NoneValue)
-                || !(spec.readTheFieldValue("target") instanceof NoneValue)) {
+        if (!(port.readFieldValue("spec") instanceof ObjectValue spec)
+                || !(spec.readFieldValue("host") instanceof AnyStringValue host)
+                || !(spec.readFieldValue("path") instanceof NoneValue)
+                || !(spec.readFieldValue("target") instanceof NoneValue)) {
             return Optional.empty();
         }
         return host.text().isEmpty() ? Optional.empty() : Optional.of(host.text());
@@ -296,7 +296,7 @@ public final class Ports {
     }
 
     private void addToThePortsData(PortValue port, BinaryValue arrived) {
-        if (!(port.readTheFieldValue("data") instanceof BinaryValue held)) {
+        if (!(port.readFieldValue("data") instanceof BinaryValue held)) {
             port.setField("data", arrived);
             return;
         }
@@ -307,7 +307,7 @@ public final class Ports {
 
     private Value answerWhatTheDnsUrlAsks(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
-        String host = readTheHostNamedBy(port);
+        String host = readHostNamedBy(port);
         NetworkPort network = evaluator.ports().network();
         return runThroughTheNetwork(() -> {
             if (host.isEmpty()) {
@@ -386,7 +386,7 @@ public final class Ports {
                 : StringValue.of(text.orElseThrow());
     }
 
-    public Value readTheFile(String path, Evaluator evaluator, PortRequest asked) {
+    public Value readFile(String path, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
         requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
         return runThroughTheFileSystem(() -> new FileReading(path, asked).answerThrough(evaluator.ports().files()));
@@ -518,7 +518,7 @@ public final class Ports {
 
     private PortValue connectOrLeaveClosed(PortValue port, Evaluator evaluator) {
         try {
-            NetworkPort.Connection made = evaluator.ports().network().connectTo(readTheHostNamedBy(port), readThePortNumberOf(port));
+            NetworkPort.Connection made = evaluator.ports().network().connectTo(readHostNamedBy(port), readThePortNumberOf(port));
             port.setField("state", JavaObjectValue.of(made));
             queueWhatHappenedTo(port, "connect", evaluator);
             return markOpen(port);
@@ -579,25 +579,25 @@ public final class Ports {
         if (cryptPort.isWorking(port)) {
             throw Raised.of(EvaluationFailure.ALREADY_OPEN, readTheReferenceOf(port));
         }
-        if (!(port.readTheFieldValue("spec") instanceof ObjectValue spec)) {
+        if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
         }
-        String algorithm = spec.readTheFieldValue("algorithm") instanceof AnyWordValue word
+        String algorithm = spec.readFieldValue("algorithm") instanceof AnyWordValue word
                 ? word.canonical()
                 : "";
         if (!cryptPort.serves(algorithm)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
         }
         cryptPort.start(port, algorithm,
-                spec.readTheFieldValue("direction") instanceof AnyWordValue wanted
+                spec.readFieldValue("direction") instanceof AnyWordValue wanted
                         && wanted.canonical().equals("decrypt"),
-                readTheOctetsInSpec(spec, "key"), readTheOctetsInSpec(spec, "init-vector"));
+                readOctetsInSpec(spec, "key"), readOctetsInSpec(spec, "init-vector"));
         spec.context().register("key", NoneValue.none());
         spec.context().register("init-vector", NoneValue.none());
     }
 
-    private byte[] readTheOctetsInSpec(ObjectValue spec, String field) {
-        return switch (spec.readTheFieldValue(field)) {
+    private byte[] readOctetsInSpec(ObjectValue spec, String field) {
+        return switch (spec.readFieldValue(field)) {
             case BinaryValue octets -> octets.octetsFromHere();
             case AnyStringValue text -> text.text().getBytes(StandardCharsets.UTF_8);
             default -> new byte[0];
@@ -652,7 +652,7 @@ public final class Ports {
     }
 
     private String findTheHostToSendTo(PortValue port) {
-        if (port.readTheFieldValue("spec") instanceof ObjectValue(Context context)
+        if (port.readFieldValue("spec") instanceof ObjectValue(Context context)
                 && context.holds("host")
                 && context.ownSlotFor("host").value() instanceof AnyStringValue host) {
             return host.text();
@@ -661,7 +661,7 @@ public final class Ports {
     }
 
     private NetworkPort.Datagrams findTheDatagramsBehind(PortValue port) {
-        if (port.readTheFieldValue("state") instanceof JavaObjectValue carried
+        if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Datagrams bound) {
             return bound;
         }
@@ -696,7 +696,7 @@ public final class Ports {
     }
 
     private int readThePortNumberOf(PortValue port) {
-        if (port.readTheFieldValue("spec") instanceof ObjectValue(Context context)
+        if (port.readFieldValue("spec") instanceof ObjectValue(Context context)
                 && context.holds("port")
                 && context.ownSlotFor("port").value() instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
@@ -716,22 +716,22 @@ public final class Ports {
     }
 
     private void handBackTheConnectionBehind(PortValue port) {
-        if (port.readTheFieldValue("state") instanceof JavaObjectValue carried
+        if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
             open.close();
         }
     }
 
     private NetworkPort.Connection findTheConnectionBehind(PortValue port) {
-        if (port.readTheFieldValue("state") instanceof JavaObjectValue carried
+        if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
             return open;
         }
         throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
     }
 
-    private String readTheHostNamedBy(PortValue port) {
-        if (port.readTheFieldValue("spec") instanceof ObjectValue(Context context)) {
+    private String readHostNamedBy(PortValue port) {
+        if (port.readFieldValue("spec") instanceof ObjectValue(Context context)) {
             if (context.holds("host") && context.ownSlotFor("host").value() instanceof AnyStringValue host) {
                 return host.text();
             }

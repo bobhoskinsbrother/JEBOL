@@ -209,7 +209,7 @@ public final class DesktopScreen extends GobScreen {
     }
 
     private static String readTheTitleOf(GobValue gob) {
-        Value text = gob.storage().readTheContentIfKind(
+        Value text = gob.storage().readContentIfKind(
                 org.jebol.domain.value.GobStorage.Content.STRING);
         return text instanceof AnyStringValue title && !title.text().isEmpty()
                 ? title.text()

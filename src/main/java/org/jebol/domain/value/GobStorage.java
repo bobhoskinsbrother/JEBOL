@@ -116,7 +116,7 @@ public final class GobStorage {
     }
 
     /** The content, or none when the type asked for is not the type it has. */
-    public Value readTheContentIfKind(Content wanted) {
+    public Value readContentIfKind(Content wanted) {
         return contentKind == wanted ? content : NoneValue.none();
     }
 
@@ -209,7 +209,7 @@ public final class GobStorage {
         return List.copyOf(pane);
     }
 
-    public Value readTheChildAt(int oneBasedIndex) {
+    public Value readChildAt(int oneBasedIndex) {
         return pane.get(oneBasedIndex - 1);
     }
 

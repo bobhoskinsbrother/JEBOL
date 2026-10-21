@@ -78,8 +78,8 @@ public final class Layout {
     }
 
     /** The faces a layout block describes, in the order it describes them. */
-    public static List<Face> readTheFacesIn(AnyBlockValue layout) {
-        return readTheFacesIn(layout, word -> java.util.Optional.empty());
+    public static List<Face> readFacesIn(AnyBlockValue layout) {
+        return readFacesIn(layout, word -> java.util.Optional.empty());
     }
 
     /**
@@ -87,7 +87,7 @@ public final class Layout {
      * word in it still means what it names, except where it is the dialect's
      * own.
      */
-    public static List<Face> readTheFacesIn(
+    public static List<Face> readFacesIn(
             AnyBlockValue layout, java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
         List<Face> faces = new ArrayList<>();
@@ -150,7 +150,7 @@ public final class Layout {
     }
 
     private static String asRgb(TupleValue colour) {
-        return "rgb(" + colour.readTheOctetAt(1) + "," + colour.readTheOctetAt(2)
-                + "," + colour.readTheOctetAt(3) + ")";
+        return "rgb(" + colour.readOctetAt(1) + "," + colour.readOctetAt(2)
+                + "," + colour.readOctetAt(3) + ")";
     }
 }

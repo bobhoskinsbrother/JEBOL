@@ -22,7 +22,7 @@ public final class Markup {
         if (!outcome.succeeded() || !(outcome.value() instanceof AnyBlockValue block)) {
             return writeAnEmptyPage();
         }
-        return Html.render(Layout.readTheFacesIn(block.asBlock()));
+        return Html.render(Layout.readFacesIn(block.asBlock()));
     }
 
     private static String writeAnEmptyPage() {

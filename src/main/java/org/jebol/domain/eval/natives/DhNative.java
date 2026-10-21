@@ -39,7 +39,7 @@ public class DhNative extends CipherNative {
                 throw Raised.of(EvaluationFailure.BAD_REFINES,
                         "dh publishes or agrees, not both");
             }
-            Optional<DiffieHellmanKey> key = readTheKeyHeldBy(
+            Optional<DiffieHellmanKey> key = readKeyHeldBy(
                     arguments.getFirst(), DHM_HANDLE_TYPE, DiffieHellmanKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {

@@ -42,17 +42,17 @@ public class TranscodeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                answer(readTheReadingAskedFor(arguments, refinements), evaluator);
+                answer(readReadingAskedFor(arguments, refinements), evaluator);
     }
 
-    private Reading readTheReadingAskedFor(List<Value> arguments, Set<String> refinements) {
+    private Reading readReadingAskedFor(List<Value> arguments, Set<String> refinements) {
         Value source = arguments.getFirst();
         String whole = textOf(source);
         String readable = readTheArgumentOf("part", 0, arguments, refinements)
                 .map(asked -> boundTo(whole, countTheCharactersPermittedBy(asked)))
                 .orElse(whole);
         return new Reading(whole, readable,
-                readTheFirstLineNumberIn(readTheArgumentOf("line", 0, arguments, refinements)),
+                readFirstLineNumberIn(readTheArgumentOf("line", 0, arguments, refinements)),
                 readTheExtentAskedFor(refinements),
                 refinements.contains("line"),
                 refinements.contains("error"),
@@ -156,7 +156,7 @@ public class TranscodeNative extends DefaultNative {
         return Transcoder.Extent.THE_WHOLE_SOURCE;
     }
 
-    private long readTheFirstLineNumberIn(Optional<Value> line) {
+    private long readFirstLineNumberIn(Optional<Value> line) {
         if (line.isEmpty()) {
             return THE_FIRST_LINE_OF_ANY_SOURCE;
         }

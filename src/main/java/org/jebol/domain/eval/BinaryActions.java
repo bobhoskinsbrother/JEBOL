@@ -26,11 +26,11 @@ public final class BinaryActions extends SeriesActions {
     @Override
     public Value poke(Value position, Value written) {
         int at = findThePokedStoragePosition(position);
-        bytes.storage().set(at, readTheOctetPokedFrom(written));
+        bytes.storage().set(at, readOctetPokedFrom(written));
         return written;
     }
 
-    private int readTheOctetPokedFrom(Value written) {
+    private int readOctetPokedFrom(Value written) {
         return switch (written) {
             case IntegerValue number -> asAnOctet(number.magnitude());
             case CharacterValue(int codepoint) when codepoint > 0xFF ->

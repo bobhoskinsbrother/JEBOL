@@ -34,7 +34,7 @@ public class CollectWordsNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             List<Value> found = ((AnyBlockValue) arguments.getFirst()).listTheWordsWritten(
                     refinements.contains("deep"), refinements.contains("set"));
-            Value ignoring = readTheIgnoredWords(arguments, refinements);
+            Value ignoring = readIgnoredWords(arguments, refinements);
             Set<String> known = collectTheNamesIn(ignoring);
             found.removeIf(word -> known.contains(((AnyWordValue) word).canonical()));
             if (refinements.contains("as")) {
@@ -45,7 +45,7 @@ public class CollectWordsNative extends DefaultNative {
         };
     }
 
-    private Value readTheIgnoredWords(List<Value> arguments, Set<String> refinements) {
+    private Value readIgnoredWords(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("ignore")
                 && arguments.size() > WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 ? arguments.get(WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES)

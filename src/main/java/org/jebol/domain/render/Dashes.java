@@ -34,7 +34,7 @@ final class Dashes {
 
         List<PathStep> pieces = new ArrayList<>();
         int inThePattern = 0;
-        double leftInThisPiece = readTheLengthAt(pattern, 0);
+        double leftInThisPiece = readLengthAt(pattern, 0);
         boolean drawingADash = true;
         boolean penIsDown = false;
 
@@ -59,7 +59,7 @@ final class Dashes {
                 leftInThisPiece -= step;
                 if (leftInThisPiece <= A_LENGTH_TOO_SHORT_TO_MATTER) {
                     inThePattern = (inThePattern + 1) % pattern.size();
-                    leftInThisPiece = readTheLengthAt(pattern, inThePattern);
+                    leftInThisPiece = readLengthAt(pattern, inThePattern);
                     drawingADash = !drawingADash;
                     penIsDown = false;
                 }
@@ -79,7 +79,7 @@ final class Dashes {
                 from.down() + (to.down() - from.down()) * share);
     }
 
-    private static double readTheLengthAt(List<Double> pattern, int at) {
+    private static double readLengthAt(List<Double> pattern, int at) {
         double length = pattern.get(at % pattern.size());
         return length > 0 ? length : 1;
     }

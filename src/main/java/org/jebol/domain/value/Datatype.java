@@ -76,10 +76,10 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     }
 
     public Value construct(List<Value> contents, Construction construction) {
-        return construction.make(this, readTheSpecificationIn(contents));
+        return construction.make(this, readSpecificationIn(contents));
     }
 
-    protected Value readTheSpecificationIn(List<Value> contents) {
+    protected Value readSpecificationIn(List<Value> contents) {
         return contents.size() == 1 ? contents.getFirst() : BlockValue.of(contents);
     }
 

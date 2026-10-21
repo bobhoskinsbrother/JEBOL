@@ -555,7 +555,7 @@ public final class Molder {
                 colours.append("\n");
                 alphas.append("\n");
             }
-            int[] channels = shown.readThePixelAt(pixel);
+            int[] channels = shown.readPixelAt(pixel);
             colours.append("%02X%02X%02X".formatted(channels[0], channels[1], channels[2]));
             alphas.append("%02X".formatted(channels[3]));
         }
@@ -712,7 +712,7 @@ public final class Molder {
                                          boolean forReading, int positionToName) {
         List<String> numbers = new ArrayList<>();
         for (int at = from; at <= vector.storageLength(); at++) {
-            numbers.add(render(vector.readTheItemAt(at), forReading));
+            numbers.add(render(vector.readItemAt(at), forReading));
         }
         if (!forReading) {
             return String.join(" ", numbers);

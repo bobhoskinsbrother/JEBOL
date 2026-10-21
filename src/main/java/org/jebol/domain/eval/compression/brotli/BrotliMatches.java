@@ -28,17 +28,17 @@ final class BrotliMatches {
         lengthAndCode[which] = (length << 5) | (length == lengthCode ? 0 : lengthCode);
     }
 
-    long readTheDistanceAt(int which) {
+    long readDistanceAt(int which) {
         return distance[which];
     }
 
-    int readTheLengthAt(int which) {
+    int readLengthAt(int which) {
         return lengthAndCode[which] >>> 5;
     }
 
-    int readTheLengthCodeAt(int which) {
+    int readLengthCodeAt(int which) {
         int code = lengthAndCode[which] & 31;
-        return code != 0 ? code : readTheLengthAt(which);
+        return code != 0 ? code : readLengthAt(which);
     }
 
     void keepOnly(int which) {

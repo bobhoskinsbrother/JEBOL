@@ -48,8 +48,8 @@ public record LibraryFileHeader(
             }
             Value given = items.get(at + 1);
             switch (field.canonical()) {
-                case "type" -> declaredType = readThePlainText(given);
-                case "name" -> moduleName = readThePlainText(given);
+                case "type" -> declaredType = readPlainText(given);
+                case "name" -> moduleName = readPlainText(given);
                 case "exports" -> exported = listTheWordsIn(given);
                 default -> { }
             }
@@ -62,7 +62,7 @@ public record LibraryFileHeader(
         return MODULE.equals(declaredType);
     }
 
-    private static String readThePlainText(Value given) {
+    private static String readPlainText(Value given) {
         return switch (given) {
             case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text().toLowerCase(Locale.ROOT);

@@ -160,7 +160,7 @@ public final class ImageStorage extends ProtectableStorage {
      * <p>Channel 1 is red and channel 4 is alpha, which is the order the C's
      * {@code img/1/2: 100} case writes in: {@code case 2: bp[C_G] = ...}.
      */
-    public int readTheChannelAt(int pixel, int channel) {
+    public int readChannelAt(int pixel, int channel) {
         return pixels[(pixel - 1) * BYTES_A_PIXEL + channel - 1] & 0xFF;
     }
 
@@ -170,7 +170,7 @@ public final class ImageStorage extends ProtectableStorage {
     }
 
     /** A pixel as red, green, blue, alpha. */
-    public int[] readThePixelAt(int pixel) {
+    public int[] readPixelAt(int pixel) {
         int at = (pixel - 1) * BYTES_A_PIXEL;
         return new int[] {
                 pixels[at] & 0xFF, pixels[at + 1] & 0xFF,
@@ -201,7 +201,7 @@ public final class ImageStorage extends ProtectableStorage {
      */
     public boolean hasAlpha() {
         for (int pixel = 1; pixel <= length(); pixel++) {
-            if (readTheChannelAt(pixel, 4) != 0xFF) {
+            if (readChannelAt(pixel, 4) != 0xFF) {
                 return true;
             }
         }

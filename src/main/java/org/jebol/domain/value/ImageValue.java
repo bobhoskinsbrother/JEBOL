@@ -58,8 +58,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public Value readTheItemAt(int positionFromTheHead) {
-        int[] channels = storage.readThePixelAt(positionFromTheHead);
+    public Value readItemAt(int positionFromTheHead) {
+        int[] channels = storage.readPixelAt(positionFromTheHead);
         return TupleValue.of(channels[0], channels[1], channels[2], channels[3]);
     }
 
@@ -71,8 +71,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     @Override
     public RebolSeries reverseTheFront(int howMany) {
         for (int at = 0; at < howMany / 2; at++) {
-            int[] near = readThePixelAt(at + 1);
-            int[] far = readThePixelAt(howMany - at);
+            int[] near = readPixelAt(at + 1);
+            int[] far = readPixelAt(howMany - at);
             writePixel(at + 1, far);
             writePixel(howMany - at, near);
         }
@@ -103,7 +103,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     public List<Value> listTheItems() {
         List<Value> read = new ArrayList<>(lengthFromHere());
         for (int at = index; at <= storageLength(); at++) {
-            int[] channels = storage.readThePixelAt(at);
+            int[] channels = storage.readPixelAt(at);
             read.add(TupleValue.of(channels[0], channels[1], channels[2], channels[3]));
         }
         return List.copyOf(read);
@@ -308,8 +308,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return other instanceof ImageValue image && image.storage == storage;
     }
 
-    public int[] readThePixelAt(int offsetFromHere) {
-        return storage.readThePixelAt(index + offsetFromHere - 1);
+    public int[] readPixelAt(int offsetFromHere) {
+        return storage.readPixelAt(index + offsetFromHere - 1);
     }
 
     @Override
@@ -325,7 +325,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 : taking <= wideEnoughForARow ? 1 : taking / wideEnoughForARow;
         ImageStorage into = ImageStorage.of(wide, high);
         for (int at = 1; at <= wide * high; at++) {
-            int[] channels = readThePixelAt(at);
+            int[] channels = readPixelAt(at);
             into.setColourAt(at, channels[0], channels[1], channels[2]);
             into.setAlphaAt(at, channels[3]);
         }
@@ -382,7 +382,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         ImageStorage into = ImageStorage.of(columns, Math.max(rows, 0));
         for (int down = 0; down < rows; down++) {
             for (int across = 0; across < columns; across++) {
-                int[] pixel = storage.readThePixelAt(
+                int[] pixel = storage.readPixelAt(
                         ((row + down) * storage.wide()) + column + across + 1);
                 int at = (down * columns) + across + 1;
                 into.setColourAt(at, pixel[0], pixel[1], pixel[2]);
@@ -421,7 +421,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         if (oneBasedPixel < 1 || oneBasedPixel > storage.length()) {
             return false;
         }
-        int[] there = storage.readThePixelAt(oneBasedPixel);
+        int[] there = storage.readPixelAt(oneBasedPixel);
         if (wanted instanceof IntegerValue(long magnitude)) {
             return there[3] == ((int) magnitude & 0xFF);
         }
@@ -458,7 +458,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         for (int down = 0; down < rows; down++) {
             for (int across = 0; across < columns; across++) {
                 int[] pixel = rectangle.storage
-                        .readThePixelAt((down * rectangle.storage.wide()) + across + 1);
+                        .readPixelAt((down * rectangle.storage.wide()) + across + 1);
                 int into = ((row + down) * storage.wide()) + column + across + 1;
                 storage.setColourAt(into, pixel[0], pixel[1], pixel[2]);
                 storage.setAlphaAt(into, pixel[3]);
@@ -469,7 +469,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     private List<PixelWrite> collectEveryPixelOrNone(Value given, boolean colourOnly) {
         if (given instanceof BinaryValue bytes) {
-            return readTheBytesFourAtATime(bytes, colourOnly);
+            return readBytesFourAtTime(bytes, colourOnly);
         }
         List<Value> named = given instanceof BlockValue block
                 ? block.remaining()
@@ -496,7 +496,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return Optional.empty();
     }
 
-    private List<PixelWrite> readTheBytesFourAtATime(BinaryValue bytes, boolean colourOnly) {
+    private List<PixelWrite> readBytesFourAtTime(BinaryValue bytes, boolean colourOnly) {
         List<PixelWrite> pixels = new ArrayList<>();
         int howMany = bytes.lengthFromHere() / PARTS_OF_A_PIXEL;
         for (int pixel = 0; pixel < howMany; pixel++) {
@@ -525,7 +525,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     public byte[] copyEveryPixel() {
         byte[] octets = new byte[storageLength() * PARTS_OF_A_PIXEL];
         for (int pixel = 0; pixel < storageLength(); pixel++) {
-            int[] parts = readThePixelAt(pixel + 1);
+            int[] parts = readPixelAt(pixel + 1);
             for (int part = 0; part < PARTS_OF_A_PIXEL; part++) {
                 octets[pixel * PARTS_OF_A_PIXEL + part] = (byte) parts[part];
             }
@@ -548,7 +548,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return false;
         }
         for (int offset = 1; offset <= lengthFromHere(); offset++) {
-            if (!java.util.Arrays.equals(readThePixelAt(offset), image.readThePixelAt(offset))) {
+            if (!java.util.Arrays.equals(readPixelAt(offset), image.readPixelAt(offset))) {
                 return false;
             }
         }
@@ -559,7 +559,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     public int hashCode() {
         int hash = storage.wide() * 31 + storage.high();
         for (int offset = 1; offset <= lengthFromHere(); offset++) {
-            hash = hash * 31 + java.util.Arrays.hashCode(readThePixelAt(offset));
+            hash = hash * 31 + java.util.Arrays.hashCode(readPixelAt(offset));
         }
         return hash;
     }

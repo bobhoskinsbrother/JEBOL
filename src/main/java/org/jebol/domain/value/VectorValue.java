@@ -102,7 +102,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value readTheItemAt(int oneBasedIndex) {
+    public Value readItemAt(int oneBasedIndex) {
         return kind().read(storage.at(oneBasedIndex));
     }
 
@@ -126,12 +126,12 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     public List<Value> listTheRemaining() {
         List<Value> found = new ArrayList<>();
         for (int at = index; at <= storage.length(); at++) {
-            found.add(readTheItemAt(at));
+            found.add(readItemAt(at));
         }
         return found;
     }
 
-    public byte[] readTheOctetsFromHere() {
+    public byte[] readOctetsFromHere() {
         VectorKind kind = kind();
         byte[] octets = new byte[lengthFromHere() * kind.bytes()];
         int written = 0;

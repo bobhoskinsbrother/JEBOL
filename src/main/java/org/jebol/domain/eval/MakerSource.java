@@ -94,7 +94,7 @@ public interface MakerSource {
         }
 
         @Override
-        public AnyBlockValue readTheSource(String source) {
+        public AnyBlockValue readSource(String source) {
             throw Raised.cannotUseTheAction(StringValue.of(source), "to");
         }
     }

@@ -100,22 +100,22 @@ class PairValueTest {
 
         @Test
         void answersTheFirstHalfByPosition() {
-            assertThat(PairValue.of(1, 2).readTheHalfAt(1)).contains(DecimalValue.of(1.0d));
+            assertThat(PairValue.of(1, 2).readHalfAt(1)).contains(DecimalValue.of(1.0d));
         }
 
         @Test
         void answersTheSecondHalfByPosition() {
-            assertThat(PairValue.of(1, 2).readTheHalfAt(2)).contains(DecimalValue.of(2.0d));
+            assertThat(PairValue.of(1, 2).readHalfAt(2)).contains(DecimalValue.of(2.0d));
         }
 
         @Test
         void findsNoHalfBeforeTheFirst() {
-            assertThat(PairValue.of(1, 2).readTheHalfAt(0)).isEmpty();
+            assertThat(PairValue.of(1, 2).readHalfAt(0)).isEmpty();
         }
 
         @Test
         void findsNoHalfAfterTheSecond() {
-            assertThat(PairValue.of(1, 2).readTheHalfAt(3)).isEmpty();
+            assertThat(PairValue.of(1, 2).readHalfAt(3)).isEmpty();
         }
 
         @Test

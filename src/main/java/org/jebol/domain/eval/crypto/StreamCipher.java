@@ -28,7 +28,7 @@ public final class StreamCipher {
         return cipher;
     }
 
-    public int readTheNextKeystreamByte() {
+    public int readNextKeystreamByte() {
         takenSoFar = (takenSoFar + 1) % PERMUTATION_SIZE;
         swappedSoFar = (swappedSoFar + permutation[takenSoFar]) % PERMUTATION_SIZE;
         swap(takenSoFar, swappedSoFar);

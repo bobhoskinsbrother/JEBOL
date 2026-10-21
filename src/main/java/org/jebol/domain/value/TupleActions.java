@@ -49,8 +49,8 @@ public final class TupleActions {
 
         int[] answer = new int[width];
         for (int at = 1; at <= width; at++) {
-            long worked = work.against(ours.readTheOctetAt(at),
-                    theirs == null ? amount : theirs.readTheOctetAt(at), fractional);
+            long worked = work.against(ours.readOctetAt(at),
+                    theirs == null ? amount : theirs.readOctetAt(at), fractional);
             answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
         }
         return TupleValue.of(answer);

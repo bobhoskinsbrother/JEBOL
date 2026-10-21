@@ -64,10 +64,10 @@ final class BrotliCostModel {
             int which = firstCommand + step;
             int insertLength = commands.insertLengthAt(which);
             int copyLength = commands.copyLengthAt(which);
-            int commandSymbol = commands.readTheCommandPrefixAt(which);
+            int commandSymbol = commands.readCommandPrefixAt(which);
             commandSymbols[commandSymbol]++;
             if (commandSymbol >= 128) {
-                distances[commands.readTheDistancePrefixAt(which) & 0x3FF]++;
+                distances[commands.readDistancePrefixAt(which) & 0x3FF]++;
             }
             for (int each = 0; each < insertLength; each++) {
                 literals[data[(at + each) & mask] & 0xFF]++;

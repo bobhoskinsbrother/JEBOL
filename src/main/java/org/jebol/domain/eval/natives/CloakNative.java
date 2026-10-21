@@ -44,7 +44,7 @@ public abstract class CloakNative extends EncodingNative {
             }
             Value key = arguments.get(1);
             byte[] octets = data.octetsFromHere();
-            if (!encodings.cloak(decodes(), octets, readTheKeyBytesFor(key, refinements.contains("with")))) {
+            if (!encodings.cloak(decodes(), octets, readKeyBytesFor(key, refinements.contains("with")))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, key);
             }
             for (int at = 0; at < octets.length; at++) {
@@ -54,7 +54,7 @@ public abstract class CloakNative extends EncodingNative {
         };
     }
 
-    private byte[] readTheKeyBytesFor(Value key, boolean asItStands) {
+    private byte[] readKeyBytesFor(Value key, boolean asItStands) {
         return switch (key) {
             case IntegerValue(long magnitude) ->
                     encodings.hashTheKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));

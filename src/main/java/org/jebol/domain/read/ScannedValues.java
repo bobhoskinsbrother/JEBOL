@@ -731,7 +731,7 @@ final class ScannedValues {
         return accumulated;
     }
 
-    int readTheBinaryBase(int from, int length) {
+    int readBinaryBase(int from, int length) {
         int cp = from;
         int remaining = length;
         int base = 16;

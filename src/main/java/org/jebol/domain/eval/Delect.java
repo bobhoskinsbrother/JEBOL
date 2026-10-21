@@ -143,7 +143,7 @@ public final class Delect {
                     : 0;
 
             if (command <= 1) {
-                return readTheDialectsFirstFieldWhateverItIsNamed();
+                return readDialectsFirstFieldWhateverItIsNamed();
             }
             at++;
             return readNamedCommand(command, asALitWord, countTheArgumentsThatFollow());
@@ -167,7 +167,7 @@ public final class Delect {
             return findTheIndexOfCommand(word) > 1;
         }
 
-        private boolean readTheDialectsFirstFieldWhateverItIsNamed() {
+        private boolean readDialectsFirstFieldWhateverItIsNamed() {
             if (fields.isEmpty()) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, input);
             }

@@ -214,7 +214,7 @@ public final class Evaluator {
             return Optional.empty();
         }
         Value definition = systemContext.findSlotFor("system").value()
-                .readTheFieldValue("schemes").readTheFieldValue(name);
+                .readFieldValue("schemes").readFieldValue(name);
         return definition instanceof ObjectValue found
                 ? Optional.of(found)
                 : Optional.empty();
@@ -256,7 +256,7 @@ public final class Evaluator {
             return writtenInRebol.map(actor ->
                     askTheActor(actor, action, arguments, refinements));
         }
-        Value actor = port.readTheFieldValue("actor");
+        Value actor = port.readFieldValue("actor");
         if (actor instanceof ServesPortActions serves) {
             return serves.answers(action, arguments, refinements, this);
         }
@@ -845,7 +845,7 @@ public final class Evaluator {
                     PendingCall infix =
                             PendingCall.makeAnInfix(operator.orElseThrow(), carrying);
                     infix.startAt(wroteTheOperatorAt,
-                            readTheNameWrittenAt(frame, wroteTheOperatorAt, AN_OPERATOR_TAKES_NO_REFINEMENT));
+                            readNameWrittenAt(frame, wroteTheOperatorAt, AN_OPERATOR_TAKES_NO_REFINEMENT));
                     frame.pendingCalls.push(infix);
                     return;
                 }
@@ -989,7 +989,7 @@ public final class Evaluator {
             List<String> refinements, List<String> mentioned) {
         PendingCall call = PendingCall.prefix(callee, refinements, mentioned);
         call.startAt(frame.startedThisValueAt,
-                readTheNameWrittenAt(frame, frame.startedThisValueAt, mentioned.size()));
+                readNameWrittenAt(frame, frame.startedThisValueAt, mentioned.size()));
         if (needsNoArguments(call)) {
             frame.theCallNearAndWhereAreAbout = call;
             StepOutcome outcome = invoke(frame, call, frames);
@@ -1009,7 +1009,7 @@ public final class Evaluator {
 
     private static final int AN_OPERATOR_TAKES_NO_REFINEMENT = 0;
 
-    private String readTheNameWrittenAt(Frame frame, int position, int refinementsWritten) {
+    private String readNameWrittenAt(Frame frame, int position, int refinementsWritten) {
         if (position < frame.code.index() || position > frame.code.storageLength()) {
             return null;
         }
@@ -1370,7 +1370,7 @@ public final class Evaluator {
         if (segments.size() == 3 && segments.get(1) instanceof AnyWordValue pairField
                 && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof GobValue holdingPair
-                && GobPath.readTheField(holdingPair, pairField) instanceof PairValue half) {
+                && GobPath.readField(holdingPair, pairField) instanceof PairValue half) {
             GobPath.write(holdingPair, pairField, half.withHalfWritten(
                     makeTheSelectorFor(lastSegment, frame.context), written));
             return;

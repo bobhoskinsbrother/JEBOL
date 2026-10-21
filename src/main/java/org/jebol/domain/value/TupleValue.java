@@ -84,8 +84,8 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         TupleValue ceiling = (TupleValue) highest;
         int[] held = new int[segments.length];
         for (int at = 0; at < held.length; at++) {
-            held[at] = Math.max(floor.readTheOctetAt(at + 1),
-                    Math.min(ceiling.readTheOctetAt(at + 1), segments[at]));
+            held[at] = Math.max(floor.readOctetAt(at + 1),
+                    Math.min(ceiling.readOctetAt(at + 1), segments[at]));
         }
         return TupleValue.of(held);
     }
@@ -98,8 +98,8 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         int width = Math.max(segmentCount(), reached.segmentCount());
         int[] octets = new int[width];
         for (int at = 1; at <= width; at++) {
-            int from = readTheOctetAt(at);
-            octets[at - 1] = (int) (from + (reached.readTheOctetAt(at) - from) * fraction);
+            int from = readOctetAt(at);
+            octets[at - 1] = (int) (from + (reached.readOctetAt(at) - from) * fraction);
         }
         return TupleValue.of(octets);
     }
@@ -167,7 +167,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     public Value pick(int oneBasedPosition) {
         return oneBasedPosition < 1 || oneBasedPosition > shownCount()
                 ? NoneValue.none()
-                : IntegerValue.of(readTheOctetAt(oneBasedPosition));
+                : IntegerValue.of(readOctetAt(oneBasedPosition));
     }
 
     @Override
@@ -207,7 +207,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     /** An octet by position, counting from one, and zero past the kept ones. */
-    public int readTheOctetAt(int oneBasedPosition) {
+    public int readOctetAt(int oneBasedPosition) {
         return oneBasedPosition >= 1 && oneBasedPosition <= segments.length
                 ? segments[oneBasedPosition - 1]
                 : 0;
@@ -246,7 +246,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     private byte[] listTheShownOctets() {
         byte[] octets = new byte[shownCount()];
         for (int at = 0; at < octets.length; at++) {
-            octets[at] = (byte) readTheOctetAt(at + 1);
+            octets[at] = (byte) readOctetAt(at + 1);
         }
         return octets;
     }
@@ -370,7 +370,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     @Override
     public String toString() {
         return IntStream.rangeClosed(1, shownCount())
-                .mapToObj(position -> Integer.toString(readTheOctetAt(position)))
+                .mapToObj(position -> Integer.toString(readOctetAt(position)))
                 .collect(Collectors.joining("."));
     }
 }

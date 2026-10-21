@@ -42,7 +42,7 @@ public class NowNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             grantedServices.require(HostService.CLOCK);
             refuseMoreThanOneQuestion(refinements);
-            return takeThePartAskedFor(readTheClockAsAsked(refinements), refinements);
+            return takeThePartAskedFor(readClockAsAsked(refinements), refinements);
         };
     }
 
@@ -53,7 +53,7 @@ public class NowNative extends DefaultNative {
         }
     }
 
-    private ZonedDateTime readTheClockAsAsked(Set<String> refinements) {
+    private ZonedDateTime readClockAsAsked(Set<String> refinements) {
         ZonedDateTime here = ZonedDateTime.now();
         return refinements.contains("precise") ? here : here.withNano(0);
     }
