@@ -27,9 +27,9 @@ import java.util.Optional;
 
 public final class BootDeclarations {
 
-    private static final int A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK = 2;
+    private static final int HEADER_IS_WORD_REBOL_AND_ITS_BLOCK = 2;
 
-    private static final AnyBlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
+    private static final AnyBlockValue SPEC_EVERY_DATATYPE_TEST_HAS =
             BlockValue.of(List.of(
                     StringValue.of("Returns TRUE if it is this type."),
                     WordValue.of("value"),
@@ -52,7 +52,7 @@ public final class BootDeclarations {
             List<Value> values =
                     Transcoder.transcode(source).values().orElseThrow().remaining();
             return values.subList(
-                    Math.min(A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK, values.size()),
+                    Math.min(HEADER_IS_WORD_REBOL_AND_ITS_BLOCK, values.size()),
                     values.size());
         } catch (RuntimeException unreadable) {
             return List.of();
@@ -101,7 +101,7 @@ public final class BootDeclarations {
     }
 
     public AnyBlockValue makeSpecEveryDatatypeTestHas() {
-        return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
+        return SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 
     private Map<String, DatatypeSpec> readTheDatatypeSpecs() {

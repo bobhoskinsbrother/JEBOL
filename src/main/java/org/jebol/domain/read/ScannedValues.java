@@ -29,9 +29,9 @@ final class ScannedValues {
 
     private static final long MAX_HOUR = 9223372036L / 3600;
 
-    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
+    private static final long NANOSECONDS_IN_SECOND = 1_000_000_000L;
 
-    private static final long NANOSECONDS_IN_A_DAY = 24L * 60 * 60 * NANOSECONDS_IN_A_SECOND;
+    private static final long NANOSECONDS_IN_DAY = 24L * 60 * 60 * NANOSECONDS_IN_SECOND;
 
     private static final int ZONE_MINUTES = 15;
 
@@ -399,12 +399,12 @@ final class ScannedValues {
             if (part3 < 0) {
                 part3 = 0;
             }
-            nanoseconds = ((part1 * 60 + part2) * 60 + part3) * NANOSECONDS_IN_A_SECOND;
+            nanoseconds = ((part1 * 60 + part2) * 60 + part3) * NANOSECONDS_IN_SECOND;
         } else {
             if (meridian != 0) {
                 return Optional.empty();
             }
-            nanoseconds = (part1 * 60 + part2) * NANOSECONDS_IN_A_SECOND;
+            nanoseconds = (part1 * 60 + part2) * NANOSECONDS_IN_SECOND;
         }
         if (part4 > 0) {
             nanoseconds += part4;
@@ -523,7 +523,7 @@ final class ScannedValues {
                 }
                 time = scanATime(cp);
                 if (time.isEmpty() || time.get().nanoseconds() < 0
-                        || time.get().nanoseconds() >= NANOSECONDS_IN_A_DAY) {
+                        || time.get().nanoseconds() >= NANOSECONDS_IN_DAY) {
                     return Optional.empty();
                 }
                 cp = scannedTo;

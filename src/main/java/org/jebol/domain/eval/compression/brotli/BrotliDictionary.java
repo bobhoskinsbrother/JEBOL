@@ -11,7 +11,7 @@ final class BrotliDictionary {
 
     static final int MIN_WORD_LENGTH = 4;
 
-    static final int LONGEST_LENGTH_WITH_A_SLOT = 31;
+    static final int LONGEST_LENGTH_WITH_SLOT = 31;
 
     private static final int[] SIZE_BITS_BY_LENGTH = {
             0, 0, 0, 0, 10, 10, 11, 11,
@@ -59,7 +59,7 @@ final class BrotliDictionary {
     private static final int OMIT_FIRST_1 = 12;
     private static final int OMIT_FIRST_9 = 20;
 
-    private static final int[] A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH = {
+    private static final int[] PREFIX_PIECE_KIND_AND_SUFFIX_PIECE_EACH = {
             49, 0, 49, 49, 0, 0, 0, 0, 0, 49, 12, 49,
             49, 10, 0, 49, 0, 47, 0, 0, 49, 4, 0, 0,
             49, 0, 3, 49, 10, 49, 49, 0, 6, 49, 13, 49,
@@ -94,7 +94,7 @@ final class BrotliDictionary {
     };
 
     static final int TRANSFORM_COUNT =
-            A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH.length / 3;
+            PREFIX_PIECE_KIND_AND_SUFFIX_PIECE_EACH.length / 3;
 
     private static byte[] words;
 
@@ -111,7 +111,7 @@ final class BrotliDictionary {
     private static byte[] inflateWords() {
         StringBuilder joined = new StringBuilder();
         for (String piece
-                : DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT) {
+                : DEFLATED_WORDS_IN_PIECES_NONE_OVER_CLASS_FILE_STRING_LIMIT) {
             joined.append(piece.replace("\n", ""));
         }
         byte[] packed = Base64.getDecoder().decode(joined.toString());
@@ -139,7 +139,7 @@ final class BrotliDictionary {
     }
 
     private static final String[]
-            DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT = {
+            DEFLATED_WORDS_IN_PIECES_NONE_OVER_CLASS_FILE_STRING_LIMIT = {
             """
                     eNo8velyHMe1LvrbiOA7lNpni8Q20QBJTSYGB0dJ3hq4Bcq+2z4ORXZVdncB1VWtyiqATUkR4ICB4ABSnAXOMyUCIDhiIIGI\
                     wxeg/pH/FOeiuhsR9yHu962EbBkS0J2VlcMavrVyrZWJX9FeNBgGflEHupgUlNvvRp72VKJMORqMwqBm/ES7flKLqjrsS00S\
@@ -964,9 +964,9 @@ final class BrotliDictionary {
             int wordLength, int transform) {
 
         byte[] dictionary = readWords();
-        int prefix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3]];
-        int kind = A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 1];
-        int suffix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 2]];
+        int prefix = PIECE_STARTS[PREFIX_PIECE_KIND_AND_SUFFIX_PIECE_EACH[transform * 3]];
+        int kind = PREFIX_PIECE_KIND_AND_SUFFIX_PIECE_EACH[transform * 3 + 1];
+        int suffix = PIECE_STARTS[PREFIX_PIECE_KIND_AND_SUFFIX_PIECE_EACH[transform * 3 + 2]];
         int written = at;
         written = copyPiece(prefix, into, written);
         int from = wordAt;

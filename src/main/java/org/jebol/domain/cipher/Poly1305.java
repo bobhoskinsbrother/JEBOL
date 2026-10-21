@@ -10,9 +10,9 @@ public final class Poly1305 {
 
     public static final int KEY = 32;
     private static final int CHUNK = 16;
-    private static final BigInteger THE_PRIME_THE_ARITHMETIC_IS_DONE_MODULO =
+    private static final BigInteger PRIME_ARITHMETIC_IS_DONE_MODULO =
             BigInteger.TWO.pow(130).subtract(BigInteger.valueOf(5));
-    private static final BigInteger A_WHOLE_TAG = BigInteger.TWO.pow(128);
+    private static final BigInteger WHOLE_TAG = BigInteger.TWO.pow(128);
 
     /** The tag over a message, under a key that must be used once. */
     public static byte[] computeTag(byte[] key, byte[] message) {
@@ -22,11 +22,11 @@ public final class Poly1305 {
         for (int at = 0; at < message.length; at += CHUNK) {
             int howMany = Math.min(CHUNK, message.length - at);
             running = running.add(readChunk(message, at, howMany));
-            running = running.multiply(thePointThePolynomialIsEvaluatedAt).mod(THE_PRIME_THE_ARITHMETIC_IS_DONE_MODULO);
+            running = running.multiply(thePointThePolynomialIsEvaluatedAt).mod(PRIME_ARITHMETIC_IS_DONE_MODULO);
         }
         return writeSixteenLittleEndianOctets(
                 running.add(addedAtTheEndSoTheAnswerCannotBeWorkedBackwards)
-                        .mod(A_WHOLE_TAG));
+                        .mod(WHOLE_TAG));
     }
 
     private static BigInteger clampPoint(byte[] key) {

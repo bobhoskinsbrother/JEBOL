@@ -26,8 +26,8 @@ final class BrotliCodes {
 
     private static final int[] SHELL_GAPS = {132, 57, 23, 10, 4, 1};
 
-    private static final int BITS_SAYING_THE_CODE_LENGTHS_USE_THE_FIXED_CODE = 40;
-    private static final long THE_CODE_LENGTHS_USE_THE_FIXED_CODE =
+    private static final int BITS_SAYING_CODE_LENGTHS_USE_FIXED_CODE = 40;
+    private static final long CODE_LENGTHS_USE_FIXED_CODE =
             0x000000FF55555554L;
 
     private static final int[] ZERO_RUN_WIDTH = new int[COMMAND_SYMBOLS];
@@ -130,7 +130,7 @@ final class BrotliCodes {
     }
 
     /** Computing these instead of copying them changes the bytes. */
-    private static final double[] LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN = {
+    private static final double[] LOG_2_AS_CS_FLOAT_LITERALS_WIDEN = {
             0.0, 0.0, 1.0, 1.5849624872207642,
             2.0, 2.321928024291992, 2.5849626064300537, 2.8073549270629883,
             3.0, 3.1699249744415283, 3.321928024291992, 3.4594316482543945,
@@ -198,8 +198,8 @@ final class BrotliCodes {
     };
 
     static double computeLog2Quickly(long value) {
-        if (value < LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN.length) {
-            return LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN[(int) value];
+        if (value < LOG_2_AS_CS_FLOAT_LITERALS_WIDEN.length) {
+            return LOG_2_AS_CS_FLOAT_LITERALS_WIDEN[(int) value];
         }
         return BrotliLog2.of(value);
     }
@@ -586,8 +586,8 @@ final class BrotliCodes {
             return;
         }
 
-        into.write(BITS_SAYING_THE_CODE_LENGTHS_USE_THE_FIXED_CODE,
-                THE_CODE_LENGTHS_USE_THE_FIXED_CODE);
+        into.write(BITS_SAYING_CODE_LENGTHS_USE_FIXED_CODE,
+                CODE_LENGTHS_USE_FIXED_CODE);
         int previousValue = INITIAL_REPEATED_CODE_LENGTH;
         int at = 0;
         while (at < length) {

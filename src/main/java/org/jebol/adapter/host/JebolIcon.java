@@ -13,7 +13,7 @@ final class JebolIcon {
 
     static final String APPLICATION_NAME = "JEBOL";
 
-    private static final String THE_MARK = "J";
+    private static final String MARK = "J";
 
     private static final Color TOP_OF_TILE = new Color(250, 214, 92);
     private static final Color FOOT_OF_TILE = new Color(222, 122, 40);
@@ -54,12 +54,12 @@ final class JebolIcon {
     private void drawIcon(Graphics2D onto, int size) {
         onto.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(1, (int) (size * ICON_PERCENTAGE))));
         FontMetrics measured = onto.getFontMetrics();
-        float across = (size - measured.stringWidth(THE_MARK)) / 2f;
+        float across = (size - measured.stringWidth(MARK)) / 2f;
         float baseline = (size - measured.getAscent() - measured.getDescent()) / 2f + measured.getAscent();
         float shadowFalls = (float) Math.max(1, size * SHADOW_PERCENTAGE);
         onto.setColor(LOGO_SHADOW);
-        onto.drawString(THE_MARK, across + shadowFalls, baseline + shadowFalls);
+        onto.drawString(MARK, across + shadowFalls, baseline + shadowFalls);
         onto.setColor(LOGO_COLOUR);
-        onto.drawString(THE_MARK, across, baseline);
+        onto.drawString(MARK, across, baseline);
     }
 }

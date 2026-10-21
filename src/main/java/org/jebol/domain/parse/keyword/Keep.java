@@ -12,8 +12,8 @@ import java.util.List;
 
 final class Keep extends DeclaredKeyword {
 
-    private static final String ONE_AT_A_TIME = "pick";
-    private static final String THE_WHOLE_SLICE = "copy";
+    private static final String ONE_AT_TIME = "pick";
+    private static final String WHOLE_SLICE = "copy";
 
     Keep() {
         super("keep", 0, true, WhenNothingFollowsIt.RAISES_PARSE_END);
@@ -30,7 +30,7 @@ final class Keep extends DeclaredKeyword {
         if (saysOneAtTime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
-        if (isWord(kept, THE_WHOLE_SLICE)) {
+        if (isWord(kept, WHOLE_SLICE)) {
             return keepCapture(walk, rules, at + 1);
         }
         return keepWhatTheRuleMatched(walk, rules, at);
@@ -47,7 +47,7 @@ final class Keep extends DeclaredKeyword {
         if (saysOneAtTime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
-        boolean wholeSlice = isWord(kept, THE_WHOLE_SLICE);
+        boolean wholeSlice = isWord(kept, WHOLE_SLICE);
         int before = walk.position();
         if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
@@ -117,7 +117,7 @@ final class Keep extends DeclaredKeyword {
     }
 
     private static boolean saysOneAtTime(Value kept) {
-        return isWord(kept, ONE_AT_A_TIME);
+        return isWord(kept, ONE_AT_TIME);
     }
 
     private static boolean isWord(Value kept, String spelling) {

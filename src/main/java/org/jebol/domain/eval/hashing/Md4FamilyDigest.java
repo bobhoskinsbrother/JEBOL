@@ -3,8 +3,8 @@ package org.jebol.domain.eval.hashing;
 abstract class Md4FamilyDigest {
 
     private static final int BLOCK_BYTES = 64;
-    private static final int WORDS_IN_A_BLOCK = 16;
-    private static final int ROOM_FOR_THE_END_MARK_AND_THE_LENGTH = 9;
+    private static final int WORDS_IN_BLOCK = 16;
+    private static final int ROOM_FOR_END_MARK_AND_LENGTH = 9;
 
     private final EndianOctets octets = new EndianOctets();
 
@@ -15,9 +15,9 @@ abstract class Md4FamilyDigest {
     public byte[] of(byte[] message) {
         int[] words = startingWords();
         byte[] padded = pad(message);
-        int[] block = new int[WORDS_IN_A_BLOCK];
+        int[] block = new int[WORDS_IN_BLOCK];
         for (int at = 0; at < padded.length; at += BLOCK_BYTES) {
-            for (int word = 0; word < WORDS_IN_A_BLOCK; word++) {
+            for (int word = 0; word < WORDS_IN_BLOCK; word++) {
                 block[word] = octets.readLittleEndianWordAt(padded, at + word * 4);
             }
             compress(words, block);
@@ -26,7 +26,7 @@ abstract class Md4FamilyDigest {
     }
 
     private byte[] pad(byte[] message) {
-        int blocks = (message.length + ROOM_FOR_THE_END_MARK_AND_THE_LENGTH + BLOCK_BYTES - 1)
+        int blocks = (message.length + ROOM_FOR_END_MARK_AND_LENGTH + BLOCK_BYTES - 1)
                 / BLOCK_BYTES;
         byte[] padded = new byte[blocks * BLOCK_BYTES];
         System.arraycopy(message, 0, padded, 0, message.length);

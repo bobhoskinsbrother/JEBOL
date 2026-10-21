@@ -6,7 +6,7 @@ import org.jebol.domain.render.TextMeasurement;
 
 public final class DefaultFont {
 
-    private static final String WHERE_THE_CARRIED_FONT_IS =
+    private static final String WHERE_CARRIED_FONT_IS =
             "/org/jebol/fonts/NotoSans-Regular.ttf";
 
     private final byte[] bytes;
@@ -19,10 +19,10 @@ public final class DefaultFont {
 
     public static DefaultFont readFrom(FilePort files) {
         try {
-            return new DefaultFont(files.readBytes(WHERE_THE_CARRIED_FONT_IS));
+            return new DefaultFont(files.readBytes(WHERE_CARRIED_FONT_IS));
         } catch (FilePort.Denied missing) {
             throw new IllegalStateException(
-                    WHERE_THE_CARRIED_FONT_IS + " is missing from the build", missing);
+                    WHERE_CARRIED_FONT_IS + " is missing from the build", missing);
         }
     }
 

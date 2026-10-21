@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class ThrowNative extends DefaultNative {
 
-    private static final int WHERE_THE_NAME_ARRIVES = 1;
+    private static final int WHERE_NAME_ARRIVES = 1;
 
     @Override
     public String nativeName() {
@@ -30,9 +30,9 @@ public class ThrowNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (refinements.contains("name") && arguments.size() > WHERE_THE_NAME_ARRIVES) {
+            if (refinements.contains("name") && arguments.size() > WHERE_NAME_ARRIVES) {
                 throw new ThrownSignal(arguments.getFirst(),
-                        ((AnyWordValue) arguments.get(WHERE_THE_NAME_ARRIVES)).canonical());
+                        ((AnyWordValue) arguments.get(WHERE_NAME_ARRIVES)).canonical());
             }
             throw new ThrownSignal(arguments.getFirst());
         };

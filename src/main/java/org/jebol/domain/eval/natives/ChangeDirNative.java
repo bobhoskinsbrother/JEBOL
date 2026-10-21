@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class ChangeDirNative extends HostNative {
 
-    private static final String WHERE_A_SHELL_SAYS_IT_IS_STANDING = "PWD";
+    private static final String WHERE_SHELL_SAYS_IT_IS_STANDING = "PWD";
 
     public ChangeDirNative(GrantedServices granted) {
         super(granted);
@@ -45,7 +45,7 @@ public class ChangeDirNative extends HostNative {
     private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
         if (granted.allow(HostService.ENVIRONMENT)) {
             evaluator.ports().environment().assign(
-                    WHERE_A_SHELL_SAYS_IT_IS_STANDING, evaluator.ports().files().workingDirectory());
+                    WHERE_SHELL_SAYS_IT_IS_STANDING, evaluator.ports().files().workingDirectory());
         }
     }
 }

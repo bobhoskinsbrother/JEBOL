@@ -27,7 +27,7 @@ public record PaintState(
     }
 
     /** What a draw block starts with: a black line one pixel wide, no fill. */
-    public static final PaintState AT_THE_START = new PaintState(
+    public static final PaintState AT_START = new PaintState(
             Optional.of(Colour.BLACK), Optional.empty(), 1,
             LineCap.BUTT, LineJoin.MITER, FillRule.NON_ZERO, true,
             List.of(), Optional.empty(), ArrowEnds.NEITHER);

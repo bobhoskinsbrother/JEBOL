@@ -13,14 +13,14 @@ final class JulianDay {
     private JulianDay() {
     }
 
-    private static final long NOON_GIVEN_TO_A_DATE_WITH_NO_CLOCK =
+    private static final long NOON_GIVEN_TO_DATE_WITH_NO_CLOCK =
             12L * 3600 * TimeValue.NANOSECONDS_PER_SECOND;
 
-    private static final int WIDEST_YEAR_A_DATE_HOLDS = 0x3fff;
+    private static final int WIDEST_YEAR_DATE_HOLDS = 0x3fff;
 
     static double countFromNoon(DateValue date) {
         long nanoseconds = date.timeOfDay().isEmpty()
-                ? NOON_GIVEN_TO_A_DATE_WITH_NO_CLOCK
+                ? NOON_GIVEN_TO_DATE_WITH_NO_CLOCK
                 : date.nanosecondsInUniversalTime();
         long seconds = Math.abs(nanoseconds) / TimeValue.NANOSECONDS_PER_SECOND;
         long hours = seconds / 3600;
@@ -83,7 +83,7 @@ final class JulianDay {
     }
 
     private static LocalDate rollDayOver(int year, int month, int day) {
-        if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
+        if (year < 0 || year > WIDEST_YEAR_DATE_HOLDS) {
             throw refuseUnreachableYear();
         }
         try {

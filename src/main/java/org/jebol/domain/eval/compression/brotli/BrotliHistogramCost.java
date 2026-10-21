@@ -9,7 +9,7 @@ final class BrotliHistogramCost {
 
     private static final int CODE_LENGTH_CODES = 18;
     private static final int REPEAT_ZERO_CODE_LENGTH = 17;
-    private static final int DEEPEST_A_SYMBOL_MAY_SIT = 15;
+    private static final int DEEPEST_SYMBOL_MAY_SIT = 15;
 
     private BrotliHistogramCost() {
     }
@@ -83,8 +83,8 @@ final class BrotliHistogramCost {
                 double surprise = logOfTotal - BrotliCodes.computeLog2Quickly(counts[symbol]);
                 int depth = (int) (surprise + 0.5);
                 bits += counts[symbol] * surprise;
-                if (depth > DEEPEST_A_SYMBOL_MAY_SIT) {
-                    depth = DEEPEST_A_SYMBOL_MAY_SIT;
+                if (depth > DEEPEST_SYMBOL_MAY_SIT) {
+                    depth = DEEPEST_SYMBOL_MAY_SIT;
                 }
                 if (depth > deepest) {
                     deepest = depth;

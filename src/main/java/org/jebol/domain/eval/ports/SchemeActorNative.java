@@ -8,13 +8,13 @@ import java.util.Set;
 
 public final class SchemeActorNative extends DefaultNative {
 
-    private static final String THE_ARGUMENT_NOTHING_CAN_FILL = "internal";
+    private static final String ARGUMENT_NOTHING_CAN_FILL = "internal";
 
     private final String scheme;
 
     public SchemeActorNative(String scheme) {
         this.scheme = scheme;
-        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL))),
+        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(ARGUMENT_NOTHING_CAN_FILL))),
                 parametersAsWritten());
     }
 
@@ -25,7 +25,7 @@ public final class SchemeActorNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
+        return List.of(Parameter.of(ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
     }
 
     @Override

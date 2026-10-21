@@ -33,7 +33,7 @@ public class ForNative extends LoopingNative {
                 Parameter.of("start"),
                 Parameter.of("end"),
                 Parameter.of("step"),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

@@ -23,7 +23,7 @@ import static java.awt.Font.*;
 public final class Java2DSurface implements Surface {
 
     private static final int OPAQUE = Placement.OPAQUE;
-    private static final float THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
+    private static final float MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
 
     public static Font faceFrom(byte[] font) {
         try {
@@ -96,7 +96,7 @@ public final class Java2DSurface implements Surface {
         try {
             graphics.transform(convertToAwtTransform(transform(command)));
             target.clip(graphics.getTransform().createTransformedShape(
-                    buildPath(command.where().clipShape(), PaintState.AT_THE_START.fillRule())));
+                    buildPath(command.where().clipShape(), PaintState.AT_START.fillRule())));
         } finally {
             graphics.dispose();
         }
@@ -159,7 +159,7 @@ public final class Java2DSurface implements Surface {
     private void write(Graphics2D onto, DrawingCommand.Text text) {
         PlacedText placed = text.text();
         if (!placed.selection().isEmpty()) {
-            onto.setColor(convertToAwtColour(PlacedText.THE_COLOUR_A_SELECTION_IS_MARKED_IN));
+            onto.setColor(convertToAwtColour(PlacedText.COLOUR_SELECTION_IS_MARKED_IN));
             for (PlacedText.PlacedPatch patch : placed.selection()) {
                 fillBetween(onto, patch.across(), patch.top(),
                         patch.across() + patch.wide(), patch.top() + patch.high());
@@ -287,7 +287,7 @@ public final class Java2DSurface implements Surface {
             dashes[at] = (float) Math.max(0.01, painted.dashes().get(at));
         }
         return new BasicStroke((float) painted.lineWidth(), cap, join,
-                THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT, dashes, 0);
+                MITRE_LIMIT_BOTH_TOOLKITS_START_AT, dashes, 0);
     }
 
     private  AffineTransform convertToAwtTransform(Transform transform) {

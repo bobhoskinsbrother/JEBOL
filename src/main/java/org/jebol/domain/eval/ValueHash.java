@@ -32,15 +32,15 @@ public final class ValueHash {
 
     private static final long NO_TIME = Long.MIN_VALUE;
 
-    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
+    private static final long NANOSECONDS_IN_SECOND = 1_000_000_000L;
 
-    private static final long NANOSECONDS_IN_A_MINUTE = 60 * NANOSECONDS_IN_A_SECOND;
+    private static final long NANOSECONDS_IN_MINUTE = 60 * NANOSECONDS_IN_SECOND;
 
     private static final int ZONE_MINUTES_PER_STEP = 15;
 
     private static final int LOGIC_BASE = 2;
 
-    private static final int TUPLE_BYTES_IN_A_WORD = 4;
+    private static final int TUPLE_BYTES_IN_WORD = 4;
 
     private static final int CRC_INITIAL_SHIFT = 16;
 
@@ -124,13 +124,13 @@ public final class ValueHash {
     }
 
     private int ofTime(long nanoseconds) {
-        return (int) (nanoseconds ^ (nanoseconds / NANOSECONDS_IN_A_SECOND));
+        return (int) (nanoseconds ^ (nanoseconds / NANOSECONDS_IN_SECOND));
     }
 
     private int ofDate(DateValue date) {
         int zoneMinutes = date.zoneMinutes().orElse(0);
         long time = date.timeOfDay()
-                .map(local -> local.nanoseconds() - zoneMinutes * NANOSECONDS_IN_A_MINUTE)
+                .map(local -> local.nanoseconds() - zoneMinutes * NANOSECONDS_IN_MINUTE)
                 .orElse(NO_TIME);
         int zoneSteps = zoneMinutes / ZONE_MINUTES_PER_STEP;
         int bits = (zoneSteps & 0x7F)
@@ -141,7 +141,7 @@ public final class ValueHash {
     }
 
     private int ofTuple(int[] segments) {
-        if (segments.length > TUPLE_BYTES_IN_A_WORD) {
+        if (segments.length > TUPLE_BYTES_IN_WORD) {
             byte[] bytes = new byte[segments.length];
             for (int at = 0; at < segments.length; at++) {
                 bytes[at] = (byte) segments[at];
@@ -157,8 +157,8 @@ public final class ValueHash {
 
     private int hashWithMurmur(byte[] bytes) {
         int hash = 0;
-        int whole = bytes.length / TUPLE_BYTES_IN_A_WORD * TUPLE_BYTES_IN_A_WORD;
-        for (int at = 0; at < whole; at += TUPLE_BYTES_IN_A_WORD) {
+        int whole = bytes.length / TUPLE_BYTES_IN_WORD * TUPLE_BYTES_IN_WORD;
+        for (int at = 0; at < whole; at += TUPLE_BYTES_IN_WORD) {
             hash = mixBlock(hash, (bytes[at] & 0xFF) | (bytes[at + 1] & 0xFF) << 8
                     | (bytes[at + 2] & 0xFF) << 16 | (bytes[at + 3] & 0xFF) << 24);
         }

@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class ConstructNative extends DefaultNative {
 
-    private static final int WHERE_THE_PROTOTYPE_ARRIVES = 1;
+    private static final int WHERE_PROTOTYPE_ARRIVES = 1;
 
     @Override
     public String nativeName() {
@@ -39,8 +39,8 @@ public class ConstructNative extends DefaultNative {
             List<Value> items = listTheItemsOf(arguments.getFirst());
             refuseAnyFieldSpeltLikeItsOwnSelf(built, items);
             if (refinements.contains("with")
-                    && arguments.size() > WHERE_THE_PROTOTYPE_ARRIVES
-                    && arguments.get(WHERE_THE_PROTOTYPE_ARRIVES)
+                    && arguments.size() > WHERE_PROTOTYPE_ARRIVES
+                    && arguments.get(WHERE_PROTOTYPE_ARRIVES)
                             instanceof ObjectValue(Context prototype)) {
                 prototype.listTheFieldsExceptSelf().forEach(built::register);
             }

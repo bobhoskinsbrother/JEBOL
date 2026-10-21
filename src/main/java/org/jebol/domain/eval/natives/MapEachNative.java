@@ -23,8 +23,8 @@ public class MapEachNative extends LoopingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.quoteSoftly("word"),
-                Parameter.of("series", A_BLOCK),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("series", BLOCK),
+                Parameter.of("body", BLOCK));
     }
 
     @Override

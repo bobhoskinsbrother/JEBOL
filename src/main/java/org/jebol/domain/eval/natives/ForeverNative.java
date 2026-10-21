@@ -15,7 +15,7 @@ public class ForeverNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of("body", A_BLOCK));
+        return List.of(Parameter.of("body", BLOCK));
     }
 
     @Override

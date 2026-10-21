@@ -13,7 +13,7 @@ public class UnfilterNative extends PngFilterNative {
 
     private static final int EACH_LINE_NAMES_ITS_OWN_FILTER = -1;
 
-    private static final int THE_BYTE_NAMING_THE_FILTER = 1;
+    private static final int BYTE_NAMING_FILTER = 1;
 
     public UnfilterNative(Encodings encodings) {
         super(encodings);
@@ -44,7 +44,7 @@ public class UnfilterNative extends PngFilterNative {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
             int width = readWidthIn(arguments.get(1));
             boolean filterGiven = refinements.contains("as");
-            requireLinesFit(filterGiven ? width : width + THE_BYTE_NAMING_THE_FILTER,
+            requireLinesFit(filterGiven ? width : width + BYTE_NAMING_FILTER,
                     data.length, arguments, refinements);
             int filter = readTheArgumentOf("as", 0, arguments, refinements)
                     .map(this::readFilterNamedBy)

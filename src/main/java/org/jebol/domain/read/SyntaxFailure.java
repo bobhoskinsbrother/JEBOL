@@ -27,7 +27,7 @@ public enum SyntaxFailure {
     OVERFLOW(ErrorCategory.MATH, "overflow", "a decimal too large to hold"),
     INVALID_ARG(ErrorCategory.SCRIPT, "invalid-arg",
             "a map literal whose keys and values do not pair up"),
-    NESTED_PAST_THE_STACK(ErrorCategory.INTERNAL, "stack-overflow",
+    NESTED_PAST_STACK(ErrorCategory.INTERNAL, "stack-overflow",
             "blocks nested deeper than the reader accepts"),
     NEEDS("needs", "a script whose needs: header this interpreter does not meet"),
     PAST_END(ErrorCategory.SCRIPT, "past-end",

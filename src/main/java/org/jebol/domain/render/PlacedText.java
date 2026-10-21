@@ -34,7 +34,7 @@ public record PlacedText(
     public record PlacedShadow(int across, int down, Colour colour) {
     }
 
-    public static final Colour THE_COLOUR_A_SELECTION_IS_MARKED_IN = new Colour(170, 200, 245);
+    public static final Colour COLOUR_SELECTION_IS_MARKED_IN = new Colour(170, 200, 245);
 
     private static final double THE_WIDTH_OF_A_CARET = 1;
 

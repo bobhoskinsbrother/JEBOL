@@ -11,14 +11,14 @@ import java.io.IOException;
 
 public final class JavaClipboard implements ClipboardPort {
 
-    private static final String NOTHING_A_SCRIPT_CAN_READ = "";
+    private static final String NOTHING_SCRIPT_CAN_READ = "";
 
     @Override
     public String read() {
         Clipboard clipboard = systemClipboard();
         try {
             if (!clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
-                return NOTHING_A_SCRIPT_CAN_READ;
+                return NOTHING_SCRIPT_CAN_READ;
             }
             return (String) clipboard.getData(DataFlavor.stringFlavor);
         } catch (UnsupportedFlavorException | IOException | IllegalStateException

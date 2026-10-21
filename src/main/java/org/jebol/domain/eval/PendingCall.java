@@ -63,7 +63,7 @@ final class PendingCall {
             return Optional.of(calledThrough);
         }
         return callee instanceof AnyFunctionValue
-                ? Optional.of(AN_UNNAMED_CALL)
+                ? Optional.of(UNNAMED_CALL)
                 : Optional.empty();
     }
 
@@ -77,10 +77,10 @@ final class PendingCall {
     }
 
     String nameInArgumentError() {
-        return calledThrough != null ? calledThrough : AN_UNNAMED_CALL;
+        return calledThrough != null ? calledThrough : UNNAMED_CALL;
     }
 
-    private static final String AN_UNNAMED_CALL = "-unnamed-";
+    private static final String UNNAMED_CALL = "-unnamed-";
 
     private List<Parameter> consuming;
 

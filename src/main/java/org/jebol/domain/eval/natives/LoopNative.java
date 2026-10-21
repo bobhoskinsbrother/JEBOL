@@ -20,7 +20,7 @@ public class LoopNative extends LoopingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("count", TypesetValue.NUMBER.members()),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

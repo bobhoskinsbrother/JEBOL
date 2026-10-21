@@ -17,8 +17,8 @@ public class WhileNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of("condition", A_BLOCK),
-                Parameter.of("body", A_BLOCK));
+        return List.of(Parameter.of("condition", BLOCK),
+                Parameter.of("body", BLOCK));
     }
 
     @Override

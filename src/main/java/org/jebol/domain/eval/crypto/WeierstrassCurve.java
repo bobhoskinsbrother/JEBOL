@@ -177,11 +177,11 @@ final class WeierstrassCurve {
         return written;
     }
 
-    private static final Map<String, WeierstrassCurve> THE_ONES_THE_JDK_DROPPED =
+    private static final Map<String, WeierstrassCurve> ONES_JDK_DROPPED =
             listOnesJdkDropped();
 
     static Optional<WeierstrassCurve> findTheCurveNamed(String curve) {
-        return Optional.ofNullable(THE_ONES_THE_JDK_DROPPED.get(curve));
+        return Optional.ofNullable(ONES_JDK_DROPPED.get(curve));
     }
 
     private static Map<String, WeierstrassCurve> listOnesJdkDropped() {
@@ -258,6 +258,6 @@ final class WeierstrassCurve {
     }
 
     static java.util.Set<String> namesCarriedHere() {
-        return THE_ONES_THE_JDK_DROPPED.keySet();
+        return ONES_JDK_DROPPED.keySet();
     }
 }

@@ -10,7 +10,7 @@ final class BrotliContext {
     static final int UTF8 = 2;
     static final int SIGNED = 3;
 
-    private static final int[] UTF8_FROM_THE_LAST_BYTE = {
+    private static final int[] UTF8_FROM_LAST_BYTE = {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 4, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 12, 16, 12, 12, 20, 12, 16,
             24, 28, 12, 12, 32, 12, 36, 12, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 32, 32,
@@ -26,7 +26,7 @@ final class BrotliContext {
             2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3,
     };
 
-    private static final int[] UTF8_FROM_THE_BYTE_BEFORE = {
+    private static final int[] UTF8_FROM_BYTE_BEFORE = {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1,
@@ -68,8 +68,8 @@ final class BrotliContext {
         return switch (mode) {
             case LOW_SIX_BITS -> previous & 63;
             case HIGH_SIX_BITS -> previous >> 2;
-            case UTF8 -> UTF8_FROM_THE_LAST_BYTE[previous]
-                    | UTF8_FROM_THE_BYTE_BEFORE[beforeThat];
+            case UTF8 -> UTF8_FROM_LAST_BYTE[previous]
+                    | UTF8_FROM_BYTE_BEFORE[beforeThat];
             default -> (measureTheMagnitudeOf(previous) << 3) | measureTheMagnitudeOf(beforeThat);
         };
     }

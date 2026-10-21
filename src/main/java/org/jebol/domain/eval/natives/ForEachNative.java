@@ -28,7 +28,7 @@ public class ForEachNative extends LoopingNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.quoteSoftly("target"),
                 Parameter.of("series"),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

@@ -18,7 +18,7 @@ public class AtzAction extends SeriesOrFileAction {
 
     private static final boolean COUNTING_FROM_NOUGHT = false;
 
-    private static final int THE_HEAD_IS_ONE = 1;
+    private static final int HEAD_IS_ONE = 1;
 
     public AtzAction(GrantedServices granted) {
         super(granted);
@@ -50,6 +50,6 @@ public class AtzAction extends SeriesOrFileAction {
 
     private long findWhereItStands(RebolSeries series, Value position) {
         boolean aLogicCountsAsAtDoes = position instanceof LogicValue;
-        return series.findPositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
+        return series.findPositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + HEAD_IS_ONE;
     }
 }

@@ -12,9 +12,9 @@ import java.util.Set;
 
 public class ImageNative extends DefaultNative {
 
-    private static final int THE_FIRST_FRAME = 1;
+    private static final int FIRST_FRAME = 1;
 
-    private static final String THE_CODEC_NOBODY_NAMED_IS = "png";
+    private static final String CODEC_NOBODY_NAMED_IS = "png";
 
     @Override
     public String nativeName() {
@@ -73,7 +73,7 @@ public class ImageNative extends DefaultNative {
         int which = readTheArgumentOf("frame", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(frame -> (int) ((IntegerValue) frame).magnitude())
-                .orElse(THE_FIRST_FRAME);
+                .orElse(FIRST_FRAME);
         return decodeWithTheCodec(source, type, which, evaluator)
                 .map(this::makeAnImageOf)
                 .orElseThrow(() -> source instanceof BinaryValue
@@ -112,7 +112,7 @@ public class ImageNative extends DefaultNative {
 
         String type = Optional.of(readTheCodecName(arguments, evaluator, refinements))
                 .filter(named -> !named.isEmpty())
-                .orElse(THE_CODEC_NOBODY_NAMED_IS);
+                .orElse(CODEC_NOBODY_NAMED_IS);
         Value destination = readTheArgumentOf("save", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
         Value given = readTheArgumentOf("save", 1, arguments, refinements)

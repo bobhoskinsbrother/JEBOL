@@ -7,7 +7,7 @@ public final class CounterWithCbcMac {
     private static final int BLOCK = 16;
     private static final int SHORTEST_NONCE = 7;
     private static final int LONGEST_NONCE = 13;
-    private static final int WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER = 0xFF00;
+    private static final int WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_HEADER = 0xFF00;
     private static final Sealed NOTHING = new Sealed(new byte[0], false);
 
     private final JoinedOctets joined = new JoinedOctets();
@@ -140,7 +140,7 @@ public final class CounterWithCbcMac {
     }
 
     private byte[] writeHeadersLength(int octets) {
-        if (octets < WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER) {
+        if (octets < WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_HEADER) {
             return new byte[] {(byte) (octets >>> 8), (byte) octets};
         }
         byte[] written = new byte[6];

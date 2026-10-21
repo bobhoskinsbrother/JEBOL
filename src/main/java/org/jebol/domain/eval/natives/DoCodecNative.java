@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class DoCodecNative extends DefaultNative {
 
-    private static final String A_CODEC = "codec";
+    private static final String CODEC = "codec";
 
     private final Codecs codecs;
 
@@ -38,7 +38,7 @@ public class DoCodecNative extends DefaultNative {
     }
 
     private Value runCodec(HandleValue handle, AnyWordValue action, Value data) {
-        if (!handle.typeName().equals(A_CODEC)) {
+        if (!handle.typeName().equals(CODEC)) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
         }

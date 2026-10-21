@@ -19,7 +19,7 @@ import java.util.Optional;
 
 public abstract class QueriedFields {
 
-    private static final String THE_NAMES_THEMSELVES = "words";
+    private static final String NAMES_THEMSELVES = "words";
 
     protected abstract List<String> names();
 
@@ -41,7 +41,7 @@ public abstract class QueriedFields {
 
     public Value answer(Value field, Evaluator evaluator) {
         return switch (field) {
-            case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
+            case AnyWordValue asked when asked.canonical().equals(NAMES_THEMSELVES)
                     && answersItsNames() -> listNames();
             case AnyWordValue asked -> findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerUnknownAlone(asked));
             case AnyBlockValue several -> answerEachOf(several);

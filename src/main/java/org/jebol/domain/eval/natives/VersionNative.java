@@ -15,15 +15,15 @@ public class VersionNative extends DefaultNative {
 
     private static final int[] VERSION_PARTS = {3, 22, 5};
 
-    private static final String THE_LANGUAGE = "Rebol";
+    private static final String LANGUAGE = "Rebol";
 
     private static final String BETWEEN_LANGUAGE_AND_PRODUCT = "/";
 
     private static final String BETWEEN_FIELDS = " ";
 
-    private static final String AN_UNKNOWN_FIELD = "none";
+    private static final String UNKNOWN_FIELD = "none";
 
-    private static final int BUILD_FIELDS_ONLY_A_C_BUILD_KNOWS = 11;
+    private static final int BUILD_FIELDS_ONLY_C_BUILD_KNOWS = 11;
 
     @Override
     public String nativeName() {
@@ -44,7 +44,7 @@ public class VersionNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> StringValue.of(refinements.contains("data")
                 ? describeLoadably(evaluator)
-                : THE_LANGUAGE + BETWEEN_LANGUAGE_AND_PRODUCT + readWhatTheSystemSays(evaluator, "product")
+                : LANGUAGE + BETWEEN_LANGUAGE_AND_PRODUCT + readWhatTheSystemSays(evaluator, "product")
                         + BETWEEN_FIELDS + VERSION_TEXT);
     }
 
@@ -54,11 +54,11 @@ public class VersionNative extends DefaultNative {
 
     private String describeLoadably(Evaluator evaluator) {
         List<String> fields = new ArrayList<>(List.of(
-                THE_LANGUAGE,
+                LANGUAGE,
                 readWhatTheSystemSays(evaluator, "product"),
                 VERSION_TEXT,
                 readWhatTheSystemSays(evaluator, "platform")));
-        fields.addAll(Collections.nCopies(BUILD_FIELDS_ONLY_A_C_BUILD_KNOWS, AN_UNKNOWN_FIELD));
+        fields.addAll(Collections.nCopies(BUILD_FIELDS_ONLY_C_BUILD_KNOWS, UNKNOWN_FIELD));
         return String.join(BETWEEN_FIELDS, fields);
     }
 

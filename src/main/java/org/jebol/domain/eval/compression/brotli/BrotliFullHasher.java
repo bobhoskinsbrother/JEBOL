@@ -6,7 +6,7 @@ final class BrotliFullHasher implements BrotliHasher {
 
     private static final int FOUR_BYTE_MULTIPLIER = 0x1E35A7BD;
     private static final long FIVE_BYTE_MULTIPLIER = 0x1FE35A7BD3579BD3L << 24;
-    private static final int SHORTEST_MATCH_FROM_THE_TABLE = 4;
+    private static final int SHORTEST_MATCH_FROM_TABLE = 4;
 
     private static final int TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT = 6;
 
@@ -193,7 +193,7 @@ final class BrotliFullHasher implements BrotliHasher {
                         maxLength - 4) + 4;
             } else {
                 length = matchingBytes.count(data, previous, here, maxLength);
-                if (length < SHORTEST_MATCH_FROM_THE_TABLE) {
+                if (length < SHORTEST_MATCH_FROM_TABLE) {
                     continue;
                 }
             }

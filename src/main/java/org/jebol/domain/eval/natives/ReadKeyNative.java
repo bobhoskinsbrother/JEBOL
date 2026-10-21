@@ -14,7 +14,7 @@ import java.util.List;
 
 public class ReadKeyNative extends HostNative {
 
-    private static final List<String> THE_MODIFIER_KEYS = List.of("control?", "shift?", "alt?");
+    private static final List<String> MODIFIER_KEYS = List.of("control?", "shift?", "alt?");
 
     private static final int NO_KEY_CAME = 0;
 
@@ -46,7 +46,7 @@ public class ReadKeyNative extends HostNative {
 
     private void refuseAnyModifierKeyHeld(Evaluator evaluator) {
         if (evaluator.systemContext().readValueAt("system", "state") instanceof ObjectValue state) {
-            THE_MODIFIER_KEYS.forEach(key -> state.context().register(key, LogicValue.of(false)));
+            MODIFIER_KEYS.forEach(key -> state.context().register(key, LogicValue.of(false)));
         }
     }
 }

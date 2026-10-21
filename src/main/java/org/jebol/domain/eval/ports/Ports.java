@@ -50,15 +50,15 @@ import java.util.regex.Pattern;
 
 public final class Ports {
 
-    private static final String THE_CONSOLE_MODE_HEADING = "*console-modes*";
+    private static final String CONSOLE_MODE_HEADING = "*console-modes*";
 
     private static final int OPEN_FAILED = 3;
 
-    private static final int WHATEVER_NUMBER_THE_MACHINE_HAS_FREE = 0;
+    private static final int WHATEVER_NUMBER_MACHINE_HAS_FREE = 0;
 
-    private static final Set<String> SCHEMES_CHECKED_AGAINST_THE_NET_POLICY = Set.of("tcp", "udp");
+    private static final Set<String> SCHEMES_CHECKED_AGAINST_NET_POLICY = Set.of("tcp", "udp");
 
-    private static final Pattern WRITTEN_AS_AN_ADDRESS = Pattern.compile("\\d+(\\.\\d+){2,}");
+    private static final Pattern WRITTEN_AS_ADDRESS = Pattern.compile("\\d+(\\.\\d+){2,}");
 
     private static final int IPV4_PARTS = 4;
 
@@ -101,7 +101,7 @@ public final class Ports {
         List<Value> rows = declarations.readTheRowsBelowTheHeaderOf(modeTableSource);
         for (int at = 0; at + 1 < rows.size(); at++) {
             if (rows.get(at) instanceof AnyWordValue heading
-                    && heading.canonical().equals(THE_CONSOLE_MODE_HEADING)
+                    && heading.canonical().equals(CONSOLE_MODE_HEADING)
                     && rows.get(at + 1) instanceof AnyBlockValue listed) {
                 return listWordsIn(listed);
             }
@@ -313,7 +313,7 @@ public final class Ports {
             if (host.isEmpty()) {
                 return StringValue.of(network.hostName());
             }
-            if (WRITTEN_AS_AN_ADDRESS.matcher(host).matches()) {
+            if (WRITTEN_AS_ADDRESS.matcher(host).matches()) {
                 return lookUpTheNameAtAnAddressOfFourParts(host, network);
             }
             return network.resolveTheFirstIpv4Address(host)
@@ -490,7 +490,7 @@ public final class Ports {
 
     public Value open(PortValue port, Evaluator evaluator, Set<String> refinements) {
         requireServiceForScheme(port.schemeName());
-        if (SCHEMES_CHECKED_AGAINST_THE_NET_POLICY.contains(port.schemeName())) {
+        if (SCHEMES_CHECKED_AGAINST_NET_POLICY.contains(port.schemeName())) {
             evaluator.policies().require(PolicyClass.NET, PolicyAccess.EXECUTE, Optional.of(readTheReferenceOf(port)));
         }
         if (port.schemeName().equals("tcp")) {
@@ -643,7 +643,7 @@ public final class Ports {
     private void bindDatagramPort(PortValue port, Evaluator evaluator) {
         int number = findHostToSendTo(port).isEmpty()
                 ? readThePortNumberOf(port)
-                : WHATEVER_NUMBER_THE_MACHINE_HAS_FREE;
+                : WHATEVER_NUMBER_MACHINE_HAS_FREE;
         runThroughNetwork(() -> {
             NetworkPort.Datagrams bound = evaluator.ports().network().bindTo(number);
             port.setField("state", JavaObjectValue.of(bound));

@@ -18,7 +18,7 @@ public final class Evaluator {
 
     public static final int DEFAULT_CHECK_EVERY = 1_000;
 
-    private static final int THE_IDENTITY_BEFORE_THE_FIRST_CIPHER = 2000;
+    private static final int IDENTITY_BEFORE_FIRST_CIPHER = 2000;
 
     private final OutputPort output;
     private final Context systemContext;
@@ -34,7 +34,7 @@ public final class Evaluator {
     private final Construction construction;
     private final MakerSource makerSource;
     private final ErrorWording wording;
-    private int lastCipherIdentity = THE_IDENTITY_BEFORE_THE_FIRST_CIPHER;
+    private int lastCipherIdentity = IDENTITY_BEFORE_FIRST_CIPHER;
     private int stepsSinceLastCheck;
 
     private int framesOpen;
@@ -47,7 +47,7 @@ public final class Evaluator {
 
     private int extensionsNumbered;
 
-    private static final String THE_EVENT_A_CALLBACK_IS = "callback";
+    private static final String EVENT_CALLBACK_IS = "callback";
 
     public Trace tracing() {
         return trace;
@@ -118,7 +118,7 @@ public final class Evaluator {
                 : nameEveryCallOpen(walksInProgress.peek());
     }
 
-    private static final String AN_APPLIED_FUNCTION = "-apply-";
+    private static final String APPLIED_FUNCTION = "-apply-";
 
     private List<String> nameEveryCallOpen(Deque<Frame> innermostWalk) {
         List<String> named = new ArrayList<>();
@@ -129,7 +129,7 @@ public final class Evaluator {
                 }
             }
             if (!walk.isEmpty() && walk.peekLast().bodyOfAnAppliedFunction) {
-                named.add(AN_APPLIED_FUNCTION);
+                named.add(APPLIED_FUNCTION);
             }
         }
         return named;
@@ -366,7 +366,7 @@ public final class Evaluator {
         return switch (callee) {
             case DefinedFunctionValue function -> {
                 List<Parameter> parameters = function.parameters();
-                checkArgumentTypes(parameters, arguments, AN_APPLIED_FUNCTION);
+                checkArgumentTypes(parameters, arguments, APPLIED_FUNCTION);
                 Context locals = function.makeFreshCallFrame();
                 function.localNames().forEach(
                         name -> locals.register(name, NoneValue.none()));
@@ -427,7 +427,7 @@ public final class Evaluator {
         postbox.deliverEachEvent(posted -> EventCatalogue.findTheTypeIndexOf(posted.eventType())
                 .ifPresent(type -> queueOnSystemPort(
                         new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port()))));
-        postbox.deliverEachCallback(callback -> EventCatalogue.findTheTypeIndexOf(THE_EVENT_A_CALLBACK_IS)
+        postbox.deliverEachCallback(callback -> EventCatalogue.findTheTypeIndexOf(EVENT_CALLBACK_IS)
                 .ifPresent(type -> queueOnSystemPort(new EventValue(type, Set.of(),
                         EventValue.Model.CALLBACK, 0, JavaObjectValue.of(callback)))));
     }
@@ -625,10 +625,10 @@ public final class Evaluator {
     }
 
     private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink) {
-        return walk(code, context, depth, sink, AN_ORDINARY_BLOCK);
+        return walk(code, context, depth, sink, ORDINARY_BLOCK);
     }
 
-    private static final boolean AN_ORDINARY_BLOCK = false;
+    private static final boolean ORDINARY_BLOCK = false;
 
     private static final boolean THE_BODY_OF_AN_APPLIED_FUNCTION = true;
 
@@ -845,7 +845,7 @@ public final class Evaluator {
                     PendingCall infix =
                             PendingCall.makeInfix(operator.orElseThrow(), carrying);
                     infix.startAt(wroteTheOperatorAt,
-                            readNameWrittenAt(frame, wroteTheOperatorAt, AN_OPERATOR_TAKES_NO_REFINEMENT));
+                            readNameWrittenAt(frame, wroteTheOperatorAt, OPERATOR_TAKES_NO_REFINEMENT));
                     frame.pendingCalls.push(infix);
                     return;
                 }
@@ -1007,7 +1007,7 @@ public final class Evaluator {
         return call.isSatisfied();
     }
 
-    private static final int AN_OPERATOR_TAKES_NO_REFINEMENT = 0;
+    private static final int OPERATOR_TAKES_NO_REFINEMENT = 0;
 
     private String readNameWrittenAt(Frame frame, int position, int refinementsWritten) {
         if (position < frame.code.index() || position > frame.code.storageLength()) {
@@ -1085,7 +1085,7 @@ public final class Evaluator {
 
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
-        return invokeUnderlying(operator, arguments, context, AN_APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
+        return invokeUnderlying(operator, arguments, context, APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
     }
 
     private static final Runnable NOBODY_IS_WAITING_TO_HEAR = () -> { };
@@ -1094,7 +1094,7 @@ public final class Evaluator {
             Context context, String calledAs, Runnable onceTheArgumentsPass) {
         return switch (operator.underlying()) {
             case NativeValue built -> runNative(built, arguments, context,
-                    THE_LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceTheArgumentsPass);
+                    LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceTheArgumentsPass);
             case DefinedFunctionValue function -> {
                 onceTheArgumentsPass.run();
                 yield applyFunction(function, arguments);
@@ -1106,12 +1106,12 @@ public final class Evaluator {
 
     private static final int EVERY_ARGUMENT_IS_CHECKED = 0;
 
-    private static final int THE_LEFT_OPERAND_IS_NOT_CHECKED = 1;
+    private static final int LEFT_OPERAND_IS_NOT_CHECKED = 1;
 
     private Value runNative(
             NativeValue built, List<Value> arguments, Context context) {
         return runNative(built, arguments, context, EVERY_ARGUMENT_IS_CHECKED,
-                AN_APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
+                APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
     }
 
     private Value runNative(NativeValue built, List<Value> arguments, Context context,
@@ -1572,7 +1572,7 @@ public final class Evaluator {
         if (!HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {
             return;
         }
-        if (reachedThroughSegment == THE_VARIABLE_THE_PATH_STARTS_FROM) {
+        if (reachedThroughSegment == VARIABLE_PATH_STARTS_FROM) {
             throw Raised.of(EvaluationFailure.BAD_PATH_TYPE,
                     asWritten, current.datatype());
         }
@@ -1580,7 +1580,7 @@ public final class Evaluator {
                 asWritten, asWritten.remaining().get(reachedThroughSegment));
     }
 
-    private static final int THE_VARIABLE_THE_PATH_STARTS_FROM = 0;
+    private static final int VARIABLE_PATH_STARTS_FROM = 0;
 
     private static final Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
             TypesetValue.ANY_WORD.membersAnd(
@@ -1746,8 +1746,8 @@ public final class Evaluator {
     }
 
     private static Value partOfATime(TimeValue time, Value selector) {
-        long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_IN_A_SECOND;
-        long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_A_SECOND;
+        long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_IN_SECOND;
+        long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_SECOND;
         int which = switch (selector) {
             case IntegerValue position -> (int) position.magnitude();
             case AnyWordValue field -> switch (field.canonical()) {
@@ -1765,12 +1765,12 @@ public final class Evaluator {
             case 2 -> IntegerValue.of(seconds / 60 % 60);
             case 3 -> fraction == 0
                     ? IntegerValue.of(seconds % 60)
-                    : DecimalValue.of(seconds % 60 + (double) fraction / NANOSECONDS_IN_A_SECOND);
+                    : DecimalValue.of(seconds % 60 + (double) fraction / NANOSECONDS_IN_SECOND);
             default -> NoneValue.none();
         };
     }
 
-    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
+    private static final long NANOSECONDS_IN_SECOND = 1_000_000_000L;
 
     private record Selection(
             Slot slot, Value calledBy, List<String> refinements,

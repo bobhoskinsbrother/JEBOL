@@ -21,7 +21,7 @@ import java.util.Set;
 
 public class ChecksumNative extends EncodingNative {
 
-    private static final String HASH_INTO_A_TABLE = "hash";
+    private static final String HASH_INTO_TABLE = "hash";
 
     private static final String FILE_CHECKSUM = "file-checksum";
 
@@ -77,7 +77,7 @@ public class ChecksumNative extends EncodingNative {
             }
             return IntegerValue.of(encodings.computeCyclicCheck(octets, asked));
         }
-        if (HASH_INTO_A_TABLE.equals(asked)) {
+        if (HASH_INTO_TABLE.equals(asked)) {
             return IntegerValue.of(hashIntoTable(data,
                     spec.orElseThrow(() -> Raised.of(EvaluationFailure.MISSING_ARG))));
         }

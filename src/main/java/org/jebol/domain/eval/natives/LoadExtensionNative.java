@@ -63,7 +63,7 @@ public class LoadExtensionNative extends DefaultNative {
         Value carried = new DispatcherHandle(given).findTheDispatcher()
                 .<Value>map(JavaObjectValue::of)
                 .orElseGet(NoneValue::none);
-        return HandleValue.wrapFunction(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
+        return HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
                 evaluator.numberNextExtension(), carried);
     }
 

@@ -46,7 +46,7 @@ public final class Transcoder {
     }
 
     public static Reading read(String source, long firstLine, Extent extent, Construction construction) {
-        return read(source, firstLine, extent, construction, Errors.STOP_THE_READ);
+        return read(source, firstLine, extent, construction, Errors.STOP_READ);
     }
 
     public static Reading read(String source, long firstLine, Extent extent, Construction construction,
@@ -55,27 +55,27 @@ public final class Transcoder {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
         Transcoder reader = new Transcoder(source, construction, (int) firstLine);
-        if (extent != Extent.THE_WHOLE_SOURCE) {
+        if (extent != Extent.WHOLE_SOURCE) {
             reader.scanner.stopAfterOneValue();
         }
-        if (extent == Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH) {
+        if (extent == Extent.FIRST_VALUE_AT_EVERY_DEPTH) {
             reader.scanner.stopAtEveryDepth();
         }
-        if (errors == Errors.STAND_IN_FOR_THE_VALUE) {
+        if (errors == Errors.STAND_IN_FOR_VALUE) {
             reader.scanner.relax();
         }
         return reader.beginReading();
     }
 
     public enum Errors {
-        STOP_THE_READ,
-        STAND_IN_FOR_THE_VALUE
+        STOP_READ,
+        STAND_IN_FOR_VALUE
     }
 
     public enum Extent {
-        THE_WHOLE_SOURCE,
-        THE_FIRST_VALUE,
-        THE_FIRST_VALUE_AT_EVERY_DEPTH
+        WHOLE_SOURCE,
+        FIRST_VALUE,
+        FIRST_VALUE_AT_EVERY_DEPTH
     }
 
     public record Reading(
@@ -103,7 +103,7 @@ public final class Transcoder {
     }
 
     public static TranscodeResult transcode(String source, long firstLine, Construction construction) {
-        Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE, construction);
+        Reading reading = read(source, firstLine, Extent.WHOLE_SOURCE, construction);
         return reading.whyItStopped()
                 .<TranscodeResult>map(failure -> failure)
                 .orElseGet(() -> new TranscodeResult.Success(reading.asBlock()));

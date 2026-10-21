@@ -20,9 +20,9 @@ public class EvokeNative extends DefaultNative {
 
     private static final String A_CHANT_THAT_DOES_NOTHING_HERE = "delect";
 
-    private static final long THE_FIRST_NUMBERED_CHECK = 0;
+    private static final long FIRST_NUMBERED_CHECK = 0;
 
-    private static final long THE_LAST_NUMBERED_CHECK = 2;
+    private static final long LAST_NUMBERED_CHECK = 2;
 
     private static final String EVOKE_HELP = """
             Evoke values:
@@ -62,7 +62,7 @@ public class EvokeNative extends DefaultNative {
             return obeyWord(word, evaluator);
         }
         if (chant instanceof IntegerValue(long magnitude)
-                && (magnitude < THE_FIRST_NUMBERED_CHECK || magnitude > THE_LAST_NUMBERED_CHECK)) {
+                && (magnitude < FIRST_NUMBERED_CHECK || magnitude > LAST_NUMBERED_CHECK)) {
             evaluator.findOutput().write(EVOKE_HELP);
         }
         return 0;

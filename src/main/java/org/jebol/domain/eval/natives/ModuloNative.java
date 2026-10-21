@@ -30,7 +30,7 @@ public class ModuloNative extends ArithmeticNative {
         return (arguments, evaluator, context, refinements) -> Arithmetic.findRest(
                 arguments.get(0), arguments.get(1),
                 refinements.contains("floor")
-                        ? Arithmetic.Division.SIGN_FOLLOWS_THE_DIVISOR
+                        ? Arithmetic.Division.SIGN_FOLLOWS_DIVISOR
                         : Arithmetic.Division.NEVER_NEGATIVE);
     }
 }

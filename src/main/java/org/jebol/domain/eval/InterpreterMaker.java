@@ -155,7 +155,7 @@ public final class InterpreterMaker implements Maker {
                 || !(parts.get(1) instanceof PathTargetWithFields extension)
                 || !hasExtensionHandleFirst(extension)
                 || !(parts.get(2) instanceof IntegerValue(long index))
-                || index > THE_LARGEST_COMMAND_INDEX) {
+                || index > LARGEST_COMMAND_INDEX) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_DEF, definition);
         }
         CommandValue made = new CommandValue(spec, FunctionSpec.readTheParametersIn(spec), extension, index);
@@ -167,13 +167,13 @@ public final class InterpreterMaker implements Maker {
 
     private static final int PARTS_OF_A_COMMAND_DEFINITION = 3;
 
-    private static final long THE_LARGEST_COMMAND_INDEX = 0xFFFF;
+    private static final long LARGEST_COMMAND_INDEX = 0xFFFF;
 
     private boolean hasExtensionHandleFirst(PathTargetWithFields extension) {
         List<ContextSlot> fields = extension.context().slots();
         return !fields.isEmpty()
                 && fields.getFirst().value() instanceof HandleValue handle
-                && handle.typeName().equals(DispatcherHandle.THE_KIND_A_DISPATCHER_IS);
+                && handle.typeName().equals(DispatcherHandle.KIND_DISPATCHER_IS);
     }
 
     private boolean takesBody(AnyFunctionValue prototype, Value body) {

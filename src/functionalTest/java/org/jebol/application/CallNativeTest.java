@@ -253,7 +253,7 @@ class CallNativeTest {
             answerTo(makeAnInterpreterReaching(true, port), """
                     call [{x}]""");
             assertThat(port.asked.standardInput()).isEqualTo(
-                    ProcessPort.ProgramInput.THE_HOSTS_OWN);
+                    ProcessPort.ProgramInput.HOSTS_OWN);
         }
 
         @Test
@@ -320,7 +320,7 @@ class CallNativeTest {
             String answer = answerTo(makeAnInterpreterReaching(true, port), """
                     call/output [{x}] %out.txt""");
             assertThat(port.asked.standardOutput()).isEqualTo(
-                    ProcessPort.ProgramOutput.INTO_A_FILE);
+                    ProcessPort.ProgramOutput.INTO_FILE);
             assertThat(port.asked.outputFile().orElseThrow()).isEqualTo("out.txt");
             assertThat(port.asked.isWaitedFor()).isFalse();
             assertThat(answer).isEqualTo("4242");
@@ -343,9 +343,9 @@ class CallNativeTest {
             answerTo(makeAnInterpreterReaching(true, port), """
                     call [{x}]""");
             assertThat(port.asked.standardOutput()).isEqualTo(
-                    ProcessPort.ProgramOutput.THE_HOSTS_OWN);
+                    ProcessPort.ProgramOutput.HOSTS_OWN);
             assertThat(port.asked.standardError()).isEqualTo(
-                    ProcessPort.ProgramOutput.THE_HOSTS_OWN);
+                    ProcessPort.ProgramOutput.HOSTS_OWN);
         }
 
         @Test

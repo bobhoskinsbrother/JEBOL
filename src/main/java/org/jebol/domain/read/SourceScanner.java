@@ -76,9 +76,9 @@ final class SourceScanner {
 
     private static final int[] ESCAPE_CODES = {10, 9, 12, 27, 27, 8, 127, 0};
 
-    private static final String REFUSED_IN_A_FILE = ":;()[]\"^";
+    private static final String REFUSED_IN_FILE = ":;()[]\"^";
 
-    private static final String REFUSED_IN_A_QUOTED_FILE = ":;\"";
+    private static final String REFUSED_IN_QUOTED_FILE = ":;\"";
 
     record ScannedBlock(List<Value> values, Set<Integer> lineStarts) {
     }
@@ -1284,7 +1284,7 @@ final class SourceScanner {
 
     private ScannedBlock scanBlock(int modeChar) {
         if (depth >= maximumNesting) {
-            throw new ScanFailure(SyntaxFailure.NESTED_PAST_THE_STACK);
+            throw new ScanFailure(SyntaxFailure.NESTED_PAST_STACK);
         }
         depth++;
         try {
@@ -1339,7 +1339,7 @@ final class SourceScanner {
         }
     }
 
-    private enum AfterAToken { CARRY_ON, END_THE_BLOCK }
+    private enum AfterAToken { CARRY_ON, END_BLOCK }
 
     private int segmentEnd;
 
@@ -1363,7 +1363,7 @@ final class SourceScanner {
         while ((token = scanToken()) != TOKEN_EOF) {
             int startedAt = begin;
             try {
-                if (takeToken(token, block) == AfterAToken.END_THE_BLOCK) {
+                if (takeToken(token, block) == AfterAToken.END_BLOCK) {
                     return block.scanned();
                 }
             } catch (ScanFailure failure) {
@@ -1420,7 +1420,7 @@ final class SourceScanner {
                     if (modeChar != closing) {
                         throw reportMissing(token, modeChar, block.startLine, block.startHead);
                     }
-                    return AfterAToken.END_THE_BLOCK;
+                    return AfterAToken.END_BLOCK;
                 }
                 default -> value = makeTheValueOfAToken(token, bp, ep, ep - bp, modeChar);
             }
@@ -1428,12 +1428,12 @@ final class SourceScanner {
         block.emit(value, bp);
         if (exitingAfterThisValue) {
             exitingAfterThisValue = false;
-            return AfterAToken.END_THE_BLOCK;
+            return AfterAToken.END_BLOCK;
         }
         if (modeChar == '/') {
             int after = segmentEnd;
             if (at(after) != '/') {
-                return AfterAToken.END_THE_BLOCK;
+                return AfterAToken.END_BLOCK;
             }
             after++;
             begin = after;
@@ -1441,7 +1441,7 @@ final class SourceScanner {
                 throw refuseAsInvalid(TOKEN_PATH, bp, after);
             }
         }
-        return only || block.justOnce ? AfterAToken.END_THE_BLOCK : AfterAToken.CARRY_ON;
+        return only || block.justOnce ? AfterAToken.END_BLOCK : AfterAToken.CARRY_ON;
     }
 
     private ScanFailure reportMissing(int token, int modeChar, int startLine, int startHead) {
@@ -1896,7 +1896,7 @@ final class SourceScanner {
         int cp = from;
         int len = length;
         int terminator = 0;
-        String refused = REFUSED_IN_A_FILE;
+        String refused = REFUSED_IN_FILE;
         if (at(cp) == '%') {
             cp++;
             len--;
@@ -1905,7 +1905,7 @@ final class SourceScanner {
             cp++;
             len--;
             terminator = '"';
-            refused = REFUSED_IN_A_QUOTED_FILE;
+            refused = REFUSED_IN_QUOTED_FILE;
         }
         return scanAnItem(cp, cp + len, terminator, refused)
                 .map(FileValue::of);

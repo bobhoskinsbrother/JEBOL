@@ -9,7 +9,7 @@ final class BrotliLiteralCosts {
     private static final int WINDOW_HALF_FOR_ANYTHING_ELSE = 2000;
     private static final int HOW_MANY_BYTES_ARE_TREATED_AS_A_PROLOGUE = 2000;
     private static final double HOW_MUCH_THE_PROLOGUE_COSTS_EXTRA = 0.35;
-    private static final int NOT_A_CHARACTER = 0x110000;
+    private static final int NOT_CHARACTER = 0x110000;
 
     private BrotliLiteralCosts() {
     }
@@ -66,7 +66,7 @@ final class BrotliLiteralCosts {
                 return 4;
             }
         }
-        return 1 | (NOT_A_CHARACTER << 8);
+        return 1 | (NOT_CHARACTER << 8);
     }
 
     private static int findWhereInACharacter(int previous, int here, int mostAllowed) {

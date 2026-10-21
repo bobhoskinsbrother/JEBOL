@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class DoNative extends DefaultNative {
 
-    private static final int WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE = 1;
+    private static final int WHERE_SCRIPT_ARGUMENTS_ARRIVE = 1;
 
     @Override
     public String nativeName() {
@@ -39,7 +39,7 @@ public class DoNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("args") && arguments.size() > 1) {
                 recordScriptArguments(
-                        evaluator, arguments.get(WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE));
+                        evaluator, arguments.get(WHERE_SCRIPT_ARGUMENTS_ARRIVE));
             }
             if (refinements.contains("next") && arguments.size() > 1
                     && arguments.getLast() instanceof AnyWordValue var) {

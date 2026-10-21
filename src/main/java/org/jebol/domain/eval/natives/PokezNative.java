@@ -8,7 +8,7 @@ import java.util.Set;
 
 public class PokezNative extends DefaultNative {
 
-    private static final String THE_ACTION_IT_WRAPS = "poke";
+    private static final String ACTION_IT_WRAPS = "poke";
 
     @Override
     public String nativeName() {
@@ -29,7 +29,7 @@ public class PokezNative extends DefaultNative {
             Value series = arguments.getFirst();
             if (series instanceof TupleValue unchangeable) {
                 throw Raised.of(EvaluationFailure.CANNOT_USE,
-                        SetWordValue.of(THE_ACTION_IT_WRAPS),
+                        SetWordValue.of(ACTION_IT_WRAPS),
                         unchangeable.datatype());
             }
             long index = ((IntegerValue) arguments.get(1)).magnitude();
@@ -40,9 +40,9 @@ public class PokezNative extends DefaultNative {
     }
 
     private Value findActionItWraps(Context context) {
-        if (!context.contains(THE_ACTION_IT_WRAPS)) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, THE_ACTION_IT_WRAPS);
+        if (!context.contains(ACTION_IT_WRAPS)) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, ACTION_IT_WRAPS);
         }
-        return context.findSlotFor(THE_ACTION_IT_WRAPS).value();
+        return context.findSlotFor(ACTION_IT_WRAPS).value();
     }
 }

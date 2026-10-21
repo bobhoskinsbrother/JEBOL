@@ -25,7 +25,7 @@ final class BrotliBlockSplitting {
     private static final int SYMBOLS_PER_COMMAND_HISTOGRAM = 530;
     private static final int SYMBOLS_PER_DISTANCE_HISTOGRAM = 544;
 
-    private static final int DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS = 544;
+    private static final int DISTANCE_SYMBOLS_HISTOGRAM_HOLDS = 544;
 
     private BrotliBlockSplitting() {
     }
@@ -76,7 +76,7 @@ final class BrotliBlockSplitting {
                         commands.readDistancePrefixAt(which) & 0x3FF;
             }
         }
-        split(distanceRun, howManyDistances, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS,
+        split(distanceRun, howManyDistances, DISTANCE_SYMBOLS_HISTOGRAM_HOLDS,
                 SYMBOLS_PER_DISTANCE_HISTOGRAM, MOST_COMMAND_HISTOGRAMS,
                 DISTANCE_STRIDE, DISTANCE_SWITCH_COST, rounds, distances);
     }

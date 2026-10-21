@@ -8,7 +8,7 @@ import java.util.Deque;
 
 public final class WebConsole implements ConsolePort {
 
-    private static final long A_SLICE = 20;
+    private static final long SLICE = 20;
 
     private final Runnable runnable;
     private final Deque<String> typed = new ArrayDeque<>();
@@ -38,7 +38,7 @@ public final class WebConsole implements ConsolePort {
 
     private static void letSlicePass() {
         try {
-            Thread.sleep(A_SLICE);
+            Thread.sleep(SLICE);
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
         }

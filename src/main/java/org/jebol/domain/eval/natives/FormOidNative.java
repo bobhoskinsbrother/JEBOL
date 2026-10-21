@@ -8,7 +8,7 @@ import java.util.Set;
 
 public class FormOidNative extends DefaultNative {
 
-    private static final int ARCS_PACKED_INTO_THE_FIRST_BYTE = 40;
+    private static final int ARCS_PACKED_INTO_FIRST_BYTE = 40;
     private static final int GROUP_BITS = 7;
     private static final int GROUP_MASK = 0x7F;
     private static final int MORE_GROUPS_FOLLOW = 0x80;
@@ -35,9 +35,9 @@ public class FormOidNative extends DefaultNative {
         }
         StringBuilder written = new StringBuilder();
         int first = encoded[0] & 0xFF;
-        written.append(first / ARCS_PACKED_INTO_THE_FIRST_BYTE)
+        written.append(first / ARCS_PACKED_INTO_FIRST_BYTE)
                 .append('.')
-                .append(first % ARCS_PACKED_INTO_THE_FIRST_BYTE);
+                .append(first % ARCS_PACKED_INTO_FIRST_BYTE);
         long group = 0;
         for (int at = 1; at < encoded.length; at++) {
             int octet = encoded[at] & 0xFF;

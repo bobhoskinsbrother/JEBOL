@@ -20,25 +20,25 @@ public final class DateFactory {
     private DateFactory() {
     }
 
-    private static final long SECONDS_IN_A_MINUTE = 60L;
-    private static final long SECONDS_IN_AN_HOUR = 3600L;
-    private static final long SECONDS_IN_A_DAY = 86_400L;
-    private static final long MICROSECONDS_IN_A_SECOND = 1_000_000L;
-    private static final long MICROSECONDS_IN_A_DAY = SECONDS_IN_A_DAY * MICROSECONDS_IN_A_SECOND;
+    private static final long SECONDS_IN_MINUTE = 60L;
+    private static final long SECONDS_IN_HOUR = 3600L;
+    private static final long SECONDS_IN_DAY = 86_400L;
+    private static final long MICROSECONDS_IN_SECOND = 1_000_000L;
+    private static final long MICROSECONDS_IN_DAY = SECONDS_IN_DAY * MICROSECONDS_IN_SECOND;
 
     private static final int FURTHEST_ZONE_MINUTES = 15 * 60;
 
     public static Value fromTimestamp(long microseconds) {
         return onTheDayOfTheEpoch(
-                Math.floorDiv(microseconds, MICROSECONDS_IN_A_DAY),
-                Math.floorMod(microseconds, MICROSECONDS_IN_A_DAY) * 1_000L,
+                Math.floorDiv(microseconds, MICROSECONDS_IN_DAY),
+                Math.floorMod(microseconds, MICROSECONDS_IN_DAY) * 1_000L,
                 microseconds);
     }
 
     public static Value fromWholeSeconds(long seconds) {
         return onTheDayOfTheEpoch(
-                Math.floorDiv(seconds, SECONDS_IN_A_DAY),
-                Math.floorMod(seconds, SECONDS_IN_A_DAY)
+                Math.floorDiv(seconds, SECONDS_IN_DAY),
+                Math.floorMod(seconds, SECONDS_IN_DAY)
                         * TimeValue.NANOSECONDS_PER_SECOND,
                 seconds);
     }
@@ -168,8 +168,8 @@ public final class DateFactory {
             throw refuse(whole);
         }
         return TimeValue.ofNanoseconds(
-                magnitude1 * SECONDS_IN_AN_HOUR * TimeValue.NANOSECONDS_PER_SECOND
-                        + magnitude * SECONDS_IN_A_MINUTE
+                magnitude1 * SECONDS_IN_HOUR * TimeValue.NANOSECONDS_PER_SECOND
+                        + magnitude * SECONDS_IN_MINUTE
                                 * TimeValue.NANOSECONDS_PER_SECOND
                         + Math.round(second * TimeValue.NANOSECONDS_PER_SECOND));
     }
@@ -184,7 +184,7 @@ public final class DateFactory {
             throw refuse(whole);
         }
         long minutes = nanoseconds
-                / (SECONDS_IN_A_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
+                / (SECONDS_IN_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
         if (Math.abs(minutes) > FURTHEST_ZONE_MINUTES) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "a zone reaches fifteen hours either side of UTC");

@@ -16,7 +16,7 @@ public final class DeflateCompressor {
 
     private static final int FINAL_STORED_BLOCK = 1;
 
-    private static final int ZLIB_DEFLATE_WITH_A_32K_WINDOW = 0x7800;
+    private static final int ZLIB_DEFLATE_WITH_32K_WINDOW = 0x7800;
 
     private static final int ZLIB_LEVEL_HINT_SHIFT = 6;
 
@@ -50,7 +50,7 @@ public final class DeflateCompressor {
 
     public byte[] wrapInZlib(byte[] input) {
         BitWriter out = new BitWriter(input.length + input.length / 8 + 32);
-        int header = ZLIB_DEFLATE_WITH_A_32K_WINDOW | (hintZlibLevel() << ZLIB_LEVEL_HINT_SHIFT);
+        int header = ZLIB_DEFLATE_WITH_32K_WINDOW | (hintZlibLevel() << ZLIB_LEVEL_HINT_SHIFT);
         header |= ZLIB_CHECK_DIVISOR - (header % ZLIB_CHECK_DIVISOR);
         out.write(header >>> Byte.SIZE);
         out.write(header);

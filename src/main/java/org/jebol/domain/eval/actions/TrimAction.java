@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class TrimAction extends DefaultNative implements ActionValue {
 
-    private static final int AN_OCTET = 0xFF;
+    private static final int OCTET = 0xFF;
 
     @Override
     public String nativeName() {
@@ -51,7 +51,7 @@ public class TrimAction extends DefaultNative implements ActionValue {
     private Set<Integer> collectTheOctetsOf(BinaryValue bytes) {
         Set<Integer> octets = new HashSet<>();
         for (byte octet : bytes.octetsFromHere()) {
-            octets.add(octet & AN_OCTET);
+            octets.add(octet & OCTET);
         }
         return octets;
     }

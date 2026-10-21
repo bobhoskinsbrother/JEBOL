@@ -7,7 +7,7 @@ import java.util.List;
 
 public abstract class ParityAction extends DefaultNative implements ActionValue {
 
-    private static final double WHERE_A_DECIMAL_STOPS_COUNTING_IN_ONES = 9007199254740992.0;
+    private static final double WHERE_DECIMAL_STOPS_COUNTING_IN_ONES = 9007199254740992.0;
 
     protected abstract boolean asksForOdd();
 
@@ -47,7 +47,7 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
     }
 
     private long roundHalfAwayFromZero(double magnitude) {
-        if (Math.abs(magnitude) >= WHERE_A_DECIMAL_STOPS_COUNTING_IN_ONES) {
+        if (Math.abs(magnitude) >= WHERE_DECIMAL_STOPS_COUNTING_IN_ONES) {
             return 0;
         }
         return (long) (magnitude < 0

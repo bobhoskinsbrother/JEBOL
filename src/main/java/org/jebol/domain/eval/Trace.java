@@ -113,12 +113,12 @@ public final class Trace {
 
     private static final int ONE_FURTHER_OUT = 1;
 
-    private static final int PAST_THE_LEVEL = -1;
+    private static final int PAST_LEVEL = -1;
 
     private int indentFor(int plus) {
         int depth = depthNow - depthWhenTraceBegan + plus;
         if (depth < 0 || depth >= level) {
-            return PAST_THE_LEVEL;
+            return PAST_LEVEL;
         }
         return Math.min(depth, DEEPEST_INDENT);
     }

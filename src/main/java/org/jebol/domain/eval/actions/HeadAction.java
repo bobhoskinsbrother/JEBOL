@@ -8,7 +8,7 @@ import org.jebol.domain.value.Value;
 
 public class HeadAction extends SeriesOrFileAction {
 
-    private static final long THE_FIRST_BYTE = 0;
+    private static final long FIRST_BYTE = 0;
 
     public HeadAction(GrantedServices granted) {
         super(granted);
@@ -23,7 +23,7 @@ public class HeadAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    findFileBehind(port, evaluator).moveTo(THE_FIRST_BYTE);
+                    findFileBehind(port, evaluator).moveTo(FIRST_BYTE);
             case RebolSeries series -> series.head();
             case Value anythingElse -> refuseDatatype(anythingElse);
         };

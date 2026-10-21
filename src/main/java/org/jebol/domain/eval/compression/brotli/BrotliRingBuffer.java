@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 final class BrotliRingBuffer {
 
-    private static final int SLACK_FOR_HASHING_PAST_THE_END = 7;
+    private static final int SLACK_FOR_HASHING_PAST_END = 7;
 
     private final int size;
     private final int mask;
@@ -31,7 +31,7 @@ final class BrotliRingBuffer {
     }
 
     private void allocate(int howMuch) {
-        byte[] grown = new byte[howMuch + SLACK_FOR_HASHING_PAST_THE_END];
+        byte[] grown = new byte[howMuch + SLACK_FOR_HASHING_PAST_END];
         System.arraycopy(data, 0, grown, 0,
                 Math.min(data.length, howMuchIsAllocated));
         data = grown;
@@ -79,7 +79,7 @@ final class BrotliRingBuffer {
         if (hasFinishedFirstLap()) {
             return;
         }
-        Arrays.fill(data, at, at + SLACK_FOR_HASHING_PAST_THE_END, (byte) 0);
+        Arrays.fill(data, at, at + SLACK_FOR_HASHING_PAST_END, (byte) 0);
     }
 
     private boolean hasFinishedFirstLap() {

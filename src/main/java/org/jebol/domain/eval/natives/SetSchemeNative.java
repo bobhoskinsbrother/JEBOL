@@ -15,9 +15,9 @@ public class SetSchemeNative extends DefaultNative {
             "console", "tcp", "dns", "event", "checksum", "file", "dir", "crypt",
             "clipboard", "udp", "midi", "system", "callback", "bundled");
 
-    private static final int WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME = 0;
+    private static final int WHERE_STANDARD_SCHEME_KEEPS_ITS_NAME = 0;
 
-    private static final int WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR = 4;
+    private static final int WHERE_STANDARD_SCHEME_KEEPS_ITS_ACTOR = 4;
 
     private final GrantedServices granted;
 
@@ -39,12 +39,12 @@ public class SetSchemeNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             List<ContextSlot> fields = ((ObjectValue) arguments.getFirst()).context().slots();
-            if (fields.size() <= WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR
-                    || !(fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME).value() instanceof WordValue named)
+            if (fields.size() <= WHERE_STANDARD_SCHEME_KEEPS_ITS_ACTOR
+                    || !(fields.get(WHERE_STANDARD_SCHEME_KEEPS_ITS_NAME).value() instanceof WordValue named)
                     || !SCHEMES_SERVED_NATIVELY.contains(named.canonical())) {
                 return NoneValue.none();
             }
-            fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR)
+            fields.get(WHERE_STANDARD_SCHEME_KEEPS_ITS_ACTOR)
                     .setBeneathAnyProtection(makeNativeActorFor(named));
             return LogicValue.of(true);
         };

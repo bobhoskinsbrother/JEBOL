@@ -18,7 +18,7 @@ import java.util.Set;
 
 public class EchoNative extends HostNative {
 
-    private static final String WHERE_A_TRUE_ECHO_WRITES = "output.txt";
+    private static final String WHERE_TRUE_ECHO_WRITES = "output.txt";
 
     public EchoNative(GrantedServices granted) {
         super(granted);
@@ -46,7 +46,7 @@ public class EchoNative extends HostNative {
             granted.require(HostService.FILES);
             String path = target instanceof AnyStringValue address
                     ? address.text()
-                    : WHERE_A_TRUE_ECHO_WRITES;
+                    : WHERE_TRUE_ECHO_WRITES;
             FilePort files = evaluator.ports().files();
             return runThroughFileSystem(() -> {
                 files.write(path, new byte[0]);

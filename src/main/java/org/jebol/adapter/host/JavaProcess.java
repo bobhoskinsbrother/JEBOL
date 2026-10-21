@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 
 public final class JavaProcess implements ProcessPort {
 
-    private static final Pattern THE_WHOLE_NUMBER_ID_PRINTS = Pattern.compile("\\d+");
+    private static final Pattern WHOLE_NUMBER_ID_PRINTS = Pattern.compile("\\d+");
 
     private static final Pattern SYSTEM_EXCEPTION_MATCHER =
             Pattern.compile("(?:\\(([^()]*)\\)|error=\\d+, (.+?))\\s*$");
@@ -118,7 +118,7 @@ public final class JavaProcess implements ProcessPort {
 
     private ProcessBuilder.Redirect chooseInput(Program program) {
         return switch (program.standardInput()) {
-            case THE_HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
+            case HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
             case FILE_CONTENTS -> ProcessBuilder.Redirect.from(
                     new File(program.inputFile().orElseThrow()));
             case SUPPLIED_BYTES, NOTHING_AT_ALL -> ProcessBuilder.Redirect.PIPE;
@@ -127,8 +127,8 @@ public final class JavaProcess implements ProcessPort {
 
     private ProcessBuilder.Redirect chooseOutput(ProgramOutput route, Optional<String> file) {
         return switch (route) {
-            case THE_HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
-            case INTO_A_FILE -> ProcessBuilder.Redirect.to(
+            case HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
+            case INTO_FILE -> ProcessBuilder.Redirect.to(
                     new File(file.orElseThrow()));
             case DISCARDED -> ProcessBuilder.Redirect.DISCARD;
             case CAPTURED -> ProcessBuilder.Redirect.PIPE;
@@ -202,7 +202,7 @@ public final class JavaProcess implements ProcessPort {
     private OptionalLong askTheProcessId(Process asking) throws IOException {
         String answered = new String(asking.getInputStream().readAllBytes(),
                 StandardCharsets.US_ASCII).strip();
-        if (!waitForCleanExit(asking) || !THE_WHOLE_NUMBER_ID_PRINTS.matcher(answered).matches()) {
+        if (!waitForCleanExit(asking) || !WHOLE_NUMBER_ID_PRINTS.matcher(answered).matches()) {
             return OptionalLong.empty();
         }
         return OptionalLong.of(Long.parseLong(answered));

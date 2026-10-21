@@ -22,7 +22,7 @@ public class RsaNative extends CipherNative {
     private static final List<String> WHAT_RSA_DOES =
             List.of("encrypt", "decrypt", "sign", "verify");
 
-    private static final String THE_DIGEST_WHEN_NONE_IS_NAMED = "sha256";
+    private static final String DIGEST_WHEN_NONE_IS_NAMED = "sha256";
 
     @Override
     public String nativeName() {
@@ -96,7 +96,7 @@ public class RsaNative extends CipherNative {
         return readTheArgumentOf("hash", 0, arguments, refinements)
                 .filter(AnyWordValue.class::isInstance)
                 .map(digest -> ((AnyWordValue) digest).canonical())
-                .orElse(THE_DIGEST_WHEN_NONE_IS_NAMED);
+                .orElse(DIGEST_WHEN_NONE_IS_NAMED);
     }
 
     private byte[] readSignatureGivenTo(List<Value> arguments, Set<String> refinements) {

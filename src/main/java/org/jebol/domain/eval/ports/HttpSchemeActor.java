@@ -39,7 +39,7 @@ import java.util.Set;
 
 public final class HttpSchemeActor extends DefaultNative implements ServesPortActions {
 
-    private static final String THE_ARGUMENT_NOTHING_CAN_FILL = "internal";
+    private static final String ARGUMENT_NOTHING_CAN_FILL = "internal";
 
     private final String scheme;
     private final HttpPort host;
@@ -47,7 +47,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     public HttpSchemeActor(String scheme, HttpPort host) {
         this.scheme = scheme;
         this.host = host;
-        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL))),
+        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(ARGUMENT_NOTHING_CAN_FILL))),
                 parametersAsWritten());
     }
 
@@ -58,7 +58,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
+        return List.of(Parameter.of(ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
     }
 
     @Override

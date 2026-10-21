@@ -9,7 +9,7 @@ public final class Crush {
 
     private static final int SLOT_BITS = 4;
     private static final int NUM_SLOTS = 16;
-    private static final int A_BITS = 2;
+    private static final int BITS = 2;
     private static final int B_BITS = 2;
     private static final int C_BITS = 2;
     private static final int D_BITS = 3;
@@ -230,7 +230,7 @@ public final class Crush {
     private static void writeLength(Bits bits, int length) {
         if (length < A) {
             bits.put(1, 1);
-            bits.put(A_BITS, length);
+            bits.put(BITS, length);
         } else if (length < B) {
             bits.put(2, 1 << 1);
             bits.put(B_BITS, length - A);
@@ -301,7 +301,7 @@ public final class Crush {
 
     private static int readLength(Bits bits) {
         if (bits.take(1) != 0) {
-            return bits.take(A_BITS);
+            return bits.take(BITS);
         }
         if (bits.take(1) != 0) {
             return bits.take(B_BITS) + A;

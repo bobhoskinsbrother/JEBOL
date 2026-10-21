@@ -120,7 +120,7 @@ final class ExtensionInstallation {
     private ModuleValue makeModule(Extension extension) {
         Context context = Context.makeChildOf(evaluator.systemContext());
         context.register("the-source", BinaryValue.ofBytes(writeRebolSourceFor(extension).getBytes(StandardCharsets.UTF_8)));
-        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
+        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
                 evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
         TranscodeResult read = evaluator.read(LOAD_BOOT_EXTENSIONS_REBOL_STRING);
         try {

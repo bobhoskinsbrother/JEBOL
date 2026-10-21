@@ -348,7 +348,7 @@ final class BrotliDecoder {
         private int copyFromTheDictionaryAnsweringHowManyBytesItCameTo(
                 int address, int wordLength, int distance) {
             if (wordLength < BrotliDictionary.MIN_WORD_LENGTH
-                    || wordLength > BrotliDictionary.LONGEST_LENGTH_WITH_A_SLOT) {
+                    || wordLength > BrotliDictionary.LONGEST_LENGTH_WITH_SLOT) {
                 throw new IllegalArgumentException(
                         "Brotli distance reaches past the start of the answer");
             }
@@ -376,11 +376,11 @@ final class BrotliDecoder {
             return written;
         }
 
-        private static final int WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE = 255;
-        private static final int WIDEST_A_DICTIONARY_WORD_MAY_BE = 32;
+        private static final int WIDEST_PREFIX_OR_SUFFIX_MAY_BE = 255;
+        private static final int WIDEST_DICTIONARY_WORD_MAY_BE = 32;
         private static final int LONGEST_TRANSFORMED_WORD =
-                WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE + WIDEST_A_DICTIONARY_WORD_MAY_BE
-                        + WIDEST_A_PREFIX_OR_SUFFIX_MAY_BE;
+                WIDEST_PREFIX_OR_SUFFIX_MAY_BE + WIDEST_DICTIONARY_WORD_MAY_BE
+                        + WIDEST_PREFIX_OR_SUFFIX_MAY_BE;
 
         private BlockSwitcher readBlockSwitcher() {
             int typeCount = readVariableLengthCount() + 1;

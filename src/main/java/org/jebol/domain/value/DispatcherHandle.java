@@ -6,10 +6,10 @@ import java.util.Optional;
 
 public record DispatcherHandle(HandleValue handle) {
 
-    public static final String THE_KIND_A_DISPATCHER_IS = "extension";
+    public static final String KIND_DISPATCHER_IS = "extension";
 
     public Optional<ExtensionDispatcher> findTheDispatcher() {
-        if (!handle.typeName().equals(THE_KIND_A_DISPATCHER_IS)
+        if (!handle.typeName().equals(KIND_DISPATCHER_IS)
                 || !(handle.payload() instanceof JavaObjectValue carried)) {
             return Optional.empty();
         }

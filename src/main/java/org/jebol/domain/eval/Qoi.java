@@ -17,7 +17,7 @@ final class Qoi {
     private static final int OP_RGBA = 0xFF;
     private static final int TAG_MASK = 0xC0;
 
-    private static final int LONGEST_RUN_BEFORE_A_COUNT_WOULD_SPELL_A_TAG = 62;
+    private static final int LONGEST_RUN_BEFORE_COUNT_WOULD_SPELL_TAG = 62;
 
     private static final int TABLE_SIZE = 64;
 
@@ -147,7 +147,7 @@ final class Qoi {
                     pixels[at + 2] & 0xFF, pixels[at + 3] & 0xFF);
             if (here.equals(before)) {
                 run++;
-                if (run == LONGEST_RUN_BEFORE_A_COUNT_WOULD_SPELL_A_TAG
+                if (run == LONGEST_RUN_BEFORE_COUNT_WOULD_SPELL_TAG
                         || pixel == howMany - 1) {
                     written.add(OP_RUN | (run - 1));
                     run = 0;

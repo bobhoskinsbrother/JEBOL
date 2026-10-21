@@ -41,7 +41,7 @@ public class RemoveEachNative extends LoopingNative {
         return List.of(Parameter.quoteSoftly("word"),
                 Parameter.of("series", Set.of(BlockValue.TYPE, BinaryValue.TYPE,
                         StringValue.TYPE, MapValue.TYPE, VectorValue.TYPE)),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

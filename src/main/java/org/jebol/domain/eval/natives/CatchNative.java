@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 public class CatchNative extends DefaultNative {
 
-    private static final int WHERE_THE_NAMES_ARRIVE = 1;
+    private static final int WHERE_NAMES_ARRIVE = 1;
 
     @Override
     public String nativeName() {
@@ -81,10 +81,10 @@ public class CatchNative extends DefaultNative {
     }
 
     private Set<String> listTheExpectedNames(List<Value> arguments, Set<String> refinements) {
-        if (!refinements.contains("name") || arguments.size() <= WHERE_THE_NAMES_ARRIVE) {
+        if (!refinements.contains("name") || arguments.size() <= WHERE_NAMES_ARRIVE) {
             return Set.of();
         }
-        return switch (arguments.get(WHERE_THE_NAMES_ARRIVE)) {
+        return switch (arguments.get(WHERE_NAMES_ARRIVE)) {
             case AnyWordValue single -> Set.of(single.canonical());
             case AnyBlockValue several -> several.remaining().stream()
                     .filter(AnyWordValue.class::isInstance)

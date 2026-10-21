@@ -46,7 +46,7 @@ public final class DrawDialect {
         private final double high;
         private final List<PaintInstruction> painted = new ArrayList<>();
 
-        private PaintState state = PaintState.AT_THE_START;
+        private PaintState state = PaintState.AT_START;
         private Transform transform = Transform.NONE;
         private ClipRectangle clip;
         private Optional<Colour> gapColour = Optional.empty();
@@ -371,14 +371,14 @@ public final class DrawDialect {
                             where.wide(), where.high(), clip, where.opacity());
         }
 
-        private static final int THE_IMAGE_KEY_COLOUR = 1;
+        private static final int IMAGE_KEY_COLOUR = 1;
 
         private void showImage(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof ImageValue given)) {
                 return;
             }
-            ImageValue pixels = read.readColourAt(arguments, THE_IMAGE_KEY_COLOUR)
+            ImageValue pixels = read.readColourAt(arguments, IMAGE_KEY_COLOUR)
                     .map(key -> PicturesWorkedOutHere.withThatColourSeeThrough(given, key))
                     .orElse(given);
             List<PairValue> corners = read.collectEveryPairIn(arguments);
@@ -438,18 +438,18 @@ public final class DrawDialect {
                     atThatSize, sizeAcross, sizeDown, transform));
         }
 
-        private static final int THE_TEXT_OFFSET = 1;
-        private static final int THE_TEXT_BLOCK = 3;
+        private static final int TEXT_OFFSET = 1;
+        private static final int TEXT_BLOCK = 3;
 
         private void writeText(List<Value> arguments) {
-            if (THE_TEXT_BLOCK >= arguments.size()
-                    || !(arguments.get(THE_TEXT_BLOCK) instanceof AnyBlockValue written)
+            if (TEXT_BLOCK >= arguments.size()
+                    || !(arguments.get(TEXT_BLOCK) instanceof AnyBlockValue written)
                     || state.strokeColour().isEmpty()) {
                 return;
             }
-            PairValue at = read.readThePairAt(arguments, THE_TEXT_OFFSET)
+            PairValue at = read.readThePairAt(arguments, TEXT_OFFSET)
                     .orElse(PairValue.of(0, 0));
-            PairValue size = read.readThePairAt(arguments, THE_TEXT_OFFSET + 1)
+            PairValue size = read.readThePairAt(arguments, TEXT_OFFSET + 1)
                     .orElse(PairValue.of(wide - at.x(), high - at.y()));
             RichText.Line line = new RichText(state.strokeColour().orElseThrow()).lineIn(written);
             if (line.runs().isEmpty()) {
@@ -652,7 +652,7 @@ public final class DrawDialect {
                     radius.x(), radius.y(), begins, turns, closes));
         }
 
-        private static final int THE_FIRST_TRIANGLE_COLOUR = 3;
+        private static final int FIRST_TRIANGLE_COLOUR = 3;
 
         private void paintTriangle(List<Value> arguments) {
             List<Colour> corners = readTheThreeCornerColours(arguments);
@@ -686,8 +686,8 @@ public final class DrawDialect {
 
         private List<Colour> readTheThreeCornerColours(List<Value> arguments) {
             List<Colour> corners = new ArrayList<>();
-            for (int slot = THE_FIRST_TRIANGLE_COLOUR;
-                    slot < THE_FIRST_TRIANGLE_COLOUR + 3; slot++) {
+            for (int slot = FIRST_TRIANGLE_COLOUR;
+                 slot < FIRST_TRIANGLE_COLOUR + 3; slot++) {
                 if (slot < arguments.size()
                         && arguments.get(slot) instanceof TupleValue parts) {
                     corners.add(Colour.ofTuple(parts));
@@ -733,10 +733,10 @@ public final class DrawDialect {
                 PairValue to = readKnotAt(knots, span + 1, closes);
                 PairValue after = readKnotAt(knots, span + 2, closes);
                 path.add(new PathStep.CubicTo(
-                        from.x() + (to.x() - before.x()) / THE_CATMULL_ROM_SIXTH,
-                        from.y() + (to.y() - before.y()) / THE_CATMULL_ROM_SIXTH,
-                        to.x() - (after.x() - from.x()) / THE_CATMULL_ROM_SIXTH,
-                        to.y() - (after.y() - from.y()) / THE_CATMULL_ROM_SIXTH,
+                        from.x() + (to.x() - before.x()) / CATMULL_ROM_SIXTH,
+                        from.y() + (to.y() - before.y()) / CATMULL_ROM_SIXTH,
+                        to.x() - (after.x() - from.x()) / CATMULL_ROM_SIXTH,
+                        to.y() - (after.y() - from.y()) / CATMULL_ROM_SIXTH,
                         to.x(), to.y()));
             }
             if (closes) {
@@ -753,7 +753,7 @@ public final class DrawDialect {
         }
     }
 
-    private static final double THE_CATMULL_ROM_SIXTH = 6.0;
+    private static final double CATMULL_ROM_SIXTH = 6.0;
 
     private static final int THE_DASH_COLOUR = 1;
 }

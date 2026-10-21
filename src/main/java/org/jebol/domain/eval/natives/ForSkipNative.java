@@ -22,7 +22,7 @@ public class ForSkipNative extends SteppingThroughNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.quoteSoftly("word"),
                 Parameter.of("size", Set.of(IntegerValue.TYPE, DecimalValue.TYPE)),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

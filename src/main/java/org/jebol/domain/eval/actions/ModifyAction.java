@@ -19,7 +19,7 @@ import java.util.Set;
 
 public class ModifyAction extends PortAction {
 
-    private static final Set<String> THE_MODES_A_FILE_TAKES = Set.of(
+    private static final Set<String> MODES_FILE_TAKES = Set.of(
             "owner-read", "owner-write", "owner-execute",
             "group-read", "group-write", "group-execute",
             "world-read", "world-write", "world-execute");
@@ -62,7 +62,7 @@ public class ModifyAction extends PortAction {
     }
 
     private Value modifyFile(Value target, Value field) {
-        if (field instanceof AnyWordValue mode && !THE_MODES_A_FILE_TAKES.contains(mode.canonical())) {
+        if (field instanceof AnyWordValue mode && !MODES_FILE_TAKES.contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, field);
         }
         return target instanceof PortValue ? LogicValue.of(true) : NoneValue.none();

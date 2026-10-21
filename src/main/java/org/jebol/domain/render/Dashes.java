@@ -5,7 +5,7 @@ import java.util.List;
 
 final class Dashes {
 
-    private static final int STEPS_ALONG_A_CURVE = 48;
+    private static final int STEPS_ALONG_CURVE = 48;
 
     private Dashes() {
     }
@@ -57,7 +57,7 @@ final class Dashes {
                 }
                 doneSoFar += step;
                 leftInThisPiece -= step;
-                if (leftInThisPiece <= A_LENGTH_TOO_SHORT_TO_MATTER) {
+                if (leftInThisPiece <= LENGTH_TOO_SHORT_TO_MATTER) {
                     inThePattern = (inThePattern + 1) % pattern.size();
                     leftInThisPiece = readLengthAt(pattern, inThePattern);
                     drawingADash = !drawingADash;
@@ -68,7 +68,7 @@ final class Dashes {
         return List.copyOf(pieces);
     }
 
-    private static final double A_LENGTH_TOO_SHORT_TO_MATTER = 0.000000001;
+    private static final double LENGTH_TOO_SHORT_TO_MATTER = 0.000000001;
 
     private static Point partWayAlong(
             Point from, Point to, double along, double wholeSegment) {
@@ -116,8 +116,8 @@ final class Dashes {
     private static Point walkAlongAQuadratic(
             List<Point> walked, Point from, PathStep.QuadraticTo to) {
 
-        for (int step = 1; step <= STEPS_ALONG_A_CURVE; step++) {
-            double along = step / (double) STEPS_ALONG_A_CURVE;
+        for (int step = 1; step <= STEPS_ALONG_CURVE; step++) {
+            double along = step / (double) STEPS_ALONG_CURVE;
             double staying = 1 - along;
             walked.add(new Point(
                     staying * staying * from.across()
@@ -133,8 +133,8 @@ final class Dashes {
     private static Point walkAlongACubic(
             List<Point> walked, Point from, PathStep.CubicTo to) {
 
-        for (int step = 1; step <= STEPS_ALONG_A_CURVE; step++) {
-            double along = step / (double) STEPS_ALONG_A_CURVE;
+        for (int step = 1; step <= STEPS_ALONG_CURVE; step++) {
+            double along = step / (double) STEPS_ALONG_CURVE;
             double staying = 1 - along;
             walked.add(new Point(
                     staying * staying * staying * from.across()

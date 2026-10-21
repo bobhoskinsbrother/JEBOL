@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class DifferenceNative extends DefaultNative {
 
-    private static final Set<Datatype> TAKES_A_DIFFERENCE = Set.of(
+    private static final Set<Datatype> TAKES_DIFFERENCE = Set.of(
             BitsetValue.TYPE, TypesetValue.TYPE, StringValue.TYPE, MapValue.TYPE,
             BlockValue.TYPE, DateValue.TYPE);
 
@@ -24,8 +24,8 @@ public class DifferenceNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.of("first", TAKES_A_DIFFERENCE),
-                Parameter.of("second", TAKES_A_DIFFERENCE),
+                Parameter.of("first", TAKES_DIFFERENCE),
+                Parameter.of("second", TAKES_DIFFERENCE),
                 Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 

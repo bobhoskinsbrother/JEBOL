@@ -95,7 +95,7 @@ final class ProgramCalling {
 
     private ProcessPort.ProgramInput chooseTheInputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
-            return ProcessPort.ProgramInput.THE_HOSTS_OWN;
+            return ProcessPort.ProgramInput.HOSTS_OWN;
         }
         return switch (redirection.orElseThrow()) {
             case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
@@ -107,12 +107,12 @@ final class ProgramCalling {
 
     private ProcessPort.ProgramOutput chooseTheOutputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
-            return ProcessPort.ProgramOutput.THE_HOSTS_OWN;
+            return ProcessPort.ProgramOutput.HOSTS_OWN;
         }
         return switch (redirection.orElseThrow()) {
             case BinaryValue captured -> ProcessPort.ProgramOutput.CAPTURED;
             case StringValue typed -> ProcessPort.ProgramOutput.CAPTURED;
-            case AnyStringValue address -> ProcessPort.ProgramOutput.INTO_A_FILE;
+            case AnyStringValue address -> ProcessPort.ProgramOutput.INTO_FILE;
             default -> ProcessPort.ProgramOutput.DISCARDED;
         };
     }

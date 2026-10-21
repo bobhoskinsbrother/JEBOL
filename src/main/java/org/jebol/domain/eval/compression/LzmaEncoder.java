@@ -44,13 +44,13 @@ final class LzmaEncoder {
     private static final int STATE_MATCH_AFTER_LITERAL = 7;
     private static final int STATE_REPEAT_AFTER_LITERAL = 8;
 
-    private static final byte[] AFTER_A_LITERAL =
+    private static final byte[] AFTER_LITERAL =
             {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 4, 5};
-    private static final byte[] AFTER_A_MATCH =
+    private static final byte[] AFTER_MATCH =
             {7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 10, 10};
-    private static final byte[] AFTER_A_REPEAT =
+    private static final byte[] AFTER_REPEAT =
             {8, 8, 8, 8, 8, 8, 8, 11, 11, 11, 11, 11};
-    private static final byte[] AFTER_A_SHORT_REPEAT =
+    private static final byte[] AFTER_SHORT_REPEAT =
             {9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11};
 
     private static final int[] PROBABILITY_PRICES =
@@ -332,7 +332,7 @@ final class LzmaEncoder {
         int data = finder.currentPosition() - additionalOffset;
         int probabilitiesAt = findLiteralProbabilitiesAt(at, source[data - 1] & 0xFF);
         int wasState = state;
-        state = AFTER_A_LITERAL[state];
+        state = AFTER_LITERAL[state];
         if (wasState < 7) {
             writer.encodeLiteral(literalProbabilities, probabilitiesAt,
                     source[data] & 0xFF);
@@ -359,7 +359,7 @@ final class LzmaEncoder {
             writer.encodeBit(isRepeat0Long,
                     state * POSITION_STATES_MAX + positionState, length != 1 ? 1 : 0);
             if (length == 1) {
-                state = AFTER_A_SHORT_REPEAT[state];
+                state = AFTER_SHORT_REPEAT[state];
                 return;
             }
         } else {
@@ -387,11 +387,11 @@ final class LzmaEncoder {
         if (settings.pricing && --repeatLengthPrices.counters[positionState] == 0) {
             repeatLengthPrices.updateTable(repeatLengths, positionState);
         }
-        state = AFTER_A_REPEAT[state];
+        state = AFTER_REPEAT[state];
     }
 
     private void writeMatch(int distance, int length, int positionState) {
-        state = AFTER_A_MATCH[state];
+        state = AFTER_MATCH[state];
         matchLengths.encode(writer, length - MATCH_LEN_MIN, positionState);
         if (settings.pricing && --matchLengthPrices.counters[positionState] == 0) {
             matchLengthPrices.updateTable(matchLengths, positionState);
@@ -934,8 +934,8 @@ final class LzmaEncoder {
             if (choiceLength[at] == 1) {
                 stateHere = choiceState[previous];
                 stateHere = choiceDistance[at] == 0
-                        ? AFTER_A_SHORT_REPEAT[stateHere]
-                        : AFTER_A_LITERAL[stateHere];
+                        ? AFTER_SHORT_REPEAT[stateHere]
+                        : AFTER_LITERAL[stateHere];
             } else {
                 int distance = choiceDistance[at];
                 if (choiceExtra[at] != 0) {
@@ -947,8 +947,8 @@ final class LzmaEncoder {
                             : STATE_REPEAT_AFTER_LITERAL;
                 } else {
                     stateHere = distance < NUMBER_OF_REPEATS
-                            ? AFTER_A_REPEAT[choiceState[previous]]
-                            : AFTER_A_MATCH[choiceState[previous]];
+                            ? AFTER_REPEAT[choiceState[previous]]
+                            : AFTER_MATCH[choiceState[previous]];
                 }
                 int previousRepeats = previous * NUMBER_OF_REPEATS;
                 int first = choiceRepeats[previousRepeats];
@@ -1042,7 +1042,7 @@ final class LzmaEncoder {
                             && source[data + length] == source[earlier + length]) {
                         length++;
                     }
-                    int stateAfter = AFTER_A_LITERAL[stateHere];
+                    int stateAfter = AFTER_LITERAL[stateHere];
                     int positionAfter = (position + 1) & positionMask;
                     int price = literalPrice
                             + priceRepeatZero(stateAfter, positionAfter);
@@ -1100,7 +1100,7 @@ final class LzmaEncoder {
                 }
                 beyond -= length;
                 if (beyond >= 3) {
-                    int stateAfter = AFTER_A_REPEAT[stateHere];
+                    int stateAfter = AFTER_REPEAT[stateHere];
                     int positionAfter = (position + length) & positionMask;
                     price += repeatLengthPrices.prices[positionState][length - 2]
                             + priceZeroIn(isMatch,
@@ -1178,7 +1178,7 @@ final class LzmaEncoder {
                         }
                         beyond -= length;
                         if (beyond >= 3) {
-                            int stateAfter = AFTER_A_MATCH[stateHere];
+                            int stateAfter = AFTER_MATCH[stateHere];
                             int positionAfter = (position + length) & positionMask;
                             price += priceZeroIn(isMatch,
                                     stateAfter * POSITION_STATES_MAX + positionAfter);

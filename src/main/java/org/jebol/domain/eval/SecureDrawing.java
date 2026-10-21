@@ -11,9 +11,9 @@ import java.util.Arrays;
 final class SecureDrawing extends RandomDrawing {
 
     private static final int BYTES_HASHED = 20;
-    private static final double TWO_TO_THE_SIXTY_FOURTH = 0x1p64;
-    private static final double ONE_OVER_TWO_TO_THE_SIXTY_FOURTH = 0x1p-64;
-    private static final long THE_LARGEST_UNSIGNED = -1L;
+    private static final double TWO_TO_SIXTY_FOURTH = 0x1p64;
+    private static final double ONE_OVER_TWO_TO_SIXTY_FOURTH = 0x1p-64;
+    private static final long LARGEST_UNSIGNED = -1L;
 
     private final RebolRandom generator;
     private final DigestPort digests;
@@ -51,8 +51,8 @@ final class SecureDrawing extends RandomDrawing {
             return 0;
         }
         long span = limit < 0 ? -limit : limit;
-        long lastExactMultiple = THE_LARGEST_UNSIGNED
-                - Long.remainderUnsigned(THE_LARGEST_UNSIGNED - span + 1, span);
+        long lastExactMultiple = LARGEST_UNSIGNED
+                - Long.remainderUnsigned(LARGEST_UNSIGNED - span + 1, span);
         long drawn;
         do {
             drawn = next();
@@ -64,7 +64,7 @@ final class SecureDrawing extends RandomDrawing {
     @Override
     public double fraction() {
         double drawn = next();
-        return (drawn < 0 ? drawn + TWO_TO_THE_SIXTY_FOURTH : drawn)
-                * ONE_OVER_TWO_TO_THE_SIXTY_FOURTH;
+        return (drawn < 0 ? drawn + TWO_TO_SIXTY_FOURTH : drawn)
+                * ONE_OVER_TWO_TO_SIXTY_FOURTH;
     }
 }

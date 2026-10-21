@@ -12,7 +12,7 @@ public final class Md4 extends Md4FamilyDigest {
         {0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15},
     };
 
-    private static final int[][] ROTATIONS_REPEATING_FOUR_TO_A_ROUND = {
+    private static final int[][] ROTATIONS_REPEATING_FOUR_TO_ROUND = {
         {3, 7, 11, 19},
         {3, 5, 9, 13},
         {3, 9, 11, 15},
@@ -40,7 +40,7 @@ public final class Md4 extends Md4FamilyDigest {
                                 round, second, third, fourth)
                         + block[WORD_ORDER[round][step]]
                         + ROUND_CONSTANTS[round],
-                        ROTATIONS_REPEATING_FOUR_TO_A_ROUND[round][step % 4]);
+                        ROTATIONS_REPEATING_FOUR_TO_ROUND[round][step % 4]);
                 first = fourth;
                 fourth = third;
                 third = second;

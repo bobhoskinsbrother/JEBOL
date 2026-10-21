@@ -9,7 +9,7 @@ public final class CounterWithGalois {
 
     private static final int BLOCK = 16;
     public static final int WHOLE_TAG = 16;
-    private static final byte THE_FIELDS_OWN_CONSTANT = (byte) 0xE1;
+    private static final byte FIELDS_OWN_CONSTANT = (byte) 0xE1;
 
     public record Sealed(byte[] octets, byte[] tag) {
     }
@@ -50,9 +50,9 @@ public final class CounterWithGalois {
 
     private static final int THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING = 12;
 
-    private static final int OCTETS_THE_COUNT_OCCUPIES = 4;
+    private static final int OCTETS_COUNT_OCCUPIES = 4;
 
-    private static final int OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH = 8;
+    private static final int OCTETS_IN_SIXTY_FOUR_BIT_LENGTH = 8;
 
     private static byte[] maskFrom(
             OneBlock cipher, byte[] startingCount, byte[] octets) {
@@ -72,7 +72,7 @@ public final class CounterWithGalois {
     }
 
     private static void countOnce(byte[] counting) {
-        for (int at = BLOCK - 1; at >= BLOCK - OCTETS_THE_COUNT_OCCUPIES; at--) {
+        for (int at = BLOCK - 1; at >= BLOCK - OCTETS_COUNT_OCCUPIES; at--) {
             if (++counting[at] != 0) {
                 return;
             }
@@ -84,13 +84,13 @@ public final class CounterWithGalois {
 
         byte[] lengths = new byte[BLOCK];
         putBitCount(lengths, 0, headerOctets);
-        putBitCount(lengths, OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH, cipherTextOctets);
+        putBitCount(lengths, OCTETS_IN_SIXTY_FOUR_BIT_LENGTH, cipherTextOctets);
         return lengths;
     }
 
     private static void putBitCount(byte[] into, int at, int octets) {
         long bits = (long) octets * Byte.SIZE;
-        for (int step = OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH - 1; step >= 0; step--) {
+        for (int step = OCTETS_IN_SIXTY_FOUR_BIT_LENGTH - 1; step >= 0; step--) {
             into[at + step] = (byte) bits;
             bits >>>= Byte.SIZE;
         }
@@ -123,7 +123,7 @@ public final class CounterWithGalois {
             boolean fellOff = (running[BLOCK - 1] & 1) != 0;
             shiftTowardsTop(running);
             if (fellOff) {
-                running[0] ^= THE_FIELDS_OWN_CONSTANT;
+                running[0] ^= FIELDS_OWN_CONSTANT;
             }
         }
         return product;

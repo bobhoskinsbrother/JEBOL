@@ -9,7 +9,7 @@ import java.util.Set;
 
 public abstract class TabbingNative extends DefaultNative {
 
-    private static final int SPACES_A_TAB_STANDS_FOR = 4;
+    private static final int SPACES_TAB_STANDS_FOR = 4;
 
     abstract String tab(String text, String aTabsWorthOfSpaces);
 
@@ -30,7 +30,7 @@ public abstract class TabbingNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             String aTabsWorthOfSpaces = writeATabsWorthOf(readTheArgumentOf("size", 0, arguments, refinements)
                     .map(this::countSpacesTabStandsFor)
-                    .orElse(SPACES_A_TAB_STANDS_FOR));
+                    .orElse(SPACES_TAB_STANDS_FOR));
             return switch (arguments.getFirst()) {
                 case BinaryValue octets -> BinaryValue.ofBytes(tab(
                         new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),

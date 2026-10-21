@@ -20,7 +20,7 @@ final class BrotliMetaBlock {
     private static final int HOW_OFTEN_THE_INPUT_IS_SAMPLED = 4096;
     private static final int HOW_MUCH_OF_IT_IS_LOOKED_AT = 64;
 
-    private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE =
+    private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE =
             {0, 0, 1, 2};
 
     private static final int[] TWO_CONTEXTS = makeTheContextMapOf(0, 0, 1, 1);
@@ -78,9 +78,9 @@ final class BrotliMetaBlock {
         for (int at = from; at + HOW_MUCH_OF_IT_IS_LOOKED_AT <= end;
                 at += HOW_OFTEN_THE_INPUT_IS_SAMPLED) {
             int stretchEnd = at + HOW_MUCH_OF_IT_IS_LOOKED_AT;
-            int before = SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE[(data[at & mask] & 0xFF) >> 6] * 3;
+            int before = SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE[(data[at & mask] & 0xFF) >> 6] * 3;
             for (int pos = at + 1; pos < stretchEnd; pos++) {
-                int kind = SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE[(data[pos & mask] & 0xFF) >> 6];
+                int kind = SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE[(data[pos & mask] & 0xFF) >> 6];
                 pairs[before + kind]++;
                 before = kind * 3;
             }

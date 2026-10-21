@@ -35,7 +35,7 @@ public class RepeatNative extends LoopingNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.quoteSoftly("counter"),
                 Parameter.of("count", WHAT_REPEAT_COUNTS_BY),
-                Parameter.of("body", A_BLOCK));
+                Parameter.of("body", BLOCK));
     }
 
     @Override

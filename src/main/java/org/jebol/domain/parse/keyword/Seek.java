@@ -84,7 +84,7 @@ final class Seek extends DeclaredKeyword {
                 || wanted instanceof GetWordValue
                 || wanted instanceof SetWordValue
                 || (wanted instanceof WordValue keyword
-                        && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES
+                        && ParseTargets.WORDS_DIALECT_RESERVES
                                 .contains(keyword.canonical()));
         if (refused) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,

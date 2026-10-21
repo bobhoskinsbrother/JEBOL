@@ -97,7 +97,7 @@ public final class Binder {
     public static AnyBlockValue bindWhatTheTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
-        return bindWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
+        return bindWhatTheTargetHoldsItself(block, target, ALL_WAY_DOWN);
     }
 
     public static AnyBlockValue bindWhatTheTargetHoldsItself(
@@ -117,14 +117,14 @@ public final class Binder {
         return block;
     }
 
-    public static final boolean ALL_THE_WAY_DOWN = true;
+    public static final boolean ALL_WAY_DOWN = true;
 
-    public static final boolean THE_TOP_LEVEL_ONLY = false;
+    public static final boolean TOP_LEVEL_ONLY = false;
 
     public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
-        return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
+        return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_WAY_DOWN);
     }
 
     public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(

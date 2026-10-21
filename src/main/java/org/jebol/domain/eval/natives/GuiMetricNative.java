@@ -19,7 +19,7 @@ import java.util.Set;
 
 public class GuiMetricNative extends ScreenNative {
 
-    private static final int THE_FIRST_DISPLAY = 0;
+    private static final int FIRST_DISPLAY = 0;
 
     public GuiMetricNative(GrantedServices granted) {
         super(granted);
@@ -65,7 +65,7 @@ public class GuiMetricNative extends ScreenNative {
     private int displayAskedFor(List<Value> arguments, Set<String> refinements) {
         return readTheArgumentOf("display", 0, arguments, refinements)
                 .map(this::displayNumberedBy)
-                .orElse(THE_FIRST_DISPLAY);
+                .orElse(FIRST_DISPLAY);
     }
 
     private int displayNumberedBy(Value written) {

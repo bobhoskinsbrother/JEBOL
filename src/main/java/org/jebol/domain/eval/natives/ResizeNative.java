@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class ResizeNative extends DefaultNative {
 
-    public static final List<String> THE_FILTERS = List.of(
+    public static final List<String> FILTERS = List.of(
             "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
             "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom",
             "Mitchell", "Lanczos", "Bessel", "Sinc");
@@ -79,7 +79,7 @@ public class ResizeNative extends DefaultNative {
 
     private void refuseFilterCatalogueHasNot(Value asked) {
         boolean known = asked instanceof AnyWordValue word
-                && THE_FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
+                && FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
         if (!known) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }

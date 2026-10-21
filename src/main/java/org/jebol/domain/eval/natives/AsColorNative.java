@@ -9,7 +9,7 @@ public class AsColorNative extends ArithmeticNative {
 
     private static final double A_HALF_THAT_ROUNDS_UP = 0.5;
 
-    private static final int THE_BRIGHTEST_CHANNEL = 255;
+    private static final int BRIGHTEST_CHANNEL = 255;
 
     @Override
     public String nativeName() {
@@ -32,10 +32,10 @@ public class AsColorNative extends ArithmeticNative {
     private int roundChannel(Value given) {
         double number = switch (given) {
             case IntegerValue whole -> whole.magnitude();
-            case PercentValue portion -> portion.quantity() * THE_BRIGHTEST_CHANNEL + A_HALF_THAT_ROUNDS_UP;
+            case PercentValue portion -> portion.quantity() * BRIGHTEST_CHANNEL + A_HALF_THAT_ROUNDS_UP;
             case DecimalValue fraction -> fraction.quantity() + A_HALF_THAT_ROUNDS_UP;
             default -> 0;
         };
-        return Math.clamp((int) number, 0, THE_BRIGHTEST_CHANNEL);
+        return Math.clamp((int) number, 0, BRIGHTEST_CHANNEL);
     }
 }

@@ -144,7 +144,7 @@ public final class SystemObject {
         catalog.register("actions", lib.actionsInOrder());
         catalog.register("natives", lib.nativesInOrder());
         catalog.register("ciphers", BlockValue.of(ports.cryptPort().catalogue()));
-        catalog.register("filters", BlockValue.of(ResizeNative.THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
+        catalog.register("filters", BlockValue.of(ResizeNative.FILTERS.stream().<Value>map(WordValue::of).toList()));
         catalog.register("elliptic-curves", BlockValue.of(EllipticCurveKey.curveNamesInTheCataloguesOrder().stream().<Value>map(WordValue::of).toList()));
         catalog.register("handles", BlockValue.of(List.of(WordValue.of(CipherNative.RC4_HANDLE_TYPE), WordValue.of(CipherNative.DHM_HANDLE_TYPE), WordValue.of(CipherNative.RSA_HANDLE_TYPE), WordValue.of(CipherNative.ECDH_HANDLE_TYPE), WordValue.of("codec"))));
         catalog.register("checksums", BlockValue.of(encodings.listTheChecksumMethods().stream().<Value>map(WordValue::of).toList()));

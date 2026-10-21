@@ -16,9 +16,9 @@ import java.util.Set;
 
 public class AccessOsNative extends DefaultNative {
 
-    private static final String THE_PROCESS_NUMBER = "pid";
+    private static final String PROCESS_NUMBER = "pid";
 
-    private static final Map<String, WhoTheProcessRunsAs> THE_IDENTITY_FIELDS = Map.of(
+    private static final Map<String, WhoTheProcessRunsAs> IDENTITY_FIELDS = Map.of(
             "uid", WhoTheProcessRunsAs.REAL_USER,
             "euid", WhoTheProcessRunsAs.EFFECTIVE_USER,
             "gid", WhoTheProcessRunsAs.REAL_GROUP,
@@ -26,7 +26,7 @@ public class AccessOsNative extends DefaultNative {
 
     private static final int TERMINATE = 15;
 
-    private static final int A_PROCESS_AND_A_SIGNAL = 2;
+    private static final int PROCESS_AND_SIGNAL = 2;
 
     private final GrantedServices grantedServices;
 
@@ -56,11 +56,11 @@ public class AccessOsNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyWordValue field = (AnyWordValue) arguments.getFirst();
             Optional<Value> setTo = readTheArgumentOf("set", 0, arguments, refinements);
-            if (THE_PROCESS_NUMBER.equals(field.canonical())) {
+            if (PROCESS_NUMBER.equals(field.canonical())) {
                 return setTo.map(asked -> signal(asked, evaluator.ports().processes()))
                         .orElseGet(() -> IntegerValue.of(evaluator.ports().machine().processNumber()));
             }
-            WhoTheProcessRunsAs asked = Optional.ofNullable(THE_IDENTITY_FIELDS.get(field.canonical()))
+            WhoTheProcessRunsAs asked = Optional.ofNullable(IDENTITY_FIELDS.get(field.canonical()))
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, field));
             return setTo.isPresent()
                     ? refuseToChangeWhoProcessRunsAs(field, setTo.get())
@@ -87,7 +87,7 @@ public class AccessOsNative extends DefaultNative {
             return end(process, TERMINATE, processes);
         }
         List<Value> pair = ((AnyBlockValue) asked).remaining();
-        if (pair.size() != A_PROCESS_AND_A_SIGNAL) {
+        if (pair.size() != PROCESS_AND_SIGNAL) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
         long process = readWholeNumberOrRefuse(pair.get(0));

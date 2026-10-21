@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class NowNative extends DefaultNative {
 
-    private static final int SECONDS_A_MINUTE = 60;
+    private static final int SECONDS_MINUTE = 60;
 
     private final GrantedServices grantedServices;
 
@@ -62,7 +62,7 @@ public class NowNative extends DefaultNative {
         if (refinements.contains("utc")) {
             return makeDateWithZone(here.withZoneSameInstant(ZoneOffset.UTC), 0);
         }
-        int offsetMinutes = here.getOffset().getTotalSeconds() / SECONDS_A_MINUTE;
+        int offsetMinutes = here.getOffset().getTotalSeconds() / SECONDS_MINUTE;
         if (refinements.contains("date")) {
             return DateValue.of(here.getYear(), here.getMonthValue(), here.getDayOfMonth());
         }
@@ -71,7 +71,7 @@ public class NowNative extends DefaultNative {
         }
         if (refinements.contains("zone")) {
             return TimeValue.ofNanoseconds(
-                    offsetMinutes * SECONDS_A_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
+                    offsetMinutes * SECONDS_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
         }
         if (refinements.contains("weekday")) {
             return IntegerValue.of(here.getDayOfWeek().getValue());

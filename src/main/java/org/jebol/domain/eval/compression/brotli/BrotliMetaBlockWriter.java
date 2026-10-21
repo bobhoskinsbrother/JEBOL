@@ -594,7 +594,7 @@ final class BrotliMetaBlockWriter {
         writeCompressedHeader(isLast, length, into);
         int distanceSymbols = distances.alphabetSize();
         ThreeHistograms counted = countUp(data, mask, from, commands,
-                MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS);
+                MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS);
 
         into.write(13, 0);
         BrotliCodes.Tree tree = new BrotliCodes.Tree();
@@ -602,8 +602,8 @@ final class BrotliMetaBlockWriter {
         int[] literalBits = new int[LITERAL_SYMBOLS];
         int[] commandDepth = new int[BrotliCodes.COMMAND_SYMBOLS];
         int[] commandBits = new int[BrotliCodes.COMMAND_SYMBOLS];
-        int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
-        int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
+        int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
+        int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
 
         writeATreeFor(counted.literals.counts(), LITERAL_SYMBOLS,
                 LITERAL_SYMBOLS, tree, literalDepth, 0, literalBits, 0, into);
@@ -611,7 +611,7 @@ final class BrotliMetaBlockWriter {
                 BrotliCodes.COMMAND_SYMBOLS, tree, commandDepth, 0,
                 commandBits, 0, into);
         writeATreeFor(counted.distances.counts(),
-                MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS, distanceSymbols,
+                MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS, distanceSymbols,
                 tree, distanceDepth, 0, distanceBits, 0, into);
         writeTheSymbols(data, mask, from, commands, literalDepth, literalBits,
                 commandDepth, commandBits, distanceDepth, distanceBits, into);
@@ -620,7 +620,7 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    private static final int MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS = 140;
+    private static final int MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS = 140;
     private static final int TOO_FEW_COMMANDS_TO_MEASURE = 128;
 
     static void writeWithMostlyFixedCodes(byte[] data, int mask, int from,
@@ -656,11 +656,11 @@ final class BrotliMetaBlockWriter {
                     into);
         } else {
             ThreeHistograms counted = countUp(data, mask, from, commands,
-                    MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS);
+                    MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS);
             int[] commandDepth = new int[BrotliCodes.COMMAND_SYMBOLS];
             int[] commandBits = new int[BrotliCodes.COMMAND_SYMBOLS];
-            int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
-            int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
+            int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
+            int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
             int distanceCodeWidth =
                     BrotliCodes.floorLog2(distances.alphabetSize() - 1) + 1;
             BrotliCodes.buildAndStoreHuffmanTreeFast(tree,

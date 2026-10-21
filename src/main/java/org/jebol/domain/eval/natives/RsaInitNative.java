@@ -14,7 +14,7 @@ import java.util.Set;
 
 public class RsaInitNative extends CipherNative {
 
-    private static final Set<Datatype> A_BINARY = Set.of(BinaryValue.TYPE);
+    private static final Set<Datatype> BINARY = Set.of(BinaryValue.TYPE);
 
     @Override
     public String nativeName() {
@@ -23,11 +23,11 @@ public class RsaInitNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of("n", A_BINARY),
-                Parameter.of("e", A_BINARY),
-                Parameter.belongTo("private", "d", A_BINARY),
-                Parameter.belongTo("private", "p", A_BINARY),
-                Parameter.belongTo("private", "q", A_BINARY));
+        return List.of(Parameter.of("n", BINARY),
+                Parameter.of("e", BINARY),
+                Parameter.belongTo("private", "d", BINARY),
+                Parameter.belongTo("private", "p", BINARY),
+                Parameter.belongTo("private", "q", BINARY));
     }
 
     @Override

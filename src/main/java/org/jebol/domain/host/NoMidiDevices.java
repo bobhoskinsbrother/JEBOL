@@ -4,7 +4,7 @@ import java.util.List;
 
 public final class NoMidiDevices implements MidiDevices {
 
-    private static final int A_DEVICE_THE_HOST_DOES_NOT_LIST = 3;
+    private static final int DEVICE_HOST_DOES_NOT_LIST = 3;
 
     @Override
     public List<String> inputs() {
@@ -18,6 +18,6 @@ public final class NoMidiDevices implements MidiDevices {
 
     @Override
     public Connection connect(MidiRoute route) {
-        throw new Refused(A_DEVICE_THE_HOST_DOES_NOT_LIST, "this interpreter was given no MIDI to reach");
+        throw new Refused(DEVICE_HOST_DOES_NOT_LIST, "this interpreter was given no MIDI to reach");
     }
 }

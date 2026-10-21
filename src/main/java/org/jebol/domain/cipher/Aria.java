@@ -211,13 +211,13 @@ public final class Aria {
         }
 
         int which = width;
-        runRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[1], derived[0], CONSTANTS_KEY_SCHEDULE_FOLDS_KEY_AGAINST[which],
                 derived[1].clone(), ODD_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        runRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[2], derived[1], CONSTANTS_KEY_SCHEDULE_FOLDS_KEY_AGAINST[which],
                 derived[0], EVEN_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        runRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[3], derived[2], CONSTANTS_KEY_SCHEDULE_FOLDS_KEY_AGAINST[which],
                 derived[1], ODD_ROUND_TABLES);
 
         int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
@@ -294,7 +294,7 @@ public final class Aria {
         octets[at + 3] = (byte) (word >>> 24);
     }
 
-    private static final int[][] CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST = {
+    private static final int[][] CONSTANTS_KEY_SCHEDULE_FOLDS_KEY_AGAINST = {
         {0xB7C17C51, 0x940A2227, 0xE8AB13FE, 0xE06E9AFA},
         {0xCC4AB16D, 0x20C8219E, 0xD5B128FF, 0xB0E25DEF},
         {0x1D3792DB, 0x70E92621, 0x75972403, 0x0EC9E804}

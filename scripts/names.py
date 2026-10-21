@@ -148,10 +148,11 @@ def find_offences():
             if suggestion_for(name) is None:
                 continue
             line = stripped.count("\n", 0, match.start()) + 1
+            column = match.start() - stripped.rfind("\n", 0, match.start())
             if is_constant(name):
-                constants[name].add((str(relative), line, match.start() + 1))
+                constants[name].add((str(relative), line, column))
             elif name not in methods and name not in types:
-                variables[name].add((str(relative), line, match.start() + 1))
+                variables[name].add((str(relative), line, column))
     return {"method": methods, "constant": constants, "type": types,
             "variable": variables}
 

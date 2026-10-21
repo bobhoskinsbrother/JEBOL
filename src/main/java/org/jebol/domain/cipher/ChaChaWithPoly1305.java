@@ -15,22 +15,22 @@ public final class ChaChaWithPoly1305 {
 
     public static final int NONCE = 12;
 
-    private static final int THE_AUTHENTICATORS_BLOCK = 0;
+    private static final int AUTHENTICATORS_BLOCK = 0;
 
-    private static final int WHERE_THE_MESSAGE_STARTS = 1;
+    private static final int WHERE_MESSAGE_STARTS = 1;
 
-    private static final int A_SEQUENCE_NUMBER = 8;
+    private static final int SEQUENCE_NUMBER = 8;
 
-    private static final int OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH = 8;
+    private static final int OCTETS_IN_SIXTY_FOUR_BIT_LENGTH = 8;
 
     public record Sealed(byte[] octets, byte[] tag) {
     }
 
     public static Sealed seal(byte[] key, byte[] nonce, byte[] header, byte[] octets, boolean deciphering) {
         try {
-            byte[] authenticatorKey = generateKeystream(key, nonce, THE_AUTHENTICATORS_BLOCK, Poly1305.KEY);
+            byte[] authenticatorKey = generateKeystream(key, nonce, AUTHENTICATORS_BLOCK, Poly1305.KEY);
             byte[] masked = maskWith(generateKeystream(
-                    key, nonce, WHERE_THE_MESSAGE_STARTS, octets.length), octets);
+                    key, nonce, WHERE_MESSAGE_STARTS, octets.length), octets);
             byte[] overTheCipherText = deciphering ? octets : masked;
             return new Sealed(masked, Poly1305.computeTag(authenticatorKey,
                     collectAuthenticated(header, overTheCipherText)));
@@ -48,7 +48,7 @@ public final class ChaChaWithPoly1305 {
         System.arraycopy(cipherText, 0, joined, at, cipherText.length);
         at = joined.length - CHUNK;
         putLittleEndian(joined, at, header.length);
-        putLittleEndian(joined, at + OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH,
+        putLittleEndian(joined, at + OCTETS_IN_SIXTY_FOUR_BIT_LENGTH,
                 cipherText.length);
         return joined;
     }
@@ -59,7 +59,7 @@ public final class ChaChaWithPoly1305 {
 
     private static void putLittleEndian(byte[] into, int at, int howMany) {
         long left = howMany;
-        for (int step = 0; step < OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH; step++) {
+        for (int step = 0; step < OCTETS_IN_SIXTY_FOUR_BIT_LENGTH; step++) {
             into[at + step] = (byte) left;
             left >>>= Byte.SIZE;
         }
@@ -67,7 +67,7 @@ public final class ChaChaWithPoly1305 {
 
     public static byte[] makeNonce(byte[] vector, byte[] header) {
         byte[] nonce = Arrays.copyOf(vector, NONCE);
-        int howMany = Math.min(header.length, A_SEQUENCE_NUMBER);
+        int howMany = Math.min(header.length, SEQUENCE_NUMBER);
         for (int at = 0; at < howMany; at++) {
             nonce[NONCE - howMany + at] ^= header[at];
         }

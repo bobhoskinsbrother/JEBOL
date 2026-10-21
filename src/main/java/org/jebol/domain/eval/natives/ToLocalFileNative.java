@@ -16,7 +16,7 @@ public class ToLocalFileNative extends HostNative {
 
     private static final char REBOLS_SEPARATOR = '/';
 
-    private static final char A_DOT = '.';
+    private static final char DOT = '.';
 
     private final LocalFileSeparator localSeparator;
 
@@ -78,10 +78,10 @@ public class ToLocalFileNative extends HostNative {
     }
 
     private int skipAnyDots(String path, int at, StringBuilder built, char separator) {
-        if (at >= path.length() || path.charAt(at) != A_DOT) {
+        if (at >= path.length() || path.charAt(at) != DOT) {
             return at;
         }
-        boolean twoDots = at + 1 < path.length() && path.charAt(at + 1) == A_DOT;
+        boolean twoDots = at + 1 < path.length() && path.charAt(at + 1) == DOT;
         int after = at + (twoDots ? 2 : 1);
         boolean wholeSegment = after >= path.length() || path.charAt(after) == REBOLS_SEPARATOR;
         if (!wholeSegment) {

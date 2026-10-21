@@ -10,13 +10,13 @@ public record LibraryFile(LibraryFileHeader header, AnyBlockValue body) {
 
     private static final String REBOL = "rebol";
 
-    private static final int WHERE_THE_BODY_STARTS_BELOW_A_HEADER = 3;
+    private static final int WHERE_BODY_STARTS_BELOW_HEADER = 3;
 
     public static LibraryFile readFrom(AnyBlockValue transcoded) {
         return startsWithRebolHeader(transcoded)
                 ? new LibraryFile(
                         LibraryFileHeader.readFrom(transcoded.remaining().get(1)),
-                        transcoded.atIndex(WHERE_THE_BODY_STARTS_BELOW_A_HEADER))
+                        transcoded.atIndex(WHERE_BODY_STARTS_BELOW_HEADER))
                 : new LibraryFile(LibraryFileHeader.none(), transcoded);
     }
 

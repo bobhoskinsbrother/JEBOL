@@ -9,8 +9,8 @@ final class BrotliGenericEncoder {
     private static final int QUALITY_THAT_FIRST_SPLITS_BLOCKS = 4;
     private static final int QUALITY_THAT_FIRST_MEASURES_ITS_CODES = 3;
     private static final int MOST_SYMBOLS_HELD_BACK_WHEN_NOT_SPLITTING = 0x2FFF;
-    private static final int INPUT_LARGE_ENOUGH_FOR_THE_WIDER_HASHES = 1 << 20;
-    private static final int MOST_BITS_A_META_BLOCK_MAY_SPAN = 24;
+    private static final int INPUT_LARGE_ENOUGH_FOR_WIDER_HASHES = 1 << 20;
+    private static final int MOST_BITS_META_BLOCK_MAY_SPAN = 24;
 
     private final byte[] source;
     private final int quality;
@@ -50,12 +50,12 @@ final class BrotliGenericEncoder {
         this.blockBits = countBytesReadAtOnce(quality);
         int ringBits = 1 + Math.max(WINDOW_BITS, blockBits);
         this.howMuchAMetaBlockMayHold =
-                1 << Math.min(ringBits, MOST_BITS_A_META_BLOCK_MAY_SPAN);
+                1 << Math.min(ringBits, MOST_BITS_META_BLOCK_MAY_SPAN);
         this.ringBuffer = new BrotliRingBuffer(ringBits, blockBits);
         this.finder = quality >= LOWEST_QUALITY_THAT_PRICES_EVERYTHING
                 ? new PriceEverything(quality, source.length)
                 : new TakeTheBestMatch(quality,
-                        source.length >= INPUT_LARGE_ENOUGH_FOR_THE_WIDER_HASHES);
+                        source.length >= INPUT_LARGE_ENOUGH_FOR_WIDER_HASHES);
         this.writer = new BrotliBits(source.length / 2 + 64);
     }
 

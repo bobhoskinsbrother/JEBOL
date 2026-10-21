@@ -9,7 +9,7 @@ import java.util.List;
 
 public class ForAllNative extends SteppingThroughNative {
 
-    private static final int ONE_AT_A_TIME = 1;
+    private static final int ONE_AT_TIME = 1;
 
     @Override
     public String nativeName() {
@@ -18,7 +18,7 @@ public class ForAllNative extends SteppingThroughNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.quoteSoftly("word"), Parameter.of("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("word"), Parameter.of("body", BLOCK));
     }
 
     @Override
@@ -26,7 +26,7 @@ public class ForAllNative extends SteppingThroughNative {
         return (arguments, evaluator, context, refinements) -> walkBySteps(
                 evaluator,
                 (AnyWordValue) arguments.get(0),
-                ONE_AT_A_TIME,
+                ONE_AT_TIME,
                 (AnyBlockValue) arguments.get(1));
     }
 }

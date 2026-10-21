@@ -22,13 +22,13 @@ import java.util.Optional;
 
 public final class SeekableFilePort {
 
-    private static final String THE_POSITION_AND_WHETHER_IT_MAY_WRITE = "state";
+    private static final String POSITION_AND_WHETHER_IT_MAY_WRITE = "state";
 
     private static final String WHAT_THE_PORT_WAS_MADE_FROM = "ref";
 
-    private static final String WHERE_A_URL_LEAVES_ITS_PATH = "path";
+    private static final String WHERE_URL_LEAVES_ITS_PATH = "path";
 
-    private static final int THE_POSITION = 0;
+    private static final int POSITION = 0;
 
     private static final int WHETHER_IT_MAY_WRITE = 1;
 
@@ -39,10 +39,10 @@ public final class SeekableFilePort {
     }
 
     public long position() {
-        return switch (port.readFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
+        return switch (port.readFieldValue(POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case AnyBlockValue kept
-                    when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
+                    when kept.remaining().get(POSITION) instanceof IntegerValue(long magnitude) ->
                     magnitude;
             default -> 0;
         };
@@ -53,7 +53,7 @@ public final class SeekableFilePort {
     }
 
     public boolean canWriteThrough() {
-        return !(port.readFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
+        return !(port.readFieldValue(POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
@@ -62,7 +62,7 @@ public final class SeekableFilePort {
     }
 
     private void rememberOnPort(long position, boolean mayWrite) {
-        port.setField(THE_POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.of(
+        port.setField(POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.of(
                 List.of(IntegerValue.of(position), LogicValue.of(mayWrite))));
     }
 
@@ -75,7 +75,7 @@ public final class SeekableFilePort {
         }
         Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
         if (made instanceof UrlValue) {
-            return spec.readFieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
+            return spec.readFieldValue(WHERE_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
         }
         if (!(made instanceof FileValue file)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, made);

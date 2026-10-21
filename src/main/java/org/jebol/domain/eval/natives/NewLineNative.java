@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class NewLineNative extends DefaultNative {
 
-    private static final int WHERE_THE_SKIP_SIZE_ARRIVES = 2;
+    private static final int WHERE_SKIP_SIZE_ARRIVES = 2;
 
     @Override
     public String nativeName() {
@@ -50,8 +50,8 @@ public class NewLineNative extends DefaultNative {
     }
 
     private OptionalInt readStride(List<Value> arguments, Set<String> refinements) {
-        if (refinements.contains("skip") && arguments.size() > WHERE_THE_SKIP_SIZE_ARRIVES
-                && arguments.get(WHERE_THE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
+        if (refinements.contains("skip") && arguments.size() > WHERE_SKIP_SIZE_ARRIVES
+                && arguments.get(WHERE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
             if (size.magnitude() < 1) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(size));
             }

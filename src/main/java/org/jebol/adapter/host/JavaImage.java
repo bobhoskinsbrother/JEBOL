@@ -36,29 +36,29 @@ public final class JavaImage implements ImagePort {
             "bmp", "bmp",
             "tiff", "tiff");
 
-    private static final int CHANNELS_A_PIXEL = 4;
+    private static final int CHANNELS_PIXEL = 4;
 
     private static final Set<String> HAVE_NO_ALPHA = Set.of("jpeg");
 
-    private static final Set<String> STORES_AN_INDEX_INTO_A_PALETTE = Set.of("gif");
+    private static final Set<String> STORES_INDEX_INTO_PALETTE = Set.of("gif");
 
     private static final String WRITTEN_BY_HAND = "bmp";
 
     private static final int PALETTE_ENTRIES = 256;
 
-    private static final int BITS_AN_INDEX_TAKES = 8;
+    private static final int BITS_INDEX_TAKES = 8;
 
-    private static final Point AT_THE_CORNER = new Point(0, 0);
+    private static final Point AT_CORNER = new Point(0, 0);
 
     private static final int FILE_HEADER_BYTES = 14;
 
     private static final int FIFTH_HEADER_BYTES = 124;
 
-    private static final int EACH_CHANNEL_HAS_A_MASK = 3;
+    private static final int EACH_CHANNEL_HAS_MASK = 3;
 
-    private static final int THE_USUAL_COLOUR_SPACE = 0x73524742;
+    private static final int USUAL_COLOUR_SPACE = 0x73524742;
 
-    private static final String THE_GIF_IMAGE_DESCRIPTOR_TREE =
+    private static final String GIF_IMAGE_DESCRIPTOR_TREE =
             "javax_imageio_gif_image_1.0";
 
     @Override
@@ -127,7 +127,7 @@ public final class JavaImage implements ImagePort {
     private Point findFrame(ImageReader reader, int frame) {
         try {
             Node tree = reader.getImageMetadata(frame)
-                    .getAsTree(THE_GIF_IMAGE_DESCRIPTOR_TREE);
+                    .getAsTree(GIF_IMAGE_DESCRIPTOR_TREE);
             for (Node child = tree.getFirstChild();
                     child != null; child = child.getNextSibling()) {
                 if (child.getNodeName().equals("ImageDescriptor")) {
@@ -137,9 +137,9 @@ public final class JavaImage implements ImagePort {
                 }
             }
         } catch (IOException | RuntimeException noMetadata) {
-            return AT_THE_CORNER;
+            return AT_CORNER;
         }
-        return AT_THE_CORNER;
+        return AT_CORNER;
     }
 
     private int readNumberIn(Node descriptor, String attribute) {
@@ -150,7 +150,7 @@ public final class JavaImage implements ImagePort {
     private Pixels readPixels(BufferedImage read) {
         int wide = read.getWidth();
         int high = read.getHeight();
-        byte[] rgba = new byte[wide * high * CHANNELS_A_PIXEL];
+        byte[] rgba = new byte[wide * high * CHANNELS_PIXEL];
         int at = 0;
         for (int down = 0; down < high; down++) {
             for (int across = 0; across < wide; across++) {
@@ -174,14 +174,14 @@ public final class JavaImage implements ImagePort {
             return encode32BitBitmap(image);
         }
         BufferedImage written = bufferFrom(image, HAVE_NO_ALPHA.contains(format));
-        if (STORES_AN_INDEX_INTO_A_PALETTE.contains(format)) {
+        if (STORES_INDEX_INTO_PALETTE.contains(format)) {
             written = withAPaletteOfItsOwnColours(written);
         }
         return writeBytes(written, format);
     }
 
     private byte[] encode32BitBitmap(Pixels image) {
-        int pixelBytes = image.wide() * image.high() * CHANNELS_A_PIXEL;
+        int pixelBytes = image.wide() * image.high() * CHANNELS_PIXEL;
         byte[] file = new byte[FILE_HEADER_BYTES + FIFTH_HEADER_BYTES + pixelBytes];
         file[0] = 'B';
         file[1] = 'M';
@@ -193,18 +193,18 @@ public final class JavaImage implements ImagePort {
         addFourBytes(file, header + 4, image.wide());
         addFourBytes(file, header + 8, -image.high());
         addTwoBytes(file, header + 12, 1);
-        addTwoBytes(file, header + 14, Byte.SIZE * CHANNELS_A_PIXEL);
-        addFourBytes(file, header + 16, EACH_CHANNEL_HAS_A_MASK);
+        addTwoBytes(file, header + 14, Byte.SIZE * CHANNELS_PIXEL);
+        addFourBytes(file, header + 16, EACH_CHANNEL_HAS_MASK);
         addFourBytes(file, header + 20, pixelBytes);
         addFourBytes(file, header + 40, 0x00FF0000);
         addFourBytes(file, header + 44, 0x0000FF00);
         addFourBytes(file, header + 48, 0x000000FF);
         addFourBytes(file, header + 52, 0xFF000000);
-        addFourBytes(file, header + 56, THE_USUAL_COLOUR_SPACE);
+        addFourBytes(file, header + 56, USUAL_COLOUR_SPACE);
 
         byte[] rgba = image.rgba();
         int writing = FILE_HEADER_BYTES + FIFTH_HEADER_BYTES;
-        for (int at = 0; at < pixelBytes; at += CHANNELS_A_PIXEL) {
+        for (int at = 0; at < pixelBytes; at += CHANNELS_PIXEL) {
             file[writing++] = rgba[at + 2];
             file[writing++] = rgba[at + 1];
             file[writing++] = rgba[at];
@@ -285,7 +285,7 @@ public final class JavaImage implements ImagePort {
             at++;
         }
         IndexColorModel palette = new IndexColorModel(
-                BITS_AN_INDEX_TAKES, colours.size(), reds, greens, blues);
+                BITS_INDEX_TAKES, colours.size(), reds, greens, blues);
         BufferedImage indexed = new BufferedImage(picture.getWidth(),
                 picture.getHeight(), BufferedImage.TYPE_BYTE_INDEXED, palette);
         WritableRaster raster = indexed.getRaster();

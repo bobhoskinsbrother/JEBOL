@@ -61,10 +61,10 @@ record Assigned(Value value, AnyWordValue part) {
         });
     }
 
-    private static final int MOST_A_ZONE_MAY_BE = 15 * 60 + 45;
+    private static final int MOST_ZONE_MAY_BE = 15 * 60 + 45;
 
     private static int withinReach(int offsetMinutes) {
-        if (Math.abs(offsetMinutes) > MOST_A_ZONE_MAY_BE) {
+        if (Math.abs(offsetMinutes) > MOST_ZONE_MAY_BE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     IntegerValue.of(offsetMinutes));
         }

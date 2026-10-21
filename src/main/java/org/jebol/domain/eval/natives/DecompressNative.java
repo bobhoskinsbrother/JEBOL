@@ -30,7 +30,7 @@ public class DecompressNative extends CompressionNative {
 
     private static final int LZMA_INPUT_ENDS_EARLY = 6;
 
-    private static final int CRUSH_COPIES_FROM_BEFORE_THE_START = 0;
+    private static final int CRUSH_COPIES_FROM_BEFORE_START = 0;
 
     private static final Map<String, Integer> WHAT_EACH_METHOD_REPORTS_OF_DATA_IT_CANNOT_READ = Map.of(
             "zlib", DEFLATE_BAD_DATA,
@@ -39,7 +39,7 @@ public class DecompressNative extends CompressionNative {
             "br", BROTLI_NEEDS_MORE_INPUT,
             "lzw", LZW_BAD_DATA,
             "lzma", LZMA_INPUT_ENDS_EARLY,
-            "crush", CRUSH_COPIES_FROM_BEFORE_THE_START);
+            "crush", CRUSH_COPIES_FROM_BEFORE_START);
 
     private static final int CRUSH_LENGTH_FIELD = 4;
 

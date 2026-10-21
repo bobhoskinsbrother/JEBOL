@@ -5,9 +5,9 @@ import org.jebol.domain.value.*;
 public final class Arithmetic {
 
     public enum Division {
-        SIGN_FOLLOWS_THE_DIVIDEND,
+        SIGN_FOLLOWS_DIVIDEND,
         NEVER_NEGATIVE,
-        SIGN_FOLLOWS_THE_DIVISOR
+        SIGN_FOLLOWS_DIVISOR
     }
 
     private Arithmetic() {
@@ -39,7 +39,7 @@ public final class Arithmetic {
         double first = asMagnitude(dividend);
         double second = asMagnitude(divisor);
         requireNonZero(second);
-        if (definition == Division.SIGN_FOLLOWS_THE_DIVIDEND) {
+        if (definition == Division.SIGN_FOLLOWS_DIVIDEND) {
             return shapeLikeDividend(dividend, first % second);
         }
         double by = definition == Division.NEVER_NEGATIVE
@@ -54,9 +54,9 @@ public final class Arithmetic {
         requireNonZero(divisor);
         long rest = dividend % divisor;
         return switch (definition) {
-            case SIGN_FOLLOWS_THE_DIVIDEND -> rest;
+            case SIGN_FOLLOWS_DIVIDEND -> rest;
             case NEVER_NEGATIVE -> rest < 0 ? rest + Math.abs(divisor) : rest;
-            case SIGN_FOLLOWS_THE_DIVISOR -> rest != 0 && (rest < 0) != (divisor < 0)
+            case SIGN_FOLLOWS_DIVISOR -> rest != 0 && (rest < 0) != (divisor < 0)
                     ? rest + divisor
                     : rest;
         };

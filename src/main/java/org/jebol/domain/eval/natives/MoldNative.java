@@ -10,7 +10,7 @@ import java.util.function.Function;
 
 public class MoldNative extends DefaultNative {
 
-    private static final int THE_BASE_WHEN_THE_SYSTEM_NAMES_NONE = 16;
+    private static final int BASE_WHEN_SYSTEM_NAMES_NONE = 16;
 
     @Override
     public String nativeName() {
@@ -70,6 +70,6 @@ public class MoldNative extends DefaultNative {
                 && system.findSlotFor("options").value() instanceof ObjectValue(Context options)
                 && options.findSlotFor("binary-base").value() instanceof IntegerValue(long base)
                 ? (int) base
-                : THE_BASE_WHEN_THE_SYSTEM_NAMES_NONE;
+                : BASE_WHEN_SYSTEM_NAMES_NONE;
     }
 }

@@ -76,7 +76,7 @@ public final class Bincode {
     private static final List<String> VARIABLE_WIDTH =
             List.of("encodedu32", "encodedu64", "vint");
 
-    private static final long WIDEST_A_NARROW_ONE_TAKES = 0xFFFFFFFFL;
+    private static final long WIDEST_NARROW_ONE_TAKES = 0xFFFFFFFFL;
 
     private static final List<String> BITS =
             List.of("ub", "sb", "fb", "bit", "not-bit");
@@ -302,9 +302,9 @@ public final class Bincode {
                     (int) readWholeNumberAfter(dialect, ++step, command))));
             case "fb" -> read.add(DecimalValue.of(readSignedBits(cursor,
                     (int) readWholeNumberAfter(dialect, ++step, command))
-                    / A_WHOLE_FIXED_POINT_UNIT));
+                    / WHOLE_FIXED_POINT_UNIT));
             case "encodedu32" -> read.add(IntegerValue.of(
-                    readSevenBitsByte(cursor) & WIDEST_A_NARROW_ONE_TAKES));
+                    readSevenBitsByte(cursor) & WIDEST_NARROW_ONE_TAKES));
             case "encodedu64" -> read.add(IntegerValue.of(readSevenBitsByte(cursor)));
             case "vint" -> read.add(IntegerValue.of(readVariableNumber(cursor)));
             case "skipbits" -> skipBits(cursor,
@@ -319,9 +319,9 @@ public final class Bincode {
             case "tuple3" -> read.add(readTuple(cursor, 3));
             case "tuple4" -> read.add(readTuple(cursor, 4));
             case "fixed8" -> read.add(DecimalValue.of(
-                    readWholeNumber(cursor, "ui16le") / (double) A_FIXED8_UNIT));
+                    readWholeNumber(cursor, "ui16le") / (double) FIXED8_UNIT));
             case "fixed16" -> read.add(DecimalValue.of(
-                    readWholeNumber(cursor, "ui32le") / A_WHOLE_FIXED_POINT_UNIT));
+                    readWholeNumber(cursor, "ui32le") / WHOLE_FIXED_POINT_UNIT));
             case "string" -> read.add(StringValue.of(textUpToItsNought(cursor)));
             case "bitset8" -> read.add(readBitset(cursor, 1));
             case "bitset16" -> read.add(readBitset(cursor, 2));
@@ -477,7 +477,7 @@ public final class Bincode {
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
     }
 
-    private static final double A_WHOLE_FIXED_POINT_UNIT = 65536.0;
+    private static final double WHOLE_FIXED_POINT_UNIT = 65536.0;
 
     private static int readNextBit(Cursor cursor) {
         refuseReadPastEnd(cursor, 1);
@@ -595,11 +595,11 @@ public final class Bincode {
     }
 
     private static long refuseWiderNumber(long number) {
-        if (number > WIDEST_A_NARROW_ONE_TAKES
-                || number < -WIDEST_A_NARROW_ONE_TAKES) {
+        if (number > WIDEST_NARROW_ONE_TAKES
+                || number < -WIDEST_NARROW_ONE_TAKES) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(number));
         }
-        return number & WIDEST_A_NARROW_ONE_TAKES;
+        return number & WIDEST_NARROW_ONE_TAKES;
     }
 
     private static void alignToByte(Cursor cursor) {
@@ -611,13 +611,13 @@ public final class Bincode {
 
     private static Value readMsdosTime(Cursor cursor) {
         long packed = readWholeNumber(cursor, "ui16le");
-        return TimeValue.ofNanoseconds(A_SECOND * (
+        return TimeValue.ofNanoseconds(SECOND * (
                 (packed >> 11 & 0x1F) * 3600
                         + (packed >> 5 & 0x3F) * 60
                         + (packed & 0x1F) * 2));
     }
 
-    private static final long A_SECOND = 1_000_000_000L;
+    private static final long SECOND = 1_000_000_000L;
 
     private static Value readMsdosDate(Cursor cursor) {
         long packed = readWholeNumber(cursor, "ui16le");
@@ -652,7 +652,7 @@ public final class Bincode {
                 ? nanoseconds1
                 : readInstantIn(given).timeOfDay()
                         .map(TimeValue::nanoseconds).orElse(0L);
-        long seconds = nanoseconds / A_SECOND;
+        long seconds = nanoseconds / SECOND;
         writeWholeNumber(cursor, "ui16le",
                 seconds / 3600 << 11
                         | seconds / 60 % 60 << 5
@@ -663,12 +663,12 @@ public final class Bincode {
         DateValue day = readInstantIn(given);
         writeWholeNumber(cursor, "ui16le",
                 (long) Math.floorMod(day.year() - MSDOS_EPOCH_YEAR,
-                        YEARS_THE_FIELD_COUNTS) << 9
+                        YEARS_FIELD_COUNTS) << 9
                         | (long) day.month() << 5
                         | day.day());
     }
 
-    private static final int YEARS_THE_FIELD_COUNTS = 128;
+    private static final int YEARS_FIELD_COUNTS = 128;
 
     private static DateValue readInstantIn(Value given) {
         if (!(given instanceof DateValue day)) {
@@ -707,7 +707,7 @@ public final class Bincode {
         return TupleValue.of(segments);
     }
 
-    private static final int A_FIXED8_UNIT = 256;
+    private static final int FIXED8_UNIT = 256;
 
     private static String textUpToItsNought(Cursor cursor) {
         StringBuilder text = new StringBuilder();

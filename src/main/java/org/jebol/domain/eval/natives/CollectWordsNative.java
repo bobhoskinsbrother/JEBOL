@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 public class CollectWordsNative extends DefaultNative {
 
-    private static final int WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES = 1;
+    private static final int WHERE_FIRST_REFINEMENT_ARGUMENT_ARRIVES = 1;
 
     @Override
     public String nativeName() {
@@ -47,13 +47,13 @@ public class CollectWordsNative extends DefaultNative {
 
     private Value readIgnoredWords(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("ignore")
-                && arguments.size() > WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
-                ? arguments.get(WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES)
+                && arguments.size() > WHERE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
+                ? arguments.get(WHERE_FIRST_REFINEMENT_ARGUMENT_ARRIVES)
                 : NoneValue.none();
     }
 
     private AnyWordValue.AnyWordDatatype readTheWordKindAsked(List<Value> arguments, Set<String> refinements) {
-        int at = WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
+        int at = WHERE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 + (refinements.contains("ignore") ? 1 : 0);
         if (arguments.size() <= at
                 || !(arguments.get(at) instanceof AnyWordValue.AnyWordDatatype asked)) {

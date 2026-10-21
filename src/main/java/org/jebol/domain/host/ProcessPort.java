@@ -20,9 +20,9 @@ import static java.util.Map.*;
  */
 public interface ProcessPort {
 
-    enum ProgramInput { THE_HOSTS_OWN, SUPPLIED_BYTES, FILE_CONTENTS, NOTHING_AT_ALL }
+    enum ProgramInput { HOSTS_OWN, SUPPLIED_BYTES, FILE_CONTENTS, NOTHING_AT_ALL }
 
-    enum ProgramOutput { THE_HOSTS_OWN, CAPTURED, INTO_A_FILE, DISCARDED }
+    enum ProgramOutput { HOSTS_OWN, CAPTURED, INTO_FILE, DISCARDED }
 
     /**
      * @param environment what the child's environment is to be, rather than

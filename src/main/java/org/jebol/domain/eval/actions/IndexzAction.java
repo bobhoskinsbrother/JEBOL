@@ -16,7 +16,7 @@ public class IndexzAction extends SeriesOrFileAction {
 
     private static final int COUNTING_FROM_NOUGHT = 0;
 
-    private static final int THE_HEAD_IS_ONE = 1;
+    private static final int HEAD_IS_ONE = 1;
 
     public IndexzAction(GrantedServices granted) {
         super(granted);
@@ -44,7 +44,7 @@ public class IndexzAction extends SeriesOrFileAction {
                     picture.findWhereItStands(COUNTING_FROM_NOUGHT);
             case PortValue port when port.isAFile() ->
                     IntegerValue.of(findFileBehind(port, evaluator).position());
-            case RebolSeries series -> IntegerValue.of(series.index() - THE_HEAD_IS_ONE);
+            case RebolSeries series -> IntegerValue.of(series.index() - HEAD_IS_ONE);
             case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }

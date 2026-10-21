@@ -35,13 +35,13 @@ import java.util.Set;
 
 public final class MidiSchemeActor extends DefaultNative implements ServesPortActions {
 
-    private static final String THE_ARGUMENT_NOTHING_CAN_FILL = "internal";
+    private static final String ARGUMENT_NOTHING_CAN_FILL = "internal";
 
-    private static final int THE_PORT_IS_NOT_OPEN = 12;
+    private static final int PORT_IS_NOT_OPEN = 12;
 
     private static final int NO_DEVICE_IS_NAMED = 1;
 
-    private static final int A_DEVICE_THE_HOST_DOES_NOT_LIST = 3;
+    private static final int DEVICE_HOST_DOES_NOT_LIST = 3;
 
     private static final long NO_DEVICE_AT_ALL = 0;
 
@@ -53,7 +53,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     public MidiSchemeActor(GrantedServices granted) {
         this.granted = granted;
-        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL))),
+        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(ARGUMENT_NOTHING_CAN_FILL))),
                 parametersAsWritten());
     }
 
@@ -64,7 +64,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
+        return List.of(Parameter.of(ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
     }
 
     @Override
@@ -139,11 +139,11 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             return Optional.empty();
         }
         if (number < 0 || number > Integer.MAX_VALUE) {
-            throw refuseToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
+            throw refuseToOpen(port, DEVICE_HOST_DOES_NOT_LIST);
         }
         MidiDevice named = new MidiDevice((int) number);
         if (!named.isListedAmong(listed)) {
-            throw refuseToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
+            throw refuseToOpen(port, DEVICE_HOST_DOES_NOT_LIST);
         }
         return Optional.of(named);
     }
@@ -197,7 +197,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {
         return findTheConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
-                readTheReferenceOf(port), IntegerValue.of(THE_PORT_IS_NOT_OPEN)));
+                readTheReferenceOf(port), IntegerValue.of(PORT_IS_NOT_OPEN)));
     }
 
     private Optional<MidiDevices.Connection> findTheConnectionBehind(PortValue port) {

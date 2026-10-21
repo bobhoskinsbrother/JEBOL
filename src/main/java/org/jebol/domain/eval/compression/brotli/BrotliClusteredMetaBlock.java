@@ -5,7 +5,7 @@ final class BrotliClusteredMetaBlock {
     private static final int LITERAL_SYMBOLS = 256;
     private static final int LITERAL_CONTEXT_BITS = 6;
     private static final int DISTANCE_CONTEXT_BITS = 2;
-    private static final int DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS = 544;
+    private static final int DISTANCE_SYMBOLS_HISTOGRAM_HOLDS = 544;
     private static final int MOST_POSTFIX_BITS = 3;
 
     private BrotliClusteredMetaBlock() {
@@ -33,7 +33,7 @@ final class BrotliClusteredMetaBlock {
         BrotliHistogram[] byContext =
                 BrotliHistogram.makeFreshRow(literalHistograms, LITERAL_SYMBOLS);
         BrotliHistogram[] distanceByContext = BrotliHistogram.makeFreshRow(
-                distanceHistograms, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
+                distanceHistograms, DISTANCE_SYMBOLS_HISTOGRAM_HOLDS);
         built.commandHistograms = BrotliHistogram.makeFreshRow(
                 built.commands.countTypes(), BrotliCodes.COMMAND_SYMBOLS);
         built.howManyCommandHistograms = built.commands.countTypes();
@@ -52,10 +52,10 @@ final class BrotliClusteredMetaBlock {
 
         built.distanceContextMap = new int[distanceHistograms];
         BrotliHistogram[] distanceSurvivors = BrotliHistogram.makeFreshRow(
-                distanceHistograms, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
+                distanceHistograms, DISTANCE_SYMBOLS_HISTOGRAM_HOLDS);
         built.howManyDistanceHistograms = BrotliClustering.clusterInto(
                 distanceByContext, distanceHistograms, distanceSurvivors,
-                built.distanceContextMap, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
+                built.distanceContextMap, DISTANCE_SYMBOLS_HISTOGRAM_HOLDS);
         built.distanceHistograms = distanceSurvivors;
 
         return new Built(built, chosen);
@@ -65,7 +65,7 @@ final class BrotliClusteredMetaBlock {
             BrotliCommand commands, BrotliDistances startingFrom) {
 
         BrotliHistogram scratch =
-                new BrotliHistogram(DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
+                new BrotliHistogram(DISTANCE_SYMBOLS_HISTOGRAM_HOLDS);
         double cheapest = 1e99;
         BrotliDistances best = startingFrom;
         boolean stillWorthCheckingTheOriginal = true;
@@ -129,7 +129,7 @@ final class BrotliClusteredMetaBlock {
             scratch.add(prefix & 0x3FF);
             extraBits += prefix >>> 10;
         }
-        return BrotliHistogramCost.of(scratch, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS)
+        return BrotliHistogramCost.of(scratch, DISTANCE_SYMBOLS_HISTOGRAM_HOLDS)
                 + extraBits;
     }
 

@@ -19,10 +19,10 @@ final class LzmaDecoder {
     private static final int LENGTH_LOW_BITS = 3;
     private static final int LENGTH_LOW_SYMBOLS = 1 << LENGTH_LOW_BITS;
     private static final int LENGTH_HIGH_SYMBOLS = 1 << 8;
-    private static final int WHERE_THE_LONG_LENGTHS_START =
+    private static final int WHERE_LONG_LENGTHS_START =
             2 * (POSITION_STATES_MAX << LENGTH_LOW_BITS);
     private static final int LENGTH_PROBABILITIES =
-            WHERE_THE_LONG_LENGTHS_START + LENGTH_HIGH_SYMBOLS;
+            WHERE_LONG_LENGTHS_START + LENGTH_HIGH_SYMBOLS;
     private static final int START_POSITION_MODEL_INDEX = 4;
     private static final int END_POSITION_MODEL_INDEX = 14;
     private static final int FULL_DISTANCES = 1 << (END_POSITION_MODEL_INDEX >> 1);
@@ -34,7 +34,7 @@ final class LzmaDecoder {
     private static final int LITERAL_MODELS = 0x300;
     private static final int SMALLEST_DICTIONARY = 1 << 12;
 
-    private static final long CODE_A_STREAM_CANNOT_OPEN_WITH = 0xC0000000L - 0x400;
+    private static final long CODE_STREAM_CANNOT_OPEN_WITH = 0xC0000000L - 0x400;
 
     private static final int END_OF_STREAM = -1;
 
@@ -144,7 +144,7 @@ final class LzmaDecoder {
         if (output.length == 0) {
             return;
         }
-        if (Long.compareUnsigned(code, CODE_A_STREAM_CANNOT_OPEN_WITH) >= 0) {
+        if (Long.compareUnsigned(code, CODE_STREAM_CANNOT_OPEN_WITH) >= 0) {
             throw new IllegalArgumentException("LZMA stream opens with a repeat");
         }
         while (outputAt < output.length && !finished) {
@@ -295,7 +295,7 @@ final class LzmaDecoder {
                             LENGTH_LOW_BITS);
         }
         return LENGTH_LOW_SYMBOLS * 2
-                + decodeTree(models, WHERE_THE_LONG_LENGTHS_START, 8);
+                + decodeTree(models, WHERE_LONG_LENGTHS_START, 8);
     }
 
     private void decodeDistanceAndCopy(int length) {

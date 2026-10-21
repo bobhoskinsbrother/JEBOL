@@ -10,7 +10,7 @@ import org.jebol.domain.value.Value;
 
 public class AppendAction extends AddingAction {
 
-    private static final boolean AT_THE_END = true;
+    private static final boolean AT_END = true;
 
     public AppendAction(GrantedServices granted) {
         super(granted);
@@ -27,7 +27,7 @@ public class AppendAction extends AddingAction {
             Value added = arguments.get(1);
             return switch (arguments.getFirst()) {
                 case PortValue queue when queue.findTheEventQueue().isPresent() ->
-                        queue.queue(added, AT_THE_END);
+                        queue.queue(added, AT_END);
                 case PortValue file when file.isAFile() -> {
                     if (refinements.contains("dup") || refinements.contains("only")) {
                         throw Raised.of(EvaluationFailure.BAD_REFINES,

@@ -38,7 +38,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
 
     private enum HowThePointIsPublished {
 
-        BOTH_COORDINATES_AFTER_A_LEAD_BYTE,
+        BOTH_COORDINATES_AFTER_LEAD_BYTE,
 
         ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
     }
@@ -80,7 +80,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         this.pair = null;
         this.curveName = curveName;
         this.coordinateWidth = curve.coordinateWidth();
-        this.published = HowThePointIsPublished.BOTH_COORDINATES_AFTER_A_LEAD_BYTE;
+        this.published = HowThePointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE;
         this.computedHere = curve;
         this.privateNumber = privateNumber;
         this.publicPoint = publicPoint;
@@ -142,7 +142,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
             KeyPair pair = generating.generateKeyPair();
             int width = (findCurveBehind(pair).getCurve().getField().getFieldSize() + 7) / 8;
             return Optional.of(new EllipticCurveKey(pair, curveName, width,
-                    HowThePointIsPublished.BOTH_COORDINATES_AFTER_A_LEAD_BYTE));
+                    HowThePointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
         }

@@ -11,33 +11,33 @@ import org.jebol.domain.value.AnyWordValue;
 
 final class WritingIntoATime {
 
-    private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
+    private static final long NANOSECONDS_IN_SECOND = 1_000_000_000L;
 
-    private static final long NANOSECONDS_IN_A_MINUTE = 60 * NANOSECONDS_IN_A_SECOND;
+    private static final long NANOSECONDS_IN_MINUTE = 60 * NANOSECONDS_IN_SECOND;
 
-    private static final long NANOSECONDS_IN_AN_HOUR = 60 * NANOSECONDS_IN_A_MINUTE;
+    private static final long NANOSECONDS_IN_HOUR = 60 * NANOSECONDS_IN_MINUTE;
 
-    private static final int THE_HOUR = 0;
+    private static final int HOUR = 0;
 
-    private static final int THE_MINUTE = 1;
+    private static final int MINUTE = 1;
 
-    private static final int THE_SECOND = 2;
+    private static final int SECOND = 2;
 
     TimeValue write(TimeValue time, Value selector, Value written) {
         int part = findPartNamedBy(selector);
         long whole = readWholeNumberIn(written);
         long unsigned = Math.abs(time.nanoseconds());
-        long hours = unsigned / NANOSECONDS_IN_AN_HOUR;
-        long minutes = unsigned % NANOSECONDS_IN_AN_HOUR / NANOSECONDS_IN_A_MINUTE;
-        long seconds = unsigned % NANOSECONDS_IN_A_MINUTE / NANOSECONDS_IN_A_SECOND;
-        long fraction = unsigned % NANOSECONDS_IN_A_SECOND;
+        long hours = unsigned / NANOSECONDS_IN_HOUR;
+        long minutes = unsigned % NANOSECONDS_IN_HOUR / NANOSECONDS_IN_MINUTE;
+        long seconds = unsigned % NANOSECONDS_IN_MINUTE / NANOSECONDS_IN_SECOND;
+        long fraction = unsigned % NANOSECONDS_IN_SECOND;
         switch (part) {
-            case THE_HOUR -> hours = whole;
-            case THE_MINUTE -> minutes = whole;
-            case THE_SECOND -> {
+            case HOUR -> hours = whole;
+            case MINUTE -> minutes = whole;
+            case SECOND -> {
                 if (written instanceof AnyDecimalValue fractional) {
                     seconds = (long) fractional.quantity();
-                    fraction = (long) ((fractional.quantity() - seconds) * NANOSECONDS_IN_A_SECOND);
+                    fraction = (long) ((fractional.quantity() - seconds) * NANOSECONDS_IN_SECOND);
                 } else {
                     seconds = whole;
                     fraction = 0;
@@ -45,16 +45,16 @@ final class WritingIntoATime {
             }
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         }
-        return TimeValue.ofNanoseconds(hours * NANOSECONDS_IN_AN_HOUR
-                + minutes * NANOSECONDS_IN_A_MINUTE
-                + seconds * NANOSECONDS_IN_A_SECOND + fraction);
+        return TimeValue.ofNanoseconds(hours * NANOSECONDS_IN_HOUR
+                + minutes * NANOSECONDS_IN_MINUTE
+                + seconds * NANOSECONDS_IN_SECOND + fraction);
     }
 
     private int findPartNamedBy(Value selector) {
         return switch (selector) {
-            case AnyWordValue name when name.canonical().equals("hour") -> THE_HOUR;
-            case AnyWordValue name when name.canonical().equals("minute") -> THE_MINUTE;
-            case AnyWordValue name when name.canonical().equals("second") -> THE_SECOND;
+            case AnyWordValue name when name.canonical().equals("hour") -> HOUR;
+            case AnyWordValue name when name.canonical().equals("minute") -> MINUTE;
+            case AnyWordValue name when name.canonical().equals("second") -> SECOND;
             case IntegerValue(long position) -> (int) position - 1;
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         };

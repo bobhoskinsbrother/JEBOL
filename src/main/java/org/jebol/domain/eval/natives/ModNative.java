@@ -23,6 +23,6 @@ public class ModNative extends ArithmeticNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> Arithmetic.findRest(
                 arguments.get(0), arguments.get(1),
-                Arithmetic.Division.SIGN_FOLLOWS_THE_DIVIDEND);
+                Arithmetic.Division.SIGN_FOLLOWS_DIVIDEND);
     }
 }

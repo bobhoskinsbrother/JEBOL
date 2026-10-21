@@ -66,7 +66,7 @@ final class JsonConverter {
                     writeTextField("type", "text"),
                     writePlacement(text.where()),
                     writeTextField("selection-colour",
-                            PlacedText.THE_COLOUR_A_SELECTION_IS_MARKED_IN.asCss()),
+                            PlacedText.COLOUR_SELECTION_IS_MARKED_IN.asCss()),
                     writeNestedField("lines", asLines(text.text().lines())),
                     writeNestedField("selection", asSelection(text.text().selection())),
                     writeNestedField("caret", asCaret(text.text().caret())),
@@ -286,16 +286,16 @@ final class JsonConverter {
     private static String asOctets(ImageValue pixels) {
         int wide = (int) Math.round(pixels.size().x());
         int high = (int) Math.round(pixels.size().y());
-        byte[] octets = new byte[wide * high * CHANNELS_A_PIXEL];
+        byte[] octets = new byte[wide * high * CHANNELS_PIXEL];
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int[] parts = pixels.readPixelAt(pixel + 1);
-            octets[pixel * CHANNELS_A_PIXEL] = (byte) parts[0];
-            octets[pixel * CHANNELS_A_PIXEL + 1] = (byte) parts[1];
-            octets[pixel * CHANNELS_A_PIXEL + 2] = (byte) parts[2];
-            octets[pixel * CHANNELS_A_PIXEL + 3] = (byte) (parts.length >= 4 ? parts[3] : 255);
+            octets[pixel * CHANNELS_PIXEL] = (byte) parts[0];
+            octets[pixel * CHANNELS_PIXEL + 1] = (byte) parts[1];
+            octets[pixel * CHANNELS_PIXEL + 2] = (byte) parts[2];
+            octets[pixel * CHANNELS_PIXEL + 3] = (byte) (parts.length >= 4 ? parts[3] : 255);
         }
         return Base64.getEncoder().encodeToString(octets);
     }
 
-    private static final int CHANNELS_A_PIXEL = 4;
+    private static final int CHANNELS_PIXEL = 4;
 }

@@ -109,9 +109,9 @@ public final class Comparison {
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
         return switch (strictness) {
             case EQUAL -> areEqualValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS,
-                    THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
+                    COERCION_TABLE_APPROVED_THIS_PAIRING);
             case EQUIV -> areEqualValues(left, right, 0,
-                    THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
+                    COERCION_TABLE_APPROVED_THIS_PAIRING);
             case STRICT_EQUAL -> areStrictlyEqual(left, right);
             case SAME -> isSameValue(left, right);
             case GREATER_OR_EQUAL -> ordersAs(left, right, ordering -> ordering >= 0);
@@ -121,9 +121,9 @@ public final class Comparison {
 
     private static final long STEPS_ALLOWED_BETWEEN_DECIMALS = 21;
 
-    private static final long STEPS_ALLOWED_INSIDE_A_SERIES = 10;
+    private static final long STEPS_ALLOWED_INSIDE_SERIES = 10;
 
-    private static final boolean THE_COERCION_TABLE_APPROVED_THIS_PAIRING = true;
+    private static final boolean COERCION_TABLE_APPROVED_THIS_PAIRING = true;
 
     private static final boolean IT_DID_NOT = false;
 
@@ -137,7 +137,7 @@ public final class Comparison {
      * stricter about datatypes than the comparison natives are.
      */
     public static boolean areLooselyEqual(Value left, Value right) {
-        return areEqualValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, IT_DID_NOT);
+        return areEqualValues(left, right, STEPS_ALLOWED_INSIDE_SERIES, IT_DID_NOT);
     }
 
     /**
@@ -225,7 +225,7 @@ public final class Comparison {
         if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
             return areBothNotNumber(first, second)
                     || areNearlySameNumber(first.quantity(), second.quantity(),
-                            STEPS_ALLOWED_INSIDE_A_SERIES);
+                    STEPS_ALLOWED_INSIDE_SERIES);
         }
         return areStrictlyEqual(left, right);
     }
@@ -354,7 +354,7 @@ public final class Comparison {
         if (left instanceof AnyDecimalValue || right instanceof AnyDecimalValue) {
             double first = asDouble(left);
             double second = asDouble(right);
-            return areNearlySameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
+            return areNearlySameNumber(first, second, STEPS_ALLOWED_INSIDE_SERIES)
                     ? 0
                     : Double.compare(first, second);
         }

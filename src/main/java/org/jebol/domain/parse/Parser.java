@@ -17,7 +17,7 @@ import java.util.OptionalInt;
 public final class Parser implements ParseWalk {
 
 
-    private static final ParseKeyword THE_WORD_NOT = ParseKeyword.findTheKeywordNamed("not").orElseThrow();
+    private static final ParseKeyword WORD_NOT = ParseKeyword.findTheKeywordNamed("not").orElseThrow();
 
     Evaluator evaluator;
     Context context;
@@ -225,7 +225,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static boolean isWordNot(List<Value> rules, int at) {
-        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findTheKeywordNamed(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
+        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findTheKeywordNamed(word.canonical()).filter(WORD_NOT::equals).isPresent();
     }
 
     @Override
@@ -331,7 +331,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Integer findTheSameStorageOffset(Value item) {
-        if (source == null || !(item instanceof AnyWordValue word) || !word.looksUpItsDeclaration() || (word instanceof WordValue && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
+        if (source == null || !(item instanceof AnyWordValue word) || !word.looksUpItsDeclaration() || (word instanceof WordValue && ParseTargets.WORDS_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;

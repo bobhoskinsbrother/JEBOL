@@ -17,7 +17,7 @@ final class RebolArguments {
 
     private static final Option IGNORED = new Option(EnumSet.noneOf(Flag.class), false);
 
-    private static final String STOPS_THE_OPTIONS = "--";
+    private static final String STOPS_OPTIONS = "--";
 
     private final Set<Flag> flags = EnumSet.noneOf(Flag.class);
     private final Map<Flag, String> values = new EnumMap<>(Flag.class);
@@ -80,7 +80,7 @@ final class RebolArguments {
         int at = 0;
         while (at < arguments.size()) {
             String argument = arguments.get(at);
-            if (argument.equals(STOPS_THE_OPTIONS)) {
+            if (argument.equals(STOPS_OPTIONS)) {
                 break;
             }
             if (argument.startsWith("--")) {

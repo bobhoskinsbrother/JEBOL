@@ -12,7 +12,7 @@ import org.jebol.domain.value.WordValue;
 
 public final class ParseTargets {
 
-    public static final Set<String> THE_WORDS_THE_DIALECT_RESERVES = Set.of(
+    public static final Set<String> WORDS_DIALECT_RESERVES = Set.of(
             "|", "set", "copy", "some", "any", "opt", "not", "and", "ahead",
             "then", "remove", "insert", "change", "if", "fail", "reject",
             "while", "collect", "keep", "return", "limit", "??", "case",
@@ -27,7 +27,7 @@ public final class ParseTargets {
 
     public static AnyWordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
         AnyWordValue word = refuseAnythingButWordOrSetWord(written);
-        if (THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical())) {
+        if (WORDS_DIALECT_RESERVES.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.PARSE_COMMAND, word);
         }
         return word;

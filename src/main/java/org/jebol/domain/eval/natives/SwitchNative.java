@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class SwitchNative extends DefaultNative {
 
-    private static final int WHERE_THE_FALLBACK_ARRIVES = 2;
+    private static final int WHERE_FALLBACK_ARRIVES = 2;
 
     @Override
     public String nativeName() {
@@ -82,8 +82,8 @@ public class SwitchNative extends DefaultNative {
     }
 
     private Value readFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
-        return refinements.contains("default") && arguments.size() > WHERE_THE_FALLBACK_ARRIVES
-                ? arguments.get(WHERE_THE_FALLBACK_ARRIVES)
+        return refinements.contains("default") && arguments.size() > WHERE_FALLBACK_ARRIVES
+                ? arguments.get(WHERE_FALLBACK_ARRIVES)
                 : NoneValue.none();
     }
 }

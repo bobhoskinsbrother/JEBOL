@@ -5,8 +5,8 @@ final class LzmaMatchFinder {
     private static final int EMPTY_HASH_VALUE = 0;
     private static final int HASH_2_SIZE = 1 << 10;
     private static final int HASH_3_SIZE = 1 << 16;
-    private static final int WHERE_THE_THREE_BYTE_HASH_STARTS = HASH_2_SIZE;
-    private static final int WHERE_THE_FOUR_BYTE_HASH_STARTS =
+    private static final int WHERE_THREE_BYTE_HASH_STARTS = HASH_2_SIZE;
+    private static final int WHERE_FOUR_BYTE_HASH_STARTS =
             HASH_2_SIZE + HASH_3_SIZE;
     private static final int CRC_POLYNOMIAL = 0xEDB88320;
     private static final int MAX_HISTORY_SIZE = 7 << 29;
@@ -52,7 +52,7 @@ final class LzmaMatchFinder {
         this.matchMaxLen = matchMaxLen;
         this.cyclicBufferSize = asMuchHistoryAsThereCanBe(historySize, source);
         this.hashMask = hashMaskFor(historySize, source.length);
-        this.hash = new int[hashMask + 1 + WHERE_THE_FOUR_BYTE_HASH_STARTS];
+        this.hash = new int[hashMask + 1 + WHERE_FOUR_BYTE_HASH_STARTS];
         this.son = new int[binaryTree ? cyclicBufferSize * 2 : cyclicBufferSize];
         this.here = 0;
         this.position = cyclicBufferSize;
@@ -116,12 +116,12 @@ final class LzmaMatchFinder {
 
         int twoByteDistance = position - hash[twoByteSlot];
         int threeByteDistance =
-                position - hash[WHERE_THE_THREE_BYTE_HASH_STARTS + threeByteSlot];
-        int chainHead = hash[WHERE_THE_FOUR_BYTE_HASH_STARTS + fourByteSlot];
+                position - hash[WHERE_THREE_BYTE_HASH_STARTS + threeByteSlot];
+        int chainHead = hash[WHERE_FOUR_BYTE_HASH_STARTS + fourByteSlot];
 
         hash[twoByteSlot] = position;
-        hash[WHERE_THE_THREE_BYTE_HASH_STARTS + threeByteSlot] = position;
-        hash[WHERE_THE_FOUR_BYTE_HASH_STARTS + fourByteSlot] = position;
+        hash[WHERE_THREE_BYTE_HASH_STARTS + threeByteSlot] = position;
+        hash[WHERE_FOUR_BYTE_HASH_STARTS + fourByteSlot] = position;
 
         int longest = 0;
         int written = 0;
@@ -184,10 +184,10 @@ final class LzmaMatchFinder {
             int threeByteSlot = firstOfFour & (HASH_3_SIZE - 1);
             int fourByteSlot =
                     (firstOfFour ^ (CRC[source[here + 3] & 0xFF] << 5)) & hashMask;
-            int chainHead = hash[WHERE_THE_FOUR_BYTE_HASH_STARTS + fourByteSlot];
+            int chainHead = hash[WHERE_FOUR_BYTE_HASH_STARTS + fourByteSlot];
             hash[twoByteSlot] = position;
-            hash[WHERE_THE_THREE_BYTE_HASH_STARTS + threeByteSlot] = position;
-            hash[WHERE_THE_FOUR_BYTE_HASH_STARTS + fourByteSlot] = position;
+            hash[WHERE_THREE_BYTE_HASH_STARTS + threeByteSlot] = position;
+            hash[WHERE_FOUR_BYTE_HASH_STARTS + fourByteSlot] = position;
             if (binaryTree) {
                 skipDownTree(chainHead);
             } else {

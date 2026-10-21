@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 public final class FileSystemPort implements FilePort {
 
     private static final int NO_SUCH_ENTRY = 2;
-    private static final int NOT_A_DIRECTORY = 20;
+    private static final int NOT_DIRECTORY = 20;
     private final Path root;
     private final boolean writable;
     private Path relativePathRoot;
@@ -74,7 +74,7 @@ public final class FileSystemPort implements FilePort {
         if (!Files.isDirectory(target.afterLinks())) {
             throw new Denied("cannot-open", path + " is not a directory",
                     workingDirectory(target.beforeLinks()),
-                    Optional.of(Files.exists(target.beforeLinks()) ? -NOT_A_DIRECTORY : -NO_SUCH_ENTRY));
+                    Optional.of(Files.exists(target.beforeLinks()) ? -NOT_DIRECTORY : -NO_SUCH_ENTRY));
         }
         relativePathRoot = target.beforeLinks();
     }
@@ -401,7 +401,7 @@ public final class FileSystemPort implements FilePort {
 
     private final class LinksFollowed {
 
-        private static final int THE_MOST_LINKS_FOLLOWED = 40;
+        private static final int MOST_LINKS_FOLLOWED = 40;
 
         private final String writtenPath;
 
@@ -440,7 +440,7 @@ public final class FileSystemPort implements FilePort {
 
         private Path followSymLink(Path link) {
             linksFollowed++;
-            if (linksFollowed > THE_MOST_LINKS_FOLLOWED) {
+            if (linksFollowed > MOST_LINKS_FOLLOWED) {
                 throw denyOutsideRoot(writtenPath);
             }
             try {

@@ -40,9 +40,9 @@ public class WaitNative extends PortWakingNative {
 
     private static final long PAUSE_SLICE_MILLISECONDS = 50;
 
-    private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000L;
+    private static final long NANOSECONDS_IN_MILLISECOND = 1_000_000L;
 
-    private static final double MILLISECONDS_IN_A_SECOND = 1000;
+    private static final double MILLISECONDS_IN_SECOND = 1000;
 
     @Override
     public String nativeName() {
@@ -106,8 +106,8 @@ public class WaitNative extends PortWakingNative {
 
     private long countMillisecondsIn(Value duration) {
         return duration instanceof TimeValue(long nanoseconds)
-                ? nanoseconds / NANOSECONDS_IN_A_MILLISECOND
-                : (long) (MILLISECONDS_IN_A_SECOND * Comparison.asDouble(duration));
+                ? nanoseconds / NANOSECONDS_IN_MILLISECOND
+                : (long) (MILLISECONDS_IN_SECOND * Comparison.asDouble(duration));
     }
 
     private Value findWhicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
@@ -186,7 +186,7 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Value waitOnScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
-        long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_A_MILLISECOND;
+        long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_MILLISECOND;
         while (true) {
             if (doesQueuedEventWake(port, evaluator)) {
                 return port;
@@ -194,7 +194,7 @@ public class WaitNative extends PortWakingNative {
             long remainingNanoseconds = deadline - System.nanoTime();
             if (remainingNanoseconds <= 0
                     || !sleepWithoutBeingInterrupted(Math.min(SCREEN_POLL_MILLISECONDS,
-                            Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_A_MILLISECOND)), evaluator)) {
+                            Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_MILLISECOND)), evaluator)) {
                 return NoneValue.none();
             }
         }

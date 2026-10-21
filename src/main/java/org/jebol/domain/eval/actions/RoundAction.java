@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class RoundAction extends DefaultNative implements ActionValue {
 
-    private static final int DIGITS_A_DECIMAL_KEEPS = 15;
+    private static final int DIGITS_DECIMAL_KEEPS = 15;
 
     private static final double HALFWAY = 0.5;
 
@@ -155,7 +155,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     }
 
     private double toFifteenDigits(double rounded) {
-        return new BigDecimal(rounded).round(new MathContext(DIGITS_A_DECIMAL_KEEPS))
+        return new BigDecimal(rounded).round(new MathContext(DIGITS_DECIMAL_KEEPS))
                 .doubleValue();
     }
 

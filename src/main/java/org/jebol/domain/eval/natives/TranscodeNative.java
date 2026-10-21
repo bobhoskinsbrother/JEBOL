@@ -64,8 +64,8 @@ public class TranscodeNative extends DefaultNative {
         Transcoder.Reading reading = Transcoder.read(
                 asked.readable(), asked.firstLine(), asked.extent(), evaluator.construction(),
                 asked.handingBackFailures()
-                        ? Transcoder.Errors.STAND_IN_FOR_THE_VALUE
-                        : Transcoder.Errors.STOP_THE_READ);
+                        ? Transcoder.Errors.STAND_IN_FOR_VALUE
+                        : Transcoder.Errors.STOP_READ);
         evaluator.symbols().internWhatWasRead(reading.valuesReadBeforeStopping());
         reading.whyItStopped().ifPresent(failure -> {
             throw new Raised(failure.error().orElseThrow());
@@ -103,7 +103,7 @@ public class TranscodeNative extends DefaultNative {
     }
 
     private boolean stopsBeforeTheEndOfTheSource(Reading asked) {
-        return asked.extent() != Transcoder.Extent.THE_WHOLE_SOURCE
+        return asked.extent() != Transcoder.Extent.WHOLE_SOURCE
                 || asked.handingBackFailures();
     }
 
@@ -148,12 +148,12 @@ public class TranscodeNative extends DefaultNative {
 
     private Transcoder.Extent readTheExtentAskedFor(Set<String> refinements) {
         if (refinements.contains("only")) {
-            return Transcoder.Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
+            return Transcoder.Extent.FIRST_VALUE_AT_EVERY_DEPTH;
         }
         if (refinements.contains("next") || refinements.contains("one")) {
-            return Transcoder.Extent.THE_FIRST_VALUE;
+            return Transcoder.Extent.FIRST_VALUE;
         }
-        return Transcoder.Extent.THE_WHOLE_SOURCE;
+        return Transcoder.Extent.WHOLE_SOURCE;
     }
 
     private long readFirstLineNumberIn(Optional<Value> line) {

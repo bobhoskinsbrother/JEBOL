@@ -45,9 +45,9 @@ public class QueryAction extends PortAction {
     private static final List<String> CONSOLE_MEASUREMENTS =
             List.of("buffer-cols", "buffer-rows", "window-cols", "window-rows", "length");
 
-    private static final int COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
+    private static final int COLUMNS_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
 
-    private static final int SECONDS_A_MINUTE = 60;
+    private static final int SECONDS_MINUTE = 60;
 
     public QueryAction(GrantedServices granted, Ports ports) {
         super(granted, ports);
@@ -249,7 +249,7 @@ public class QueryAction extends PortAction {
 
     private static final class TheMeasurementsOfTheConsole extends TheFieldsOfAnObjectWithoutASelf {
 
-        private static final int A_MEASURE_THE_HOST_DOES_NOT_REPORT = 0;
+        private static final int MEASURE_HOST_DOES_NOT_REPORT = 0;
 
         @Override
         protected List<String> names() {
@@ -262,13 +262,13 @@ public class QueryAction extends PortAction {
                 return Optional.empty();
             }
             return Optional.of(IntegerValue.of(asked.equals("window-cols")
-                    ? COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE
-                    : A_MEASURE_THE_HOST_DOES_NOT_REPORT));
+                    ? COLUMNS_TERMINAL_IS_ASSUMED_TO_HAVE
+                    : MEASURE_HOST_DOES_NOT_REPORT));
         }
 
         @Override
         protected Value readFieldInObject(String part) {
-            return IntegerValue.of(A_MEASURE_THE_HOST_DOES_NOT_REPORT);
+            return IntegerValue.of(MEASURE_HOST_DOES_NOT_REPORT);
         }
 
         @Override
@@ -320,7 +320,7 @@ public class QueryAction extends PortAction {
                 ZonedDateTime here = ZonedDateTime.ofInstant(when, ZoneId.systemDefault());
                 return new DateValue(here.getYear(), here.getMonthValue(), here.getDayOfMonth(),
                         Optional.of(TimeValue.ofNanoseconds(here.toLocalTime().toNanoOfDay())),
-                        Optional.of(here.getOffset().getTotalSeconds() / SECONDS_A_MINUTE));
+                        Optional.of(here.getOffset().getTotalSeconds() / SECONDS_MINUTE));
             }).orElseGet(NoneValue::none);
         }
     }
