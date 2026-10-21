@@ -27,7 +27,7 @@ public class InvalidUtfNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                ((BinaryValue) arguments.getFirst()).findTheFirstMalformedUtf8()
+                ((BinaryValue) arguments.getFirst()).findFirstMalformedUtf8()
                         .<Value>map(found -> found)
                         .orElseGet(NoneValue::none);
     }

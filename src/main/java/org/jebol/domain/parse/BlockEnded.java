@@ -4,11 +4,11 @@ public final class BlockEnded extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    private final boolean asAMatch;
+    private final boolean asMatch;
 
-    private BlockEnded(boolean asAMatch) {
+    private BlockEnded(boolean asMatch) {
         super(null, null, false, false);
-        this.asAMatch = asAMatch;
+        this.asMatch = asMatch;
     }
 
     public static BlockEnded asMatch() {
@@ -20,6 +20,6 @@ public final class BlockEnded extends RuntimeException {
     }
 
     public boolean endedAsMatch() {
-        return asAMatch;
+        return asMatch;
     }
 }

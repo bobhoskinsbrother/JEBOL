@@ -26,7 +26,7 @@ public class SkipAction extends SeriesOrFileAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("series"),
-                Parameter.of("offset", listTheOffsetTypes()));
+                Parameter.of("offset", listOffsetTypes()));
     }
 
     @Override

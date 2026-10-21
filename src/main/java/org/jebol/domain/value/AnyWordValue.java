@@ -111,7 +111,7 @@ public abstract sealed class AnyWordValue implements Value
             String trimmed = new WrittenText(text).findOneWord();
             List<Value> read;
             try {
-                read = maker.readTheValuesFrom(asScannerReadsIt(trimmed)).orElse(List.of());
+                read = maker.readValuesFrom(asScannerReadsIt(trimmed)).orElse(List.of());
             } catch (RuntimeException unreadable) {
                 throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }

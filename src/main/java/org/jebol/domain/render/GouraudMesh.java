@@ -24,7 +24,7 @@ final class GouraudMesh {
             for (int across = 0; across < PIECES_ALONG_EACH_EDGE - down; across++) {
                 pieces.add(pointOneWay(first, second, third, across, down));
                 if (across < PIECES_ALONG_EACH_EDGE - down - 1) {
-                    pieces.add(pointTheOtherWay(first, second, third, across, down));
+                    pieces.add(pointOtherWay(first, second, third, across, down));
                 }
             }
         }
@@ -34,28 +34,28 @@ final class GouraudMesh {
     private static Piece pointOneWay(
             Corner first, Corner second, Corner third, int across, int down) {
 
-        return cutAPieceThrough(first, second, third,
+        return cutPieceThrough(first, second, third,
                 new double[][] {
                         {across, down}, {across + 1, down}, {across, down + 1}});
     }
 
-    private static Piece pointTheOtherWay(
+    private static Piece pointOtherWay(
             Corner first, Corner second, Corner third, int across, int down) {
 
-        return cutAPieceThrough(first, second, third,
+        return cutPieceThrough(first, second, third,
                 new double[][] {
                         {across + 1, down}, {across + 1, down + 1}, {across, down + 1}});
     }
 
-    private static Piece cutAPieceThrough(
-            Corner first, Corner second, Corner third, double[][] atThe) {
+    private static Piece cutPieceThrough(
+            Corner first, Corner second, Corner third, double[][] cornerPoints) {
 
-        double middleAcross = (atThe[0][0] + atThe[1][0] + atThe[2][0]) / 3;
-        double middleDown = (atThe[0][1] + atThe[1][1] + atThe[2][1]) / 3;
+        double middleAcross = (cornerPoints[0][0] + cornerPoints[1][0] + cornerPoints[2][0]) / 3;
+        double middleDown = (cornerPoints[0][1] + cornerPoints[1][1] + cornerPoints[2][1]) / 3;
         List<PathStep> path = new ArrayList<>();
-        for (int corner = 0; corner < atThe.length; corner++) {
-            double alongFirst = spreadFromMiddle(atThe[corner][0], middleAcross);
-            double alongSecond = spreadFromMiddle(atThe[corner][1], middleDown);
+        for (int corner = 0; corner < cornerPoints.length; corner++) {
+            double alongFirst = spreadFromMiddle(cornerPoints[corner][0], middleAcross);
+            double alongSecond = spreadFromMiddle(cornerPoints[corner][1], middleDown);
             double[] point = pointAt(first, second, third, alongFirst, alongSecond);
             path.add(corner == 0
                     ? new PathStep.MoveTo(point[0], point[1])

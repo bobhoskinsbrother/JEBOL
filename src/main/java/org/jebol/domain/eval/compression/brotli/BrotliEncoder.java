@@ -587,9 +587,9 @@ final class BrotliEncoder {
             int[] spreadDepth = new int[COMMAND_SYMBOLS];
             int[] spreadBits = new int[64];
 
-            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+            tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                     commandHistogram, 0, 64, 15, commandDepth, 0);
-            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+            tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                     commandHistogram, 64, 64, 14, commandDepth, 64);
 
             System.arraycopy(commandDepth, 0, spreadDepth, 0, 24);

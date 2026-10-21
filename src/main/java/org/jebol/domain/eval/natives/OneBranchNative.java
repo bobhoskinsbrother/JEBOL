@@ -19,7 +19,7 @@ public abstract class OneBranchNative extends BranchingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 arguments.get(0).isTruthy() == runsOnTruthy()
-                        ? takeTheBranch(arguments.get(1), evaluator, context, refinements)
+                        ? takeBranch(arguments.get(1), evaluator, context, refinements)
                         : NoneValue.none();
     }
 }

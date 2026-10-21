@@ -49,7 +49,7 @@ public sealed interface Value permits
         return Optional.empty();
     }
 
-    default List<Value> listTheItems() {
+    default List<Value> listItems() {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
                 "cannot walk " + datatype().literalSpelling() + " value");
     }
@@ -182,7 +182,7 @@ public sealed interface Value permits
         return randomise(draw);
     }
 
-    default long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    default long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         throw Raised.cannotUseAction(this, "random");
     }
 

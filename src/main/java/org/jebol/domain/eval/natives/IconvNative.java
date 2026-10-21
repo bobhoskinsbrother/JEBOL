@@ -36,11 +36,11 @@ public class IconvNative extends EncodingNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.of("data", Set.of(BinaryValue.TYPE)),
-                Parameter.of("codepage", acceptACodepage()),
-                Parameter.belongTo("to", "target", acceptACodepage()));
+                Parameter.of("codepage", acceptCodepage()),
+                Parameter.belongTo("to", "target", acceptCodepage()));
     }
 
-    private Set<Datatype> acceptACodepage() {
+    private Set<Datatype> acceptCodepage() {
         return Set.of(WordValue.TYPE, IntegerValue.TYPE, TagValue.TYPE, StringValue.TYPE);
     }
 
@@ -69,7 +69,7 @@ public class IconvNative extends EncodingNative {
             case AnyStringValue text -> text.text();
             default -> Molder.form(asked);
         };
-        return encodings.findTheCharsetNamed(spelling)
+        return encodings.findCharsetNamed(spelling)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, asked));
     }
 }

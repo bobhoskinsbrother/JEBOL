@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Remove extends SameForABlockAndAString {
+final class Remove extends SameForBlockAndString {
 
     Remove() {
         super("remove", 0, true, WhenNothingFollowsIt.DOES_NOT_MATCH);
@@ -16,7 +16,7 @@ final class Remove extends SameForABlockAndAString {
         Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         return markOffset != null
                 ? removeBackToMark(walk, markOffset)
-                : takeOutWhatTheRuleMatches(walk, rules, at);
+                : takeOutWhatRuleMatches(walk, rules, at);
     }
 
     private static int removeBackToMark(ParseWalk walk, int markOffset) {
@@ -26,7 +26,7 @@ final class Remove extends SameForABlockAndAString {
         return 2;
     }
 
-    private static int takeOutWhatTheRuleMatches(
+    private static int takeOutWhatRuleMatches(
             ParseWalk walk, List<Value> rules, int at) {
 
         int span = walk.ruleSpan(rules, at + 1);

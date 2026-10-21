@@ -39,7 +39,7 @@ public class CatchNative extends DefaultNative {
             try {
                 return evaluator.evaluateOrRaise((AnyBlockValue) arguments.getFirst(), context);
             } catch (ThrownSignal thrown) {
-                if (letsTheThrowPass(thrown, arguments, refinements)) {
+                if (letsThrowPass(thrown, arguments, refinements)) {
                     throw thrown;
                 }
                 handled = thrown.value();
@@ -69,7 +69,7 @@ public class CatchNative extends DefaultNative {
         };
     }
 
-    private boolean letsTheThrowPass(
+    private boolean letsThrowPass(
             ThrownSignal thrown, List<Value> arguments, Set<String> refinements) {
 
         boolean catchesQuitOnly = refinements.contains("quit")
@@ -77,10 +77,10 @@ public class CatchNative extends DefaultNative {
                 && !refinements.contains("all");
         return catchesQuitOnly
                 || (!refinements.contains("all")
-                        && !answersTo(thrown, listTheExpectedNames(arguments, refinements)));
+                        && !answersTo(thrown, listExpectedNames(arguments, refinements)));
     }
 
-    private Set<String> listTheExpectedNames(List<Value> arguments, Set<String> refinements) {
+    private Set<String> listExpectedNames(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("name") || arguments.size() <= WHERE_NAMES_ARRIVE) {
             return Set.of();
         }

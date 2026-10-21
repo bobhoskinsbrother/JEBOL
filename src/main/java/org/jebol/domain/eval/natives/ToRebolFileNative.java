@@ -32,15 +32,15 @@ public class ToRebolFileNative extends DefaultNative {
 
     private String writeOneSlashPerRunOfSeparators(String path) {
         StringBuilder built = new StringBuilder(path.length());
-        boolean afterASeparator = false;
+        boolean afterSeparator = false;
         for (int at = 0; at < path.length(); at++) {
             char letter = path.charAt(at);
             if (!isASeparator(letter)) {
                 built.append(letter);
-                afterASeparator = false;
-            } else if (!afterASeparator) {
+                afterSeparator = false;
+            } else if (!afterSeparator) {
                 built.append(REBOLS_SEPARATOR);
-                afterASeparator = true;
+                afterSeparator = true;
             }
         }
         return built.toString();

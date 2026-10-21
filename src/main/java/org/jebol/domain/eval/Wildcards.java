@@ -28,7 +28,7 @@ public record Wildcards(char anyRun, char oneCharacter) {
         if (first == anyRun) {
             return pattern.length() == 1
                     ? upTo
-                    : endAfterTheShortestRun(within, from, upTo, pattern, mindingCase);
+                    : endAfterShortestRun(within, from, upTo, pattern, mindingCase);
         }
         if (from >= upTo) {
             return -1;
@@ -45,7 +45,7 @@ public record Wildcards(char anyRun, char oneCharacter) {
                 characters.length() < 2 ? oneCharacter : characters.charAt(1));
     }
 
-    private int endAfterTheShortestRun(
+    private int endAfterShortestRun(
             String within, int from, int upTo, String pattern, boolean mindingCase) {
         for (int taken = from; taken <= upTo; taken++) {
             int end = findPatternEnd(within, taken, upTo, pattern.substring(1), mindingCase);

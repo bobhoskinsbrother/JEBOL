@@ -17,11 +17,11 @@ public class AsNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.of("type", listASeriesTypeAnd(Datatype.TYPE)),
-                Parameter.of("spec", listASeriesTypeAnd()));
+                Parameter.of("type", listSeriesTypeAnd(Datatype.TYPE)),
+                Parameter.of("spec", listSeriesTypeAnd()));
     }
 
-    private Set<Datatype> listASeriesTypeAnd(Datatype... alsoTaken) {
+    private Set<Datatype> listSeriesTypeAnd(Datatype... alsoTaken) {
         Set<Datatype> accepted = new LinkedHashSet<>(TypesetValue.ANY_BLOCK.members());
         accepted.addAll(TypesetValue.ANY_STRING.members());
         accepted.addAll(List.of(alsoTaken));

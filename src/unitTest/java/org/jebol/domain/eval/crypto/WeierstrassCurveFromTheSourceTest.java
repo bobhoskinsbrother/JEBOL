@@ -29,7 +29,7 @@ class WeierstrassCurveFromTheSourceTest {
     @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("the generator is on the curve and has the order written beside it")
     void placesTheGeneratorOnTheCurveWithTheStatedOrder(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
+        WeierstrassCurve curve = WeierstrassCurve.findCurveNamed(name).orElseThrow();
 
         assertThat(curve.hasValidGenerator())
                 .as("%s: a mistyped parameter would fail this and nothing else", name)
@@ -40,7 +40,7 @@ class WeierstrassCurveFromTheSourceTest {
     @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and the arithmetic obeys the laws a group obeys")
     void obeysTheGroupLaws(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
+        WeierstrassCurve curve = WeierstrassCurve.findCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
         BigInteger first = curve.drawPrivateNumber(randomly);
         BigInteger second = curve.drawPrivateNumber(randomly);
@@ -65,7 +65,7 @@ class WeierstrassCurveFromTheSourceTest {
     @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and the exchange agrees from either side")
     void agreesFromEitherSide(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
+        WeierstrassCurve curve = WeierstrassCurve.findCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
         BigInteger hers = curve.drawPrivateNumber(randomly);
         BigInteger his = curve.drawPrivateNumber(randomly);
@@ -79,7 +79,7 @@ class WeierstrassCurveFromTheSourceTest {
     @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("a point survives the round trip through the wire form")
     void carriesAPointThroughTheWireForm(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
+        WeierstrassCurve curve = WeierstrassCurve.findCurveNamed(name).orElseThrow();
         WeierstrassCurve.Point point =
                 curve.multiplyGenerator(curve.drawPrivateNumber(new SecureRandom()));
 
@@ -90,7 +90,7 @@ class WeierstrassCurveFromTheSourceTest {
         System.arraycopy(curve.writeCoordinateOnWire(point.y()), 0,
                 written, 1 + curve.coordinateWidth(), curve.coordinateWidth());
 
-        assertThat(curve.pointFromTheWire(written)).as("%s", name)
+        assertThat(curve.pointFromWire(written)).as("%s", name)
                 .contains(point);
     }
 
@@ -98,12 +98,12 @@ class WeierstrassCurveFromTheSourceTest {
     @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and a point that is not on the curve is refused rather than used")
     void refusesAPointNotOnTheCurve(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
+        WeierstrassCurve curve = WeierstrassCurve.findCurveNamed(name).orElseThrow();
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;
         written[written.length - 1] = 0x01;
 
-        assertThat(curve.pointFromTheWire(written)).as("%s", name).isEmpty();
+        assertThat(curve.pointFromWire(written)).as("%s", name).isEmpty();
     }
 }

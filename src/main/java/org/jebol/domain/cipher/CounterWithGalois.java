@@ -18,15 +18,15 @@ public final class CounterWithGalois {
                               byte[] octets, boolean deciphering) {
 
         byte[] hashKey = cipher.encipher(new byte[BLOCK]);
-        byte[] startingCount = computeTheStartingCount(cipher, hashKey, vector);
+        byte[] startingCount = computeStartingCount(cipher, hashKey, vector);
         byte[] masked = maskFrom(cipher, startingCount, octets);
-        byte[] overTheCipherText = deciphering ? octets : masked;
+        byte[] overCipherText = deciphering ? octets : masked;
 
         byte[] running = new byte[BLOCK];
         running = hashThrough(running, hashKey, header);
-        running = hashThrough(running, hashKey, overTheCipherText);
+        running = hashThrough(running, hashKey, overCipherText);
         running = hashThrough(running, hashKey,
-                packTwoLengthsInBits(header.length, overTheCipherText.length));
+                packTwoLengthsInBits(header.length, overCipherText.length));
 
         byte[] maskedWith = cipher.encipher(startingCount);
         byte[] tag = new byte[WHOLE_TAG];
@@ -36,7 +36,7 @@ public final class CounterWithGalois {
         return new Sealed(masked, tag);
     }
 
-    private static byte[] computeTheStartingCount(
+    private static byte[] computeStartingCount(
             OneBlock cipher, byte[] hashKey, byte[] vector) {
 
         if (vector.length == NO_HASH_VECTOR_LENGTH) {

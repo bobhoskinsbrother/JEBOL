@@ -56,12 +56,12 @@ public final class BlockModes {
 
         byte[] answer = new byte[octets.length];
         for (int at = 0; at + BLOCK <= octets.length; at += BLOCK) {
-            byte[] keptBeforeTheVectorIsOverwritten = readBlockAt(octets, at);
-            byte[] undone = cipher.encipher(keptBeforeTheVectorIsOverwritten);
+            byte[] keptBeforeVectorIsOverwritten = readBlockAt(octets, at);
+            byte[] undone = cipher.encipher(keptBeforeVectorIsOverwritten);
             for (int within = 0; within < BLOCK; within++) {
                 answer[at + within] = (byte) (undone[within] ^ vector[within]);
             }
-            System.arraycopy(keptBeforeTheVectorIsOverwritten, 0, vector, 0, BLOCK);
+            System.arraycopy(keptBeforeVectorIsOverwritten, 0, vector, 0, BLOCK);
         }
         return answer;
     }

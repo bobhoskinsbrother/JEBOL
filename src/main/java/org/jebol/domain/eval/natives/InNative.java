@@ -53,7 +53,7 @@ public class InNative extends DefaultNative {
     private Context readFieldsErrorHolds(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
-            raised.readTheField(name).ifPresent(value -> fields.register(name, value));
+            raised.readField(name).ifPresent(value -> fields.register(name, value));
         }
         return fields;
     }

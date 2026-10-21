@@ -354,7 +354,7 @@ class CallNativeTest {
             Recorded port = new Recorded();
             answerTo(makeAnInterpreterReaching(true, port), """
                     call/console [{x}]""");
-            assertThat(port.asked.attachedToTheHostsConsole()).isTrue();
+            assertThat(port.asked.attachedToHostsConsole()).isTrue();
         }
     }
 

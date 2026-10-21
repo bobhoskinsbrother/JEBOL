@@ -90,7 +90,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Optional<List<Value>> readTheValuesFrom(String source) {
+        public Optional<List<Value>> readValuesFrom(String source) {
             return Optional.empty();
         }
 

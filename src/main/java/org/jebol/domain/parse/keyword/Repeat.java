@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Repeat extends SameForABlockAndAString {
+final class Repeat extends SameForBlockAndString {
 
     private final int leastNeeded;
 

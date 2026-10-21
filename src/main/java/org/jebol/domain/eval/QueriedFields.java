@@ -56,19 +56,19 @@ public abstract class QueriedFields {
 
     private Value answerEachOf(AnyBlockValue several) {
         List<Value> answer = new ArrayList<>();
-        List<Integer> whereEachLabelStartsALine = new ArrayList<>();
+        List<Integer> whereEachLabelStartsLine = new ArrayList<>();
         for (Value item : several.remaining()) {
             if (!(item instanceof AnyWordValue asked)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }
             if (!(asked instanceof GetWordValue)) {
                 answer.add(asked.asSetWord());
-                whereEachLabelStartsALine.add(answer.size());
+                whereEachLabelStartsLine.add(answer.size());
             }
             answer.add(findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerUnknownInBlock(asked)));
         }
         BlockValue answered = BlockValue.of(answer);
-        whereEachLabelStartsALine.forEach(position -> answered.storage().setLineBreakAt(position, true));
+        whereEachLabelStartsLine.forEach(position -> answered.storage().setLineBreakAt(position, true));
         return answered;
     }
 

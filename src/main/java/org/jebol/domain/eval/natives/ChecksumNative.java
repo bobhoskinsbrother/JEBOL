@@ -40,7 +40,7 @@ public class ChecksumNative extends EncodingNative {
                 Parameter.of("data", Set.of(BinaryValue.TYPE, StringValue.TYPE, FileValue.TYPE)),
                 Parameter.of("method", Set.of(WordValue.TYPE)),
                 Parameter.belongTo("with", "spec", acceptAnyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
-                Parameter.belongTo("part", "length", listThePartLimitTypes()));
+                Parameter.belongTo("part", "length", listPartLimitTypes()));
     }
 
     @Override

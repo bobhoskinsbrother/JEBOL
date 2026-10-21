@@ -14,7 +14,7 @@ public abstract class GobMappingNative extends DefaultNative {
         double takenX = 0;
         double takenY = 0;
         for (int depth = 0; depth < DEEPEST_GOB_WALK; depth++) {
-            Optional<GobValue> entered = findTheTopmostChildHolding(reached, point, takenX, takenY);
+            Optional<GobValue> entered = findTopmostChildHolding(reached, point, takenX, takenY);
             if (entered.isEmpty()) {
                 break;
             }
@@ -25,7 +25,7 @@ public abstract class GobMappingNative extends DefaultNative {
         return pairGobWithPoint(reached, PairValue.of(point.x() - takenX, point.y() - takenY));
     }
 
-    private Optional<GobValue> findTheTopmostChildHolding(
+    private Optional<GobValue> findTopmostChildHolding(
             GobValue parent, PairValue point, double takenX, double takenY) {
 
         for (int at = parent.storage().length(); at >= 1; at--) {

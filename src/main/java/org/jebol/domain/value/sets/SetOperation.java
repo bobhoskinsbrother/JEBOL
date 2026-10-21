@@ -28,7 +28,7 @@ public interface SetOperation {
             .collect(toUnmodifiableMap(
                     SetOperation::spelling, identity()));
 
-    static Optional<SetOperation> findTheOperationNamed(String spelling) {
+    static Optional<SetOperation> findOperationNamed(String spelling) {
         return Optional.ofNullable(BY_SPELLING.get(spelling));
     }
 }

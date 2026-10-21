@@ -30,9 +30,9 @@ public final class MoneyCoercion {
     }
 
     public int compareSortingOrder(Value left, Value right) {
-        boolean cmpValueComparesTheAmounts = right instanceof MoneyValue
+        boolean cmpValueComparesAmounts = right instanceof MoneyValue
                 && (left instanceof MoneyValue || left instanceof AnyDecimalValue);
-        if (!cmpValueComparesTheAmounts) {
+        if (!cmpValueComparesAmounts) {
             return left.datatype().compareTo(right.datatype());
         }
         Deci ours = asDeci(left);

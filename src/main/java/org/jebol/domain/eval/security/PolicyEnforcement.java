@@ -29,7 +29,7 @@ public final class PolicyEnforcement {
     }
 
     public void require(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
-        Optional<Context> state = findTheSystemState();
+        Optional<Context> state = findSystemState();
         if (state.isEmpty()) {
             return;
         }
@@ -46,7 +46,7 @@ public final class PolicyEnforcement {
     private void letAccessGoAhead() {
     }
 
-    private Optional<Context> findTheSystemState() {
+    private Optional<Context> findSystemState() {
         Context lib = evaluator.systemContext();
         if (!lib.contains("system")
                 || !(lib.readValueAt("system", "state") instanceof ObjectValue(Context state))) {

@@ -30,7 +30,7 @@ public abstract class SteppingThroughNative extends LoopingNative {
         });
     }
 
-    private Value walkFrom(Evaluator evaluator, ContextSlot slot, Datatype walkingA,
+    private Value walkFrom(Evaluator evaluator, ContextSlot slot, Datatype walking,
                            int step, AnyBlockValue body) {
 
         Value last = NoneValue.none();
@@ -38,7 +38,7 @@ public abstract class SteppingThroughNative extends LoopingNative {
                 && here.index() >= 1 && here.index() <= here.storageLength()) {
             last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
             if (!(slot.value() instanceof RebolSeries moved)
-                    || moved.datatype() != walkingA) {
+                    || moved.datatype() != walking) {
                 throw Raised.cannotUse(slot.value(), "forall");
             }
             if (!stepOnwards(slot, moved, step)) {

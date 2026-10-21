@@ -239,8 +239,8 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return checksumOfTheOctets.applyAsLong(listShownOctets());
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
+        return octetChecksum.applyAsLong(listShownOctets());
     }
 
     private byte[] listShownOctets() {
@@ -344,7 +344,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
                 int written;
                 try {
                     written = Integer.parseInt(parts[at].trim());
-                } catch (NumberFormatException notANumber) {
+                } catch (NumberFormatException notNumber) {
                     throw refuse(original);
                 }
                 if (written < 0 || written > LARGEST_OCTET) {

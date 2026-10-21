@@ -21,7 +21,7 @@ public enum LineJoin {
     }
 
     /** The one a word names, or empty when no word names one. */
-    public static Optional<LineJoin> findTheJoinNamed(String canonical) {
+    public static Optional<LineJoin> findJoinNamed(String canonical) {
         for (LineJoin each : values()) {
             if (each.spelling().equals(canonical)) {
                 return Optional.of(each);

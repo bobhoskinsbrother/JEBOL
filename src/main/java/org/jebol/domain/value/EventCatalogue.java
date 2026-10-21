@@ -70,13 +70,13 @@ public final class EventCatalogue {
     public static final int DROP_FILE = TYPES.indexOf("drop-file");
 
     /** Where a type word sits, or nothing when the list has not got it. */
-    public static Optional<Integer> findTheTypeIndexOf(String word) {
+    public static Optional<Integer> findTypeIndexOf(String word) {
         int at = TYPES.indexOf(word);
         return at < 0 ? Optional.empty() : Optional.of(at);
     }
 
     /** Where a key word sits, or nothing. */
-    public static Optional<Integer> findTheKeyIndexOf(String word) {
+    public static Optional<Integer> findKeyIndexOf(String word) {
         int at = KEYS.indexOf(word);
         return at < 0 ? Optional.empty() : Optional.of(at);
     }

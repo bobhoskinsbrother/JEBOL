@@ -28,7 +28,7 @@ public class AtAction extends SeriesOrFileAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("series"),
-                Parameter.of("index", listTheOffsetTypes()));
+                Parameter.of("index", listOffsetTypes()));
     }
 
     @Override

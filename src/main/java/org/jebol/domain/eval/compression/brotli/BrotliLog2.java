@@ -39,8 +39,8 @@ final class BrotliLog2 {
         double nearby = 1.0 + sixteenth / 16.0;
 
         double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(mantissa, 0.0, nearby, 0.0);
-        double[] logarithmOfTheRatio = computeNaturalLogNearOne(ratio[0], ratio[1]);
-        double[] inBitsRatio = multiply(logarithmOfTheRatio[0], logarithmOfTheRatio[1],
+        double[] logarithmOfRatio = computeNaturalLogNearOne(ratio[0], ratio[1]);
+        double[] inBitsRatio = multiply(logarithmOfRatio[0], logarithmOfRatio[1],
                 INV_LN2_HIGH, INV_LN2_LOW);
         double[] answer = add(LOG2_OF_SIXTEENTHS_HIGH[sixteenth],
                 LOG2_OF_SIXTEENTHS_LOW[sixteenth], inBitsRatio[0], inBitsRatio[1]);

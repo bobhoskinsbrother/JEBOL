@@ -85,15 +85,15 @@ public final class BootDeclarations {
         return rowsBelowHeader(errorCatalogueSource);
     }
 
-    public Optional<DatatypeSpec> findTheSpecOf(Datatype datatype) {
-        return Optional.ofNullable(readTheDatatypeSpecs().get(datatype.spelling()));
+    public Optional<DatatypeSpec> findDatatypeSpec(Datatype datatype) {
+        return Optional.ofNullable(readDatatypeSpecs().get(datatype.spelling()));
     }
 
     public AnyBlockValue specFor(NativeValue built) {
         if (built.ownSpec().isPresent()) {
             return built.ownSpec().orElseThrow();
         }
-        AnyBlockValue declared = readTheDeclaredSpecs().get(built.nativeName());
+        AnyBlockValue declared = readDeclaredSpecs().get(built.nativeName());
         if (declared != null) {
             return declared;
         }
@@ -104,14 +104,14 @@ public final class BootDeclarations {
         return SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 
-    private Map<String, DatatypeSpec> readTheDatatypeSpecs() {
+    private Map<String, DatatypeSpec> readDatatypeSpecs() {
         if (datatypeSpecs == null) {
-            datatypeSpecs = Map.copyOf(readTheSpecsFrom(datatypeSpecSource));
+            datatypeSpecs = Map.copyOf(readSpecsFrom(datatypeSpecSource));
         }
         return datatypeSpecs;
     }
 
-    private Map<String, DatatypeSpec> readTheSpecsFrom(String source) {
+    private Map<String, DatatypeSpec> readSpecsFrom(String source) {
         Map<String, DatatypeSpec> read = new LinkedHashMap<>();
         List<Value> values = rowsBelowHeader(source);
         for (int at = 0; at + 1 < values.size(); at++) {
@@ -130,7 +130,7 @@ public final class BootDeclarations {
         return read;
     }
 
-    private Map<String, AnyBlockValue> readTheDeclaredSpecs() {
+    private Map<String, AnyBlockValue> readDeclaredSpecs() {
         if (declaredSpecs != null) {
             return declaredSpecs;
         }

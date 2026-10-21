@@ -44,7 +44,7 @@ class RebolArgumentsTest {
 
             assertThat(nothing.flags()).isEmpty();
             assertThat(nothing.script()).isEmpty();
-            assertThat(nothing.listTheArgumentsForTheScript()).isEmpty();
+            assertThat(nothing.listArgumentsForScript()).isEmpty();
         }
 
         @Test
@@ -65,7 +65,7 @@ class RebolArgumentsTest {
             RebolArguments line = ask("-q", "s.r3", "--do", "x", "-v");
 
             assertThat(line.script()).contains("s.r3");
-            assertThat(line.listTheArgumentsForTheScript()).containsExactly("--do", "x", "-v");
+            assertThat(line.listArgumentsForScript()).containsExactly("--do", "x", "-v");
             assertThat(line.flags()).containsExactly(Flag.QUIET);
         }
 
@@ -75,13 +75,13 @@ class RebolArgumentsTest {
             RebolArguments line = ask("--", "s.r3", "x");
 
             assertThat(line.script()).isEmpty();
-            assertThat(line.listTheArgumentsForTheScript()).containsExactly("s.r3", "x");
+            assertThat(line.listArgumentsForScript()).containsExactly("s.r3", "x");
         }
 
         @Test
         @DisplayName("-- after the script is one of its arguments")
         void takesADoubleDashAfterItAsAnArgument() {
-            assertThat(ask("s.r3", "--", "x").listTheArgumentsForTheScript())
+            assertThat(ask("s.r3", "--", "x").listArgumentsForScript())
                     .containsExactly("--", "x");
         }
 
@@ -91,7 +91,7 @@ class RebolArgumentsTest {
             RebolArguments line = ask("--script", "s.r3", "g", "h");
 
             assertThat(line.script()).contains("s.r3");
-            assertThat(line.listTheArgumentsForTheScript()).containsExactly("g", "h");
+            assertThat(line.listArgumentsForScript()).containsExactly("g", "h");
             assertThat(line.flags()).containsExactly(Flag.SCRIPT);
         }
 
@@ -100,7 +100,7 @@ class RebolArgumentsTest {
         void putsTheArgsValueFirst() {
             RebolArguments line = ask("--args", "a b", "s.r3", "c");
 
-            assertThat(line.listTheArgumentsForTheScript()).containsExactly("a b", "c");
+            assertThat(line.listArgumentsForScript()).containsExactly("a b", "c");
             assertThat(line.valueOf(Flag.ARGS)).contains("a b");
         }
     }

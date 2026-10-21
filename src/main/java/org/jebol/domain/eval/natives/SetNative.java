@@ -47,11 +47,11 @@ public class SetNative extends DefaultNative {
                         writeThroughPath(path, supplied);
                 case ObjectValue into when supplied instanceof ObjectValue from
                         && !refinements.contains("only") -> {
-                    refuseEachUnassignable(listTheWordsOf(into));
+                    refuseEachUnassignable(listWordsIn(into));
                     setFieldsFromObjectMatchedByName(into, from, refinements);
                     yield supplied;
                 }
-                case ObjectValue into -> spreadOver(listTheWordsOf(into), supplied, refinements);
+                case ObjectValue into -> spreadOver(listWordsIn(into), supplied, refinements);
                 case AnyBlockValue words -> spreadOver(words.remaining(), supplied, refinements);
                 default -> refuseDatatype(target);
             };
@@ -93,7 +93,7 @@ public class SetNative extends DefaultNative {
         }
     }
 
-    private List<Value> listTheWordsOf(ObjectValue object) {
+    private List<Value> listWordsIn(ObjectValue object) {
         return object.context().slots().stream()
                 .<Value>map(slot -> WordValue.of(slot.spelling()).bindTo(object.context()))
                 .toList();
@@ -140,7 +140,7 @@ public class SetNative extends DefaultNative {
             ObjectValue into, ObjectValue from, Set<String> refinements) {
         boolean anyValue = refinements.contains("any");
         boolean onlySome = refinements.contains("some");
-        for (ContextSlot slot : listTheFieldsBothDeclare(into, from)) {
+        for (ContextSlot slot : listFieldsBothDeclare(into, from)) {
             Value supplied = from.context().ownSlotFor(slot.canonical()).value();
             if (!anyValue && supplied instanceof UnsetValue) {
                 continue;
@@ -150,13 +150,13 @@ public class SetNative extends DefaultNative {
             }
             slot.setValue(supplied);
         }
-        for (ContextSlot slot : listTheFieldsBothDeclare(into, from)) {
+        for (ContextSlot slot : listFieldsBothDeclare(into, from)) {
             slot.setValue(Binder.cloneAndRebind(slot.value(),
                     Set.of(from.context()), into.context()));
         }
     }
 
-    private List<ContextSlot> listTheFieldsBothDeclare(ObjectValue into, ObjectValue from) {
+    private List<ContextSlot> listFieldsBothDeclare(ObjectValue into, ObjectValue from) {
         return into.context().slots().stream()
                 .filter(slot -> from.context().holds(slot.canonical()))
                 .toList();

@@ -28,7 +28,7 @@ public interface BundledModules {
      * that one" is a true answer the boundary turns into the same refusal a
      * missing file gets.
      */
-    Optional<byte[]> readTheSourceOf(String name);
+    Optional<byte[]> readModuleSource(String name);
 
     /** A build bundling nothing, which is what an interpreter starts with. */
     static BundledModules none() {

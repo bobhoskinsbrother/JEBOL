@@ -14,7 +14,7 @@ public final class ScreenEventQueue {
         queued.add(new ScreenEvent(kind, window, detail));
     }
 
-    public Optional<ScreenEvent> takeTheOldest() {
+    public Optional<ScreenEvent> takeOldest() {
         return Optional.ofNullable(queued.poll());
     }
 }

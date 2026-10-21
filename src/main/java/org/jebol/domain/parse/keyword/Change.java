@@ -26,7 +26,7 @@ final class Change extends DeclaredKeyword {
                 throw Raised.of(EvaluationFailure.PARSE_END,
                         "change needs a value to put where the match was");
             }
-            return putTheBlockIn(walk, rules, at, at + 2,
+            return putBlockIn(walk, rules, at, at + 2,
                     Math.min(walk.position(), markOffset),
                     Math.abs(walk.position() - markOffset));
         }
@@ -40,7 +40,7 @@ final class Change extends DeclaredKeyword {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
-        return putTheBlockIn(walk, rules, at, replacementAt,
+        return putBlockIn(walk, rules, at, replacementAt,
                 before, walk.position() - before);
     }
 
@@ -51,7 +51,7 @@ final class Change extends DeclaredKeyword {
             if (at + 2 >= rules.size()) {
                 return ParseWalk.NO_MATCH;
             }
-            putTheTextIn(walk, rules.get(at + 2),
+            putTextIn(walk, rules.get(at + 2),
                     Math.min(walk.position(), markOffset),
                     Math.abs(walk.position() - markOffset));
             return 3;
@@ -66,13 +66,13 @@ final class Change extends DeclaredKeyword {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
-        putTheTextIn(walk, rules.get(replacementAt),
+        putTextIn(walk, rules.get(replacementAt),
                 before, walk.position() - before);
         return 1 + span + 1;
     }
 
-    private static int putTheBlockIn(ParseWalk walk, List<Value> rules, int at,
-            int replacementSlot, int begin, int howMany) {
+    private static int putBlockIn(ParseWalk walk, List<Value> rules, int at,
+                                  int replacementSlot, int begin, int howMany) {
 
         boolean wholeBlock = saysToPutBlockInWhole(rules, replacementSlot);
         int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
@@ -86,7 +86,7 @@ final class Change extends DeclaredKeyword {
         return lastRuleAt + 1 - at;
     }
 
-    private static void putTheTextIn(
+    private static void putTextIn(
             ParseWalk walk, Value replacement, int begin, int howMany) {
 
         walk.removeBetween(begin, howMany);

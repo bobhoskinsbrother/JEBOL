@@ -183,7 +183,7 @@ public final class JavaProcess implements ProcessPort {
     }
 
     @Override
-    public OptionalLong identify(WhoTheProcessRunsAs asked) {
+    public OptionalLong identify(WhoProcessRunsAs asked) {
         List<String> question = switch (asked) {
             case REAL_USER -> List.of("id", "-ru");
             case EFFECTIVE_USER -> List.of("id", "-u");
@@ -191,7 +191,7 @@ public final class JavaProcess implements ProcessPort {
             case EFFECTIVE_GROUP -> List.of("id", "-g");
         };
         try {
-            return askTheProcessId(new ProcessBuilder(question)
+            return askProcessId(new ProcessBuilder(question)
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start());
         } catch (IOException noIdOnThisMachine) {
@@ -199,7 +199,7 @@ public final class JavaProcess implements ProcessPort {
         }
     }
 
-    private OptionalLong askTheProcessId(Process asking) throws IOException {
+    private OptionalLong askProcessId(Process asking) throws IOException {
         String answered = new String(asking.getInputStream().readAllBytes(),
                 StandardCharsets.US_ASCII).strip();
         if (!waitForCleanExit(asking) || !WHOLE_NUMBER_ID_PRINTS.matcher(answered).matches()) {

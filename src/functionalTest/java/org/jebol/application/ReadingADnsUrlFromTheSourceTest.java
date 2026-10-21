@@ -27,7 +27,7 @@ class ReadingADnsUrlFromTheSourceTest {
     private record AKnownDirectory(Map<String, String> addressesByName, String machine) implements NetworkPort {
 
         @Override
-        public Optional<String> resolveTheFirstIpv4Address(String hostName) {
+        public Optional<String> resolveFirstIpv4Address(String hostName) {
             return Optional.ofNullable(addressesByName.get(hostName));
         }
 

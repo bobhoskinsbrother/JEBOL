@@ -90,14 +90,14 @@ public final class Ports {
 
     public void useModeTable(String source) {
         this.modeTableSource = source;
-        this.consoleModes = listTheConsoleModesInTheModeTable();
+        this.consoleModes = listConsoleModesInModeTable();
     }
 
     public SequencedSet<String> consoleModes() {
         return consoleModes;
     }
 
-    private SequencedSet<String> listTheConsoleModesInTheModeTable() {
+    private SequencedSet<String> listConsoleModesInModeTable() {
         List<Value> rows = declarations.rowsBelowHeader(modeTableSource);
         for (int at = 0; at + 1 < rows.size(); at++) {
             if (rows.get(at) instanceof AnyWordValue heading
@@ -165,7 +165,7 @@ public final class Ports {
         return port;
     }
 
-    public Optional<String> findTheFileNamedByAUrl(Value target, Evaluator evaluator, Context context) {
+    public Optional<String> findFileNamedByUrl(Value target, Evaluator evaluator, Context context) {
         if (!(target instanceof UrlValue)) {
             return Optional.empty();
         }
@@ -202,8 +202,8 @@ public final class Ports {
     }
 
     public Value readFrom(PortValue port, Evaluator evaluator, List<Value> arguments, PortRequest asked) {
-        Optional<Value> itsOwn = evaluator.askTheRebolActor(
-                "read", withThePortInFront(port, arguments), asked.refinements());
+        Optional<Value> itsOwn = evaluator.askRebolActor(
+                "read", withPortInFront(port, arguments), asked.refinements());
         if (itsOwn.isPresent()) {
             return itsOwn.get();
         }
@@ -224,10 +224,10 @@ public final class Ports {
         };
     }
 
-    private List<Value> withThePortInFront(PortValue port, List<Value> arguments) {
-        List<Value> asTheActorTakesThem = new ArrayList<>(arguments);
-        asTheActorTakesThem.set(0, port);
-        return asTheActorTakesThem;
+    private List<Value> withPortInFront(PortValue port, List<Value> arguments) {
+        List<Value> asActorTakesThem = new ArrayList<>(arguments);
+        asActorTakesThem.set(0, port);
+        return asActorTakesThem;
     }
 
     private Value lineReadFromConsole(Evaluator evaluator) {
@@ -262,8 +262,8 @@ public final class Ports {
     }
 
     private Value bundledModuleSource(PortValue port, Evaluator evaluator) {
-        return readTheNameABundledUrlAsksFor(port)
-                .flatMap(name -> evaluator.bundledModules().readTheSourceOf(name))
+        return readNameBundledUrlAsksFor(port)
+                .flatMap(name -> evaluator.bundledModules().readModuleSource(name))
                 .map(source -> (Value) BinaryValue.ofBytes(source))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_OPEN, portReference(port)));
     }
@@ -274,7 +274,7 @@ public final class Ports {
                 : NoneValue.none();
     }
 
-    private Optional<String> readTheNameABundledUrlAsksFor(PortValue port) {
+    private Optional<String> readNameBundledUrlAsksFor(PortValue port) {
         if (!(port.readFieldValue("spec") instanceof ObjectValue spec)
                 || !(spec.readFieldValue("host") instanceof AnyStringValue host)
                 || !(spec.readFieldValue("path") instanceof NoneValue)
@@ -286,7 +286,7 @@ public final class Ports {
 
     private Value readBytesFromConnection(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
-        NetworkPort.Connection connection = findTheConnectionBehind(port);
+        NetworkPort.Connection connection = findConnectionBehind(port);
         return runThroughNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(connection.read());
             addToPortsData(port, arrived);
@@ -316,7 +316,7 @@ public final class Ports {
             if (WRITTEN_AS_ADDRESS.matcher(host).matches()) {
                 return hostNameForIpv4(host, network);
             }
-            return network.resolveTheFirstIpv4Address(host)
+            return network.resolveFirstIpv4Address(host)
                     .<Value>map(this::asTuple)
                     .orElseGet(NoneValue::none);
         });
@@ -334,7 +334,7 @@ public final class Ports {
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
-        evaluator.queueOnSystemPort(new EventValue(EventCatalogue.findTheTypeIndexOf(happened).orElseThrow(),
+        evaluator.queueOnSystemPort(new EventValue(EventCatalogue.findTypeIndexOf(happened).orElseThrow(),
                 Set.of(), EventValue.Model.PORT, 0, port));
     }
 
@@ -403,7 +403,7 @@ public final class Ports {
     }
 
     public Value writeTo(PortValue port, Value data, Evaluator evaluator, PortRequest asked) {
-        Optional<Value> itsOwn = evaluator.askTheRebolActor(
+        Optional<Value> itsOwn = evaluator.askRebolActor(
                 "write", List.of(port, data), asked.refinements());
         if (itsOwn.isPresent()) {
             return itsOwn.get();
@@ -449,7 +449,7 @@ public final class Ports {
 
     private Value sendDownConnection(PortValue port, Value data, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
-        NetworkPort.Connection connection = findTheConnectionBehind(port);
+        NetworkPort.Connection connection = findConnectionBehind(port);
         return runThroughNetwork(() -> {
             connection.write(data.asOctets());
             queueWhatHappenedTo(port, "wrote", evaluator);
@@ -509,7 +509,7 @@ public final class Ports {
     }
 
     private PortValue markOpen(PortValue port) {
-        port.findTheEventQueue();
+        port.findEventQueue();
         if (!port.isOpen()) {
             port.markOpen(true);
         }
@@ -523,7 +523,7 @@ public final class Ports {
             queueWhatHappenedTo(port, "connect", evaluator);
             return markOpen(port);
         } catch (NetworkPort.Refused refused) {
-            port.findTheEventQueue();
+            port.findEventQueue();
             queueWhatHappenedTo(port, "error", evaluator);
             return port;
         }
@@ -542,9 +542,9 @@ public final class Ports {
             seekable.moveTo(0);
             return;
         }
-        OpeningAFile asked = new OpeningAFile(refinements);
+        OpeningFile asked = new OpeningFile(refinements);
         asked.refuseNewFileNobodyMayWriteTo(path);
-        requireFilePolicy(path, evaluator, asked.listTheAccessesItAsksFor());
+        requireFilePolicy(path, evaluator, asked.listAccessesItAsksFor());
         boolean alreadyThere = runThroughFileSystem(() ->
                 LogicValue.of(evaluator.ports().files().exists(path))).isTruthy();
         if (!asked.canWrite()) {
@@ -569,7 +569,7 @@ public final class Ports {
             return false;
         }
         try {
-            return !wildcard.listTheNamesMatchingIn(files).isEmpty();
+            return !wildcard.listNamesMatchingIn(files).isEmpty();
         } catch (RuntimeException nothingThere) {
             return false;
         }
@@ -660,7 +660,7 @@ public final class Ports {
         return "";
     }
 
-    private NetworkPort.Datagrams findTheDatagramsBehind(PortValue port) {
+    private NetworkPort.Datagrams findDatagramsBehind(PortValue port) {
         if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Datagrams bound) {
             return bound;
@@ -670,7 +670,7 @@ public final class Ports {
 
     private Value readOneDatagramInto(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
-        NetworkPort.Datagrams bound = findTheDatagramsBehind(port);
+        NetworkPort.Datagrams bound = findDatagramsBehind(port);
         return runThroughNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(bound.receive());
             addToPortsData(port, arrived);
@@ -686,7 +686,7 @@ public final class Ports {
             case BinaryValue carried -> carried.octetsFromHere();
             default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
         };
-        NetworkPort.Datagrams bound = findTheDatagramsBehind(port);
+        NetworkPort.Datagrams bound = findDatagramsBehind(port);
         return runThroughNetwork(() -> {
             bound.sendTo(findHostToSendTo(port), portNumber(port), bytes);
             port.setField("data", NoneValue.none());
@@ -701,7 +701,7 @@ public final class Ports {
                 && context.ownSlotFor("port").value() instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }
-        return NetworkPort.findTheWellKnownPortFor(port.schemeName()).orElse(0);
+        return NetworkPort.findWellKnownPortFor(port.schemeName()).orElse(0);
     }
 
     private Value runThroughNetwork(Supplier<Value> operation) {
@@ -722,7 +722,7 @@ public final class Ports {
         }
     }
 
-    private NetworkPort.Connection findTheConnectionBehind(PortValue port) {
+    private NetworkPort.Connection findConnectionBehind(PortValue port) {
         if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
             return open;

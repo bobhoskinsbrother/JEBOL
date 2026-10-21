@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-final class ScanningATime {
+final class ScanningTime {
 
     private static final int NOT_GIVEN = -1;
     private static final int FRACTION_DIGITS = 9;
@@ -20,7 +20,7 @@ final class ScanningATime {
     private int fractionInNanoseconds = NOT_GIVEN;
     private char afternoonOrMorning;
 
-    ScanningATime(String text) {
+    ScanningTime(String text) {
         this.text = text;
     }
 

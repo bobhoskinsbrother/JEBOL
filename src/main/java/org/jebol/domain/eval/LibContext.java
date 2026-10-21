@@ -325,7 +325,7 @@ public final class LibContext {
         registerNative(new AccessOsNative(grantedServices));
         registerNative(new IsTerminalNative());
         registerNative(new ReadKeyNative(grantedServices));
-        registerNative(new ArctangentOfAPointNative());
+        registerNative(new ArctangentOfPointNative());
         registerNative(new CosNative());
         registerNative(new SinNative());
         registerNative(new TanNative());

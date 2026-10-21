@@ -51,9 +51,9 @@ final class BrotliCostModel {
         cheapestCommand = (float) BrotliCodes.computeLog2Quickly(11);
     }
 
-    void measureFromTheCommands(byte[] data, int from, int mask,
-                                BrotliCommand commands, int firstCommand, int howManyCommands,
-                                int insertLengthCarriedIn) {
+    void measureFromCommands(byte[] data, int from, int mask,
+                             BrotliCommand commands, int firstCommand, int howManyCommands,
+                             int insertLengthCarriedIn) {
 
         int[] literals = new int[LITERAL_SYMBOLS];
         int[] commandSymbols = new int[BrotliCodes.COMMAND_SYMBOLS];
@@ -111,16 +111,16 @@ final class BrotliCostModel {
             total += histogram[each];
         }
         float logOfTotal = (float) BrotliCodes.computeLog2Quickly(total);
-        long totalWithTheMissingOnes = total;
+        long totalWithMissingOnes = total;
         if (!literals) {
             for (int each = 0; each < size; each++) {
                 if (histogram[each] == 0) {
-                    totalWithTheMissingOnes++;
+                    totalWithMissingOnes++;
                 }
             }
         }
         float costOfSomethingUnseenPricedAsIfItAppearedOncePlusTwoBits =
-                (float) BrotliCodes.computeLog2Quickly(totalWithTheMissingOnes) + 2;
+                (float) BrotliCodes.computeLog2Quickly(totalWithMissingOnes) + 2;
         for (int each = 0; each < size; each++) {
             if (histogram[each] == 0) {
                 cost[each] = costOfSomethingUnseenPricedAsIfItAppearedOncePlusTwoBits;

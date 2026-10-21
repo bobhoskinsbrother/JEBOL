@@ -70,10 +70,10 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
                         "a struct field is a word and then a block, and position "
                                 + (at + 1) + " is neither");
             }
-            StructField field = layOutTheFieldNamed(name.spelling(), declared, offset, registry);
+            StructField field = layOutFieldNamed(name.spelling(), declared, offset, registry);
             fields.add(field);
             settled.add(name);
-            settled.add(withTheTypeNameSettledButAnInnerStructLeftAsWritten(
+            settled.add(withTypeNameSettledButInnerStructLeftAsWritten(
                     declared, field));
             offset += field.width();
             at += 2;
@@ -88,7 +88,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
         return new StructSpec(BlockValue.of(settled), List.copyOf(fields), offset);
     }
 
-    private static AnyBlockValue withTheTypeNameSettledButAnInnerStructLeftAsWritten(
+    private static AnyBlockValue withTypeNameSettledButInnerStructLeftAsWritten(
             AnyBlockValue declared, StructField field) {
         if (field.type() instanceof StructFieldType.Nested) {
             return declared;
@@ -98,8 +98,8 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
         return BlockValue.of(written);
     }
 
-    private static StructField layOutTheFieldNamed(String name, AnyBlockValue declared,
-                                                   int offset, LayoutRegistry registry) {
+    private static StructField layOutFieldNamed(String name, AnyBlockValue declared,
+                                                int offset, LayoutRegistry registry) {
         List<Value> written = declared.remaining();
         if (written.isEmpty() || !(written.getFirst() instanceof AnyWordValue typeWord)) {
             throw StructLayoutRefused.refuseField(declared,
@@ -115,7 +115,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
             type = readScalarNamed(name, declared, typeWord.canonical());
         }
         int dimension = 1;
-        boolean declaredAsAnArray = false;
+        boolean declaredAsArray = false;
         if (at < written.size() && written.get(at) instanceof AnyBlockValue howMany) {
             List<Value> counted = howMany.remaining();
             if (counted.size() != 1 || !(counted.getFirst() instanceof IntegerValue(long magnitude))) {
@@ -124,14 +124,14 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
                                 + "with something that is not a whole number");
             }
             dimension = (int) magnitude;
-            declaredAsAnArray = true;
+            declaredAsArray = true;
             at++;
         }
         if (at != written.size()) {
             throw StructLayoutRefused.refuseField(declared,
                     "the field " + name + " carries something after its type");
         }
-        return new StructField(name, type, dimension, declaredAsAnArray, offset);
+        return new StructField(name, type, dimension, declaredAsArray, offset);
     }
 
     private static StructSpec layOutInside(String name, AnyBlockValue declared,
@@ -160,7 +160,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
         return switch (typeWord) {
             case "word!" -> new StructFieldType.NamedWord();
             case "rebval!" -> new StructFieldType.LiveValue();
-            default -> new StructFieldType.Numeric(VectorKind.findTheKindNamed(typeWord)
+            default -> new StructFieldType.Numeric(VectorKind.findKindNamed(typeWord)
                     .orElseThrow(() -> StructLayoutRefused.refuseField(declared,
                             "the field " + name + " names the type " + typeWord
                                     + ", which no struct field can be")));
@@ -168,7 +168,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
     }
 
     /** The field of this name, if there is one. */
-    public Optional<StructField> findTheFieldCalled(String name) {
+    public Optional<StructField> findFieldCalled(String name) {
         return fields.stream()
                 .filter(field -> field.name().equalsIgnoreCase(name))
                 .findFirst();

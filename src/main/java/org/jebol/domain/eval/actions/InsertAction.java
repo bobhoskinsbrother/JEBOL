@@ -22,7 +22,7 @@ public class InsertAction extends AddingAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case PortValue queue when queue.findTheEventQueue().isPresent() ->
+            case PortValue queue when queue.findEventQueue().isPresent() ->
                     queue.queue(arguments.get(1), AT_END);
             case Value subject when Actions.of(subject).isPresent() ->
                     Actions.of(subject).orElseThrow().insert(

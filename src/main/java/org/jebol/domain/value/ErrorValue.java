@@ -95,14 +95,14 @@ public record ErrorValue(
         }
 
         private Value makeErrorSpeltOutBy(
-                AnyBlockValue fields, boolean fromAnObject, Value theSpecAsWritten, Maker maker) {
+                AnyBlockValue fields, boolean fromObject, Value specAsWritten, Maker maker) {
 
             List<Value> items = fields.remaining();
             ErrorCategory category = ErrorCategory.USER;
             String errorId = "user-error";
             String typeWordAsSpelled = "";
-            boolean namedAType = false;
-            boolean namedAnId = false;
+            boolean namedType = false;
+            boolean namedId = false;
             Value unknownId = NoneValue.none();
             Optional<Value> subject = Optional.empty();
             Optional<Value> second = Optional.empty();
@@ -117,15 +117,15 @@ public record ErrorValue(
                         : Molder.form(asWritten);
                 switch (name.canonical()) {
                     case "type" -> {
-                        namedAType = true;
+                        namedType = true;
                         typeWordAsSpelled = asWritten instanceof AnyWordValue spelled
                                 ? spelled.spelling()
                                 : said;
-                        category = ErrorCategory.findTheCategoryNamed(said).orElseThrow(() ->
+                        category = ErrorCategory.findCategoryNamed(said).orElseThrow(() ->
                                 Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
                     }
                     case "id" -> {
-                        namedAnId = true;
+                        namedId = true;
                         errorId = said;
                         unknownId = asWritten;
                     }
@@ -135,12 +135,12 @@ public record ErrorValue(
                     default -> { }
                 }
             }
-            if (!namedAType || !namedAnId) {
+            if (!namedType || !namedId) {
                 throw new Raised(ErrorValue.of(ErrorCategory.INTERNAL,
                         "invalid-error", "an error spec names a type and an id"));
             }
-            refuseAnErrorTheCatalogueHasNot(
-                    category, errorId, unknownId, theSpecAsWritten, fromAnObject);
+            refuseErrorCatalogueHasNot(
+                    category, errorId, unknownId, specAsWritten, fromObject);
             ErrorValue built = new ErrorValue(category, errorId, errorId, subject,
                     second, third, Optional.empty(), Optional.empty(),
                     new LinkedHashMap<>());
@@ -148,14 +148,14 @@ public record ErrorValue(
             return maker.speakHere(built);
         }
 
-        private void refuseAnErrorTheCatalogueHasNot(
+        private void refuseErrorCatalogueHasNot(
                 ErrorCategory category, String errorId, Value asWritten, Value spec,
-                boolean fromAnObject) {
+                boolean fromObject) {
 
-            if (!ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId)) {
+            if (!ErrorCatalogue.listIdsIn(category.spelling()).contains(errorId)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
             }
-            if (!fromAnObject && ErrorCatalogue.findCodeFor(category.spelling(), errorId)
+            if (!fromObject && ErrorCatalogue.findCodeFor(category.spelling(), errorId)
                     < ErrorCatalogue.LOWEST_CODE_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
@@ -166,7 +166,7 @@ public record ErrorValue(
     public Optional<Context> fieldsAsContext() {
         Context fields = Context.root();
         for (String name : FIELDS) {
-            fields.register(name, readTheField(name).orElseGet(NoneValue::none));
+            fields.register(name, readField(name).orElseGet(NoneValue::none));
         }
         return Optional.of(fields);
     }
@@ -188,7 +188,7 @@ public record ErrorValue(
             case "words" -> BlockValue.of(FIELDS.stream()
                     .<Value>map(WordValue::of).toList());
             case "values" -> BlockValue.of(FIELDS.stream()
-                    .map(name -> readTheField(name).orElseGet(NoneValue::none))
+                    .map(name -> readField(name).orElseGet(NoneValue::none))
                     .toList());
             default -> NoneValue.none();
         };
@@ -198,7 +198,7 @@ public record ErrorValue(
     public Value copy(boolean deeply, Set<Datatype> kinds) {
         Map<String, Value> fields = new LinkedHashMap<>();
         for (String name : FIELDS) {
-            readTheField(name).ifPresent(held ->
+            readField(name).ifPresent(held ->
                     fields.put(name, held.copyAsMember(deeply, kinds)));
         }
         return new ErrorValue(category, errorId, message, subject, secondArgument,
@@ -306,7 +306,7 @@ public record ErrorValue(
      * always none. That made `e/arg3 = integer!` false for every expect-arg,
      * which is an assertion Rebol's own suite makes.
      */
-    public Optional<Value> readTheField(String name) {
+    public Optional<Value> readField(String name) {
         if (writtenFields.containsKey(name)) {
             return Optional.of(writtenFields.get(name));
         }
@@ -370,15 +370,15 @@ public record ErrorValue(
                 .append(" error: ")
                 .append(readCataloguesMessage())
                 .append('\n');
-        readTheField("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
+        readField("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
                 written.append("** Where: ").append(Molder.form(chain)).append('\n'));
-        readTheField("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
+        readField("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
                 written.append("** Near: ").append(showLocation(where)).append('\n'));
         return written.toString();
     }
 
     private String readCataloguesMessage() {
-        return wording.wordTheId(category.spelling(), errorId)
+        return wording.wordId(category.spelling(), errorId)
                 .map(this::writeMessageFrom)
                 .orElseGet(this::fallBackToPlainWords);
     }
@@ -388,7 +388,7 @@ public record ErrorValue(
     }
 
     private boolean rebolsCatalogueNamesIt() {
-        return ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId);
+        return ErrorCatalogue.listIdsIn(category.spelling()).contains(errorId);
     }
 
     private String writeMessageFrom(Value said) {
@@ -407,7 +407,7 @@ public record ErrorValue(
 
     private String nameFieldOrItem(Value item) {
         if (item instanceof AnyWordValue word) {
-            Optional<Value> held = readTheField(word.canonical());
+            Optional<Value> held = readField(word.canonical());
             if (held.isPresent()) {
                 return Molder.mold(held.get());
             }

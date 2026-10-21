@@ -160,7 +160,7 @@ final class BrotliPricedParse {
         return costThenShortcutThenNext[position - copyLength - insertLength];
     }
 
-    private void workOutTheShortcutAndQueueItIfWorthStartingFrom(
+    private void workOutShortcutAndQueueItIfWorthStartingFrom(
             int blockStart, int position, int furthestBack,
             int[] startingDistances, BrotliCostModel model,
             CheapestPlacesCommandCouldHaveStarted starts) {
@@ -193,7 +193,7 @@ final class BrotliPricedParse {
         return copyLength;
     }
 
-    private int offerEverythingAtAnsweringTheLongestCopyRecorded(
+    private int offerEverythingAtAnsweringLongestCopyRecorded(
             byte[] data, int mask, int blockStart, int position, int quality,
             int furthestBack, int[] startingDistances, int howManyMatches,
             BrotliMatches matches, BrotliDistances distances,
@@ -211,7 +211,7 @@ final class BrotliPricedParse {
         int howManyStartsToTry = quality <= 10 ? 1 : 5;
         int longest = 0;
 
-        workOutTheShortcutAndQueueItIfWorthStartingFrom(
+        workOutShortcutAndQueueItIfWorthStartingFrom(
                 blockStart, position, furthestBack, startingDistances, model, starts);
 
         int shortestWorthTrying;
@@ -256,7 +256,7 @@ final class BrotliPricedParse {
                 for (int copyLength = bestLength + 1; copyLength <= length;
                         copyLength++) {
                     int copyCode = BrotliCommand.copyLengthCode(copyLength);
-                    int commandCode = BrotliCommand.combineTheLengthCodes(
+                    int commandCode = BrotliCommand.combineLengthCodes(
                             insertCode, copyCode, code == 0);
                     float cost = (commandCode < 128 ? baseCost : distanceCost)
                             + (float) BrotliCommand.copyExtra(copyCode)
@@ -276,7 +276,7 @@ final class BrotliPricedParse {
             int copyLength = shortestWorthTrying;
             for (int match = 0; match < howManyMatches; match++) {
                 long howFarBack = matches.readDistanceAt(match);
-                boolean isADictionaryWord = howFarBack > dictionaryStart;
+                boolean isDictionaryWord = howFarBack > dictionaryStart;
                 long plainCode = howFarBack + BrotliCommand.DISTANCE_SHORT_CODES - 1;
                 long encoded = BrotliCommand.encodeDistance((int) plainCode,
                         distances.directCodes(), distances.postfixBits());
@@ -287,14 +287,14 @@ final class BrotliPricedParse {
 
                 int longestHere = matches.readLengthAt(match);
                 if (copyLength < longestHere
-                        && (isADictionaryWord || longestHere > longEnoughToTakeAsRead)) {
+                        && (isDictionaryWord || longestHere > longEnoughToTakeAsRead)) {
                     copyLength = longestHere;
                 }
                 for (; copyLength <= longestHere; copyLength++) {
-                    int lengthCode = isADictionaryWord
+                    int lengthCode = isDictionaryWord
                             ? matches.readLengthCodeAt(match) : copyLength;
                     int copyCode = BrotliCommand.copyLengthCode(lengthCode);
-                    int commandCode = BrotliCommand.combineTheLengthCodes(
+                    int commandCode = BrotliCommand.combineLengthCodes(
                             insertCode, copyCode, false);
                     float cost = distanceCost
                             + (float) BrotliCommand.copyExtra(copyCode)
@@ -323,10 +323,10 @@ final class BrotliPricedParse {
         }
     }
 
-    private void writeTheCommands(int blockStart, int windowBits,
-            int[] recentDistances, int[] insertLengthCarried,
-            BrotliDistances distances, BrotliCommand commands,
-            long[] howManyLiterals) {
+    private void writeCommands(int blockStart, int windowBits,
+                               int[] recentDistances, int[] insertLengthCarried,
+                               BrotliDistances distances, BrotliCommand commands,
+                               long[] howManyLiterals) {
 
         int furthestBack = BrotliBackwardReferences.measureFurthestBack(windowBits);
         int at = 0;
@@ -344,11 +344,11 @@ final class BrotliPricedParse {
             long howFarBack = Integer.toUnsignedLong(distance[landing]);
             int lengthCode = readLengthCodeAt(landing);
             long dictionaryStart = Math.min((long) blockStart + at, furthestBack);
-            boolean isADictionaryWord = howFarBack > dictionaryStart;
+            boolean isDictionaryWord = howFarBack > dictionaryStart;
             int distanceCode = readDistanceCodeAt(landing);
             commands.add(insertLength, copyLength, lengthCode - copyLength,
                     distanceCode, distances.directCodes(), distances.postfixBits());
-            if (!isADictionaryWord && distanceCode > 0) {
+            if (!isDictionaryWord && distanceCode > 0) {
                 recentDistances[3] = recentDistances[2];
                 recentDistances[2] = recentDistances[1];
                 recentDistances[1] = recentDistances[0];
@@ -395,7 +395,7 @@ final class BrotliPricedParse {
                 matches.keepOnly(howManyMatches - 1);
                 howManyMatches = 1;
             }
-            int skip = parse.offerEverythingAtAnsweringTheLongestCopyRecorded(
+            int skip = parse.offerEverythingAtAnsweringLongestCopyRecorded(
                     data, mask, blockStart, at, 10,
                     furthestBack, recentDistances, howManyMatches, matches,
                     distances, model, starts);
@@ -415,7 +415,7 @@ final class BrotliPricedParse {
                     if (at + 3 >= howManyBytes) {
                         break;
                     }
-                    parse.workOutTheShortcutAndQueueItIfWorthStartingFrom(
+                    parse.workOutShortcutAndQueueItIfWorthStartingFrom(
                             blockStart, at, furthestBack, recentDistances,
                             model, starts);
                     skip--;
@@ -423,7 +423,7 @@ final class BrotliPricedParse {
             }
         }
         parse.readAnswerBack();
-        parse.writeTheCommands(blockStart, windowBits, recentDistances,
+        parse.writeCommands(blockStart, windowBits, recentDistances,
                 insertLengthCarried, distances, commands, howManyLiterals);
     }
 
@@ -476,7 +476,7 @@ final class BrotliPricedParse {
             if (round == 0) {
                 model.guessFromDataAlone(data, blockStart, mask);
             } else {
-                model.measureFromTheCommands(data, blockStart, mask, commands,
+                model.measureFromCommands(data, blockStart, mask, commands,
                         startingCommands, commands.count() - startingCommands,
                         startingInsertLength);
             }
@@ -493,7 +493,7 @@ final class BrotliPricedParse {
                     data, mask, blockStart, howManyBytes, furthestBack,
                     recentDistances, howManyMatchesAt, allMatches, distances,
                     model);
-            parse.writeTheCommands(blockStart, windowBits, recentDistances,
+            parse.writeCommands(blockStart, windowBits, recentDistances,
                     insertLengthCarried, distances, commands, howManyLiterals);
         }
     }
@@ -512,7 +512,7 @@ final class BrotliPricedParse {
             for (int which = 0; which < howMany; which++) {
                 window.copyOneOverFrom(which, allMatches, matchesSoFar + which);
             }
-            int skip = offerEverythingAtAnsweringTheLongestCopyRecorded(
+            int skip = offerEverythingAtAnsweringLongestCopyRecorded(
                     data, mask, blockStart, at, 11,
                     furthestBack, recentDistances, howMany, window, distances,
                     model, starts);
@@ -531,7 +531,7 @@ final class BrotliPricedParse {
                     if (at + 3 >= howManyBytes) {
                         break;
                     }
-                    workOutTheShortcutAndQueueItIfWorthStartingFrom(
+                    workOutShortcutAndQueueItIfWorthStartingFrom(
                             blockStart, at, furthestBack, recentDistances,
                             model, starts);
                     matchesSoFar += howManyMatchesAt[at];

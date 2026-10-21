@@ -219,7 +219,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                     : findTheLongestReadablePrefix(reader, source);
             return reader.read(readable).values()
                     .map(block -> build(reader, name, readable, block.remaining(),
-                            Transcoder.findTheTopLevelSpans(readable)))
+                            Transcoder.findTopLevelSpans(readable)))
                     .orElseGet(() -> new SuiteFile(name, List.of(), List.of()));
         } catch (RuntimeException thrown) {
             throw new IllegalStateException(

@@ -47,7 +47,7 @@ public class DsNative extends DefaultNative {
     }
 
     private void printOneFrame(Evaluator evaluator, Evaluator.OpenCall call, int slotsInUse) {
-        List<String> slots = call.listTheSlotNames();
+        List<String> slots = call.listSlotNames();
         evaluator.findOutput().writeLine(String.format(FRAME_LINE,
                 slotsInUse,
                 call.name().isEmpty() ? NO_NAME : call.name(),

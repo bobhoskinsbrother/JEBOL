@@ -287,7 +287,7 @@ for it, rather than above a class they have to open the file to find.
 **You are sending the receiver a message -- `object.dispatchCommand()` -- and
 the name is the message.** A command or a question, not prose about the code:
 `a`, `an` and `the` are words a sentence needs and a message does not.
-`readTheWordAt` is `readWordAt`, `copyTheMap` is `copyMap`,
+`scanTheItem` is `scanItem`, `copyTheMap` is `copyMap`,
 `combineWithANumber` is `combineWithNumber`, `combineFromTheLeft` is
 `combineFromLeft`, `asMoneyInTheCurrencyOf` is `asMoneyUsingCurrency`. A
 fresh `aBlah` or `theBlah` is the sign that a sentence was written and then

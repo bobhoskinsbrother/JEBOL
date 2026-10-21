@@ -57,13 +57,13 @@ public enum DatePart implements DateField {
     }
 
     public static Value readFrom(DateValue date, Value selector) {
-        return findThePartNamed(selector)
+        return findPartNamed(selector)
                 .map(part -> part.readFrom(date))
                 .orElseGet(NoneValue::none);
     }
 
     public static DateValue writeOn(DateValue date, Value selector, Value given) {
-        return findThePartNamed(selector)
+        return findPartNamed(selector)
                 .orElseThrow(() -> refuseUnknownPart(selector))
                 .writeOn(date, given);
     }
@@ -72,7 +72,7 @@ public enum DatePart implements DateField {
         return Arrays.stream(values()).map(DatePart::spelling).toList();
     }
 
-    private static Optional<DatePart> findThePartNamed(Value selector) {
+    private static Optional<DatePart> findPartNamed(Value selector) {
         if (selector instanceof AnyWordValue asked) {
             return Arrays.stream(values())
                     .filter(part -> part.spelling().equals(asked.canonical()))

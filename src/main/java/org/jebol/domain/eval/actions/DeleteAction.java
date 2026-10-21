@@ -40,7 +40,7 @@ public class DeleteAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
             PortValue port = ports.makePortFor(target, evaluator, context);
-            return evaluator.askTheRebolActor(nativeName(), List.of(port), Set.of())
+            return evaluator.askRebolActor(nativeName(), List.of(port), Set.of())
                     .orElseGet(() -> delete(target, port, evaluator));
         };
     }

@@ -12,7 +12,7 @@ public record TimeValue(long nanoseconds) implements Value {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return nanoseconds;
     }
 
@@ -271,7 +271,7 @@ public record TimeValue(long nanoseconds) implements Value {
         }
 
         private Value scanTimeFrom(StringValue given) {
-            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findOneTime());
+            ScanningTime scanning = new ScanningTime(new WrittenText(given.text()).findOneTime());
             if (!scanning.readsTime()) {
                 throw refuse(given);
             }

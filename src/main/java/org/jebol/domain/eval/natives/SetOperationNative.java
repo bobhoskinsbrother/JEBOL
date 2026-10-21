@@ -32,7 +32,7 @@ public abstract class SetOperationNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> Combining.sets(
                 arguments.getFirst(), arguments.get(1),
-                SetOperation.findTheOperationNamed(nativeName()).orElseThrow(),
+                SetOperation.findOperationNamed(nativeName()).orElseThrow(),
                 refinements.contains("case"),
                 recordWidthOf(refinementArgument("skip", 0, arguments, refinements)));
     }

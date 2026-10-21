@@ -39,7 +39,7 @@ public final class View {
     public static View of(Interpreter interpreter, String source) {
         View view = new View(interpreter);
         interpreter.defineNewWordsIn(source);
-        ScriptOutcome outcome = runOnceBecauseItSetsUpTheStateAsWellAsDescribingIt(
+        ScriptOutcome outcome = runOnceBecauseItSetsUpStateAsWellAsDescribingIt(
                 interpreter, source);
 
         if (outcome.conclusion() == Conclusion.PRODUCED_VALUE
@@ -50,7 +50,7 @@ public final class View {
         return view;
     }
 
-    private static ScriptOutcome runOnceBecauseItSetsUpTheStateAsWellAsDescribingIt(
+    private static ScriptOutcome runOnceBecauseItSetsUpStateAsWellAsDescribingIt(
             Interpreter interpreter, String source) {
 
         return interpreter.run(source);

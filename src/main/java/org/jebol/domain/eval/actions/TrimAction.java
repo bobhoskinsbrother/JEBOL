@@ -34,21 +34,21 @@ public class TrimAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> arguments.getFirst().trim(
                 new Trimming(refinements, refinementArgument("with", 0, arguments, refinements)
-                        .map(this::collectTheUnwantedCodePoints)
+                        .map(this::collectUnwantedCodePoints)
                         .orElseGet(Set::of)));
     }
 
-    private Set<Integer> collectTheUnwantedCodePoints(Value characters) {
+    private Set<Integer> collectUnwantedCodePoints(Value characters) {
         return switch (characters) {
             case CharacterValue character -> Set.of(character.codepoint());
             case IntegerValue whole -> Set.of((int) whole.magnitude());
             case AnyStringValue text -> text.text().codePoints().boxed().collect(Collectors.toSet());
-            case BinaryValue bytes -> collectTheOctetsOf(bytes);
+            case BinaryValue bytes -> collectOctetsFrom(bytes);
             default -> Set.of();
         };
     }
 
-    private Set<Integer> collectTheOctetsOf(BinaryValue bytes) {
+    private Set<Integer> collectOctetsFrom(BinaryValue bytes) {
         Set<Integer> octets = new HashSet<>();
         for (byte octet : bytes.octetsFromHere()) {
             octets.add(octet & OCTET);

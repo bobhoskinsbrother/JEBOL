@@ -31,13 +31,13 @@ public class PickAction extends PickingNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .askRebolActor(nativeName(), arguments, Set.of())
                 .orElseGet(() -> pick(arguments.getFirst(), arguments.get(1)));
     }
 
     private Value pick(Value subject, Value selector) {
-        if (subject instanceof PortValue port && port.findTheEventQueue().isPresent()) {
-            return pickBy(port.findTheEventQueue().orElseThrow(), selector);
+        if (subject instanceof PortValue port && port.findEventQueue().isPresent()) {
+            return pickBy(port.findEventQueue().orElseThrow(), selector);
         }
         if (selector instanceof LogicValue(boolean truth) && !(subject instanceof BitsetValue)) {
             return subject.pick(truth ? WHAT_TRUE_PICKS : WHAT_FALSE_PICKS);

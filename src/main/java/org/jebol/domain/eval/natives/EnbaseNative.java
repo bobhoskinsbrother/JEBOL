@@ -69,7 +69,7 @@ public class EnbaseNative extends BinaryBaseNative {
     private String encodeOrRefuse(Value value, byte[] octets, int base, boolean urlSafe) {
         try {
             return encodings.enbase(octets, base, urlSafe);
-        } catch (ArithmeticException tooWideForANumber) {
+        } catch (ArithmeticException tooWideForNumber) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
         }
     }

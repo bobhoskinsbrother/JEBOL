@@ -43,7 +43,7 @@ public final class ObjectActions implements Actions {
             return object;
         }
         List<Value> pairs = asked.duplicated() instanceof AnyBlockValue added
-                ? asked.pickTheWantedItemsOf(added)
+                ? asked.pickWantedItemsFrom(added)
                 : List.of(asked.given());
         for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {
             object.context().refuseFieldSpeltLikeItsOwnSelf(pairs.get(at1));

@@ -34,10 +34,10 @@ public class SplitLinesNative extends DefaultNative {
 
     private List<Value> linesOf(AnyStringValue text) {
         List<Value> lines = new ArrayList<>();
-        int stopsAtTheLengthFromHereCountedFromTheHead = text.lengthFromHere();
+        int stopsAtLengthFromHereCountedFromHead = text.lengthFromHere();
         int start = text.index() - 1;
         int at = start;
-        while (at < stopsAtTheLengthFromHereCountedFromTheHead) {
+        while (at < stopsAtLengthFromHereCountedFromHead) {
             int letter = readCodePointAfter(text, at);
             at++;
             if (endsLine(letter)) {
@@ -57,12 +57,12 @@ public class SplitLinesNative extends DefaultNative {
     }
 
     private int skipLineFeedFollowing(AnyStringValue text, int ending, int at) {
-        boolean aLineFeedFollows = at < text.storageLength() && readCodePointAfter(text, at) == LINE_FEED;
-        return ending == CARRIAGE_RETURN && aLineFeedFollows ? at + 1 : at;
+        boolean lineFeedFollows = at < text.storageLength() && readCodePointAfter(text, at) == LINE_FEED;
+        return ending == CARRIAGE_RETURN && lineFeedFollows ? at + 1 : at;
     }
 
-    private int readCodePointAfter(AnyStringValue text, int charactersFromTheHead) {
-        return text.storage().at(charactersFromTheHead + 1);
+    private int readCodePointAfter(AnyStringValue text, int charactersFromHead) {
+        return text.storage().at(charactersFromHead + 1);
     }
 
     private Value lineBetween(AnyStringValue text, int from, int to) {

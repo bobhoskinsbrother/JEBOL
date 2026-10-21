@@ -152,12 +152,12 @@ public final class Bincode {
     }
 
     public static void write(Cursor cursor, Script dialect,
-            LongSupplier secondsSinceTheEpoch,
-            BiConsumer<AnyWordValue, Value> nameTheValue) {
+            LongSupplier secondsSinceEpoch,
+            BiConsumer<AnyWordValue, Value> nameValue) {
 
         for (int step = 0; step < dialect.size(); step++) {
             if (dialect.asWritten(step) instanceof SetWordValue naming) {
-                nameTheValue.accept(naming, IntegerValue.of(cursor.at + 1));
+                nameValue.accept(naming, IntegerValue.of(cursor.at + 1));
                 continue;
             }
             if (carriesItsOwnBytes(dialect.readValueAt(step))) {
@@ -177,8 +177,8 @@ public final class Bincode {
                         writeAnyNumber(readItemAt(dialect, step, code)));
                 continue;
             }
-            step = writeOtherThanANumber(cursor, dialect, step, code,
-                    secondsSinceTheEpoch);
+            step = writeOtherThanNumber(cursor, dialect, step, code,
+                    secondsSinceEpoch);
         }
     }
 
@@ -190,15 +190,15 @@ public final class Bincode {
                 || item instanceof EmailValue;
     }
 
-    private static int writeOtherThanANumber(Cursor cursor, Script dialect,
-            int step, String code, LongSupplier secondsSinceTheEpoch) {
+    private static int writeOtherThanNumber(Cursor cursor, Script dialect,
+                                            int step, String code, LongSupplier secondsSinceEpoch) {
         if (!lengthCodeIn(code).isEmpty()) {
             writeBytesAfterTheirLength(cursor, lengthCodeIn(code),
                     readItemAt(dialect, ++step, code));
             return step;
         }
         if (MOMENTS.contains(code)) {
-            return writeMoment(cursor, dialect, step, code, secondsSinceTheEpoch);
+            return writeMoment(cursor, dialect, step, code, secondsSinceEpoch);
         }
         switch (baseCode(code)) {
             case "at" -> moveTo(cursor, writeWholeNumber(readItemAt(dialect, ++step, code)) - 1);
@@ -220,8 +220,8 @@ public final class Bincode {
     }
 
     public static List<Value> read(Cursor cursor, Script dialect,
-            BiConsumer<AnyWordValue, Value> nameTheValue) {
-        Produced read = new Produced(nameTheValue);
+            BiConsumer<AnyWordValue, Value> nameValue) {
+        Produced read = new Produced(nameValue);
         for (int step = 0; step < dialect.size(); step++) {
             if (dialect.asWritten(step) instanceof SetWordValue naming) {
                 read.nameNext(naming);
@@ -241,7 +241,7 @@ public final class Bincode {
                 read.add(readFloat(cursor, code));
                 continue;
             }
-            step = readOtherThanANumber(cursor, dialect, step, code, read);
+            step = readOtherThanNumber(cursor, dialect, step, code, read);
         }
         return read.values();
     }
@@ -250,12 +250,12 @@ public final class Bincode {
 
         private final List<Value> values = new ArrayList<>();
 
-        private final BiConsumer<AnyWordValue, Value> nameTheValue;
+        private final BiConsumer<AnyWordValue, Value> nameValue;
 
         private final List<AnyWordValue> waiting = new ArrayList<>();
 
-        private Produced(BiConsumer<AnyWordValue, Value> nameTheValue) {
-            this.nameTheValue = nameTheValue;
+        private Produced(BiConsumer<AnyWordValue, Value> nameValue) {
+            this.nameValue = nameValue;
         }
 
         private void nameNext(AnyWordValue word) {
@@ -265,7 +265,7 @@ public final class Bincode {
         private void add(Value value) {
             values.add(value);
             for (AnyWordValue word : waiting) {
-                nameTheValue.accept(word, value);
+                nameValue.accept(word, value);
             }
             waiting.clear();
         }
@@ -275,8 +275,8 @@ public final class Bincode {
         }
     }
 
-    private static int readOtherThanANumber(Cursor cursor, Script dialect,
-            int step, String code, Produced read) {
+    private static int readOtherThanNumber(Cursor cursor, Script dialect,
+                                           int step, String code, Produced read) {
         if (!lengthCodeIn(code).isEmpty()) {
             read.add(readBytesAfterTheirLength(cursor, lengthCodeIn(code)));
             return step;
@@ -327,11 +327,11 @@ public final class Bincode {
             case "bitset16" -> read.add(readBitset(cursor, 2));
             case "bitset32" -> read.add(readBitset(cursor, 4));
             case "bytes", "octal-bytes", "string-bytes" -> {
-                boolean aCountFollows = step + 1 < dialect.size();
-                read.add(runOfBytesRead(cursor, baseCode(code), aCountFollows
+                boolean countFollows = step + 1 < dialect.size();
+                read.add(runOfBytesRead(cursor, baseCode(code), countFollows
                         ? countOfBytesAt(dialect, step + 1)
                         : cursor.octets.size() - cursor.at));
-                if (aCountFollows) {
+                if (countFollows) {
                     step++;
                 }
             }
@@ -634,12 +634,12 @@ public final class Bincode {
     }
 
     private static int writeMoment(Cursor cursor, Script dialect,
-                                   int step, String code, LongSupplier secondsSinceTheEpoch) {
+                                   int step, String code, LongSupplier secondsSinceEpoch) {
         switch (code) {
             case "unixtime-now" ->
-                    writeWholeNumber(cursor, "ui32", secondsSinceTheEpoch.getAsLong());
+                    writeWholeNumber(cursor, "ui32", secondsSinceEpoch.getAsLong());
             case "unixtime-now-le" ->
-                    writeWholeNumber(cursor, "ui32le", secondsSinceTheEpoch.getAsLong());
+                    writeWholeNumber(cursor, "ui32le", secondsSinceEpoch.getAsLong());
             case "msdos-time" -> writeMsdosTime(cursor, readItemAt(dialect, ++step, code));
             case "msdos-date" -> writeMsdosDate(cursor, readItemAt(dialect, ++step, code));
             default -> writeMsdosDateTime(cursor, readItemAt(dialect, ++step, code));

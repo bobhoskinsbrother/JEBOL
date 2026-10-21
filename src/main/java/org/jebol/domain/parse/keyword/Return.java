@@ -7,7 +7,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Return extends SameForABlockAndAString {
+final class Return extends SameForBlockAndString {
 
     Return() {
         super("return", 0, true, WhenNothingFollowsIt.DOES_NOT_MATCH);

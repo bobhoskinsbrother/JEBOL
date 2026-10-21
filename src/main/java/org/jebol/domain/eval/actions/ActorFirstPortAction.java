@@ -26,7 +26,7 @@ public abstract class ActorFirstPortAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .askRebolActor(nativeName(), arguments, Set.of())
                 .orElseGet(() -> answerHere((PortValue) arguments.getFirst()));
     }
 }

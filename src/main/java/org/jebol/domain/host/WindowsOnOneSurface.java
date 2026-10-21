@@ -16,10 +16,10 @@ public final class WindowsOnOneSurface {
                                      List<GobValue> showingFromBottomToTop) {
         forgetWindowsNoLongerShowing(showingFromBottomToTop);
         List<GobValue> heardBy = switch (kind) {
-            case DOWN -> findWhoHearsAPress(detail, showingFromBottomToTop);
+            case DOWN -> findWhoHearsPress(detail, showingFromBottomToTop);
             case MOVE, UP, SCROLL_LINE, SCROLL_PAGE ->
                     findWhoHearsPointer(kind, detail, showingFromBottomToTop);
-            case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsAKey(showingFromBottomToTop);
+            case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
             case RESIZE, OFFSET -> List.of();
         };
@@ -35,8 +35,8 @@ public final class WindowsOnOneSurface {
         return showing.stream().anyMatch(window::sharesStorageWith);
     }
 
-    private List<GobValue> findWhoHearsAPress(ScreenEventDetail detail, List<GobValue> showing) {
-        Optional<GobValue> hit = findTheTopmostWindowUnder(detail, showing);
+    private List<GobValue> findWhoHearsPress(ScreenEventDetail detail, List<GobValue> showing) {
+        Optional<GobValue> hit = findTopmostWindowUnder(detail, showing);
         if (hit.isPresent()) {
             pressedIn = hit;
             keyboardWith = hit;
@@ -46,22 +46,22 @@ public final class WindowsOnOneSurface {
 
     private List<GobValue> findWhoHearsPointer(ScreenEventType kind, ScreenEventDetail detail,
                                                List<GobValue> showing) {
-        Optional<GobValue> heardBy = pressedIn.or(() -> findTheTopmostWindowUnder(detail, showing));
+        Optional<GobValue> heardBy = pressedIn.or(() -> findTopmostWindowUnder(detail, showing));
         if (kind == ScreenEventType.UP) {
             pressedIn = Optional.empty();
         }
         return heardBy.stream().toList();
     }
 
-    private List<GobValue> findWhoHearsAKey(List<GobValue> showing) {
-        return keyboardWith.or(() -> findTheTopmostWindow(showing)).stream().toList();
+    private List<GobValue> findWhoHearsKey(List<GobValue> showing) {
+        return keyboardWith.or(() -> findTopmostWindow(showing)).stream().toList();
     }
 
-    private Optional<GobValue> findTheTopmostWindow(List<GobValue> showing) {
+    private Optional<GobValue> findTopmostWindow(List<GobValue> showing) {
         return showing.isEmpty() ? Optional.empty() : Optional.of(showing.getLast());
     }
 
-    private Optional<GobValue> findTheTopmostWindowUnder(ScreenEventDetail detail, List<GobValue> showing) {
+    private Optional<GobValue> findTopmostWindowUnder(ScreenEventDetail detail, List<GobValue> showing) {
         int across;
         int down;
         switch (detail) {

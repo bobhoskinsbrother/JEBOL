@@ -43,13 +43,13 @@ public record PlacedText(
         TextLayout layout = written.layout();
         TextLines lines = new TextLines(written.runs(), measure, layout.measureRoomForEachLine(where));
         return new PlacedText(
-                placeTheLinesOf(lines, layout, where),
-                findTheSelectionIn(written.caret(), lines, layout, where),
-                findTheCaretIn(written, lines, layout, where),
+                placeLines(lines, layout, where),
+                findSelectionIn(written.caret(), lines, layout, where),
+                findCaretIn(written, lines, layout, where),
                 placedShadowFor(layout));
     }
 
-    private static List<PlacedLine> placeTheLinesOf(
+    private static List<PlacedLine> placeLines(
             TextLines lines, TextLayout layout, Placement where) {
 
         double top = layout.stackStartDown(where, lines.tallness());
@@ -68,7 +68,7 @@ public record PlacedText(
         return placed;
     }
 
-    private static List<PlacedPatch> findTheSelectionIn(
+    private static List<PlacedPatch> findSelectionIn(
             TextCaret caret, TextLines lines, TextLayout layout, Placement where) {
 
         if (!caret.marksSelection()) {
@@ -94,7 +94,7 @@ public record PlacedText(
         return new PlacedPatch(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
     }
 
-    private static Optional<PlacedCaret> findTheCaretIn(
+    private static Optional<PlacedCaret> findCaretIn(
             PaintInstruction.Writing written, TextLines lines, TextLayout layout, Placement where) {
 
         TextCaret caret = written.caret();

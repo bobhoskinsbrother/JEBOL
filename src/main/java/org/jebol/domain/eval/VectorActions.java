@@ -45,7 +45,7 @@ public final class VectorActions extends SeriesActions {
 
     @Override
     public Value append(Asked asked) {
-        for (Value number : collectTheNumbersAddedBy(asked)) {
+        for (Value number : collectNumbersAddedBy(asked)) {
             vector.storage().append(VectorPath.encodeForStorage(vector.kind(), number));
         }
         return vector.head();
@@ -54,7 +54,7 @@ public final class VectorActions extends SeriesActions {
     @Override
     public Value insert(Asked asked) {
         VectorValue held = (VectorValue) vector.clampToTail();
-        List<Value> numbers = collectTheNumbersAddedBy(asked);
+        List<Value> numbers = collectNumbersAddedBy(asked);
         for (int at = numbers.size(); at > 0; at--) {
             held.storage().insertAt(held.index(),
                     VectorPath.encodeForStorage(held.kind(), numbers.get(at - 1)));
@@ -62,9 +62,9 @@ public final class VectorActions extends SeriesActions {
         return held.atIndex(held.index() + numbers.size());
     }
 
-    private List<Value> collectTheNumbersAddedBy(Asked asked) {
+    private List<Value> collectNumbersAddedBy(Asked asked) {
         List<Value> once = asked.refinementsAsked().contains("part")
-                ? vector.kind().collectTheNumbersOfferedBy(asked.given(), asked.countOctetsWanted())
+                ? vector.kind().collectNumbersOfferedBy(asked.given(), asked.countOctetsWanted())
                 : vector.kind().collectNumbersContributedBy(asked.given());
         List<Value> added = new ArrayList<>();
         for (long round = 0; round < asked.howManyTimes(); round++) {

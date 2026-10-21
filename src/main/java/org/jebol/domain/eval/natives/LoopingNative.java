@@ -62,7 +62,7 @@ public abstract class LoopingNative extends DefaultNative {
         return List.copyOf(names);
     }
 
-    protected List<AnyWordValue> keepTheNamesThatTakeAValue(List<AnyWordValue> names) {
+    protected List<AnyWordValue> keepNamesThatTakeValue(List<AnyWordValue> names) {
         return names.stream()
                 .filter(name -> !(name instanceof SetWordValue))
                 .toList();

@@ -97,18 +97,18 @@ class DatatypeTest {
         @Test
         @DisplayName("finds an entry by its name, with or without the mark, in any case")
         void findsByName() {
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("integer!")).contains(IntegerValue.TYPE);
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("set-word")).contains(SetWordValue.TYPE);
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("STRING!")).contains(StringValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("integer!")).contains(IntegerValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("set-word")).contains(SetWordValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("STRING!")).contains(StringValue.TYPE);
         }
 
         @Test
         @DisplayName("finds nothing for a name no datatype has, nor for an empty one")
         void findsNothingForAnUnknownName() {
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("integers!")).isEmpty();
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("number!")).isEmpty();
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("")).isEmpty();
-            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("integers!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("number!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findDatatypeNamed("!")).isEmpty();
         }
 
         @ParameterizedTest

@@ -46,7 +46,7 @@ public class DifferenceNative extends DefaultNative {
                     ? EVERY_MEMBER_ON_ITS_OWN
                     : recordWidth(arguments, refinements);
             return Combining.sets(first, second,
-                    SetOperation.findTheOperationNamed(nativeName()).orElseThrow(),
+                    SetOperation.findOperationNamed(nativeName()).orElseThrow(),
                     refinements.contains("case"), stride);
         };
     }

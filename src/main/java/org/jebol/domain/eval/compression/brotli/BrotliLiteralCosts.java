@@ -79,8 +79,8 @@ final class BrotliLiteralCosts {
         return previous < 0xE0 ? 0 : Math.min(2, mostAllowed);
     }
 
-    private static int countTheHistogramsWorthIt(byte[] data, int from,
-                                                 int length, int mask) {
+    private static int countHistogramsWorthIt(byte[] data, int from,
+                                              int length, int mask) {
 
         int[] counts = new int[3];
         int previous = 0;
@@ -96,7 +96,7 @@ final class BrotliLiteralCosts {
             int mask, float[] cost) {
 
         int howManyHistograms =
-                countTheHistogramsWorthIt(
+                countHistogramsWorthIt(
                         data, from, length, mask);
         int windowHalf = WINDOW_HALF_FOR_TEXT;
         int inWindow = Math.min(windowHalf, length);

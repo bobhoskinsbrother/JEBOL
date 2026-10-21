@@ -29,7 +29,7 @@ public class CompressNative extends CompressionNative {
         return List.of(
                 Parameter.of("data", Set.of(BinaryValue.TYPE, StringValue.TYPE)),
                 Parameter.of("method", Set.of(WordValue.TYPE)),
-                Parameter.belongTo("part", "length", listThePartLimitTypes()),
+                Parameter.belongTo("part", "length", listPartLimitTypes()),
                 Parameter.belongTo("level", "lvl", Set.of(IntegerValue.TYPE)));
     }
 

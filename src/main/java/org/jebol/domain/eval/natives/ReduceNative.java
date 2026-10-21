@@ -63,7 +63,7 @@ public class ReduceNative extends DefaultNative {
         if (refinements.contains("only")) {
             return Optional.of(BlockValue.of(reduceOnlyWords(toReduce, exceptions)));
         }
-        return Optional.of(evaluator.evaluateEachKeepingTheLineShape(
+        return Optional.of(evaluator.evaluateEachKeepingLineShape(
                 toReduce, evaluator.systemContext()));
     }
 

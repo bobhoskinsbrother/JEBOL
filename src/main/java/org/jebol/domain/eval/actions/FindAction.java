@@ -52,7 +52,7 @@ public class FindAction extends SeriesSearchAction {
                         wanted instanceof Datatype represents
                                 && typeset.holds(represents));
                 case GobValue searched -> findChild(searched, wanted);
-                case ImageValue picture -> picture.findThePixel(wanted,
+                case ImageValue picture -> picture.findPixel(wanted,
                         refinements.contains("match"), refinements.contains("only"),
                         refinements.contains("tail"));
                 case VectorValue numbers -> refuseDatatype(numbers);

@@ -33,8 +33,8 @@ public class RenameAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        Set<Datatype> anEnd = Set.of(FileValue.TYPE, BlockValue.TYPE, PortValue.TYPE, UrlValue.TYPE);
-        return List.of(Parameter.of("from", anEnd), Parameter.of("to", anEnd));
+        Set<Datatype> end = Set.of(FileValue.TYPE, BlockValue.TYPE, PortValue.TYPE, UrlValue.TYPE);
+        return List.of(Parameter.of("from", end), Parameter.of("to", end));
     }
 
     @Override
@@ -42,7 +42,7 @@ public class RenameAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
             PortValue from = ports.makePortFor(asked, evaluator, context);
-            return evaluator.askTheRebolActor(nativeName(), List.of(from, arguments.get(1)), Set.of())
+            return evaluator.askRebolActor(nativeName(), List.of(from, arguments.get(1)), Set.of())
                     .orElseGet(() -> rename(asked, from, arguments.get(1), evaluator));
         };
     }

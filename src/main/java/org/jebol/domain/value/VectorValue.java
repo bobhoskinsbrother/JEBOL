@@ -26,7 +26,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         throw Raised.of(EvaluationFailure.BAD_REFINES);
     }
 
@@ -50,7 +50,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         return listRemaining();
     }
 

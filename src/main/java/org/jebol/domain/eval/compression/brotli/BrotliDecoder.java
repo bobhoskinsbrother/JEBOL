@@ -85,7 +85,7 @@ final class BrotliDecoder {
         return table;
     }
 
-    static byte[] decodeUpToTheLimit(
+    static byte[] decodeUpToLimit(
             byte[] input, int limit) {
         return new Stream(input, limit).run();
     }
@@ -282,7 +282,7 @@ final class BrotliDecoder {
 
                 int distance;
                 if (!command.distanceIsWritten()) {
-                    howFarTheRecentDistanceCursorWasRolledBack = 1;
+                    howFarRecentDistanceCursorWasRolledBack = 1;
                     recentDistanceAt--;
                     distance = recentDistances[recentDistanceAt & 3];
                 } else {
@@ -294,7 +294,7 @@ final class BrotliDecoder {
                     Huffman code = distanceCodes[distanceMap.at(
                             distanceContextBase + command.distanceContext())];
                     int symbol = code.read(bits);
-                    howFarTheRecentDistanceCursorWasRolledBack = 0;
+                    howFarRecentDistanceCursorWasRolledBack = 0;
                     if (symbol < DISTANCE_SHORT_CODES) {
                         distance = readDistanceFromRecentOnes(symbol);
                     } else {
@@ -309,7 +309,7 @@ final class BrotliDecoder {
                         throw new IllegalArgumentException(
                                 "Brotli distance is larger than any distance can be");
                     }
-                    remaining -= copyFromTheDictionaryAnsweringHowManyBytesItCameTo(
+                    remaining -= copyFromDictionaryAnsweringHowManyBytesItCameTo(
                             distance - reachable - 1, copyLength, distance);
                 } else {
                     recentDistances[recentDistanceAt & 3] = distance;
@@ -324,13 +324,13 @@ final class BrotliDecoder {
             }
         }
 
-        private int howFarTheRecentDistanceCursorWasRolledBack;
+        private int howFarRecentDistanceCursorWasRolledBack;
 
         private int readDistanceFromRecentOnes(int code) {
             if (code <= 3) {
                 int distance = recentDistances[(recentDistanceAt - (code - 3)) & 3];
-                howFarTheRecentDistanceCursorWasRolledBack = 1 >> code;
-                recentDistanceAt -= howFarTheRecentDistanceCursorWasRolledBack;
+                howFarRecentDistanceCursorWasRolledBack = 1 >> code;
+                recentDistanceAt -= howFarRecentDistanceCursorWasRolledBack;
                 return distance;
             }
             int step = 3;
@@ -345,7 +345,7 @@ final class BrotliDecoder {
             return distance <= 0 ? Integer.MAX_VALUE : distance;
         }
 
-        private int copyFromTheDictionaryAnsweringHowManyBytesItCameTo(
+        private int copyFromDictionaryAnsweringHowManyBytesItCameTo(
                 int address, int wordLength, int distance) {
             if (wordLength < BrotliDictionary.MIN_WORD_LENGTH
                     || wordLength > BrotliDictionary.LONGEST_LENGTH_WITH_SLOT) {
@@ -363,7 +363,7 @@ final class BrotliDecoder {
                 throw new IllegalArgumentException(
                         "Brotli names a transform that is not there");
             }
-            recentDistanceAt += howFarTheRecentDistanceCursorWasRolledBack;
+            recentDistanceAt += howFarRecentDistanceCursorWasRolledBack;
             int wordAt = BrotliDictionary.offsetFor(wordLength) + wordIndex * wordLength;
             makeRoom(LONGEST_TRANSFORMED_WORD);
             int written = BrotliDictionary.writeTransformedWord(

@@ -49,18 +49,18 @@ public class ReadAction extends PortAction {
             PortRequest asked = readRequest(arguments, refinements);
             Value source = arguments.getFirst();
             if (source instanceof PortValue port) {
-                return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
+                return evaluator.askRebolActor(nativeName(), arguments, refinements)
                         .orElseGet(() -> port.isAFile()
                                 ? ports.readFromFileBehind(port, evaluator, asked)
                                 : ports.readFrom(port, evaluator, arguments, asked));
             }
-            Optional<String> behindTheUrl = ports.findTheFileNamedByAUrl(source, evaluator, context);
-            if (behindTheUrl.isEmpty() && ports.routesToScheme(source)) {
+            Optional<String> behindUrl = ports.findFileNamedByUrl(source, evaluator, context);
+            if (behindUrl.isEmpty() && ports.routesToScheme(source)) {
                 return ports.readFrom(ports.openPortFor(source, evaluator, context),
                         evaluator, arguments, asked);
             }
             return ports.readFile(
-                    behindTheUrl.orElseGet(() -> ((AnyStringValue) source).text()), evaluator, asked);
+                    behindUrl.orElseGet(() -> ((AnyStringValue) source).text()), evaluator, asked);
         };
     }
 }

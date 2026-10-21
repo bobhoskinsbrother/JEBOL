@@ -13,7 +13,7 @@ public sealed interface RebolSeries extends Value
 
     boolean sharesStorageWith(RebolSeries other);
 
-    Value readItemAt(int positionFromTheHead);
+    Value readItemAt(int positionFromHead);
 
     RebolSeries reverseFront(int howMany);
 
@@ -32,7 +32,7 @@ public sealed interface RebolSeries extends Value
         return this;
     }
 
-    default void putItemAt(int positionFromTheHead, Value item) {
+    default void putItemAt(int positionFromHead, Value item) {
         throw Raised.cannotUseAction(this, "swap");
     }
 

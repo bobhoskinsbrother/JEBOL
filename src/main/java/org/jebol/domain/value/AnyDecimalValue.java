@@ -30,7 +30,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return Double.doubleToRawLongBits(quantity);
     }
 
@@ -184,12 +184,12 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             if (endless.isPresent()) {
                 return endless;
             }
-            return rewriteTheNumberForTheJvm(body)
+            return rewriteNumberForJvm(body)
                     .map(plain -> OptionalDouble.of(Double.parseDouble(plain)))
                     .orElseGet(OptionalDouble::empty);
         }
 
-        private Optional<String> rewriteTheNumberForTheJvm(String written) {
+        private Optional<String> rewriteNumberForJvm(String written) {
             String body = written.replace("'", "").replaceFirst(",", ".");
             return WRITTEN_DECIMAL.matcher(body).matches()
                     ? Optional.of(EMPTY_EXPONENT.matcher(body).replaceFirst(""))
@@ -202,11 +202,11 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
                 return OptionalDouble.empty();
             }
             boolean negative = body.charAt(0) == '-';
-            String afterTheHash = body.substring(hash + 1);
-            if (afterTheHash.equalsIgnoreCase("INF")) {
+            String afterHash = body.substring(hash + 1);
+            if (afterHash.equalsIgnoreCase("INF")) {
                 return OptionalDouble.of(negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY);
             }
-            return afterTheHash.equalsIgnoreCase("NAN")
+            return afterHash.equalsIgnoreCase("NAN")
                     ? OptionalDouble.of(Double.NaN)
                     : OptionalDouble.empty();
         }

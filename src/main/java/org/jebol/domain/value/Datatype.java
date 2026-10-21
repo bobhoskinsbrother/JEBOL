@@ -83,9 +83,9 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         return contents.size() == 1 ? contents.getFirst() : BlockValue.of(contents);
     }
 
-    protected void refuseMoreRoomThanFits(double asked, int bytesAnItemTakes) {
-        long theMostItemsThatFit = Integer.MAX_VALUE / bytesAnItemTakes - 1;
-        if (asked > theMostItemsThatFit) {
+    protected void refuseMoreRoomThanFits(double asked, int bytesItemTakes) {
+        long mostItemsThatFit = Integer.MAX_VALUE / bytesItemTakes - 1;
+        if (asked > mostItemsThatFit) {
             throw Raised.of(EvaluationFailure.NO_MEMORY);
         }
     }
@@ -132,7 +132,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
             if (!(from instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
                 throw refuse(from);
             }
-            return Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling())
+            return Catalogue.DATATYPES.findDatatypeNamed(word.spelling())
                     .<Value>map(found -> found)
                     .orElseThrow(() -> refuse(from));
         }

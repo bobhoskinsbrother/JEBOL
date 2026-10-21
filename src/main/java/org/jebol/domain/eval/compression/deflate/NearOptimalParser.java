@@ -94,7 +94,7 @@ final class NearOptimalParser extends DeflateParser {
 
     private final int minImprovementToContinue;
 
-    private final int minBitsToUseANonFinalPath;
+    private final int minBitsToUseNonFinalPath;
 
     private final int longestBlockToOptimiseAsStatic;
 
@@ -103,12 +103,12 @@ final class NearOptimalParser extends DeflateParser {
     private int defaultLengthSymbolCost;
 
     NearOptimalParser(BlockEncoder encoder, int inputLength, int maxSearchDepth, int niceMatchLength,
-            int maxOptimisationPasses, int minImprovementToContinue, int minBitsToUseANonFinalPath,
+            int maxOptimisationPasses, int minImprovementToContinue, int minBitsToUseNonFinalPath,
             int longestBlockToOptimiseAsStatic) {
         super(encoder, maxSearchDepth, niceMatchLength);
         this.maxOptimisationPasses = maxOptimisationPasses;
         this.minImprovementToContinue = minImprovementToContinue;
-        this.minBitsToUseANonFinalPath = minBitsToUseANonFinalPath;
+        this.minBitsToUseNonFinalPath = minBitsToUseNonFinalPath;
         this.longestBlockToOptimiseAsStatic = longestBlockToOptimiseAsStatic;
         long cacheNeeded = (long) inputLength * (MAX_MATCHES_PER_POSITION + 1) + MAX_MATCH_LENGTH;
         cache = new MatchCache((int) Math.min(
@@ -294,7 +294,7 @@ final class NearOptimalParser extends DeflateParser {
                 setCostsFromCodeLengths(encoder.staticCodes.lengths);
                 findCheapestPath(blockLength, cacheEnd);
             }
-        } else if (trueCost >= bestTrueCost + minBitsToUseANonFinalPath) {
+        } else if (trueCost >= bestTrueCost + minBitsToUseNonFinalPath) {
             restoreCosts();
             findCheapestPath(blockLength, cacheEnd);
             setCostsFromCodeLengths(encoder.codes.lengths);

@@ -11,7 +11,7 @@ final class WheelScrolling {
 
     private double turned;
 
-    Optional<Turning> take(double wheelRotation, boolean aWholePage) {
+    Optional<Turning> take(double wheelRotation, boolean wholePage) {
         turned += wheelRotation;
         int whole = (int) turned;
         if (whole == 0) {
@@ -19,8 +19,8 @@ final class WheelScrolling {
         }
         turned -= whole;
         return Optional.of(new Turning(
-                aWholePage ? ScreenEventType.SCROLL_PAGE : ScreenEventType.SCROLL_LINE,
-                -whole * (aWholePage ? PAGE_SCROLL_PIXELS : LINE_SCROLL_PIXELS)));
+                wholePage ? ScreenEventType.SCROLL_PAGE : ScreenEventType.SCROLL_LINE,
+                -whole * (wholePage ? PAGE_SCROLL_PIXELS : LINE_SCROLL_PIXELS)));
     }
 
     record Turning(ScreenEventType kind, int amount) {

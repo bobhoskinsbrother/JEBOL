@@ -33,12 +33,12 @@ final class FileReading {
     FileReading(String path, PortRequest asked) {
         this.path = path;
         this.bound = asked.part();
-        this.position = refuseANegative(asked.seek());
+        this.position = refuseNegative(asked.seek());
         this.answersText = asked.refinements().contains("string");
         this.answersLines = asked.refinements().contains("lines");
     }
 
-    private Optional<Value> refuseANegative(Optional<Value> asked) {
+    private Optional<Value> refuseNegative(Optional<Value> asked) {
         if (asked.isPresent() && wholeMagnitude(asked.get()) < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.get());
         }
@@ -71,7 +71,7 @@ final class FileReading {
 
     private Value listNamesMatchingPattern(Wildcard wildcard, FilePort files) {
         try {
-            return asFiles(wildcard.listTheNamesMatchingIn(files));
+            return asFiles(wildcard.listNamesMatchingIn(files));
         } catch (RuntimeException nothingThere) {
             return BlockValue.of(List.of());
         }
@@ -138,7 +138,7 @@ final class FileReading {
             return holdsWildcard(directory);
         }
 
-        List<String> listTheNamesMatchingIn(FilePort files) {
+        List<String> listNamesMatchingIn(FilePort files) {
             return files.listFileNames(directory.isEmpty() ? "." : directory).stream()
                     .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchesWhole(
                             withoutItsSlash(listed), pattern))

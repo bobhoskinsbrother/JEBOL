@@ -50,7 +50,7 @@ public record LibraryFileHeader(
             switch (field.canonical()) {
                 case "type" -> declaredType = readPlainText(given);
                 case "name" -> moduleName = readPlainText(given);
-                case "exports" -> exported = listTheWordsIn(given);
+                case "exports" -> exported = listWordsIn(given);
                 default -> { }
             }
         }
@@ -70,7 +70,7 @@ public record LibraryFileHeader(
         };
     }
 
-    private static List<String> listTheWordsIn(Value given) {
+    private static List<String> listWordsIn(Value given) {
         if (!(given instanceof AnyBlockValue listed)) {
             return List.of();
         }

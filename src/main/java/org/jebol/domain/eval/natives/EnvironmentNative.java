@@ -17,7 +17,7 @@ public abstract class EnvironmentNative extends HostNative {
         super(granted);
     }
 
-    protected Set<Datatype> acceptAVariablesName() {
+    protected Set<Datatype> acceptVariablesName() {
         return Set.of(StringValue.TYPE, WordValue.TYPE, LitWordValue.TYPE);
     }
 

@@ -42,7 +42,7 @@ final class RebolArguments {
         }
     }
 
-    private record Option(Set<Flag> flags, boolean takesAValue) {
+    private record Option(Set<Flag> flags, boolean takesValue) {
     }
 
     private static final Map<String, Option> OPTION_WORDS = Map.ofEntries(
@@ -123,7 +123,7 @@ final class RebolArguments {
     }
 
     private int take(Option option, List<String> arguments, int at) {
-        if (!option.takesAValue()) {
+        if (!option.takesValue()) {
             flags.addAll(option.flags());
             return at;
         }
@@ -168,7 +168,7 @@ final class RebolArguments {
         values.put(Flag.SCRIPT, path);
     }
 
-    List<String> listTheArgumentsForTheScript() {
+    List<String> listArgumentsForScript() {
         List<String> handedOn = new ArrayList<>();
         valueOf(Flag.ARGS).ifPresent(handedOn::add);
         handedOn.addAll(remaining);

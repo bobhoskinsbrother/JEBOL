@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Opt extends SameForABlockAndAString {
+final class Opt extends SameForBlockAndString {
 
     Opt() {
         super("opt", 0, true, WhenNothingFollowsIt.DOES_NOT_MATCH);

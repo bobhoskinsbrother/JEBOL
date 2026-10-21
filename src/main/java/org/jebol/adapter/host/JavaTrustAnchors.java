@@ -30,8 +30,8 @@ final class JavaTrustAnchors {
     }
 
     static Set<TrustAnchor> fromThisMachine() {
-        Set<TrustAnchor> anchors = new LinkedHashSet<>(theJdksOwn());
-        anchors.addAll(thePlatformsOwn());
+        Set<TrustAnchor> anchors = new LinkedHashSet<>(jdksOwn());
+        anchors.addAll(platformsOwn());
         return withoutRepeats(anchors);
     }
 
@@ -60,7 +60,7 @@ final class JavaTrustAnchors {
         return Set.copyOf(unique.values());
     }
 
-    static Set<TrustAnchor> theJdksOwn() {
+    static Set<TrustAnchor> jdksOwn() {
         try {
             TrustManagerFactory factory = TrustManagerFactory.getInstance(
                     TrustManagerFactory.getDefaultAlgorithm());
@@ -80,7 +80,7 @@ final class JavaTrustAnchors {
         }
     }
 
-    private static Set<TrustAnchor> thePlatformsOwn() {
+    private static Set<TrustAnchor> platformsOwn() {
         Set<TrustAnchor> anchors = new LinkedHashSet<>();
         for (String type : platformStoreTypes()) {
             anchors.addAll(in(storeOf(type)));

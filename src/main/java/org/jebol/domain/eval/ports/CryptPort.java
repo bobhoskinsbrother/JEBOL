@@ -221,7 +221,7 @@ public final class CryptPort {
 
         private byte[] chaining = new byte[0];
 
-        private boolean theNextWriteIsAHeader = true;
+        private boolean nextWriteIsHeader = true;
 
         private boolean headerTaken;
 
@@ -281,10 +281,10 @@ public final class CryptPort {
         boolean accepted = switch (field) {
             case "algorithm" -> setAlgorithm(working, given);
             case "direction" -> setDirection(working, given);
-            case "key" -> setARunOfOctetsOrText(given, octets -> working.key = octets);
+            case "key" -> setRunOfOctetsOrText(given, octets -> working.key = octets);
             case "iv", "init-vector" -> setVectorFromOctets(working, given);
-            case "tag-length" -> setACount(given, count -> working.tagOctets = count);
-            case "aad-length" -> setACount(given,
+            case "tag-length" -> setCount(given, count -> working.tagOctets = count);
+            case "aad-length" -> setCount(given,
                     count -> working.toAuthenticateOctets = count);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     WordValue.of(field));
@@ -324,7 +324,7 @@ public final class CryptPort {
         return false;
     }
 
-    private boolean setARunOfOctetsOrText(
+    private boolean setRunOfOctetsOrText(
             Value given, java.util.function.Consumer<byte[]> into) {
 
         if (given instanceof NoneValue) {
@@ -354,7 +354,7 @@ public final class CryptPort {
         return false;
     }
 
-    private boolean setACount(
+    private boolean setCount(
             Value given, java.util.function.IntConsumer into) {
 
         if (!(given instanceof IntegerValue(long magnitude))) {
@@ -441,7 +441,7 @@ public final class CryptPort {
         working.somethingIsReady = false;
         if (working.works() != null
                 && working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
-            working.theNextWriteIsAHeader = true;
+            working.nextWriteIsHeader = true;
         }
         return answered;
     }
@@ -460,7 +460,7 @@ public final class CryptPort {
         working.gatheredForGalois = new byte[0];
         working.handedOut = 0;
         working.headerTaken = false;
-        working.theNextWriteIsAHeader = true;
+        working.nextWriteIsHeader = true;
         working.needsStarting = false;
         working.wouldNotRun = false;
         if (works.mode() == Mode.COUNTER_WITH_GALOIS) {
@@ -498,7 +498,7 @@ public final class CryptPort {
         }
     }
 
-    private Cipher makeCipherFor(Working working, boolean needsAVector) {
+    private Cipher makeCipherFor(Working working, boolean needsVector) {
         Cipherworks works = working.works();
         try {
             Cipher cipher = Cipher.getInstance(works.transformation());
@@ -512,7 +512,7 @@ public final class CryptPort {
                 cipher.init(direction, key, new javax.crypto.spec.ChaCha20ParameterSpec(
                         Arrays.copyOf(whole, CHACHA20_COUNTER_AT),
                         readCounterMostSignificantFirstAfterNonce(whole)));
-            } else if (needsAVector) {
+            } else if (needsVector) {
                 cipher.init(direction, key, new IvParameterSpec(
                         fitTo(working.vector, works.blockOctets())));
             } else {
@@ -560,7 +560,7 @@ public final class CryptPort {
         }
         byte[] rest = octets;
         if (working.toAuthenticateOctets > 0 && !working.headerTaken) {
-            if (isTooShortToHoldTheHeader(
+            if (isTooShortToHoldHeader(
                     working, octets)) {
                 return;
             }
@@ -578,17 +578,17 @@ public final class CryptPort {
         addToWhatIsReady(working, takeOctetsNotHandedOutYet(working));
     }
 
-    private boolean isTooShortToHoldTheHeader(
+    private boolean isTooShortToHoldHeader(
             Working working, byte[] octets) {
         return octets.length < working.toAuthenticateOctets;
     }
 
     private void gatherForChaCha(Working working, byte[] octets) {
-        if (working.theNextWriteIsAHeader) {
+        if (working.nextWriteIsHeader) {
             working.authenticated = octets;
             working.chaining = ChaChaWithPoly1305.makeNonce(
                     fitTo(working.vector, ChaChaWithPoly1305.NONCE), octets);
-            working.theNextWriteIsAHeader = false;
+            working.nextWriteIsHeader = false;
             return;
         }
         working.gatheredForGalois = joined.of(working.gatheredForGalois, octets);

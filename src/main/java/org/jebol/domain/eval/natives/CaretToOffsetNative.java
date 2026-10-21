@@ -50,7 +50,7 @@ public class CaretToOffsetNative extends TextMeasuringNative {
     private int findPlaceInBlock(Value element) {
         return switch (element) {
             case IntegerValue(long place) -> (int) place;
-            case AnyBlockValue atTheString -> atTheString.index();
+            case AnyBlockValue atString -> atString.index();
             default -> 0;
         };
     }
@@ -58,7 +58,7 @@ public class CaretToOffsetNative extends TextMeasuringNative {
     private int findCharacterBefore(Value position) {
         return switch (position) {
             case IntegerValue(long place) -> (int) place - 1;
-            case AnyStringValue atTheCaret -> atTheCaret.index() - 1;
+            case AnyStringValue atCaret -> atCaret.index() - 1;
             default -> 0;
         };
     }

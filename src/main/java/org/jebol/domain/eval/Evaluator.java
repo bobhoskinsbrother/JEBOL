@@ -67,7 +67,7 @@ public final class Evaluator {
 
     public record OpenCall(String name, DefinedFunctionValue function, Context locals) {
 
-        public List<String> listTheSlotNames() {
+        public List<String> listSlotNames() {
             List<String> names = new ArrayList<>();
             function.parameters().forEach(parameter -> names.add(parameter.name()));
             names.addAll(function.localNames());
@@ -81,7 +81,7 @@ public final class Evaluator {
 
     private final Deque<Deque<Frame>> walksInProgress = new ArrayDeque<>();
 
-    private String nameOfTheCallBeingMade = "";
+    private String nameOfCallBeingMade = "";
 
     private String lastWordCalledThrough = "";
 
@@ -124,11 +124,11 @@ public final class Evaluator {
         List<String> named = new ArrayList<>();
         for (Deque<Frame> walk : listEveryWalkInnermostFirst(innermostWalk)) {
             for (Frame open : walk) {
-                if (open.theCallNearAndWhereAreAbout != null) {
-                    open.theCallNearAndWhereAreAbout.findTheNameInTheBacktrace().ifPresent(named::add);
+                if (open.callBeingMade != null) {
+                    open.callBeingMade.findNameInBacktrace().ifPresent(named::add);
                 }
             }
-            if (!walk.isEmpty() && walk.peekLast().bodyOfAnAppliedFunction) {
+            if (!walk.isEmpty() && walk.peekLast().bodyOfAppliedFunction) {
                 named.add(APPLIED_FUNCTION);
             }
         }
@@ -201,7 +201,7 @@ public final class Evaluator {
     public void installHostsHttpActor() {
         ports.http().ifPresent(port -> {
             for (String scheme : List.of("http", "https")) {
-                findTheSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
+                findSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
                                 "the " + scheme + " scheme is not registered yet"))
                         .context().ownSlotFor("actor")
                         .setBeneathAnyProtection(new HttpSchemeActor(scheme, port));
@@ -209,7 +209,7 @@ public final class Evaluator {
         });
     }
 
-    private Optional<ObjectValue> findTheSchemeNamed(String name) {
+    private Optional<ObjectValue> findSchemeNamed(String name) {
         if (!systemContext.contains("system")) {
             return Optional.empty();
         }
@@ -240,8 +240,8 @@ public final class Evaluator {
         return ++lastCipherIdentity;
     }
 
-    public Optional<Value> askTheRebolActor(String action,
-                                            List<Value> arguments, Set<String> refinements) {
+    public Optional<Value> askRebolActor(String action,
+                                         List<Value> arguments, Set<String> refinements) {
 
         if (!(arguments.getFirst() instanceof PortValue port)) {
             return Optional.empty();
@@ -266,21 +266,21 @@ public final class Evaluator {
     public Value askActor(ObjectValue actor, String action,
                           List<Value> arguments, Set<String> refinements) {
 
-        Value theFunction = actor.context().holds(action)
+        Value function = actor.context().holds(action)
                 ? actor.context().ownSlotFor(action).value()
                 : NoneValue.none();
-        if (!(theFunction instanceof DefinedFunctionValue able)) {
+        if (!(function instanceof DefinedFunctionValue able)) {
             throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                     SetWordValue.of(action));
         }
-        return applyFunction(able, layOutAsTheActorDeclaresThem(able, arguments, refinements));
+        return applyFunction(able, layOutAsActorDeclaresThem(able, arguments, refinements));
     }
 
-    private List<Value> layOutAsTheActorDeclaresThem(
+    private List<Value> layOutAsActorDeclaresThem(
             DefinedFunctionValue able, List<Value> arguments, Set<String> refinements) {
 
         List<Value> laidOut = new ArrayList<>();
-        int fromTheNative = 0;
+        int fromNative = 0;
         boolean theseArgumentsWereSupplied = true;
         for (Parameter parameter : able.parameters()) {
             if (parameter.kind() == ParameterKind.REFINEMENT) {
@@ -293,10 +293,10 @@ public final class Evaluator {
                 laidOut.add(NoneValue.none());
                 continue;
             }
-            laidOut.add(fromTheNative < arguments.size()
-                    ? arguments.get(fromTheNative)
+            laidOut.add(fromNative < arguments.size()
+                    ? arguments.get(fromNative)
                     : NoneValue.none());
-            fromTheNative++;
+            fromNative++;
         }
         return laidOut;
     }
@@ -371,7 +371,7 @@ public final class Evaluator {
                 function.localNames().forEach(
                         name -> locals.register(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
-                AnyBlockValue running = findTheBodyThisCallRuns(function, locals);
+                AnyBlockValue running = findBodyThisCallRuns(function, locals);
                 findFrameThisCallTakesOverFrom(function).giveWayTo(locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
@@ -424,17 +424,17 @@ public final class Evaluator {
     }
 
     public void deliverWhatWasPosted() {
-        postbox.deliverEachEvent(posted -> EventCatalogue.findTheTypeIndexOf(posted.eventType())
+        postbox.deliverEachEvent(posted -> EventCatalogue.findTypeIndexOf(posted.eventType())
                 .ifPresent(type -> queueOnSystemPort(
                         new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port()))));
-        postbox.deliverEachCallback(callback -> EventCatalogue.findTheTypeIndexOf(EVENT_CALLBACK_IS)
+        postbox.deliverEachCallback(callback -> EventCatalogue.findTypeIndexOf(EVENT_CALLBACK_IS)
                 .ifPresent(type -> queueOnSystemPort(new EventValue(type, Set.of(),
                         EventValue.Model.CALLBACK, 0, JavaObjectValue.of(callback)))));
     }
 
     public void queueOnSystemPort(EventValue event) {
         if (findHostPort("system") instanceof PortValue queue) {
-            queue.findTheEventQueue().ifPresent(onIt -> onIt.storage().insertAt(onIt.storage().length() + 1, event));
+            queue.findEventQueue().ifPresent(onIt -> onIt.storage().insertAt(onIt.storage().length() + 1, event));
         }
     }
 
@@ -514,7 +514,7 @@ public final class Evaluator {
         Context fields = built.context();
         body.setWordsFromHere().forEach(fields::refuseFieldSpeltLikeItsOwnSelf);
         body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
-        evaluateOrRaise(Binder.bindOnly(body, fields, fields.listTheNamesItBinds()), fields);
+        evaluateOrRaise(Binder.bindOnly(body, fields, fields.listNamesItBinds()), fields);
         return built;
     }
 
@@ -525,13 +525,13 @@ public final class Evaluator {
         return results;
     }
 
-    public AnyBlockValue evaluateEachKeepingTheLineShape(
+    public AnyBlockValue evaluateEachKeepingLineShape(
             AnyBlockValue code, Context context) {
 
         BlockStorage built = new BlockStorage();
         walk(code, context, 1, (produced, startedAt, stoppedBefore) -> {
             built.append(produced);
-            if (isTheItemAsWritten(code, startedAt, stoppedBefore)) {
+            if (isItemAsWritten(code, startedAt, stoppedBefore)) {
                 built.setLineBreakAt(built.length(),
                         code.storage().breaksLineAt(startedAt));
             }
@@ -540,7 +540,7 @@ public final class Evaluator {
         return BlockValue.wrapStorage(built);
     }
 
-    private static boolean isTheItemAsWritten(
+    private static boolean isItemAsWritten(
             AnyBlockValue code, int startedAt, int stoppedBefore) {
 
         return stoppedBefore == startedAt + 1
@@ -633,19 +633,19 @@ public final class Evaluator {
     private static final boolean APPLIED_FUNCTION_BODY = true;
 
     private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink,
-                       boolean bodyOfAnAppliedFunction) {
+                       boolean bodyOfAppliedFunction) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
         root.sink = sink;
-        root.bodyOfAnAppliedFunction = bodyOfAnAppliedFunction;
+        root.bodyOfAppliedFunction = bodyOfAppliedFunction;
         frames.push(root);
-        int callsOpenBeforeTheWalk = functionsBeingRun.size();
+        int callsOpenBeforeWalk = functionsBeingRun.size();
         walksInProgress.push(frames);
         try {
             return walkFrames(frames);
         } finally {
             walksInProgress.pop();
-            while (functionsBeingRun.size() > callsOpenBeforeTheWalk) {
+            while (functionsBeingRun.size() > callsOpenBeforeWalk) {
                 handBackFrameTakenOverBy(functionsBeingRun.pop());
             }
         }
@@ -725,7 +725,7 @@ public final class Evaluator {
                 .toList();
         Value nearest = null;
         for (Frame open : listEveryCallOpenInnermostFirst(frames)) {
-            PendingCall running = open.theCallNearAndWhereAreAbout;
+            PendingCall running = open.callBeingMade;
             if (nearest == null && running != null && running.startedAt() >= 0) {
                 nearest = open.code.atIndex(running.startedAt());
             }
@@ -772,8 +772,8 @@ public final class Evaluator {
         if (being != null) {
             functionsCalled++;
             findFrameThisCallTakesOverFrom(being).giveWayTo(context);
-            functionsBeingRun.push(new OpenCall(nameOfTheCallBeingMade, being, context));
-            nameOfTheCallBeingMade = "";
+            functionsBeingRun.push(new OpenCall(nameOfCallBeingMade, being, context));
+            nameOfCallBeingMade = "";
             lastWordCalledThrough = "";
         }
     }
@@ -792,11 +792,11 @@ public final class Evaluator {
         findFrameThisCallTakesOverFrom(ending.function()).giveWayTo(null);
     }
 
-    private static AnyBlockValue findTheBodyThisCallRuns(
+    private static AnyBlockValue findBodyThisCallRuns(
             DefinedFunctionValue function, Context locals) {
 
         return switch (function) {
-            case ClosureValue closure -> Binder.rebindWhatNamedTheFunction(
+            case ClosureValue closure -> Binder.rebindWhatNamedFunction(
                     closure.body(), closure.declaredWords(), locals);
             case FunctionValue plain -> plain.body();
         };
@@ -808,7 +808,7 @@ public final class Evaluator {
             trace.line(frame.position, input, frame.context);
         }
         frame.startedThisValueAt = frame.position;
-        frame.theCallNearAndWhereAreAbout = null;
+        frame.callBeingMade = null;
         frame.advance();
 
         return switch (input) {
@@ -827,7 +827,7 @@ public final class Evaluator {
             case ErrorValue raised -> throw new Raised(raised);
             default -> input instanceof AnyFunctionValue
                             && !(input instanceof OperatorValue)
-                    ? callWithoutAName(frame, frames, input)
+                    ? callWithoutName(frame, frames, input)
                     : StepOutcome.of(input);
         };
     }
@@ -836,16 +836,16 @@ public final class Evaluator {
         Value carrying = produced;
         while (true) {
             PendingCall waiting = frame.pendingCalls.peek();
-            boolean feedingAnOperator = waiting != null && waiting.isInfix();
-            if (!feedingAnOperator) {
-                Optional<OperatorValue> operator = findTheOperatorAt(frame);
+            boolean feedingOperator = waiting != null && waiting.isInfix();
+            if (!feedingOperator) {
+                Optional<OperatorValue> operator = findOperatorAt(frame);
                 if (operator.isPresent()) {
-                    int wroteTheOperatorAt = frame.position;
+                    int wroteOperatorAt = frame.position;
                     frame.advance();
                     PendingCall infix =
                             PendingCall.makeInfix(operator.orElseThrow(), carrying);
-                    infix.startAt(wroteTheOperatorAt,
-                            readNameWrittenAt(frame, wroteTheOperatorAt, OPERATOR_TAKES_NO_REFINEMENT));
+                    infix.startAt(wroteOperatorAt,
+                            readNameWrittenAt(frame, wroteOperatorAt, OPERATOR_TAKES_NO_REFINEMENT));
                     frame.pendingCalls.push(infix);
                     return;
                 }
@@ -866,19 +866,19 @@ public final class Evaluator {
                 return;
             }
             frame.pendingCalls.pop();
-            frame.theCallNearAndWhereAreAbout = waiting;
+            frame.callBeingMade = waiting;
             StepOutcome outcome = invoke(frame, waiting, frames);
             if (isStillRunningHavingPushedBody(outcome)) {
                 return;
             }
             StepOutcome.Produced invoked = (StepOutcome.Produced) outcome;
-            frame.theCallNearAndWhereAreAbout = null;
+            frame.callBeingMade = null;
             carrying = invoked.value();
         }
     }
 
     private void requireParameterAccepts(PendingCall waiting, Value arriving) {
-        waiting.findTheParameterBeingFilled()
+        waiting.findParameterBeingFilled()
                 .filter(parameter -> isSwitchedOnFor(waiting, parameter))
                 .ifPresent(parameter -> refuseUnlessAccepted(
                         parameter, arriving, waiting.nameInArgumentError()));
@@ -892,7 +892,7 @@ public final class Evaluator {
         return !(outcome instanceof StepOutcome.Produced);
     }
 
-    private Optional<OperatorValue> findTheOperatorAt(Frame frame) {
+    private Optional<OperatorValue> findOperatorAt(Frame frame) {
         if (frame.atEnd()) {
             return Optional.empty();
         }
@@ -908,7 +908,7 @@ public final class Evaluator {
                 : Optional.empty();
     }
 
-    private StepOutcome callWithoutAName(
+    private StepOutcome callWithoutName(
             Frame frame, Deque<Frame> frames, Value callee) {
         lastWordCalledThrough = "";
         return startCall(frame, frames, callee, List.of());
@@ -922,8 +922,8 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
         }
         if (bound instanceof OperatorValue) {
-            boolean atTheVeryHead = frame.position - 1 <= 1;
-            throw atTheVeryHead
+            boolean atVeryHead = frame.position - 1 <= 1;
+            throw atVeryHead
                     ? Raised.of(EvaluationFailure.NO_OP_ARG,
                             "the operator " + word.spelling()
                                     + " has nothing on its left")
@@ -991,10 +991,10 @@ public final class Evaluator {
         call.startAt(frame.startedThisValueAt,
                 readNameWrittenAt(frame, frame.startedThisValueAt, mentioned.size()));
         if (needsNoArguments(call)) {
-            frame.theCallNearAndWhereAreAbout = call;
+            frame.callBeingMade = call;
             StepOutcome outcome = invoke(frame, call, frames);
             if (outcome instanceof StepOutcome.Produced) {
-                frame.theCallNearAndWhereAreAbout = null;
+                frame.callBeingMade = null;
             }
             return outcome;
         }
@@ -1018,9 +1018,9 @@ public final class Evaluator {
             return word.spelling();
         }
         if (written instanceof PathValue path) {
-            int reachingTheFunction = path.remaining().size() - refinementsWritten - 1;
-            if (reachingTheFunction >= 0
-                    && path.remaining().get(reachingTheFunction) instanceof AnyWordValue reached) {
+            int reachingFunction = path.remaining().size() - refinementsWritten - 1;
+            if (reachingFunction >= 0
+                    && path.remaining().get(reachingFunction) instanceof AnyWordValue reached) {
                 return reached.spelling();
             }
         }
@@ -1049,7 +1049,7 @@ public final class Evaluator {
             call.slot().setValue(given);
             return StepOutcome.of(given);
         }
-        List<Value> ordered = call.listTheArgumentsInDeclaredOrder();
+        List<Value> ordered = call.listArgumentsInDeclaredOrder();
         return switch (call.callee()) {
             case NativeValue built -> {
                 if (trace.isOn()) {
@@ -1071,10 +1071,10 @@ public final class Evaluator {
                     operator, ordered, frame.context,
                     call.nameInArgumentError(), call::enter));
             case DefinedFunctionValue function -> {
-                nameOfTheCallBeingMade = lastWordCalledThrough;
+                nameOfCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
-                    trace.call(nameOfTheCallBeingMade == null
-                            ? "?" : nameOfTheCallBeingMade, function, ordered);
+                    trace.call(nameOfCallBeingMade == null
+                            ? "?" : nameOfCallBeingMade, function, ordered);
                 }
                 yield runFunction(frames, function, call, ordered);
             }
@@ -1091,12 +1091,12 @@ public final class Evaluator {
     private static final Runnable NOBODY_IS_WAITING_TO_HEAR = () -> { };
 
     private Value invokeUnderlying(OperatorValue operator, List<Value> arguments,
-            Context context, String calledAs, Runnable onceTheArgumentsPass) {
+            Context context, String calledAs, Runnable onceArgumentsPass) {
         return switch (operator.underlying()) {
             case NativeValue built -> runNative(built, arguments, context,
-                    LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceTheArgumentsPass);
+                    LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceArgumentsPass);
             case DefinedFunctionValue function -> {
-                onceTheArgumentsPass.run();
+                onceArgumentsPass.run();
                 yield applyFunction(function, arguments);
             }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
@@ -1115,10 +1115,10 @@ public final class Evaluator {
     }
 
     private Value runNative(NativeValue built, List<Value> arguments, Context context,
-            int checkedFrom, String calledAs, Runnable onceTheArgumentsPass) {
+            int checkedFrom, String calledAs, Runnable onceArgumentsPass) {
         checkArgumentTypes(built, arguments, calledAs, checkedFrom);
         RefinedCallable behaviour = built.behaviour();
-        onceTheArgumentsPass.run();
+        onceArgumentsPass.run();
         nativesCalled++;
         Value produced;
         try {
@@ -1127,7 +1127,7 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.PROTECTED);
         } catch (SlotIsProtected refused) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, refused.spelling());
-        } catch (StackOverflowError aStructureWithNoEnd) {
+        } catch (StackOverflowError structureWithNoEnd) {
             throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
         } catch (OutOfMemoryError exhausted) {
             throw Raised.of(EvaluationFailure.NO_MEMORY);
@@ -1187,7 +1187,7 @@ public final class Evaluator {
 
         function.localNames().forEach(name -> locals.register(name, NoneValue.none()));
 
-        push(frames, findTheBodyThisCallRuns(function, locals), locals, function);
+        push(frames, findBodyThisCallRuns(function, locals), locals, function);
         return StepOutcome.waiting();
     }
 
@@ -1219,9 +1219,9 @@ public final class Evaluator {
             if (!parameter.consumesArgument()) {
                 continue;
             }
-            boolean takesAnArgumentThisCall = parameter.owningRefinement()
+            boolean takesArgumentThisCall = parameter.owningRefinement()
                     .map(asked::test).orElse(true);
-            if (!takesAnArgumentThisCall) {
+            if (!takesArgumentThisCall) {
                 continue;
             }
             if (at >= arguments.size()) {
@@ -1393,7 +1393,7 @@ public final class Evaluator {
             if (BlockPath.isNowhereAtAllSoWriteQuietlyDoesNothing(selector)) {
                 return;
             }
-            int at = BlockPath.findThePositionOf(block, selector)
+            int at = BlockPath.findPositionIn(block, selector)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             Molder.mold(selector)));
             SeriesSlot.write(block, at, written);
@@ -1418,7 +1418,7 @@ public final class Evaluator {
             return;
         }
         if (target instanceof TimeValue time) {
-            place.setValue(new WritingIntoATime().write(
+            place.setValue(new WritingIntoTime().write(
                     time, makeSelectorFor(lastSegment, frame.context), written));
             return;
         }
@@ -1476,7 +1476,7 @@ public final class Evaluator {
         return select(path, path, context);
     }
 
-    private Slot findTheSlotWithTheSegment(
+    private Slot findSlotWithSegment(
             AnyBlockValue asWritten, Slot holder, Value segment, Context context) {
 
         Value selector = makeSelectorFor(segment, context);
@@ -1493,9 +1493,9 @@ public final class Evaluator {
                 && refused.error().subject().isEmpty()) {
             return Raised.of(EvaluationFailure.OUT_OF_RANGE, segment);
         }
-        for (EvaluationFailure saidOfTheWholePath : WHOLE_PATH_FAILURES) {
-            if (refusal.equals(saidOfTheWholePath.errorId())) {
-                return Raised.of(saidOfTheWholePath, asWritten, segment);
+        for (EvaluationFailure saidOfWholePath : WHOLE_PATH_FAILURES) {
+            if (refusal.equals(saidOfWholePath.errorId())) {
+                return Raised.of(saidOfWholePath, asWritten, segment);
             }
         }
         return refused;
@@ -1527,7 +1527,7 @@ public final class Evaluator {
                 continue;
             }
             refusePathIntoSomethingWithNoParts(asWritten, current.value(), index - 1);
-            current = findTheSlotWithTheSegment(asWritten, current, segment, context);
+            current = findSlotWithSegment(asWritten, current, segment, context);
             calledBy = segment;
         }
         return new Selection(current, calledBy, List.copyOf(refinements),
@@ -1547,14 +1547,14 @@ public final class Evaluator {
         }
         if (target instanceof RebolSeries series
                 && selector instanceof IntegerValue position
-                && reachesIntoTheSeries(series, position)) {
+                && reachesIntoSeries(series, position)) {
             return new SeriesSlot(series, findPositionIn(series, position),
                     selectWith(target, selector));
         }
         return new ComputedSlot(selectWith(target, selector), selector);
     }
 
-    private static boolean reachesIntoTheSeries(
+    private static boolean reachesIntoSeries(
             RebolSeries series, IntegerValue position) {
 
         long counted = countFromSeriesPosition(position.magnitude());
@@ -1639,7 +1639,7 @@ public final class Evaluator {
             return LogicValue.of(set.holds(codepoint1));
         }
         if (target instanceof ErrorValue raised && selector instanceof AnyWordValue field) {
-            return raised.readTheField(field.canonical()).orElseThrow(() ->
+            return raised.readField(field.canonical()).orElseThrow(() ->
                     Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
         }
         if (target instanceof AnyStringValue path && path.isALocation()) {
@@ -1793,7 +1793,7 @@ public final class Evaluator {
         private ResultSink sink;
         private boolean stopped;
         private boolean functionBody;
-        private boolean bodyOfAnAppliedFunction;
+        private boolean bodyOfAppliedFunction;
 
         private int expressionStartedAt = -1;
 
@@ -1818,7 +1818,7 @@ public final class Evaluator {
 
         private int startedThisValueAt;
 
-        private PendingCall theCallNearAndWhereAreAbout;
+        private PendingCall callBeingMade;
     }
 
     private static Value joinOntoPath(AnyStringValue path, Value segment) {
@@ -1881,7 +1881,7 @@ public final class Evaluator {
         }
     }
 
-    private static java.util.Set<String> listTheNamesOwnedBy(DefinedFunctionValue function) {
+    private static java.util.Set<String> listNamesOwnedBy(DefinedFunctionValue function) {
         java.util.Set<String> owned = new java.util.HashSet<>();
         function.parameters().forEach(
                 parameter -> owned.add(parameter.name().toLowerCase(Locale.ROOT)));

@@ -9,7 +9,7 @@ import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
-final class WritingIntoATime {
+final class WritingIntoTime {
 
     private static final long NANOSECONDS_IN_SECOND = 1_000_000_000L;
 

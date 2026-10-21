@@ -98,7 +98,7 @@ public final class ErrorCatalogue {
     }
 
     /** The ids in a category, in the order that decides their codes. */
-    public static List<String> listTheIdsIn(String category) {
+    public static List<String> listIdsIn(String category) {
         return IDS.getOrDefault(
                 asListedHereWithoutMindingCase(category), List.of());
     }
@@ -119,7 +119,7 @@ public final class ErrorCatalogue {
     public static final int LOWEST_CODE_ENTRY_HAS = 100;
 
     public static int findCodeFor(String category, String errorId) {
-        int at = listTheIdsIn(category).indexOf(errorId);
+        int at = listIdsIn(category).indexOf(errorId);
         return at < 0 ? baseCodeFor(category) : baseCodeFor(category) + at;
     }
 

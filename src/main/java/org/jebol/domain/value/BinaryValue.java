@@ -42,8 +42,8 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return checksumOfTheOctets.applyAsLong(octetsFromHere());
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
+        return octetChecksum.applyAsLong(octetsFromHere());
     }
 
     @Override
@@ -62,8 +62,8 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value readItemAt(int positionFromTheHead) {
-        return IntegerValue.of(storage.at(positionFromTheHead));
+    public Value readItemAt(int positionFromHead) {
+        return IntegerValue.of(storage.at(positionFromHead));
     }
 
     @Override
@@ -96,8 +96,8 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public void putItemAt(int positionFromTheHead, Value item) {
-        storage.set(positionFromTheHead, (int) ((IntegerValue) item).magnitude());
+    public void putItemAt(int positionFromHead, Value item) {
+        storage.set(positionFromHead, (int) ((IntegerValue) item).magnitude());
     }
 
     @Override
@@ -109,7 +109,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         List<Value> read = new ArrayList<>(lengthFromHere());
         for (int at = 0; at < lengthFromHere(); at++) {
             read.add(IntegerValue.of(storage.at(index + at)));
@@ -246,7 +246,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return true;
     }
 
-    public Optional<BinaryValue> findTheFirstMalformedUtf8() {
+    public Optional<BinaryValue> findFirstMalformedUtf8() {
         int end = storageLength() + 1;
         int at = index;
         while (at < end) {
@@ -417,7 +417,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     private String textBehindMark(byte[] bytes, int marked) {
-        Charset theMarkAnnounces = switch (marked) {
+        Charset markAnnounces = switch (marked) {
             case 8 -> StandardCharsets.UTF_8;
             case 16 -> StandardCharsets.UTF_16BE;
             case -16 -> StandardCharsets.UTF_16LE;
@@ -426,7 +426,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         };
         int width = Math.abs(marked) == 8 ? 3 : Math.abs(marked) / 8;
         try {
-            return theMarkAnnounces.newDecoder()
+            return markAnnounces.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT)
                     .decode(ByteBuffer.wrap(bytes, width, bytes.length - width))

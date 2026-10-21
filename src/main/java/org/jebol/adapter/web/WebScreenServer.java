@@ -39,7 +39,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         WebScreenServer serving = new WebScreenServer(listening, DefaultFont.readFrom(files));
         listening.setExecutor(Executors.newCachedThreadPool(WebScreenServer::startDaemonConnection));
         listening.createContext("/", serving::servePage);
-        listening.createContext("/paint", serving::openPaintStreamThatTheBrowserCloses);
+        listening.createContext("/paint", serving::openPaintStreamThatBrowserCloses);
         listening.createContext("/event", serving::receiveEvent);
         listening.createContext("/NotoSans-Regular.ttf", serving::serveFont);
         listening.start();
@@ -102,7 +102,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         }
     }
 
-    private void openPaintStreamThatTheBrowserCloses(HttpExchange exchange)
+    private void openPaintStreamThatBrowserCloses(HttpExchange exchange)
             throws IOException {
         exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
         exchange.getResponseHeaders().add("Cache-Control", "no-cache");

@@ -42,7 +42,7 @@ public final class VectorSpec {
         if (rest.isEmpty() || !(rest.getFirst() instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> kind = VectorKind.findTheKindNamed(word.spelling());
+        Optional<VectorKind> kind = VectorKind.findKindNamed(word.spelling());
         if (kind.isEmpty()) {
             return Optional.empty();
         }
@@ -72,7 +72,7 @@ public final class VectorSpec {
         if (!(leading instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> byName = VectorKind.findTheKindNamed(word.spelling());
+        Optional<VectorKind> byName = VectorKind.findKindNamed(word.spelling());
         if (byName.isPresent()) {
             return assemble(byName.get(), parts.subList(1, parts.size()), resolveGetWord);
         }
@@ -185,7 +185,7 @@ public final class VectorSpec {
             for (int at = 0; at < Math.min(numbers.size(), howMany); at++) {
                 try {
                     storage.set(at + 1, kind.encodeForStorage(numbers.get(at)));
-                } catch (IllegalArgumentException notANumber) {
+                } catch (IllegalArgumentException notNumber) {
                     return Optional.empty();
                 }
             }

@@ -57,13 +57,13 @@ public final class SeekableFilePort {
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
-    public void openAt(long position, boolean mayWrite) {
-        rememberOnPort(position, mayWrite);
+    public void openAt(long position, boolean canWrite) {
+        rememberOnPort(position, canWrite);
     }
 
-    private void rememberOnPort(long position, boolean mayWrite) {
+    private void rememberOnPort(long position, boolean canWrite) {
         port.setField(POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.of(
-                List.of(IntegerValue.of(position), LogicValue.of(mayWrite))));
+                List.of(IntegerValue.of(position), LogicValue.of(canWrite))));
     }
 
     public String path() {

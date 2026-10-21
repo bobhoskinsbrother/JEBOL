@@ -26,8 +26,8 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     }
 
     @Override
-    public List<Value> listTheItems() {
-        return context.listTheBoundWordsAndValues();
+    public List<Value> listItems() {
+        return context.listBoundWordsAndValues();
     }
 
     @Override
@@ -42,7 +42,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
         };
     }
 
-    public List<String> listTheExportedNames() {
+    public List<String> listExportedNames() {
         if (!(readHeaderField("exports") instanceof AnyBlockValue exports)) {
             return List.of();
         }
@@ -60,14 +60,14 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     @Override
     public boolean equals(Object other) {
         return other instanceof ModuleValue(Context context1, ObjectValue header1)
-                && context.listTheFieldsExceptSelf().equals(
-                        context1.listTheFieldsExceptSelf())
+                && context.listFieldsExceptSelf().equals(
+                        context1.listFieldsExceptSelf())
                 && header.equals(header1);
     }
 
     @Override
     public int hashCode() {
-        return context.listTheFieldsExceptSelf().hashCode();
+        return context.listFieldsExceptSelf().hashCode();
     }
 
     @Override

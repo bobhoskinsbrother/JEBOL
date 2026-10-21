@@ -44,20 +44,20 @@ public class RepeatNative extends LoopingNative {
             AnyWordValue counter = (AnyWordValue) arguments.get(0);
             AnyBlockValue body = (AnyBlockValue) arguments.get(2);
             return switch (arguments.get(1)) {
-                case PairValue grid -> repeatOverAGrid(evaluator, context, counter, grid, body);
+                case PairValue grid -> repeatOverGrid(evaluator, context, counter, grid, body);
                 case NoneValue nothing -> nothing;
-                case RebolSeries walked -> loopACountedNumberOfTimes(evaluator, context, counter, body,
+                case RebolSeries walked -> loopCountedNumberOfTimes(evaluator, context, counter, body,
                         index -> walked.atIndex(walked.index() + (int) index),
                         walked.lengthFromHere());
-                case Value count -> loopACountedNumberOfTimes(evaluator, context, counter, body,
+                case Value count -> loopCountedNumberOfTimes(evaluator, context, counter, body,
                         index -> IntegerValue.of(index + 1),
                         (long) Arithmetic.asMagnitude(count));
             };
         };
     }
 
-    private Value loopACountedNumberOfTimes(Evaluator evaluator, Context within, AnyWordValue counter,
-                                            AnyBlockValue body, LongFunction<Value> valueAt, long passes) {
+    private Value loopCountedNumberOfTimes(Evaluator evaluator, Context within, AnyWordValue counter,
+                                           AnyBlockValue body, LongFunction<Value> valueAt, long passes) {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
@@ -72,8 +72,8 @@ public class RepeatNative extends LoopingNative {
         });
     }
 
-    private Value repeatOverAGrid(Evaluator evaluator, Context within, AnyWordValue counter,
-                                  PairValue grid, AnyBlockValue body) {
+    private Value repeatOverGrid(Evaluator evaluator, Context within, AnyWordValue counter,
+                                 PairValue grid, AnyBlockValue body) {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());

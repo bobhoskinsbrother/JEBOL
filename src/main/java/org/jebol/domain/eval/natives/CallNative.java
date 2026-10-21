@@ -41,12 +41,12 @@ public class CallNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        Set<Datatype> aRedirection = Set.of(StringValue.TYPE, BinaryValue.TYPE, FileValue.TYPE, NoneValue.TYPE);
+        Set<Datatype> redirection = Set.of(StringValue.TYPE, BinaryValue.TYPE, FileValue.TYPE, NoneValue.TYPE);
         return List.of(
                 Parameter.of("command", TypesetValue.ANY_STRING.membersAnd(BlockValue.TYPE)),
-                Parameter.belongTo("input", "in", aRedirection),
-                Parameter.belongTo("output", "out", aRedirection),
-                Parameter.belongTo("error", "err", aRedirection));
+                Parameter.belongTo("input", "in", redirection),
+                Parameter.belongTo("output", "out", redirection),
+                Parameter.belongTo("error", "err", redirection));
     }
 
     @Override
@@ -60,7 +60,7 @@ public class CallNative extends HostNative {
             granted.require(HostService.PROCESSES);
             evaluator.policies().require(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             ProgramCalling calling = new ProgramCalling(
-                    readTheCommandWordsOf(arguments.getFirst(), evaluator, context), refinements,
+                    readCommandWordsFrom(arguments.getFirst(), evaluator, context), refinements,
                     refinementArgument("input", 0, arguments, refinements),
                     refinementArgument("output", 0, arguments, refinements),
                     refinementArgument("error", 0, arguments, refinements));
@@ -68,7 +68,7 @@ public class CallNative extends HostNative {
         };
     }
 
-    private List<String> readTheCommandWordsOf(Value command, Evaluator evaluator, Context context) {
+    private List<String> readCommandWordsFrom(Value command, Evaluator evaluator, Context context) {
         if (!(command instanceof BlockValue block)) {
             return List.of(((AnyStringValue) command).text());
         }

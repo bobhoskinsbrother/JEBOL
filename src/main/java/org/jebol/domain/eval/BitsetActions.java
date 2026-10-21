@@ -89,7 +89,7 @@ public final class BitsetActions implements Actions {
         members.holdAll(readWhatIsMeantBy(asked), wanted);
     }
 
-    public Value remove(Set<String> refinements, Function<String, Value> theArgumentFor) {
+    public Value remove(Set<String> refinements, Function<String, Value> argumentFor) {
         boolean byKey = refinements.contains("key");
         boolean byPart = refinements.contains("part");
         if (byKey && byPart) {
@@ -97,11 +97,11 @@ public final class BitsetActions implements Actions {
                     "/key and /part each say what to remove, and only one can");
         }
         if (byKey) {
-            members.clearAllDirectly(readWhatIsMeantBy(theArgumentFor.apply("key")));
+            members.clearAllDirectly(readWhatIsMeantBy(argumentFor.apply("key")));
             return members;
         }
         if (byPart) {
-            Value range = theArgumentFor.apply("part");
+            Value range = argumentFor.apply("part");
             refuseWhatNamesNoRange(range);
             members.clearAllDirectly(readWhatIsMeantBy(range));
             return members;

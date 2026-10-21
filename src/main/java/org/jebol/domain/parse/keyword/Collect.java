@@ -11,7 +11,7 @@ import org.jebol.domain.value.WordValue;
 import java.util.ArrayList;
 import java.util.List;
 
-final class Collect extends SameForABlockAndAString {
+final class Collect extends SameForBlockAndString {
 
     Collect() {
         super("collect", 0, true, WhenNothingFollowsIt.RAISES_PARSE_END);

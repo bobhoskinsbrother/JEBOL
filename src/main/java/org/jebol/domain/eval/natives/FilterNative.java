@@ -24,8 +24,8 @@ public class FilterNative extends PngFilterNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.of("data", Set.of(BinaryValue.TYPE)),
-                Parameter.of("width", acceptAWidth()),
-                Parameter.of("type", acceptAFilterType()),
+                Parameter.of("width", acceptWidth()),
+                Parameter.of("type", acceptFilterType()),
                 Parameter.belongTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
     }
 

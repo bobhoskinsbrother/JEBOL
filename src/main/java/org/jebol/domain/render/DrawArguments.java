@@ -25,17 +25,17 @@ final class DrawArguments {
                 : Optional.empty();
     }
 
-    Optional<Colour> findTheColourIn(List<Value> arguments) {
+    Optional<Colour> findColourIn(List<Value> arguments) {
         return readColourAt(arguments, 0);
     }
 
-    Optional<PairValue> readThePairAt(List<Value> arguments, int slot) {
+    Optional<PairValue> readPairAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof PairValue pair
                 ? Optional.of(pair)
                 : Optional.empty();
     }
 
-    Optional<Double> readTheNumberAt(List<Value> arguments, int slot) {
+    Optional<Double> readNumberAt(List<Value> arguments, int slot) {
         if (slot >= arguments.size()) {
             return Optional.empty();
         }
@@ -46,7 +46,7 @@ final class DrawArguments {
         };
     }
 
-    Optional<String> readTheWordAt(List<Value> arguments, int slot) {
+    Optional<String> readWordAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof AnyWordValue word
                 ? Optional.of(word.canonical())
                 : Optional.empty();

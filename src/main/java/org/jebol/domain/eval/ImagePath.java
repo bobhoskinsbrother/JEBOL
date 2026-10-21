@@ -79,10 +79,10 @@ final class ImagePath {
                     "an image is sized by a pair with a width");
         }
         int across = (int) asked.x();
-        image.storage().reshape(across, countTheWholeRowsThePixelsMake(image, asked, across));
+        image.storage().reshape(across, countWholeRowsPixelsMake(image, asked, across));
     }
 
-    private static int countTheWholeRowsThePixelsMake(
+    private static int countWholeRowsPixelsMake(
             ImageValue image, PairValue asked, int across) {
         return Math.min((int) asked.y(), image.storage().length() / across);
     }

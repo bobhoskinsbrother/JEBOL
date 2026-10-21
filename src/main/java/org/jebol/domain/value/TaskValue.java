@@ -83,13 +83,13 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value, P
     @Override
     public boolean equals(Object other) {
         return other instanceof TaskValue task
-                && context.listTheFieldsExceptSelf().equals(
-                        task.context.listTheFieldsExceptSelf());
+                && context.listFieldsExceptSelf().equals(
+                        task.context.listFieldsExceptSelf());
     }
 
     @Override
     public int hashCode() {
-        return context.listTheFieldsExceptSelf().hashCode();
+        return context.listFieldsExceptSelf().hashCode();
     }
 
     @Override

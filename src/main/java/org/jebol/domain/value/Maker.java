@@ -27,7 +27,7 @@ public interface Maker {
 
     StructSpec.LayoutRegistry structLayouts();
 
-    Optional<List<Value>> readTheValuesFrom(String source);
+    Optional<List<Value>> readValuesFrom(String source);
 
     AnyBlockValue readSource(String source);
 }

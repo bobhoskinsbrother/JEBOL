@@ -21,7 +21,7 @@ public final class VectorPath {
 
     public static Value read(VectorValue vector, Value selector) {
         if (selector instanceof AnyWordValue asked) {
-            return VectorQuery.readTheField(vector, asked.canonical())
+            return VectorQuery.readField(vector, asked.canonical())
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             asked.spelling()));
         }
@@ -54,7 +54,7 @@ public final class VectorPath {
     public static long encodeForStorage(VectorKind kind, Value written) {
         try {
             return kind.encodeForStorage(written);
-        } catch (IllegalArgumentException notANumber) {
+        } catch (IllegalArgumentException notNumber) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
         }
     }

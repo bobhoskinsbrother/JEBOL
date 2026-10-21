@@ -76,7 +76,7 @@ public class QueryAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> itsOwn = evaluator.askTheRebolActor(nativeName(), arguments, refinements);
+            Optional<Value> itsOwn = evaluator.askRebolActor(nativeName(), arguments, refinements);
             if (itsOwn.isPresent()) {
                 return itsOwn.get();
             }
@@ -100,7 +100,7 @@ public class QueryAction extends PortAction {
             return askFile(file.text(), field, evaluator);
         }
         PortValue port = ports.makePortFor(target, evaluator, context);
-        return evaluator.askTheRebolActor(nativeName(), List.of(port, field), Set.of())
+        return evaluator.askRebolActor(nativeName(), List.of(port, field), Set.of())
                 .orElseGet(() -> askNativelyServedPort(port, field, evaluator));
     }
 
@@ -129,11 +129,11 @@ public class QueryAction extends PortAction {
 
     private Value portFieldNames(Value target, Evaluator evaluator, Context context) {
         PortValue port = ports.makePortFor(target, evaluator, context);
-        return listTheNamesItsJavaActorGives(port, evaluator)
+        return listNamesItsJavaActorGives(port, evaluator)
                 .orElseGet(() -> listNamesInSchemesInfo(port));
     }
 
-    private Optional<Value> listTheNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
+    private Optional<Value> listNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
         if (!(port.readFieldValue("actor") instanceof ServesPortActions served)) {
             return Optional.empty();
         }
@@ -173,7 +173,7 @@ public class QueryAction extends PortAction {
 
         @Override
         protected Optional<Value> findFieldNamed(String asked) {
-            return VectorQuery.readTheField(vector, asked);
+            return VectorQuery.readField(vector, asked);
         }
 
         @Override

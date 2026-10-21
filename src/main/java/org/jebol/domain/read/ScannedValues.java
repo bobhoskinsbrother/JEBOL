@@ -98,7 +98,7 @@ final class ScannedValues {
         return negative ? -value : value;
     }
 
-    Optional<Value> scanAnInteger(int from, int length) {
+    Optional<Value> scanInteger(int from, int length) {
         int cp = from;
         int num = length;
         if (num == 1) {
@@ -154,7 +154,7 @@ final class ScannedValues {
         return Optional.of(IntegerValue.of(read.longValue()));
     }
 
-    Optional<Double> bufferADecimal(int from, StringBuilder written) {
+    Optional<Double> bufferDecimal(int from, StringBuilder written) {
         int cp = from;
         boolean digit = false;
         if (at(cp) == '+' || at(cp) == '-') {
@@ -212,7 +212,7 @@ final class ScannedValues {
         return read.lookingAt() ? Double.parseDouble(read.group()) : 0.0;
     }
 
-    Optional<Value> scanADecimal(int from, int length) {
+    Optional<Value> scanDecimal(int from, int length) {
         int cp = from;
         if (length > MAX_NUM_LEN) {
             return Optional.empty();
@@ -322,7 +322,7 @@ final class ScannedValues {
         return Optional.of(new MoneyValue(read));
     }
 
-    Optional<TimeValue> scanATime(int from) {
+    Optional<TimeValue> scanTime(int from) {
         int cp = from;
         boolean negative = false;
         if (at(cp) == '-') {
@@ -413,7 +413,7 @@ final class ScannedValues {
         return Optional.of(TimeValue.ofNanoseconds(negative ? -nanoseconds : nanoseconds));
     }
 
-    Optional<Value> scanADate(int from, int length) {
+    Optional<Value> scanDate(int from, int length) {
         int cp = from;
         int end = from + length;
         int day = 0;
@@ -521,7 +521,7 @@ final class ScannedValues {
                     scannedTo = cp;
                     return Optional.of(makeDate(year, month, day, time, zone));
                 }
-                time = scanATime(cp);
+                time = scanTime(cp);
                 if (time.isEmpty() || time.get().nanoseconds() < 0
                         || time.get().nanoseconds() >= NANOSECONDS_IN_DAY) {
                     return Optional.empty();
@@ -598,14 +598,14 @@ final class ScannedValues {
         return new DateValue(year, month, day, time, Optional.of(zone * ZONE_MINUTES));
     }
 
-    Optional<Value> scanAPair(int from, int length) {
+    Optional<Value> scanPair(int from, int length) {
         StringBuilder written = new StringBuilder();
-        Optional<Double> x = bufferADecimal(from, written);
+        Optional<Double> x = bufferDecimal(from, written);
         if (x.isEmpty()) {
             return Optional.empty();
         }
         int ep = scannedTo;
-        Optional<Double> readX = scanAPairPart(written, ep, x.get());
+        Optional<Double> readX = scanPairPart(written, ep, x.get());
         if (readX.isEmpty()) {
             return Optional.empty();
         }
@@ -615,12 +615,12 @@ final class ScannedValues {
         }
         ep++;
         written.setLength(0);
-        Optional<Double> y = bufferADecimal(ep, written);
+        Optional<Double> y = bufferDecimal(ep, written);
         if (y.isEmpty()) {
             return Optional.empty();
         }
         int xp = scannedTo;
-        Optional<Double> readY = scanAPairPart(written, xp, y.get());
+        Optional<Double> readY = scanPairPart(written, xp, y.get());
         if (readY.isEmpty()) {
             return Optional.empty();
         }
@@ -631,7 +631,7 @@ final class ScannedValues {
         return Optional.of(PairValue.of((float) readX.get().doubleValue(), (float) readY.get().doubleValue()));
     }
 
-    private Optional<Double> scanAPairPart(StringBuilder written, int ep, double read) {
+    private Optional<Double> scanPairPart(StringBuilder written, int ep, double read) {
         scannedTo = ep;
         if (at(ep) != '#') {
             return Optional.of(read);
@@ -651,7 +651,7 @@ final class ScannedValues {
         return Optional.empty();
     }
 
-    Optional<Value> scanATuple(int from, int length) {
+    Optional<Value> scanTuple(int from, int length) {
         if (length == 0) {
             return Optional.empty();
         }

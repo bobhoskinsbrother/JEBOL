@@ -29,7 +29,7 @@ public class SetEnvNative extends EnvironmentNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.of("name", acceptAVariablesName()),
+                Parameter.of("name", acceptVariablesName()),
                 Parameter.of("value", Set.of(StringValue.TYPE, NoneValue.TYPE)));
     }
 

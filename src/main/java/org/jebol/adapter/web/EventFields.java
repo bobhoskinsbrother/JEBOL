@@ -13,10 +13,10 @@ final class EventFields {
     private final Map<String, String> asPosted;
 
     EventFields(String posted) {
-        this.asPosted = Map.copyOf(readTheFields(posted.trim()));
+        this.asPosted = Map.copyOf(readFields(posted.trim()));
     }
 
-    private static Map<String, String> readTheFields(String body) {
+    private static Map<String, String> readFields(String body) {
         Map<String, String> fields = new LinkedHashMap<>();
         if (!body.startsWith("{") || !body.endsWith("}")) {
             return fields;
@@ -162,7 +162,7 @@ final class EventFields {
         }
         try {
             return Optional.of(Integer.parseInt(posted));
-        } catch (NumberFormatException notAWholeNumber) {
+        } catch (NumberFormatException notWholeNumber) {
             return Optional.empty();
         }
     }

@@ -31,7 +31,7 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return codepoint;
     }
 

@@ -24,14 +24,14 @@ public record Asked(
     }
 
     /** The first few of a list, or all of them when {@code /part} said nothing. */
-    public List<Value> takeTheFirstFewOf(List<Value> items) {
+    public List<Value> takeFirstFewFrom(List<Value> items) {
         return howMuchOfIt
                 .map(count -> items.subList(0,
                         (int) Math.max(0, Math.min(count, items.size()))))
                 .orElse(items);
     }
 
-    public List<Value> pickTheWantedItemsOf(AnyBlockValue added) {
+    public List<Value> pickWantedItemsFrom(AnyBlockValue added) {
         return measureHowMuchOf(added, limitAsked)
                 .map(count -> {
                     List<Value> whole = added.head().remaining();

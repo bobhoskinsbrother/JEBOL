@@ -33,7 +33,7 @@ public class AjoinNative extends DefaultNative {
             String separator = refinementArgument("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");
-            return chooseTheKindOf(all).wrap(all.stream()
+            return chooseKindFor(all).wrap(all.stream()
                     .filter(piece -> refinements.contains("all") || holdsSomething(piece))
                     .map(Value::runTogether)
                     .collect(Collectors.joining(separator)));
@@ -44,7 +44,7 @@ public class AjoinNative extends DefaultNative {
         return !(piece instanceof NoneValue || piece instanceof UnsetValue);
     }
 
-    private AnyStringValue.AnyStringDatatype chooseTheKindOf(List<Value> pieces) {
+    private AnyStringValue.AnyStringDatatype chooseKindFor(List<Value> pieces) {
         if (pieces.isEmpty()) {
             return StringValue.TYPE;
         }

@@ -22,7 +22,7 @@ public class SortAction extends DefaultNative implements ActionValue {
         return List.of(Parameter.of("series", TypesetValue.SERIES.members()),
                 Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)),
                 Parameter.belongTo("compare", "comparator", Set.of()),
-                Parameter.belongTo("part", "count", listThePartLimitTypes()));
+                Parameter.belongTo("part", "count", listPartLimitTypes()));
     }
 
     @Override

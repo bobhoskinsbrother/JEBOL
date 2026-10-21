@@ -32,7 +32,7 @@ public class SwapEndianNative extends EncodingNative {
         return List.of(
                 Parameter.of("value", Set.of(BinaryValue.TYPE)),
                 Parameter.belongTo("width", "bytes", Set.of(IntegerValue.TYPE)),
-                Parameter.belongTo("part", "range", acceptACountOrPosition()));
+                Parameter.belongTo("part", "range", acceptCountOrPosition()));
     }
 
     @Override

@@ -58,32 +58,32 @@ public final class RipeMd160 extends Md4FamilyDigest {
 
     private void compressBothChainsAndFoldRotatedByOne(
             int[] words, int[] block) {
-        int leftA = words[0];
+        int left = words[0];
         int leftB = words[1];
         int leftC = words[2];
         int leftD = words[3];
         int leftE = words[4];
-        int rightA = words[0];
+        int right = words[0];
         int rightB = words[1];
         int rightC = words[2];
         int rightD = words[3];
         int rightE = words[4];
         for (int step = 0; step < 80; step++) {
             int round = step / 16;
-            int turned = Integer.rotateLeft(leftA
+            int turned = Integer.rotateLeft(left
                     + mix(round, leftB, leftC, leftD)
                     + block[LEFT_WORD_ORDER[step]]
                     + LEFT_CONSTANTS[round], LEFT_ROTATIONS[step]) + leftE;
-            leftA = leftE;
+            left = leftE;
             leftE = leftD;
             leftD = Integer.rotateLeft(leftC, 10);
             leftC = leftB;
             leftB = turned;
-            int turnedBack = Integer.rotateLeft(rightA
+            int turnedBack = Integer.rotateLeft(right
                     + mix(4 - round, rightB, rightC, rightD)
                     + block[RIGHT_WORD_ORDER[step]]
                     + RIGHT_CONSTANTS[round], RIGHT_ROTATIONS[step]) + rightE;
-            rightA = rightE;
+            right = rightE;
             rightE = rightD;
             rightD = Integer.rotateLeft(rightC, 10);
             rightC = rightB;
@@ -91,8 +91,8 @@ public final class RipeMd160 extends Md4FamilyDigest {
         }
         int carried = words[1] + leftC + rightD;
         words[1] = words[2] + leftD + rightE;
-        words[2] = words[3] + leftE + rightA;
-        words[3] = words[4] + leftA + rightB;
+        words[2] = words[3] + leftE + right;
+        words[3] = words[4] + left + rightB;
         words[4] = words[0] + leftB + rightC;
         words[0] = carried;
     }

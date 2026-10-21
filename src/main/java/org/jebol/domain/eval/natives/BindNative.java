@@ -29,35 +29,35 @@ public class BindNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value targetGiven = arguments.get(1);
-            Context target = findTheContextOf(targetGiven).orElseThrow(() ->
+            Context target = findContextFor(targetGiven).orElseThrow(() ->
                     Raised.of(EvaluationFailure.EXPECT_ARG,
                             "bind wanted an object or a bound word, not "
                                     + targetGiven.datatype().literalSpelling()));
             boolean addsWhatIsMissing = refinements.contains("new") || refinements.contains("set");
             return switch (arguments.getFirst()) {
-                case AnyWordValue word -> bindAWordInto(
+                case AnyWordValue word -> bindWordInto(
                         word, target, targetGiven instanceof AnyWordValue, addsWhatIsMissing);
-                case AnyBlockValue block -> bindABlockInto(
+                case AnyBlockValue block -> bindBlockInto(
                         block, target, refinements, addsWhatIsMissing);
                 default -> refuseArgument(arguments.getFirst(), "word");
             };
         };
     }
 
-    private Optional<Context> findTheContextOf(Value target) {
+    private Optional<Context> findContextFor(Value target) {
         if (target instanceof AnyWordValue word) {
             return word.isBound() ? Optional.of(word.binding()) : Optional.empty();
         }
         return target.fieldsAsContext();
     }
 
-    private Value bindAWordInto(AnyWordValue word, Context target,
-                                boolean targetWasAWord, boolean addsWhatIsMissing) {
+    private Value bindWordInto(AnyWordValue word, Context target,
+                               boolean targetWasWord, boolean addsWhatIsMissing) {
 
         if (addsWhatIsMissing) {
             target.register(word.canonical());
         }
-        if (!targetWasAWord) {
+        if (!targetWasWord) {
             if (!target.holds(word.canonical())) {
                 throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
             }
@@ -72,12 +72,12 @@ public class BindNative extends DefaultNative {
         return word.bindTo(target.contextHolding(word.canonical()));
     }
 
-    private Value bindABlockInto(AnyBlockValue block, Context target,
-                                 Set<String> refinements, boolean addsWhatIsMissing) {
+    private Value bindBlockInto(AnyBlockValue block, Context target,
+                                Set<String> refinements, boolean addsWhatIsMissing) {
 
         boolean deeply = !refinements.contains("only");
         if (addsWhatIsMissing) {
-            block.listTheWordsWritten(deeply, refinements.contains("set")).stream()
+            block.listWordsWritten(deeply, refinements.contains("set")).stream()
                     .map(word -> ((AnyWordValue) word).canonical())
                     .filter(canonical -> !target.answersAlreadyTo(canonical))
                     .forEach(target::register);

@@ -52,7 +52,7 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
     }
 
     @Override
-    public Optional<ContextSlot> fieldThePathNames() {
+    public Optional<ContextSlot> fieldPathNames() {
         List<Value> segments = remaining();
         if (segments.size() < 2
                 || !(segments.getFirst() instanceof AnyWordValue start)

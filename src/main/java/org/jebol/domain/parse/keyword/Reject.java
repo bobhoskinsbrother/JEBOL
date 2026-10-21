@@ -6,7 +6,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Reject extends SameForABlockAndAString {
+final class Reject extends SameForBlockAndString {
 
     Reject() {
         super("reject", 0, false, WhenNothingFollowsIt.DOES_NOT_MATCH);

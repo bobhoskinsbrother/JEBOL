@@ -49,7 +49,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
-        return Binder.bindTheFunctionsBody(spec, body, context);
+        return Binder.bindFunctionsBody(spec, body, context);
     }
 
     @Override
@@ -73,8 +73,8 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Optional<List<Value>> readTheValuesFrom(String source) {
-        return withoutEvaluating.readTheValuesFrom(source);
+    public Optional<List<Value>> readValuesFrom(String source) {
+        return withoutEvaluating.readValuesFrom(source);
     }
 
     @Override
@@ -134,12 +134,12 @@ public final class InterpreterMaker implements Maker {
             throw prototype.refuseAsPrototypeFor(spec);
         }
         return switch (prototype) {
-            case DefinedFunctionValue written -> Binder.bindTheFunctionsBody(
+            case DefinedFunctionValue written -> Binder.bindFunctionsBody(
                     newSpecification.orElseGet(() -> asBlock(written.spec())),
                     newBody.map(this::asBlock).orElseGet(() -> asBlock(written.body())),
                     written.closedOver());
             case NativeValue built -> newSpecification
-                    .<AnyFunctionValue>map(given -> built.deriveWith(given, FunctionSpec.readTheParametersIn(given)))
+                    .<AnyFunctionValue>map(given -> built.deriveWith(given, FunctionSpec.readParametersIn(given)))
                     .orElse(built);
             case OperatorValue operator -> newSpecification
                     .<AnyFunctionValue>map(given -> respecifyOperator(operator, given))
@@ -158,8 +158,8 @@ public final class InterpreterMaker implements Maker {
                 || index > LARGEST_COMMAND_INDEX) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_DEF, definition);
         }
-        CommandValue made = new CommandValue(spec, FunctionSpec.readTheParametersIn(spec), extension, index);
-        if (made.findTheDispatcher().isEmpty()) {
+        CommandValue made = new CommandValue(spec, FunctionSpec.readParametersIn(spec), extension, index);
+        if (made.findDispatcher().isEmpty()) {
             throw Raised.of(EvaluationFailure.BAD_EXTENSION, definition);
         }
         return made;

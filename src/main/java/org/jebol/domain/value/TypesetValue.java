@@ -17,7 +17,7 @@ public final class TypesetValue implements Value {
         protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TypesetValue already -> already;
-                case BlockValue block -> TypesetValue.of(TypesetActions.listTheDatatypesNamedIn(block));
+                case BlockValue block -> TypesetValue.of(TypesetActions.listDatatypesNamedIn(block));
                 default -> throw refuse(from);
             };
         }
@@ -127,10 +127,10 @@ public final class TypesetValue implements Value {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return TypesetValue.of(membersKeptAgainst(collectTheDatatypesFrom(right), operation));
+        return TypesetValue.of(membersKeptAgainst(collectDatatypesFrom(right), operation));
     }
 
-    private Set<Datatype> collectTheDatatypesFrom(Value right) {
+    private Set<Datatype> collectDatatypesFrom(Value right) {
         return switch (right) {
             case TypesetValue set -> set.members();
             case Datatype one -> Set.of(one);

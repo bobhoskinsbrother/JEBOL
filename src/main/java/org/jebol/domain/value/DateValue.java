@@ -138,7 +138,7 @@ public record DateValue(
         private Value readDateFrom(AnyStringValue written, Maker maker) {
             String token = new WrittenText(written.text())
                     .findOneToken(MOST_DATE_CHARACTERS);
-            return maker.readTheValuesFrom(token)
+            return maker.readValuesFrom(token)
                     .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
                     .map(List::getFirst)
                     .orElseThrow(() -> refuse(written));
@@ -153,7 +153,7 @@ public record DateValue(
     public double countSecondsSinceEpoch() {
         Moment instant = moment();
         return (double) instant.dayNumber() * SECONDS_DAY
-                + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_SECOND;
+                + (double) instant.nanosecondsIntoDay() / NANOSECONDS_SECOND;
     }
 
     public long wholeSecondsSinceEpoch() {
@@ -169,7 +169,7 @@ public record DateValue(
         Moment there = other.moment();
         return TimeValue.ofNanoseconds(
                 (here.dayNumber() - there.dayNumber()) * NANOSECONDS_DAY
-                        + here.nanosecondsIntoTheDay() - there.nanosecondsIntoTheDay());
+                        + here.nanosecondsIntoDay() - there.nanosecondsIntoDay());
     }
 
     public java.time.LocalDate asLocalDate() {
@@ -196,7 +196,7 @@ public record DateValue(
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return ((long) year << WHERE_YEAR_IS_PACKED)
                 + ((long) asLocalDate().getDayOfYear() << DAY_OF_YEAR_SHIFT)
                 + nanosecondsOnClock();
@@ -224,9 +224,9 @@ public record DateValue(
     }
 
     public Value secondOnClock() {
-        long onTheClock = nanosecondsOnClock();
-        long whole = onTheClock / NANOSECONDS_SECOND % 60;
-        long fraction = onTheClock % NANOSECONDS_SECOND;
+        long onClock = nanosecondsOnClock();
+        long whole = onClock / NANOSECONDS_SECOND % 60;
+        long fraction = onClock % NANOSECONDS_SECOND;
         return fraction == 0
                 ? IntegerValue.of(whole)
                 : DecimalValue.of(whole + (double) fraction / NANOSECONDS_SECOND);
@@ -259,8 +259,8 @@ public record DateValue(
                 .plusDays(wantedDay - 1L));
     }
 
-    public DateValue onDayOfYear(int dayOfTheYear) {
-        return onDay(java.time.LocalDate.of(year, 1, 1).plusDays(dayOfTheYear - 1L));
+    public DateValue onDayOfYear(int dayOfYear) {
+        return onDay(java.time.LocalDate.of(year, 1, 1).plusDays(dayOfYear - 1L));
     }
 
     public DateValue onDayFrom(DateValue other) {
@@ -306,15 +306,15 @@ public record DateValue(
      * it. Two longs rather than one, because a nanosecond count that reached
      * Rebol's last year would need more room than a long has.
      */
-    public record Moment(long dayNumber, long nanosecondsIntoTheDay)
+    public record Moment(long dayNumber, long nanosecondsIntoDay)
             implements Comparable<Moment> {
 
         @Override
         public int compareTo(Moment other) {
-            int acrossTheDays = Long.compare(dayNumber, other.dayNumber);
-            return acrossTheDays != 0
-                    ? acrossTheDays
-                    : Long.compare(nanosecondsIntoTheDay, other.nanosecondsIntoTheDay);
+            int acrossDays = Long.compare(dayNumber, other.dayNumber);
+            return acrossDays != 0
+                    ? acrossDays
+                    : Long.compare(nanosecondsIntoDay, other.nanosecondsIntoDay);
         }
     }
 

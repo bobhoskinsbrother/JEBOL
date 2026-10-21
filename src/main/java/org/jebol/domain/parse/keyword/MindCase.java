@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class MindCase extends SameForABlockAndAString {
+final class MindCase extends SameForBlockAndString {
 
     private final boolean minding;
 

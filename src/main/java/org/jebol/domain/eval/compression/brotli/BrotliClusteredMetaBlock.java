@@ -15,10 +15,10 @@ final class BrotliClusteredMetaBlock {
     }
 
     static Built build(byte[] data, int mask, int from, int previousByte,
-            int theByteBeforeThat, int contextMode, int quality,
-            BrotliCommand commands, BrotliDistances startingDistances) {
+                       int byteBeforeThat, int contextMode, int quality,
+                       BrotliCommand commands, BrotliDistances startingDistances) {
 
-        BrotliDistances chosen = findTheCheapestDistanceParameters(commands,
+        BrotliDistances chosen = findCheapestDistanceParameters(commands,
                 startingDistances);
         recodeDistances(commands, startingDistances, chosen);
 
@@ -39,7 +39,7 @@ final class BrotliClusteredMetaBlock {
         built.howManyCommandHistograms = built.commands.countTypes();
 
         countEverything(commands, data, from, mask, previousByte,
-                theByteBeforeThat, contextMode, built, byContext,
+                byteBeforeThat, contextMode, built, byContext,
                 distanceByContext);
 
         built.literalContextMap = new int[literalHistograms];
@@ -61,14 +61,14 @@ final class BrotliClusteredMetaBlock {
         return new Built(built, chosen);
     }
 
-    private static BrotliDistances findTheCheapestDistanceParameters(
+    private static BrotliDistances findCheapestDistanceParameters(
             BrotliCommand commands, BrotliDistances startingFrom) {
 
         BrotliHistogram scratch =
                 new BrotliHistogram(DISTANCE_SYMBOLS_HISTOGRAM_HOLDS);
         double cheapest = 1e99;
         BrotliDistances best = startingFrom;
-        boolean stillWorthCheckingTheOriginal = true;
+        boolean stillWorthCheckingOriginal = true;
         int directCodesTop = 0;
         for (int postfix = 0; postfix <= MOST_POSTFIX_BITS; postfix++) {
             for (; directCodesTop < 16; directCodesTop++) {
@@ -76,7 +76,7 @@ final class BrotliClusteredMetaBlock {
                 BrotliDistances candidate = new BrotliDistances(direct, postfix);
                 if (postfix == startingFrom.postfixBits()
                         && direct == startingFrom.directCodes()) {
-                    stillWorthCheckingTheOriginal = false;
+                    stillWorthCheckingOriginal = false;
                 }
                 double cost = costOfDistancesUnder(commands, startingFrom,
                         candidate, scratch);
@@ -91,7 +91,7 @@ final class BrotliClusteredMetaBlock {
             }
             directCodesTop /= 2;
         }
-        if (stillWorthCheckingTheOriginal) {
+        if (stillWorthCheckingOriginal) {
             double cost = costOfDistancesUnder(commands, startingFrom,
                     startingFrom, scratch);
             if (!Double.isNaN(cost) && cost < cheapest) {
@@ -158,7 +158,7 @@ final class BrotliClusteredMetaBlock {
 
         private final BrotliBlockSplit split;
         private int whichBlock;
-        private int leftInTheBlock;
+        private int leftInBlock;
         private int type;
 
         Walk(BrotliBlockSplit split) {
@@ -166,18 +166,18 @@ final class BrotliClusteredMetaBlock {
         }
 
         int readNextType() {
-            if (leftInTheBlock == 0) {
-                leftInTheBlock = split.readLengthAt(whichBlock);
+            if (leftInBlock == 0) {
+                leftInBlock = split.readLengthAt(whichBlock);
                 type = split.readTypeAt(whichBlock);
                 whichBlock++;
             }
-            leftInTheBlock--;
+            leftInBlock--;
             return type;
         }
     }
 
     private static void countEverything(BrotliCommand commands, byte[] data,
-            int from, int mask, int previousByteGiven, int theByteBeforeThatGiven,
+            int from, int mask, int previousByteGiven, int byteBeforeThatGiven,
             int contextMode, BrotliMetaBlockSplit built,
             BrotliHistogram[] byContext, BrotliHistogram[] distanceByContext) {
 
@@ -186,7 +186,7 @@ final class BrotliClusteredMetaBlock {
         Walk distanceWalk = new Walk(built.distances);
         int at = from;
         int previous = previousByteGiven;
-        int beforeThat = theByteBeforeThatGiven;
+        int beforeThat = byteBeforeThatGiven;
 
         for (int which = 0; which < commands.count(); which++) {
             built.commandHistograms[commandWalk.readNextType()]

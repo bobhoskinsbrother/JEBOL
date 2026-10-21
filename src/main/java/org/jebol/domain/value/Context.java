@@ -15,7 +15,7 @@ public final class Context {
     private boolean loopFrameWhichContextQuestionCannotReach;
     private Value ownedByFunction;
     private boolean callEnded;
-    private boolean onlyThroughACallThatIsRunning;
+    private boolean onlyThroughCallThatIsRunning;
     private Context supersededBy;
     private boolean closedToNewNames;
     private Optional<ContextSlot> itsOwnSelf = Optional.empty();
@@ -40,7 +40,7 @@ public final class Context {
 
     public static Context collectWordsFunctionDeclares() {
         Context declared = new Context(null, false);
-        declared.onlyThroughACallThatIsRunning = true;
+        declared.onlyThroughCallThatIsRunning = true;
         return declared;
     }
 
@@ -85,7 +85,7 @@ public final class Context {
         if (supersededBy != null) {
             return findResolvingFrame().callHasEnded();
         }
-        return callEnded || onlyThroughACallThatIsRunning;
+        return callEnded || onlyThroughCallThatIsRunning;
     }
 
     public boolean isUnbound() {
@@ -155,7 +155,7 @@ public final class Context {
     }
 
     public boolean declaresItRelatively(String canonicalName) {
-        return onlyThroughACallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
+        return onlyThroughCallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
     }
 
     public Context contextHolding(String canonicalName) {
@@ -280,7 +280,7 @@ public final class Context {
         return slots().isEmpty();
     }
 
-    public Map<String, Value> listTheFieldsExceptSelf() {
+    public Map<String, Value> listFieldsExceptSelf() {
         Map<String, Value> fields = new LinkedHashMap<>();
         slotsByCanonicalName.forEach((name, slot) -> {
             if (!slot.isHidden()) {
@@ -309,12 +309,12 @@ public final class Context {
     }
 
     public AnyBlockValue wordsExcludingSelf() {
-        return BlockValue.of(listTheFieldsExceptSelf().keySet().stream()
+        return BlockValue.of(listFieldsExceptSelf().keySet().stream()
                 .<Value>map(spelling -> WordValue.of(spelling).bindTo(this)).toList());
     }
 
     public AnyBlockValue valuesExcludingSelf() {
-        return BlockValue.of(List.copyOf(listTheFieldsExceptSelf().values()));
+        return BlockValue.of(List.copyOf(listFieldsExceptSelf().values()));
     }
 
     public List<ContextSlot> slots() {
@@ -325,7 +325,7 @@ public final class Context {
         return slots().stream().map(ContextSlot::canonical).collect(Collectors.toSet());
     }
 
-    public Set<String> listTheNamesItBinds() {
+    public Set<String> listNamesItBinds() {
         Set<String> bound = new HashSet<>(ownFieldNames());
         itsOwnSelf.ifPresent(self -> bound.add(WORD_OBJECT_ANSWERS_TO_FOR_ITSELF));
         return bound;
@@ -335,7 +335,7 @@ public final class Context {
         return new ArrayList<>(slotsByCanonicalName.values());
     }
 
-    public List<Value> listTheBoundWordsAndValues() {
+    public List<Value> listBoundWordsAndValues() {
         return slots().stream()
                 .<Value>mapMulti((slot, accept) -> {
                     accept.accept(WordValue.of(slot.spelling()).bindTo(this));
@@ -358,7 +358,7 @@ public final class Context {
     }
 
     private boolean lacksLentFrame() {
-        return onlyThroughACallThatIsRunning && supersededBy == null;
+        return onlyThroughCallThatIsRunning && supersededBy == null;
     }
 
     private boolean isFunctionInterpreterCanCall(Value held) {

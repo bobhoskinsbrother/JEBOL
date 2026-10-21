@@ -22,7 +22,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        Set<Datatype> range = new HashSet<>(listThePartLimitTypes());
+        Set<Datatype> range = new HashSet<>(listPartLimitTypes());
         range.add(CharacterValue.TYPE);
         return List.of(Parameter.of("series"),
                 Parameter.belongTo("part", "count", Set.copyOf(range)),
@@ -40,7 +40,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             if (arguments.getFirst() instanceof NoneValue nothing) {
                 return nothing;
             }
-            return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
+            return evaluator.askRebolActor(nativeName(), arguments, refinements)
                     .orElseGet(() -> removeFrom(arguments.getFirst(), arguments, refinements));
         };
     }
@@ -48,7 +48,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
     private Value removeFrom(Value subject, List<Value> arguments, Set<String> refinements) {
         Optional<Value> key = refinementArgument("key", 0, arguments, refinements);
         return switch (subject) {
-            case PortValue queue when queue.findTheEventQueue().isPresent() ->
+            case PortValue queue when queue.findEventQueue().isPresent() ->
                     throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                             SetWordValue.of(nativeName()));
             case MapValue map -> {
@@ -61,13 +61,13 @@ public class RemoveAction extends DefaultNative implements ActionValue {
                         refinement -> refinementArgument(refinement, 0, arguments, refinements)
                                 .orElseGet(NoneValue::none));
             }
-            case RebolSeries series -> removeFromTheSeries(series, key,
+            case RebolSeries series -> removeFromSeries(series, key,
                     refinementArgument("part", 0, arguments, refinements));
             case Value anythingElse -> refuseArgument(anythingElse, "series");
         };
     }
 
-    private Value removeFromTheSeries(
+    private Value removeFromSeries(
             RebolSeries series, Optional<Value> key, Optional<Value> part) {
         if (key.isPresent() && series instanceof AnyBlockValue pairs) {
             pairs.removeFirstPairMatching(

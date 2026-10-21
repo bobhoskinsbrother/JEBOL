@@ -56,36 +56,36 @@ final class HuffmanCodeBuilder {
     }
 
     private void heapSort(int[] values, int from, int length) {
-        int beforeTheFirst = from - 1;
+        int beforeFirst = from - 1;
         for (int subtree = length / 2; subtree >= 1; subtree--) {
-            heapify(values, beforeTheFirst, length, subtree);
+            heapify(values, beforeFirst, length, subtree);
         }
         int remaining = length;
         while (remaining >= 2) {
-            int last = values[beforeTheFirst + remaining];
-            values[beforeTheFirst + remaining] = values[beforeTheFirst + 1];
-            values[beforeTheFirst + 1] = last;
+            int last = values[beforeFirst + remaining];
+            values[beforeFirst + remaining] = values[beforeFirst + 1];
+            values[beforeFirst + 1] = last;
             remaining--;
-            heapify(values, beforeTheFirst, remaining, 1);
+            heapify(values, beforeFirst, remaining, 1);
         }
     }
 
-    private void heapify(int[] values, int beforeTheFirst, int length, int subtree) {
-        int value = values[beforeTheFirst + subtree];
+    private void heapify(int[] values, int beforeFirst, int length, int subtree) {
+        int value = values[beforeFirst + subtree];
         int parent = subtree;
         int child = parent * 2;
         while (child <= length) {
-            if (child < length && values[beforeTheFirst + child + 1] > values[beforeTheFirst + child]) {
+            if (child < length && values[beforeFirst + child + 1] > values[beforeFirst + child]) {
                 child++;
             }
-            if (value >= values[beforeTheFirst + child]) {
+            if (value >= values[beforeFirst + child]) {
                 break;
             }
-            values[beforeTheFirst + parent] = values[beforeTheFirst + child];
+            values[beforeFirst + parent] = values[beforeFirst + child];
             parent = child;
             child = parent * 2;
         }
-        values[beforeTheFirst + parent] = value;
+        values[beforeFirst + parent] = value;
     }
 
     private void buildTree(int[] nodes, int symbolCount) {

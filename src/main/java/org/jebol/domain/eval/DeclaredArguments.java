@@ -15,7 +15,7 @@ final class DeclaredArguments {
     private final Map<Optional<String>, List<Parameter>> byRefinement = new HashMap<>();
 
     DeclaredArguments(AnyBlockValue spec) {
-        for (Parameter declared : FunctionSpec.readTheParametersIn(spec)) {
+        for (Parameter declared : FunctionSpec.readParametersIn(spec)) {
             if (declared.consumesArgument()) {
                 byRefinement.computeIfAbsent(declared.owningRefinement(), none -> new ArrayList<>())
                         .add(declared);

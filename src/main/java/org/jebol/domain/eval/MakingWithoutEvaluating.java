@@ -72,7 +72,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
 
     @Override
     public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
-        return Binder.bindTheFunctionsBody(spec, body, Context.root());
+        return Binder.bindFunctionsBody(spec, body, Context.root());
     }
 
     @Override
@@ -99,7 +99,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Optional<List<Value>> readTheValuesFrom(String source) {
+    public Optional<List<Value>> readValuesFrom(String source) {
         return Transcoder.transcode(source).values().map(AnyBlockValue::remaining);
     }
 

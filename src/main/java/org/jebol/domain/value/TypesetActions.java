@@ -27,7 +27,7 @@ public final class TypesetActions {
                 each -> how.holdsWhen(members.holds(each), theirs.holds(each))));
     }
 
-    public static Set<Datatype> listTheDatatypesNamedIn(AnyBlockValue spec) {
+    public static Set<Datatype> listDatatypesNamedIn(AnyBlockValue spec) {
         Set<Datatype> found = new LinkedHashSet<>();
         for (Value item : spec.remaining()) {
             if (!addTypesNamedBy(item, found)) {
@@ -50,9 +50,9 @@ public final class TypesetActions {
             return false;
         }
         String spelling = word.spelling();
-        Optional<Datatype> one = Catalogue.DATATYPES.findTheDatatypeNamed(spelling);
+        Optional<Datatype> one = Catalogue.DATATYPES.findDatatypeNamed(spelling);
         one.ifPresent(found::add);
-        Optional<TypesetValue> family = Catalogue.DATATYPES.findTheTypesetNamed(spelling);
+        Optional<TypesetValue> family = Catalogue.DATATYPES.findTypesetNamed(spelling);
         family.ifPresent(whole -> found.addAll(whole.members()));
         return one.isPresent() || family.isPresent();
     }

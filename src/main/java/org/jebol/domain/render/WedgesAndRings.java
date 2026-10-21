@@ -18,7 +18,7 @@ final class WedgesAndRings {
     static List<Piece> of(Gradient gradient, ClipRectangle covering) {
         double reach = measureHowFarItHasToReach(gradient, covering);
         return gradient.shape() == GradientShape.CONIC
-                ? makeAFanOfWedges(gradient, reach)
+                ? makeFanOfWedges(gradient, reach)
                 : makeRingsOfDiamonds(gradient, reach);
     }
 
@@ -34,19 +34,19 @@ final class WedgesAndRings {
         return Math.max(corner, gradient.measureRadius());
     }
 
-    private static List<Piece> makeAFanOfWedges(Gradient gradient, double reach) {
+    private static List<Piece> makeFanOfWedges(Gradient gradient, double reach) {
         List<Piece> pieces = new ArrayList<>();
         for (int wedge = 0; wedge < WEDGES_ROUND; wedge++) {
             double from = wedge * 360.0 / WEDGES_ROUND + gradient.angle();
             double to = (wedge + 1) * 360.0 / WEDGES_ROUND + gradient.angle();
             pieces.add(new Piece(
-                    makeAWedge(gradient, from, to, reach),
+                    makeWedge(gradient, from, to, reach),
                     findColourAlong(gradient, wedge / (double) (WEDGES_ROUND - 1))));
         }
         return List.copyOf(pieces);
     }
 
-    private static List<PathStep> makeAWedge(
+    private static List<PathStep> makeWedge(
             Gradient gradient, double from, double to, double reach) {
 
         double overlap = (to - from) * 0.5;
@@ -70,13 +70,13 @@ final class WedgesAndRings {
         for (int ring = RINGS_OUT; ring >= 1; ring--) {
             double howFar = reach * ring / RINGS_OUT;
             pieces.add(new Piece(
-                    makeADiamond(gradient, howFar),
+                    makeDiamond(gradient, howFar),
                     findColourAlong(gradient, (ring - 1) / (double) (RINGS_OUT - 1))));
         }
         return List.copyOf(pieces);
     }
 
-    private static List<PathStep> makeADiamond(Gradient gradient, double howFar) {
+    private static List<PathStep> makeDiamond(Gradient gradient, double howFar) {
         double across = gradient.acrossOffset();
         double down = gradient.downOffset();
         return List.of(

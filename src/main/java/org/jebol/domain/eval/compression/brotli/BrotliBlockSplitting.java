@@ -128,7 +128,7 @@ final class BrotliBlockSplitting {
             howManyLeft = renumber(whichHistogram, howMany, howManyLeft);
             rebuild(symbols, howMany, whichHistogram, howManyLeft, histograms);
         }
-        clusterTheBlocks(symbols, howMany, howManyBlocks, whichHistogram, split,
+        clusterBlocks(symbols, howMany, howManyBlocks, whichHistogram, split,
                 alphabetSize);
     }
 
@@ -189,16 +189,16 @@ final class BrotliBlockSplitting {
             return 1;
         }
         int bitmapWidth = (howManyHistograms + 7) >> 3;
-        double[] costOfASymbol = new double[alphabetSize * howManyHistograms];
+        double[] costOfSymbol = new double[alphabetSize * howManyHistograms];
         for (int which = 0; which < howManyHistograms; which++) {
-            costOfASymbol[which] =
+            costOfSymbol[which] =
                     BrotliCodes.computeLog2Quickly(histograms[which].total());
         }
         for (int symbol = alphabetSize; symbol != 0; ) {
             symbol--;
             for (int which = 0; which < howManyHistograms; which++) {
-                costOfASymbol[symbol * howManyHistograms + which] =
-                        costOfASymbol[which]
+                costOfSymbol[symbol * howManyHistograms + which] =
+                        costOfSymbol[which]
                                 - priceBits(
                                         histograms[which].counts()[symbol]);
             }
@@ -213,7 +213,7 @@ final class BrotliBlockSplitting {
             double cheapest = 1e99;
             double switchCostHere = switchCost;
             for (int which = 0; which < howManyHistograms; which++) {
-                extraCost[which] += costOfASymbol[costAt + which];
+                extraCost[which] += costOfSymbol[costAt + which];
                 if (extraCost[which] < cheapest) {
                     cheapest = extraCost[which];
                     whichHistogram[at] = which;
@@ -278,9 +278,9 @@ final class BrotliBlockSplitting {
         }
     }
 
-    private static void clusterTheBlocks(int[] symbols, int howMany,
-            int howManyBlocks, int[] whichHistogram, BrotliBlockSplit split,
-            int alphabetSize) {
+    private static void clusterBlocks(int[] symbols, int howMany,
+                                      int howManyBlocks, int[] whichHistogram, BrotliBlockSplit split,
+                                      int alphabetSize) {
 
         int[] blockLengths = new int[howManyBlocks];
         int block = 0;
@@ -301,8 +301,8 @@ final class BrotliBlockSplitting {
                 BrotliHistogram.makeFreshRow(Math.min(howManyBlocks,
                         HISTOGRAMS_PER_BATCH), alphabetSize);
         int[] sizes = new int[HISTOGRAMS_PER_BATCH];
-        int[] survivorsOfTheBatch = new int[HISTOGRAMS_PER_BATCH];
-        int[] namesInTheBatch = new int[HISTOGRAMS_PER_BATCH];
+        int[] survivorsOfBatch = new int[HISTOGRAMS_PER_BATCH];
+        int[] namesInBatch = new int[HISTOGRAMS_PER_BATCH];
         int[] renamed = new int[HISTOGRAMS_PER_BATCH];
 
         BrotliHistogram[] survivors =
@@ -319,24 +319,24 @@ final class BrotliBlockSplitting {
                     batch[each].add(symbols[at++]);
                 }
                 batch[each].costIs(BrotliHistogramCost.of(batch[each], alphabetSize));
-                survivorsOfTheBatch[each] = each;
-                namesInTheBatch[each] = each;
+                survivorsOfBatch[each] = each;
+                namesInBatch[each] = each;
                 sizes[each] = 1;
             }
             int left = BrotliClustering.combine(batch, batchScratch, sizes,
-                    namesInTheBatch, 0, survivorsOfTheBatch, 0, queue,
+                    namesInBatch, 0, survivorsOfBatch, 0, queue,
                     howManyHere, howManyHere, HISTOGRAMS_PER_BATCH,
                     roomForPairs, alphabetSize);
             for (int each = 0; each < left; each++) {
                 survivors[howManySurvivors + each]
-                        .copyFrom(batch[survivorsOfTheBatch[each]]);
+                        .copyFrom(batch[survivorsOfBatch[each]]);
                 survivorSizes[howManySurvivors + each] =
-                        sizes[survivorsOfTheBatch[each]];
-                renamed[survivorsOfTheBatch[each]] = each;
+                        sizes[survivorsOfBatch[each]];
+                renamed[survivorsOfBatch[each]] = each;
             }
             for (int each = 0; each < howManyHere; each++) {
                 usedBy[first + each] =
-                        howManySurvivors + renamed[namesInTheBatch[each]];
+                        howManySurvivors + renamed[namesInBatch[each]];
             }
             howManySurvivors += left;
         }

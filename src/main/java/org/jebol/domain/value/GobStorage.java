@@ -181,7 +181,7 @@ public final class GobStorage {
     }
 
     /** The flags that are set, in the order {@code Flags_To_Block} lists them. */
-    public List<Flag> listTheRaisedFlags() {
+    public List<Flag> listRaisedFlags() {
         List<Flag> raised = new ArrayList<>();
         for (Flag flag : Flag.values()) {
             if (flags.contains(flag)) {
@@ -270,7 +270,7 @@ public final class GobStorage {
      * read back as the gob it molded. That is {@code SET_INTEGER(val, 255 -
      * GOB_ALPHA(gob))} in the C rather than a slip here.
      */
-    public List<Value> moldTheSpec() {
+    public List<Value> moldSpec() {
         List<Value> spec = new ArrayList<>();
         spec.add(SetWordValue.of("offset"));
         spec.add(offset);

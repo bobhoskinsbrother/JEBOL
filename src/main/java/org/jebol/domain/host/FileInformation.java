@@ -53,14 +53,14 @@ public record FileInformation(
      * <p>A directory has no byte count a script can use, and the C reports
      * none for it rather than the size of the entry on disk.
      */
-    public static FileInformation describeADirectory(
+    public static FileInformation describeDirectory(
             String name, Optional<Instant> modified,
             Optional<Instant> accessed, Optional<Instant> created) {
 
         return new FileInformation(name, true, Optional.empty(), modified, accessed, created);
     }
 
-    public static FileInformation describeAFile(
+    public static FileInformation describeFile(
             String name, long size, Optional<Instant> modified,
             Optional<Instant> accessed, Optional<Instant> created) {
 

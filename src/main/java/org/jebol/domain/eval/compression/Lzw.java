@@ -114,7 +114,7 @@ public final class Lzw {
             }
 
             if (dictionaryFull) {
-                nextString = findTheNextUnreferencedFrom(dictionary, nextString, highestCode);
+                nextString = findNextUnreferencedFrom(dictionary, nextString, highestCode);
                 int holder = dictionary[nextString].backReference;
                 if (dictionary[holder].firstReference == nextString) {
                     dictionary[holder].firstReference = dictionary[nextString].nextReference;
@@ -178,7 +178,7 @@ public final class Lzw {
         }
     }
 
-    private int findTheNextUnreferencedFrom(
+    private int findNextUnreferencedFrom(
             Encoding[] dictionary, int from, int highestCode) {
 
         int at = from + 1;
@@ -327,7 +327,7 @@ public final class Lzw {
                     }
                 }
                 if (dictionaryFull) {
-                    nextString = findTheNextUnreferencedAfter(referenced, nextString, highestCode);
+                    nextString = findNextUnreferencedAfter(referenced, nextString, highestCode);
                     int holder = dictionary[nextString].prefix;
                     if (dictionary[holder].extraReferences != 0) {
                         dictionary[holder].extraReferences--;
@@ -347,7 +347,7 @@ public final class Lzw {
                 : whole;
     }
 
-    private int findTheNextUnreferencedAfter(
+    private int findNextUnreferencedAfter(
             boolean[] referenced, int from, int highestCode) {
 
         int at = from + 1;

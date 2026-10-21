@@ -197,16 +197,16 @@ final class RebolLibraryLoader {
         HERE_OR_IN_WHATEVER_IS_ABOVE
     }
 
-    private void declareSetWordsOf(AnyBlockValue body, Context into, AssignmentMayLand mayLand) {
+    private void declareSetWordsOf(AnyBlockValue body, Context into, AssignmentMayLand canLand) {
         for (AnyWordValue word : body.setWordsFromHere()) {
-            if (!isAlreadyAnswered(into, word.canonical(), mayLand)) {
+            if (!isAlreadyAnswered(into, word.canonical(), canLand)) {
                 into.register(word.spelling());
             }
         }
     }
 
-    private boolean isAlreadyAnswered(Context into, String canonical, AssignmentMayLand mayLand) {
-        return mayLand == AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE
+    private boolean isAlreadyAnswered(Context into, String canonical, AssignmentMayLand canLand) {
+        return canLand == AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE
                 ? into.holds(canonical)
                 : into.contains(canonical);
     }

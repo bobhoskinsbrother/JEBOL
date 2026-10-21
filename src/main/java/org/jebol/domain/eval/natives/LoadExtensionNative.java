@@ -60,7 +60,7 @@ public class LoadExtensionNative extends DefaultNative {
     }
 
     private HandleValue makeFreshExtensionHandleFor(HandleValue given, Evaluator evaluator) {
-        Value carried = new DispatcherHandle(given).findTheDispatcher()
+        Value carried = new DispatcherHandle(given).findDispatcher()
                 .<Value>map(JavaObjectValue::of)
                 .orElseGet(NoneValue::none);
         return HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,

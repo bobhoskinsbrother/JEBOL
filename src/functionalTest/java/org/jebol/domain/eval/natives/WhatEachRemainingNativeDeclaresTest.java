@@ -44,7 +44,7 @@ class WhatEachRemainingNativeDeclaresTest {
         }
 
         @Override
-        public OptionalLong identify(WhoTheProcessRunsAs asked) {
+        public OptionalLong identify(WhoProcessRunsAs asked) {
             return OptionalLong.of(switch (asked) {
                 case REAL_USER -> REAL_USER;
                 case EFFECTIVE_USER -> EFFECTIVE_USER;

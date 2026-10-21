@@ -231,7 +231,7 @@ public final class DesktopScreen extends GobScreen {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
-                Java2DSurface.paintTheContentsOfLeavingItsTitleToTheTitleBar(
+                Java2DSurface.paintContentsLeavingItsTitleToTitleBar(
                         (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasurement(),
                         onThisScreen.face);
             }
@@ -323,9 +323,9 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseWheelMoved(MouseWheelEvent turnedBy) {
-                boolean aWholePage = turnedBy.isControlDown()
+                boolean wholePage = turnedBy.isControlDown()
                         || turnedBy.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL;
-                wheel.take(turnedBy.getPreciseWheelRotation(), aWholePage)
+                wheel.take(turnedBy.getPreciseWheelRotation(), wholePage)
                         .ifPresent(turning -> post(turning.kind(), gob,
                                 new ScreenEventDetail.Scrolled(
                                         turnedBy.getX(), turnedBy.getY(), turning.amount())));

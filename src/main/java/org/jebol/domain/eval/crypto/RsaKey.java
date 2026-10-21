@@ -33,7 +33,7 @@ public final class RsaKey {
         return new BigInteger(1, octets);
     }
 
-    public static Optional<RsaKey> makeAPublicKeyFrom(byte[] modulus, byte[] publicExponent) {
+    public static Optional<RsaKey> makePublicKeyFrom(byte[] modulus, byte[] publicExponent) {
         try {
             BigInteger n = readUnsignedMostSignificantByteFirst(modulus);
             BigInteger e = readUnsignedMostSignificantByteFirst(publicExponent);
@@ -42,13 +42,13 @@ public final class RsaKey {
             }
             return Optional.of(new RsaKey(KeyFactory.getInstance("RSA")
                     .generatePublic(new RSAPublicKeySpec(n, e)), null));
-        } catch (java.security.GeneralSecurityException | RuntimeException notAKey) {
+        } catch (java.security.GeneralSecurityException | RuntimeException notKey) {
             return Optional.empty();
         }
     }
 
-    public static Optional<RsaKey> makeAPrivateKeyFrom(byte[] modulus, byte[] publicExponent,
-                                                       byte[] privateExponent, byte[] firstPrime, byte[] secondPrime) {
+    public static Optional<RsaKey> makePrivateKeyFrom(byte[] modulus, byte[] publicExponent,
+                                                      byte[] privateExponent, byte[] firstPrime, byte[] secondPrime) {
         try {
             BigInteger n = readUnsignedMostSignificantByteFirst(modulus);
             BigInteger e = readUnsignedMostSignificantByteFirst(publicExponent);
@@ -59,7 +59,7 @@ public final class RsaKey {
                 return Optional.empty();
             }
             BigInteger one = BigInteger.ONE;
-            if (!doTheExponentsAgree(e, d, p, q)) {
+            if (!doExponentsAgree(e, d, p, q)) {
                 return Optional.empty();
             }
             KeyFactory factory = KeyFactory.getInstance("RSA");
@@ -71,12 +71,12 @@ public final class RsaKey {
                     q.modInverse(p)));
             return Optional.of(new RsaKey(
                     factory.generatePublic(new RSAPublicKeySpec(n, e)), privateHalf));
-        } catch (java.security.GeneralSecurityException | RuntimeException notAKey) {
+        } catch (java.security.GeneralSecurityException | RuntimeException notKey) {
             return Optional.empty();
         }
     }
 
-    private static boolean doTheExponentsAgree(
+    private static boolean doExponentsAgree(
             BigInteger e, BigInteger d, BigInteger p, BigInteger q) {
 
         BigInteger one = BigInteger.ONE;
@@ -118,7 +118,7 @@ public final class RsaKey {
         };
     }
 
-    private static Signature makeASignatureFor(String digest, boolean probabilistic)
+    private static Signature makeSignatureFor(String digest, boolean probabilistic)
             throws java.security.GeneralSecurityException {
         String algorithm = pickDigestOrSha256(digest);
         if (!probabilistic) {
@@ -128,18 +128,18 @@ public final class RsaKey {
         scheme.setParameter(new java.security.spec.PSSParameterSpec(
                 algorithm, "MGF1",
                 new java.security.spec.MGF1ParameterSpec(algorithm),
-                measureTheSaltAsLongAsTheDigest(algorithm),
+                measureSaltAsLongAsDigest(algorithm),
                 java.security.spec.PSSParameterSpec.TRAILER_FIELD_BC));
         return scheme;
     }
 
-    private static int measureTheSaltAsLongAsTheDigest(String algorithm)
+    private static int measureSaltAsLongAsDigest(String algorithm)
             throws java.security.NoSuchAlgorithmException {
         return java.security.MessageDigest.getInstance(algorithm).getDigestLength();
     }
 
     public byte[] sign(byte[] data, String digest, boolean probabilistic) throws Exception {
-        Signature signing = makeASignatureFor(digest, probabilistic);
+        Signature signing = makeSignatureFor(digest, probabilistic);
         signing.initSign(privateHalf);
         signing.update(data);
         return signing.sign();
@@ -147,7 +147,7 @@ public final class RsaKey {
 
     public boolean verifies(byte[] data, byte[] signature, String digest, boolean probabilistic) {
         try {
-            Signature checking = makeASignatureFor(digest, probabilistic);
+            Signature checking = makeSignatureFor(digest, probabilistic);
             checking.initVerify(publicHalf);
             checking.update(data);
             return checking.verify(signature);

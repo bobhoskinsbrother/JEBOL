@@ -28,14 +28,14 @@ public final class VectorMath {
             return combineElementByElement(first, second, operation);
         }
         if (left instanceof VectorValue only) {
-            return combineEveryElementWithTheNumber(
+            return combineEveryElementWithNumber(
                     only, right, operation);
         }
-        return combineEveryElementWithTheNumber(
+        return combineEveryElementWithNumber(
                 (VectorValue) right, left, operation);
     }
 
-    private static Value combineEveryElementWithTheNumber(
+    private static Value combineEveryElementWithNumber(
             VectorValue vector, Value number, ValueOperation operation) {
 
         VectorKind kind = vector.kind();

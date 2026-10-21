@@ -13,7 +13,7 @@ final class Dashes {
     private record Point(double across, double down) {
     }
 
-    static List<PathStep> findTheGapsIn(List<PathStep> path, List<Double> pattern) {
+    static List<PathStep> findGapsIn(List<PathStep> path, List<Double> pattern) {
         List<Point> walked = walkOut(path);
         if (walked.size() < 2 || pattern.isEmpty()) {
             return List.of();
@@ -21,7 +21,7 @@ final class Dashes {
         return cutIntoPieces(walked, pattern, false);
     }
 
-    static List<PathStep> findTheDashesIn(List<PathStep> path, List<Double> pattern) {
+    static List<PathStep> findDashesIn(List<PathStep> path, List<Double> pattern) {
         List<Point> walked = walkOut(path);
         if (walked.size() < 2 || pattern.isEmpty()) {
             return List.of();
@@ -30,12 +30,12 @@ final class Dashes {
     }
 
     private static List<PathStep> cutIntoPieces(
-            List<Point> walked, List<Double> pattern, boolean wantTheDashes) {
+            List<Point> walked, List<Double> pattern, boolean wantDashes) {
 
         List<PathStep> pieces = new ArrayList<>();
-        int inThePattern = 0;
+        int inPattern = 0;
         double leftInThisPiece = readLengthAt(pattern, 0);
-        boolean drawingADash = true;
+        boolean drawingDash = true;
         boolean penIsDown = false;
 
         for (int at = 1; at < walked.size(); at++) {
@@ -46,7 +46,7 @@ final class Dashes {
             double doneSoFar = 0;
             while (doneSoFar < wholeSegment) {
                 double step = Math.min(leftInThisPiece, wholeSegment - doneSoFar);
-                if (drawingADash == wantTheDashes) {
+                if (drawingDash == wantDashes) {
                     Point one = partWayAlong(from, to, doneSoFar, wholeSegment);
                     Point other = partWayAlong(from, to, doneSoFar + step, wholeSegment);
                     if (!penIsDown) {
@@ -58,9 +58,9 @@ final class Dashes {
                 doneSoFar += step;
                 leftInThisPiece -= step;
                 if (leftInThisPiece <= LENGTH_TOO_SHORT_TO_MATTER) {
-                    inThePattern = (inThePattern + 1) % pattern.size();
-                    leftInThisPiece = readLengthAt(pattern, inThePattern);
-                    drawingADash = !drawingADash;
+                    inPattern = (inPattern + 1) % pattern.size();
+                    leftInThisPiece = readLengthAt(pattern, inPattern);
+                    drawingDash = !drawingDash;
                     penIsDown = false;
                 }
             }
@@ -100,10 +100,10 @@ final class Dashes {
                     walked.add(standing);
                 }
                 case PathStep.QuadraticTo to -> {
-                    standing = walkAlongAQuadratic(walked, standing, to);
+                    standing = walkAlongQuadratic(walked, standing, to);
                 }
                 case PathStep.CubicTo to -> {
-                    standing = walkAlongACubic(walked, standing, to);
+                    standing = walkAlongCubic(walked, standing, to);
                 }
                 case PathStep.Close ignored -> walked.add(startedAt);
                 default -> {
@@ -113,7 +113,7 @@ final class Dashes {
         return walked;
     }
 
-    private static Point walkAlongAQuadratic(
+    private static Point walkAlongQuadratic(
             List<Point> walked, Point from, PathStep.QuadraticTo to) {
 
         for (int step = 1; step <= STEPS_ALONG_CURVE; step++) {
@@ -130,7 +130,7 @@ final class Dashes {
         return new Point(to.across(), to.down());
     }
 
-    private static Point walkAlongACubic(
+    private static Point walkAlongCubic(
             List<Point> walked, Point from, PathStep.CubicTo to) {
 
         for (int step = 1; step <= STEPS_ALONG_CURVE; step++) {

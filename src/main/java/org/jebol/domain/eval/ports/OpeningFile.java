@@ -8,7 +8,7 @@ import org.jebol.domain.value.FileValue;
 import java.util.EnumSet;
 import java.util.Set;
 
-record OpeningAFile(Set<String> refinements) {
+record OpeningFile(Set<String> refinements) {
 
     void refuseNewFileNobodyMayWriteTo(String path) {
         if (refinements.contains("new") && !canWrite()) {
@@ -28,7 +28,7 @@ record OpeningAFile(Set<String> refinements) {
         return !refinements.contains("read") && !refinements.contains("write");
     }
 
-    Set<PolicyAccess> listTheAccessesItAsksFor() {
+    Set<PolicyAccess> listAccessesItAsksFor() {
         Set<PolicyAccess> asked = EnumSet.noneOf(PolicyAccess.class);
         if (canRead()) {
             asked.add(PolicyAccess.READ);

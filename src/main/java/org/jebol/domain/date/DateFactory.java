@@ -29,28 +29,28 @@ public final class DateFactory {
     private static final int FURTHEST_ZONE_MINUTES = 15 * 60;
 
     public static Value fromTimestamp(long microseconds) {
-        return onTheDayOfTheEpoch(
+        return onEpochDay(
                 Math.floorDiv(microseconds, MICROSECONDS_IN_DAY),
                 Math.floorMod(microseconds, MICROSECONDS_IN_DAY) * 1_000L,
                 microseconds);
     }
 
     public static Value fromWholeSeconds(long seconds) {
-        return onTheDayOfTheEpoch(
+        return onEpochDay(
                 Math.floorDiv(seconds, SECONDS_IN_DAY),
                 Math.floorMod(seconds, SECONDS_IN_DAY)
                         * TimeValue.NANOSECONDS_PER_SECOND,
                 seconds);
     }
 
-    private static Value onTheDayOfTheEpoch(
-            long dayNumber, long nanosecondsIntoTheDay, long about) {
+    private static Value onEpochDay(
+            long dayNumber, long nanosecondsIntoDay, long about) {
         try {
             LocalDate day = LocalDate.ofEpochDay(dayNumber);
             requireSupportedYear(day.getYear(), about);
             return DateValue.of(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
-                    TimeValue.ofNanoseconds(nanosecondsIntoTheDay));
-        } catch (DateTimeException outsideTheSupportedYears) {
+                    TimeValue.ofNanoseconds(nanosecondsIntoDay));
+        } catch (DateTimeException outsideSupportedYears) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(about));
         }
     }
@@ -102,15 +102,15 @@ public final class DateFactory {
     private static DateValue withClockNormalised(
             DateValue calendar, TimeValue clock, Optional<Integer> zone, List<Value> parts) {
         long wholeDays = Math.floorDiv(clock.nanoseconds(), TimeValue.NANOSECONDS_PER_DAY);
-        long withinTheDay = Math.floorMod(clock.nanoseconds(), TimeValue.NANOSECONDS_PER_DAY);
+        long withinDay = Math.floorMod(clock.nanoseconds(), TimeValue.NANOSECONDS_PER_DAY);
         try {
             LocalDate day = calendar.asLocalDate().plusDays(wholeDays);
             if (day.getYear() < DateValue.EARLIEST_YEAR || day.getYear() > DateValue.LATEST_YEAR) {
                 throw refuse(parts);
             }
             return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
-                    Optional.of(TimeValue.ofNanoseconds(withinTheDay)), zone);
-        } catch (DateTimeException outsideTheSupportedYears) {
+                    Optional.of(TimeValue.ofNanoseconds(withinDay)), zone);
+        } catch (DateTimeException outsideSupportedYears) {
             throw refuse(parts);
         }
     }

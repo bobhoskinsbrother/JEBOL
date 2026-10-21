@@ -11,7 +11,7 @@ import org.jebol.domain.value.PairValue;
  *
  * <p>Specified in {@code spec/draw.allium}.
  */
-public record ArrowEnds(boolean atTheStart, boolean atTheEnd) {
+public record ArrowEnds(boolean atStart, boolean atEnd) {
 
     public static final ArrowEnds NEITHER = new ArrowEnds(false, false);
 
@@ -20,6 +20,6 @@ public record ArrowEnds(boolean atTheStart, boolean atTheEnd) {
     }
 
     public boolean hasAnyAtAll() {
-        return atTheStart || atTheEnd;
+        return atStart || atEnd;
     }
 }

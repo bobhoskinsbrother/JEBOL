@@ -23,10 +23,10 @@ import java.util.Set;
 final class ProgramCalling {
 
     private final List<String> command;
-    private final boolean readByTheShell;
-    private final boolean attachedToTheHostsConsole;
+    private final boolean readByShell;
+    private final boolean attachedToHostsConsole;
     private final boolean waits;
-    private final boolean answersAnObject;
+    private final boolean answersObject;
     private final Optional<Value> input;
     private final Optional<Value> output;
     private final Optional<Value> errors;
@@ -34,9 +34,9 @@ final class ProgramCalling {
     ProgramCalling(List<String> command, Set<String> refinements,
             Optional<Value> input, Optional<Value> output, Optional<Value> errors) {
         this.command = command;
-        this.readByTheShell = refinements.contains("shell");
-        this.attachedToTheHostsConsole = refinements.contains("console");
-        this.answersAnObject = refinements.contains("info");
+        this.readByShell = refinements.contains("shell");
+        this.attachedToHostsConsole = refinements.contains("console");
+        this.answersObject = refinements.contains("info");
         this.input = input;
         this.output = output;
         this.errors = errors;
@@ -54,7 +54,7 @@ final class ProgramCalling {
         ProcessPort.ProgramResult result = port.run(toStart(evaluator));
         output.ifPresent(buffer -> result.capturedOutput().ifPresent(bytes -> appendInto(buffer, bytes)));
         errors.ifPresent(buffer -> result.capturedError().ifPresent(bytes -> appendInto(buffer, bytes)));
-        if (answersAnObject) {
+        if (answersObject) {
             return makeInformationObject(result, evaluator);
         }
         if (result.refusalMessage().isPresent()) {
@@ -69,11 +69,11 @@ final class ProgramCalling {
 
     private ProcessPort.Program toStart(Evaluator evaluator) {
         return new ProcessPort.Program(
-                command, readByTheShell, attachedToTheHostsConsole, waits,
-                chooseTheInputKind(input), readThePipedBytes(input), readTheFile(input, evaluator),
-                chooseTheOutputKind(output), readTheFile(output, evaluator),
-                chooseTheOutputKind(errors), readTheFile(errors, evaluator),
-                listWhatTheChildInherits(evaluator),
+                command, readByShell, attachedToHostsConsole, waits,
+                chooseInputKind(input), readPipedBytes(input), readFile(input, evaluator),
+                chooseOutputKind(output), readFile(output, evaluator),
+                chooseOutputKind(errors), readFile(errors, evaluator),
+                listWhatChildInherits(evaluator),
                 childWorkingDirectory(evaluator));
     }
 
@@ -85,7 +85,7 @@ final class ProgramCalling {
         }
     }
 
-    private Map<String, String> listWhatTheChildInherits(Evaluator evaluator) {
+    private Map<String, String> listWhatChildInherits(Evaluator evaluator) {
         try {
             return evaluator.ports().environment().readAll();
         } catch (FilePort.Denied noEnvironment) {
@@ -93,7 +93,7 @@ final class ProgramCalling {
         }
     }
 
-    private ProcessPort.ProgramInput chooseTheInputKind(Optional<Value> redirection) {
+    private ProcessPort.ProgramInput chooseInputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
             return ProcessPort.ProgramInput.HOSTS_OWN;
         }
@@ -105,7 +105,7 @@ final class ProgramCalling {
         };
     }
 
-    private ProcessPort.ProgramOutput chooseTheOutputKind(Optional<Value> redirection) {
+    private ProcessPort.ProgramOutput chooseOutputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
             return ProcessPort.ProgramOutput.HOSTS_OWN;
         }
@@ -117,7 +117,7 @@ final class ProgramCalling {
         };
     }
 
-    private Optional<byte[]> readThePipedBytes(Optional<Value> redirection) {
+    private Optional<byte[]> readPipedBytes(Optional<Value> redirection) {
         return redirection.flatMap(value -> switch (value) {
             case BinaryValue binary -> Optional.of(binary.octetsFromHere());
             case StringValue text ->
@@ -126,7 +126,7 @@ final class ProgramCalling {
         });
     }
 
-    private Optional<String> readTheFile(Optional<Value> redirection, Evaluator evaluator) {
+    private Optional<String> readFile(Optional<Value> redirection, Evaluator evaluator) {
         return redirection
                 .filter(FileValue.class::isInstance)
                 .map(value -> resolveAsReadWould(((FileValue) value).text(), evaluator));

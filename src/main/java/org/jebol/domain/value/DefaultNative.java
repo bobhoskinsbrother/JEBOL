@@ -43,14 +43,14 @@ public abstract non-sealed class DefaultNative implements NativeValue {
         return declareEach(names, TypesetValue.ANY_TYPE.members());
     }
 
-    protected Set<Datatype> listThePartLimitTypes() {
+    protected Set<Datatype> listPartLimitTypes() {
         return Stream.concat(
                         TypesetValue.NUMBER.membersAnd(PairValue.TYPE).stream(),
                         TypesetValue.SERIES.members().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    protected Set<Datatype> listTheDuplicateCountTypes() {
+    protected Set<Datatype> listDuplicateCountTypes() {
         return TypesetValue.NUMBER.membersAnd(PairValue.TYPE);
     }
 

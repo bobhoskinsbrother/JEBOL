@@ -1339,7 +1339,7 @@ final class SourceScanner {
         }
     }
 
-    private enum AfterAToken { CARRY_ON, END_BLOCK }
+    private enum AfterToken { CARRY_ON, END_BLOCK }
 
     private int segmentEnd;
 
@@ -1363,7 +1363,7 @@ final class SourceScanner {
         while ((token = scanToken()) != TOKEN_EOF) {
             int startedAt = begin;
             try {
-                if (takeToken(token, block) == AfterAToken.END_BLOCK) {
+                if (takeToken(token, block) == AfterToken.END_BLOCK) {
                     return block.scanned();
                 }
             } catch (ScanFailure failure) {
@@ -1382,10 +1382,10 @@ final class SourceScanner {
             throw failure;
         }
         errors++;
-        return failure.asAFailure().error().orElseThrow();
+        return failure.asFailure().error().orElseThrow();
     }
 
-    private AfterAToken takeToken(int scannedToken, BlockInProgress block) {
+    private AfterToken takeToken(int scannedToken, BlockInProgress block) {
         int token = scannedToken;
         int modeChar = block.modeChar;
         int bp = begin;
@@ -1397,11 +1397,11 @@ final class SourceScanner {
         if (modeChar == '/' && at(bp) == '/') {
             block.emitted.add(NoneValue.none());
             begin = bp + 1;
-            return AfterAToken.CARRY_ON;
+            return AfterToken.CARRY_ON;
         }
         Value value;
-        boolean startsAPath = (token == TOKEN_WORD || token == TOKEN_LIT || token == TOKEN_GET) && at(ep) == '/';
-        if ((token == TOKEN_PATH || startsAPath) && modeChar != '/') {
+        boolean startsPath = (token == TOKEN_WORD || token == TOKEN_LIT || token == TOKEN_GET) && at(ep) == '/';
+        if ((token == TOKEN_PATH || startsPath) && modeChar != '/') {
             value = buildPath(token, scanBlock('/').values(), bp);
         } else {
             begin = end;
@@ -1409,7 +1409,7 @@ final class SourceScanner {
                 case TOKEN_LINE -> {
                     block.lineWaiting = true;
                     headLine = ep;
-                    return AfterAToken.CARRY_ON;
+                    return AfterToken.CARRY_ON;
                 }
                 case TOKEN_BLOCK_END, TOKEN_PAREN_END -> {
                     int opened = token == TOKEN_BLOCK_END ? '[' : '(';
@@ -1420,7 +1420,7 @@ final class SourceScanner {
                     if (modeChar != closing) {
                         throw reportMissing(token, modeChar, block.startLine, block.startHead);
                     }
-                    return AfterAToken.END_BLOCK;
+                    return AfterToken.END_BLOCK;
                 }
                 default -> value = valueForToken(token, bp, ep, ep - bp, modeChar);
             }
@@ -1428,12 +1428,12 @@ final class SourceScanner {
         block.emit(value, bp);
         if (exitingAfterThisValue) {
             exitingAfterThisValue = false;
-            return AfterAToken.END_BLOCK;
+            return AfterToken.END_BLOCK;
         }
         if (modeChar == '/') {
             int after = segmentEnd;
             if (at(after) != '/') {
-                return AfterAToken.END_BLOCK;
+                return AfterToken.END_BLOCK;
             }
             after++;
             begin = after;
@@ -1441,7 +1441,7 @@ final class SourceScanner {
                 throw refuseAsInvalid(TOKEN_PATH, bp, after);
             }
         }
-        return only || block.justOnce ? AfterAToken.END_BLOCK : AfterAToken.CARRY_ON;
+        return only || block.justOnce ? AfterToken.END_BLOCK : AfterToken.CARRY_ON;
     }
 
     private ScanFailure reportMissing(int token, int modeChar, int startLine, int startHead) {
@@ -1504,7 +1504,7 @@ final class SourceScanner {
     }
 
     private Value scanDateEndingAt(int token, int bp, int length, int ep) {
-        return scanned.scanADate(bp, length)
+        return scanned.scanDate(bp, length)
                 .filter(_ -> scanned.scannedTo() == ep)
                 .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
     }
@@ -1541,7 +1541,7 @@ final class SourceScanner {
             }
             case TOKEN_INTEGER -> {
                 if (at(ep) != '/' || modeChar == '/') {
-                    return scanned.scanAnInteger(bp, len).orElseThrow(() -> refuseAsInvalid(TOKEN_INTEGER, bp, ep));
+                    return scanned.scanInteger(bp, len).orElseThrow(() -> refuseAsInvalid(TOKEN_INTEGER, bp, ep));
                 }
                 return scanDateAfterInteger(bp, ep);
             }
@@ -1549,7 +1549,7 @@ final class SourceScanner {
                 if (at(ep) == '/') {
                     throw refuseAsInvalid(token, bp, ep);
                 }
-                Value read = scanned.scanADecimal(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                Value read = scanned.scanDecimal(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
                 if (at(bp + len - 1) == '%') {
                     return PercentValue.of(((AnyDecimalValue) read).quantity() / 100.0);
                 }
@@ -1563,11 +1563,11 @@ final class SourceScanner {
             }
             case TOKEN_TIME -> {
                 if (at(bp + len - 1) == ':' && modeChar == '/') {
-                    Value number = scanned.scanAnInteger(bp, len - 1).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                    Value number = scanned.scanInteger(bp, len - 1).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
                     end--;
                     return number;
                 }
-                return scanned.scanATime(bp)
+                return scanned.scanTime(bp)
                         .filter(_ -> scanned.scannedTo() == ep)
                         .<Value>map(read -> read)
                         .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
@@ -1586,10 +1586,10 @@ final class SourceScanner {
                 return decodeBinary(scanned.readBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_PAIR -> {
-                return scanned.scanAPair(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                return scanned.scanPair(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_TUPLE -> {
-                return scanned.scanATuple(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                return scanned.scanTuple(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_FILE -> {
                 return scanFile(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
@@ -1709,7 +1709,7 @@ final class SourceScanner {
         if (!relaxed) {
             throw malformed;
         }
-        return malformed.asAFailure().error().orElseThrow();
+        return malformed.asFailure().error().orElseThrow();
     }
 
     private Optional<Value> decodeBinary(int base) {
@@ -1907,11 +1907,11 @@ final class SourceScanner {
             terminator = '"';
             refused = REFUSED_IN_QUOTED_FILE;
         }
-        return scanAnItem(cp, cp + len, terminator, refused)
+        return scanItem(cp, cp + len, terminator, refused)
                 .map(FileValue::of);
     }
 
-    private Optional<String> scanAnItem(int from, int until, int terminator, String refused) {
+    private Optional<String> scanItem(int from, int until, int terminator, String refused) {
         OctetBuffer written = new OctetBuffer();
         int src = from;
         while (src < until && at(src) != terminator) {
@@ -1967,14 +1967,14 @@ final class SourceScanner {
 
     private Optional<Value> scanEmail(int from, int length) {
         OctetBuffer written = new OctetBuffer();
-        boolean seenAnAtSign = false;
+        boolean seenAtSign = false;
         int cp = from;
         for (int remaining = length; remaining > 0; remaining--) {
             if (at(cp) == '@') {
-                if (seenAnAtSign) {
+                if (seenAtSign) {
                     return Optional.empty();
                 }
-                seenAnAtSign = true;
+                seenAtSign = true;
             }
             if (at(cp) == '%') {
                 if (remaining <= 2 || !lex.isHexDigit(at(cp + 1)) || !lex.isHexDigit(at(cp + 2))) {
@@ -1987,7 +1987,7 @@ final class SourceScanner {
                 written.write(at(cp++));
             }
         }
-        if (!seenAnAtSign) {
+        if (!seenAtSign) {
             return Optional.empty();
         }
         return Optional.of(EmailValue.of(written.toString(StandardCharsets.UTF_8)));

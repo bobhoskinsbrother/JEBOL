@@ -122,9 +122,9 @@ public final class SeriesMemory {
     public static long collectNow() {
         long before = countBytesHeld();
         long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_COLLECTION * 1_000_000_000L;
-        long heldBeforeTheCycle = Long.MAX_VALUE;
-        while (System.nanoTime() < giveUpAt && heldBeforeTheCycle != HELD.get()) {
-            heldBeforeTheCycle = HELD.get();
+        long heldBeforeCycle = Long.MAX_VALUE;
+        while (System.nanoTime() < giveUpAt && heldBeforeCycle != HELD.get()) {
+            heldBeforeCycle = HELD.get();
             hasFinishedCollection();
             removeCollectedReservations();
         }

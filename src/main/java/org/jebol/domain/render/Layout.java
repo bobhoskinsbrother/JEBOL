@@ -128,7 +128,7 @@ public final class Layout {
                 face.setStyle("height", Molder.moldHalf(size.y()) + "px");
             }
             case TupleValue colour -> face.setStyle("background-color", asRgb(colour));
-            case AnyWordValue word -> findTheColourNamed(word.canonical())
+            case AnyWordValue word -> findColourNamed(word.canonical())
                     .ifPresent(rgb -> face.setStyle("background-color", rgb));
             case IntegerValue ignored -> {
             }
@@ -142,7 +142,7 @@ public final class Layout {
         }
     }
 
-    private static java.util.Optional<String> findTheColourNamed(String canonical) {
+    private static java.util.Optional<String> findColourNamed(String canonical) {
         int[] rgb = COLOURS.get(canonical.toLowerCase(Locale.ROOT));
         return rgb == null
                 ? java.util.Optional.empty()

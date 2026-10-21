@@ -31,7 +31,7 @@ public final class VectorQuery {
     }
 
     /** One field, or nothing at all when the name is not one of them. */
-    public static Optional<Value> readTheField(VectorValue vector, String field) {
+    public static Optional<Value> readField(VectorValue vector, String field) {
         VectorKind kind = vector.kind();
         return switch (field) {
             case "signed" -> Optional.of(LogicValue.of(kind.isSigned()));
@@ -41,7 +41,7 @@ public final class VectorQuery {
             case "length" -> Optional.of(IntegerValue.of(vector.storageLength()));
             case "min", "minimum" -> Optional.of(findExtreme(vector, true));
             case "max", "maximum" -> Optional.of(findExtreme(vector, false));
-            default -> computeTheStatistic(vector, field);
+            default -> computeStatistic(vector, field);
         };
     }
 
@@ -64,7 +64,7 @@ public final class VectorQuery {
         return BlockValue.of(written);
     }
 
-    private static Value findExtreme(VectorValue vector, boolean wantingTheLeast) {
+    private static Value findExtreme(VectorValue vector, boolean wantingLeast) {
         int held = vector.storageLength();
         if (held == 0) {
             return NoneValue.none();
@@ -73,9 +73,9 @@ public final class VectorQuery {
         long best = vector.storage().at(1);
         for (int at = 2; at <= held; at++) {
             long candidate = vector.storage().at(at);
-            boolean better = wantingTheLeast
-                    ? ordersBeforeReadingTheWidestKindAsUnsigned(kind, candidate, best)
-                    : ordersBeforeReadingTheWidestKindAsUnsigned(kind, best, candidate);
+            boolean better = wantingLeast
+                    ? ordersBeforeReadingWidestKindAsUnsigned(kind, candidate, best)
+                    : ordersBeforeReadingWidestKindAsUnsigned(kind, best, candidate);
             if (better) {
                 best = candidate;
             }
@@ -83,7 +83,7 @@ public final class VectorQuery {
         return kind.read(best);
     }
 
-    static boolean ordersBeforeReadingTheWidestKindAsUnsigned(
+    static boolean ordersBeforeReadingWidestKindAsUnsigned(
             VectorKind kind, long left, long right) {
         if (kind.measures()) {
             return kind.asDecimal(left) < kind.asDecimal(right);
@@ -93,7 +93,7 @@ public final class VectorQuery {
                 : Long.compareUnsigned(left, right) < 0;
     }
 
-    private static Optional<Value> computeTheStatistic(VectorValue vector, String field) {
+    private static Optional<Value> computeStatistic(VectorValue vector, String field) {
         if (!FIELDS.contains(field) && !"average".equals(field)) {
             return Optional.empty();
         }
@@ -140,10 +140,10 @@ public final class VectorQuery {
     public static void sortAscending(VectorKind kind, long[] elements) {
         Long[] boxed = Arrays.stream(elements).boxed().toArray(Long[]::new);
         Arrays.sort(boxed, (left, right) -> {
-            if (ordersBeforeReadingTheWidestKindAsUnsigned(kind, left, right)) {
+            if (ordersBeforeReadingWidestKindAsUnsigned(kind, left, right)) {
                 return -1;
             }
-            return ordersBeforeReadingTheWidestKindAsUnsigned(kind, right, left)
+            return ordersBeforeReadingWidestKindAsUnsigned(kind, right, left)
                     ? 1 : 0;
         });
         for (int at = 0; at < elements.length; at++) {

@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Fail extends SameForABlockAndAString {
+final class Fail extends SameForBlockAndString {
 
     Fail() {
         super("fail", 0, false, WhenNothingFollowsIt.DOES_NOT_MATCH);

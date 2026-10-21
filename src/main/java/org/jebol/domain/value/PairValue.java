@@ -20,7 +20,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return (halfBits(y) << BITS_IN_HALF) | halfBits(x);
     }
 
@@ -61,10 +61,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 y + (reachedY - y) * fraction);
     }
 
-    public Value measureDistanceFrom(PairValue other, boolean alongTheStreets) {
+    public Value measureDistanceFrom(PairValue other, boolean alongStreets) {
         double across = x - other.x;
         double down = y - other.y;
-        return DecimalValue.of(alongTheStreets
+        return DecimalValue.of(alongStreets
                 ? Math.abs(across) + Math.abs(down)
                 : Math.hypot(across, down));
     }
@@ -177,7 +177,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
         private Value readPair(AnyStringValue text, Maker maker) {
             String token = new WrittenText(text.text())
                     .findOneToken(text.text().length());
-            List<Value> read = maker.readTheValuesFrom(token).orElse(List.of());
+            List<Value> read = maker.readValuesFrom(token).orElse(List.of());
             if (read.size() != 1 || !(read.getFirst() instanceof PairValue pair)) {
                 throw refuse(StringValue.of(text.text()));
             }
@@ -185,7 +185,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
         }
     };
 
-    public Optional<Value> readTheHalf(String name) {
+    public Optional<Value> readHalf(String name) {
         return switch (name) {
             case FIRST_HALF -> Optional.of(DecimalValue.of(x));
             case SECOND_HALF -> Optional.of(DecimalValue.of(y));
@@ -204,7 +204,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     public Value stepIntoBy(Value selector) {
         Optional<Value> half = switch (selector) {
             case IntegerValue position -> readHalfAt((int) position.magnitude());
-            case AnyWordValue name -> readTheHalf(name.canonical());
+            case AnyWordValue name -> readHalf(name.canonical());
             default -> Optional.empty();
         };
         return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,

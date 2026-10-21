@@ -82,13 +82,13 @@ class TheDialectsWordsMatchRebolsOwnTest {
     @Test
     @DisplayName("the bar marks an alternative rather than standing as a keyword")
     void leaveTheBarOut() {
-        assertThat(ParseKeyword.findTheKeywordNamed("|")).isEmpty();
+        assertThat(ParseKeyword.findKeywordNamed("|")).isEmpty();
     }
 
     @Test
     @DisplayName("DO and ONLY are words Rebol reserves and its parse never acts on")
     void doAndOnlyAreReservedAndUnused() {
-        assertThat(ParseKeyword.findTheKeywordNamed("do")).isEmpty();
-        assertThat(ParseKeyword.findTheKeywordNamed("only")).isEmpty();
+        assertThat(ParseKeyword.findKeywordNamed("do")).isEmpty();
+        assertThat(ParseKeyword.findKeywordNamed("only")).isEmpty();
     }
 }

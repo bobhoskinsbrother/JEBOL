@@ -35,7 +35,7 @@ public class OffsetToCaretNative extends TextMeasuringNative {
         return (arguments, evaluator, context, refinements) -> {
             GobText text = gobText((GobValue) arguments.get(0), evaluator);
             PairValue point = (PairValue) arguments.get(1);
-            return text.findTheBlockAtTheCaret(
+            return text.findBlockAtCaret(
                             text.lines().findCaretNearest(point.x(), point.y(), text.layout(), text.findGobsOwnBox()))
                     .<Value>map(found -> found)
                     .orElseGet(NoneValue::none);

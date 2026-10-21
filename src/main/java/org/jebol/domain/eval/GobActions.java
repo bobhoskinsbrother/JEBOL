@@ -56,7 +56,7 @@ public final class GobActions extends SeriesActions {
 
     Value insertChildren(Value value, int at) {
         int goesAt = at;
-        for (Value child : listTheChildrenOffered(value)) {
+        for (Value child : listChildrenOffered(value)) {
             if (!(child instanceof GobValue one)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a pane holds gobs, not "
@@ -68,7 +68,7 @@ public final class GobActions extends SeriesActions {
         return gob;
     }
 
-    private static List<Value> listTheChildrenOffered(Value value) {
+    private static List<Value> listChildrenOffered(Value value) {
         return switch (value) {
             case GobValue only -> List.of(only);
             case BlockValue block ->

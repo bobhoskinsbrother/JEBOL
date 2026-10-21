@@ -6,7 +6,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Break extends SameForABlockAndAString {
+final class Break extends SameForBlockAndString {
 
     Break(String spelling) {
         super(spelling, 0, false, WhenNothingFollowsIt.DOES_NOT_MATCH);

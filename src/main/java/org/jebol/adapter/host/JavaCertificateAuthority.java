@@ -83,7 +83,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
     private ChainVerdict reachVerdict(List<X509Certificate> certificates) {
         try {
             validate(certificates);
-            return new ChainVerdict.Trusted(readTheVouchedNames(certificates.getFirst()));
+            return new ChainVerdict.Trusted(readVouchedNames(certificates.getFirst()));
         } catch (CertPathValidatorException refused) {
             return new ChainVerdict.Mistrusted(mistrustFor(refused));
         } catch (GeneralSecurityException unusable) {
@@ -137,15 +137,15 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         return CertificateMistrust.BROKEN_CHAIN;
     }
 
-    private VouchedNames readTheVouchedNames(X509Certificate leaf) throws CertificateParsingException {
+    private VouchedNames readVouchedNames(X509Certificate leaf) throws CertificateParsingException {
         Collection<List<?>> alternatives = leaf.getSubjectAlternativeNames();
         if (alternatives == null) {
             return new VouchedNames(Set.of(), Set.of());
         }
-        return new VouchedNames(readTheAlternativeNames(alternatives, DNS_NAME), readTheAlternativeNames(alternatives, IP_ADDRESS));
+        return new VouchedNames(readAlternativeNames(alternatives, DNS_NAME), readAlternativeNames(alternatives, IP_ADDRESS));
     }
 
-    private Set<String> readTheAlternativeNames(Collection<List<?>> alternatives, int kind) {
+    private Set<String> readAlternativeNames(Collection<List<?>> alternatives, int kind) {
         return alternatives.stream()
                 .filter(alternative -> Integer.valueOf(kind).equals(alternative.getFirst()))
                 .map(alternative -> String.valueOf(alternative.get(1)))

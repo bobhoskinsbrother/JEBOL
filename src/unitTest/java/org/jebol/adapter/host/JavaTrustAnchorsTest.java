@@ -69,7 +69,7 @@ class JavaTrustAnchorsTest {
     @DisplayName("the machine's authorities include the runtime's own")
     void includesTheJdksOwn() {
         assertThat(subjectsOf(JavaTrustAnchors.fromThisMachine()))
-                .containsAll(subjectsOf(JavaTrustAnchors.theJdksOwn()));
+                .containsAll(subjectsOf(JavaTrustAnchors.jdksOwn()));
     }
 
     @Test

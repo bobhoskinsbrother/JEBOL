@@ -50,15 +50,15 @@ public class ImageNative extends DefaultNative {
         };
     }
 
-    private String readTheCodecName(List<Value> arguments, Evaluator evaluator,
-                                    Set<String> refinements) {
+    private String readCodecName(List<Value> arguments, Evaluator evaluator,
+                                 Set<String> refinements) {
 
         Optional<Value> asked = refinementArgument("as", 0, arguments, refinements);
         String type = asked.filter(AnyWordValue.class::isInstance)
                 .map(word -> ((AnyWordValue) word).canonical())
                 .orElse("");
-        boolean theHostKnowsIt = evaluator.ports().images().hasImageType(type);
-        if (asked.isPresent() && !theHostKnowsIt) {
+        boolean hostKnowsIt = evaluator.ports().images().hasImageType(type);
+        if (asked.isPresent() && !hostKnowsIt) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, asked.get());
         }
         return type;
@@ -67,21 +67,21 @@ public class ImageNative extends DefaultNative {
     private Value loadImage(List<Value> arguments, Evaluator evaluator,
                             Set<String> refinements) {
 
-        String type = readTheCodecName(arguments, evaluator, refinements);
+        String type = readCodecName(arguments, evaluator, refinements);
         Value source = refinementArgument("load", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
         int which = refinementArgument("frame", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(frame -> (int) ((IntegerValue) frame).magnitude())
                 .orElse(FIRST_FRAME);
-        return decodeWithTheCodec(source, type, which, evaluator)
+        return decodeWithCodec(source, type, which, evaluator)
                 .map(this::imageFromPixels)
                 .orElseThrow(() -> source instanceof BinaryValue
                         ? Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0))
                         : Raised.of(EvaluationFailure.CANNOT_OPEN, source));
     }
 
-    private Optional<ImagePort.Pixels> decodeWithTheCodec(
+    private Optional<ImagePort.Pixels> decodeWithCodec(
             Value source, String type, int frame, Evaluator evaluator) {
 
         byte[] encoded;
@@ -110,7 +110,7 @@ public class ImageNative extends DefaultNative {
     private Value saveImage(List<Value> arguments, Evaluator evaluator,
                             Set<String> refinements) {
 
-        String type = Optional.of(readTheCodecName(arguments, evaluator, refinements))
+        String type = Optional.of(readCodecName(arguments, evaluator, refinements))
                 .filter(named -> !named.isEmpty())
                 .orElse(CODEC_NOBODY_NAMED_IS);
         Value destination = refinementArgument("save", 0, arguments, refinements)
@@ -120,7 +120,7 @@ public class ImageNative extends DefaultNative {
         if (!(given instanceof ImageValue image)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
         }
-        byte[] written = evaluator.ports().images().encode(readTheWholeOf(image), type);
+        byte[] written = evaluator.ports().images().encode(readWholeImage(image), type);
         if (written == null) {
             throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
         }
@@ -145,7 +145,7 @@ public class ImageNative extends DefaultNative {
         return destination;
     }
 
-    private ImagePort.Pixels readTheWholeOf(ImageValue image) {
+    private ImagePort.Pixels readWholeImage(ImageValue image) {
         return new ImagePort.Pixels(image.storage().wide(), image.storage().high(),
                 image.head().copyEveryPixel());
     }

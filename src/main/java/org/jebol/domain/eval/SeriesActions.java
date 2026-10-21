@@ -54,7 +54,7 @@ abstract class SeriesActions implements Actions {
             from -= howMany;
         }
         List<Value> taken = List.copyOf(
-                held().head().listTheItems().subList(from - 1, from - 1 + howMany));
+                held().head().listItems().subList(from - 1, from - 1 + howMany));
         takeOutFrom(from, howMany);
         return ofSameKindHolding(taken);
     }
@@ -64,7 +64,7 @@ abstract class SeriesActions implements Actions {
         if (held().lengthFromHere() == 0) {
             return NoneValue.none();
         }
-        Value taken = held().listTheItems().getFirst();
+        Value taken = held().listItems().getFirst();
         takeOutFrom(held().index(), 1);
         return taken;
     }

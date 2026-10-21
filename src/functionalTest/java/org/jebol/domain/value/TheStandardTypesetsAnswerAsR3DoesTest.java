@@ -65,11 +65,11 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
     @Test
     @DisplayName("the catalogue finds each standard typeset by its name, with or without the mark")
     void areFoundByNameInTheCatalogue() {
-        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("any-string")).contains(TypesetValue.ANY_STRING);
-        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("Any-String!")).contains(TypesetValue.ANY_STRING);
-        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("internal")).contains(TypesetValue.INTERNAL);
-        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("string")).isEmpty();
-        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("")).isEmpty();
+        assertThat(Catalogue.DATATYPES.findTypesetNamed("any-string")).contains(TypesetValue.ANY_STRING);
+        assertThat(Catalogue.DATATYPES.findTypesetNamed("Any-String!")).contains(TypesetValue.ANY_STRING);
+        assertThat(Catalogue.DATATYPES.findTypesetNamed("internal")).contains(TypesetValue.INTERNAL);
+        assertThat(Catalogue.DATATYPES.findTypesetNamed("string")).isEmpty();
+        assertThat(Catalogue.DATATYPES.findTypesetNamed("")).isEmpty();
     }
 
     @Test

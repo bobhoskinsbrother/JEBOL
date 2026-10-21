@@ -65,9 +65,9 @@ public final class SeriesSearch {
         if (searchesForValueRun()) {
             return needleRun().isEmpty();
         }
-        boolean aSeriesOfCharactersOrBytes = series instanceof AnyStringValue || series instanceof BinaryValue;
-        boolean aRunOfCharactersOrBytes = wanted instanceof AnyStringValue || wanted instanceof BinaryValue;
-        return aSeriesOfCharactersOrBytes && aRunOfCharactersOrBytes
+        boolean seriesOfCharactersOrBytes = series instanceof AnyStringValue || series instanceof BinaryValue;
+        boolean runOfCharactersOrBytes = wanted instanceof AnyStringValue || wanted instanceof BinaryValue;
+        return seriesOfCharactersOrBytes && runOfCharactersOrBytes
                 && ((RebolSeries) wanted).lengthFromHere() == 0;
     }
 
@@ -82,7 +82,7 @@ public final class SeriesSearch {
     }
 
     public int end() {
-        List<Value> items = series.head().listTheItems();
+        List<Value> items = series.head().listItems();
         return limit < 0
                 ? items.size()
                 : (int) Math.min(items.size(), (long) series.index() - 1 + limit);
@@ -115,16 +115,16 @@ public final class SeriesSearch {
 
     private int matchPosition() {
         boolean lookingBehind = refinements.contains("reverse");
-        boolean takingTheLast = refinements.contains("last");
-        List<Value> items = series.head().listTheItems();
+        boolean takingLast = refinements.contains("last");
+        List<Value> items = series.head().listItems();
         int here = series.index() - 1;
         int end = end();
         int step = 1;
         int start = here;
         int at = here;
-        if (lookingBehind || takingTheLast) {
+        if (lookingBehind || takingLast) {
             step = -1;
-            if (takingTheLast) {
+            if (takingLast) {
                 at = end - needleWidth();
             } else {
                 start = 0;
@@ -225,7 +225,7 @@ public final class SeriesSearch {
 
     private List<Value> needleItems() {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
-            return bytes.listTheItems();
+            return bytes.listItems();
         }
         if (series instanceof BinaryValue
                 && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
@@ -271,7 +271,7 @@ public final class SeriesSearch {
         boolean backwards = stride < 0 || refinements.contains("reverse")
                 || refinements.contains("last");
         int width = (int) Math.abs(stride);
-        List<Value> items = series.head().listTheItems();
+        List<Value> items = series.head().listItems();
         int from = backwards ? series.index() - 2 : series.index() - 1;
         int end = end();
         for (int at = from; at >= 0 && at < end; at += backwards ? -width : width) {

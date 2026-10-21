@@ -20,7 +20,7 @@ final class BrotliContextBlockSplitter {
     private int currentHistogram;
     private final int[] lastHistogram = new int[2];
     private final double[] lastEntropy;
-    private int mergesInARow;
+    private int mergesInRow;
 
     BrotliContextBlockSplitter(int alphabetSize, int howManyContexts,
             int smallestBlock, double splitThreshold, int howManySymbols,
@@ -145,7 +145,7 @@ final class BrotliContextBlockSplitter {
         currentHistogram += howManyContexts;
         clearCurrentHistograms();
         blockSize = 0;
-        mergesInARow = 0;
+        mergesInRow = 0;
         targetBlockSize = smallestBlock;
     }
 
@@ -164,7 +164,7 @@ final class BrotliContextBlockSplitter {
         }
         howManyBlocks++;
         blockSize = 0;
-        mergesInARow = 0;
+        mergesInRow = 0;
         targetBlockSize = smallestBlock;
     }
 
@@ -179,7 +179,7 @@ final class BrotliContextBlockSplitter {
             histograms[currentHistogram + context].clear();
         }
         blockSize = 0;
-        if (++mergesInARow > 1) {
+        if (++mergesInRow > 1) {
             targetBlockSize += smallestBlock;
         }
     }

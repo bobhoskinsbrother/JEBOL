@@ -185,7 +185,7 @@ public final class Codecs {
                 return at;
             }
             if (here == '"' || here == '\'') {
-                int closed = skipAQuotedRun(source, here, at);
+                int closed = skipQuotedRun(source, here, at);
                 if (closed < 0) {
                     return NOWHERE;
                 }
@@ -200,7 +200,7 @@ public final class Codecs {
         return ended < 0 ? NOWHERE : ended + 2;
     }
 
-    private int skipAQuotedRun(
+    private int skipQuotedRun(
             String source, char quote, int at) {
         return source.indexOf(quote, at + 1);
     }

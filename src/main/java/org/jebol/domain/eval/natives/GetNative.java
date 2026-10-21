@@ -34,9 +34,9 @@ public class GetNative extends DefaultNative {
         };
     }
 
-    private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnAnswer) {
+    private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnswer) {
         Value held = word.findBoundSlot().value();
-        if (held instanceof UnsetValue && !unsetIsAnAnswer) {
+        if (held instanceof UnsetValue && !unsetIsAnswer) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling() + " has no value");
         }
         return held;

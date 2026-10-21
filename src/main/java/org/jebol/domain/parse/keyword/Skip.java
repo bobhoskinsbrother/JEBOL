@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Skip extends SameForABlockAndAString {
+final class Skip extends SameForBlockAndString {
 
     Skip() {
         super("skip", 0, false, WhenNothingFollowsIt.DOES_NOT_MATCH);

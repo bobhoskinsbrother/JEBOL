@@ -12,7 +12,7 @@ public record ErrorWording(Context system) {
         return new ErrorWording(Context.unbound());
     }
 
-    public Optional<Value> wordTheId(String category, String errorId) {
+    public Optional<Value> wordId(String category, String errorId) {
         Value said = system.readValueAt("system", "catalog", "errors",
                 category.toLowerCase(Locale.ROOT), errorId.toLowerCase(Locale.ROOT));
         return said instanceof NoneValue ? Optional.empty() : Optional.of(said);

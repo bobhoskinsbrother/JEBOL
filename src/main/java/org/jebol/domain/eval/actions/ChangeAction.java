@@ -21,8 +21,8 @@ public class ChangeAction extends DefaultNative implements ActionValue {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("series"),
                 Parameter.of("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongTo("part", "range", listThePartLimitTypes()),
-                Parameter.belongTo("dup", "count", listTheDuplicateCountTypes()));
+                Parameter.belongTo("part", "range", listPartLimitTypes()),
+                Parameter.belongTo("dup", "count", listDuplicateCountTypes()));
     }
 
     @Override

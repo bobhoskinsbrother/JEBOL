@@ -46,7 +46,7 @@ public final class BlockActions extends SeriesActions {
                 && splicesRatherThanGoesInWhole(added, asked)) {
             block.storage().spliceInAt(
                     block.storage().length() + 1,
-                    asked.takeTheFirstFewOf(added.remaining()),
+                    asked.takeFirstFewFrom(added.remaining()),
                     added.storage(), added.index());
         } else {
             block.storage().append(asked.given());
@@ -59,7 +59,7 @@ public final class BlockActions extends SeriesActions {
         AnyBlockValue held = (AnyBlockValue) block.clampToTail();
         if (asked.duplicated() instanceof AnyBlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {
-            List<Value> items = asked.pickTheWantedItemsOf(added);
+            List<Value> items = asked.pickWantedItemsFrom(added);
             held.storage().spliceInAt(held.index(), items,
                     added.storage(), added.index());
             return held.atIndex(held.index() + items.size());

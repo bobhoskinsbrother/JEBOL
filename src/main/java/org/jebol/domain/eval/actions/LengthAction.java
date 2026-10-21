@@ -33,7 +33,7 @@ public class LengthAction extends SeriesOrFileAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .askRebolActor(nativeName(), arguments, Set.of())
                 .orElseGet(() -> lengthFor(arguments.getFirst(), evaluator));
     }
 
@@ -54,8 +54,8 @@ public class LengthAction extends SeriesOrFileAction {
     }
 
     private Value portLength(PortValue port, Evaluator evaluator) {
-        if (port.findTheEventQueue().isPresent()) {
-            return IntegerValue.of(port.findTheEventQueue().orElseThrow().lengthFromHere());
+        if (port.findEventQueue().isPresent()) {
+            return IntegerValue.of(port.findEventQueue().orElseThrow().lengthFromHere());
         }
         return switch (port.schemeName()) {
             case "clipboard" -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION,

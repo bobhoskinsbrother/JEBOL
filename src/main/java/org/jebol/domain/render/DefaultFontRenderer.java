@@ -84,8 +84,8 @@ public final class DefaultFontRenderer {
             int here = at + 6 + record * 12;
             int platform = tables.readUint16(here, 0);
             int named = tables.readUint16(here, 6);
-            boolean theFamily = named == 1 || named == 16;
-            if (!theFamily || platform != 3) {
+            boolean family = named == 1 || named == 16;
+            if (!family || platform != 3) {
                 continue;
             }
             int length = tables.readUint16(here, 8);
@@ -111,16 +111,16 @@ public final class DefaultFontRenderer {
                     int platform = tables.readUint16(here, 0);
                     int encoding = tables.readUint16(here, 2);
                     int subtable = at + tables.readUint32(here, 4);
-                    boolean theBmpOfWindows = platform == 3 && encoding == 1;
-                    boolean theWholeOfWindows = platform == 3 && encoding == 10;
-                    boolean theWholeOfUnicode = platform == 0 && encoding >= 4;
+                    boolean bmpOfWindows = platform == 3 && encoding == 1;
+                    boolean wholeOfWindows = platform == 3 && encoding == 10;
+                    boolean wholeOfUnicode = platform == 0 && encoding >= 4;
                     if (tables.readUint16(subtable, 0) != wanted) {
                         continue;
                     }
-                    if (wanted == 4 && !theBmpOfWindows) {
+                    if (wanted == 4 && !bmpOfWindows) {
                         continue;
                     }
-                    if (wanted == 12 && !(theWholeOfWindows || theWholeOfUnicode)) {
+                    if (wanted == 12 && !(wholeOfWindows || wholeOfUnicode)) {
                         continue;
                     }
                     return wanted == 12
@@ -178,13 +178,13 @@ public final class DefaultFontRenderer {
             for (int segment = 0; segment < segments; segment++) {
                 ends[segment] = tables.readUint16(at + 14, segment * 2);
             }
-            int afterTheEnds = at + 14 + segments * 2 + 2;
+            int afterEnds = at + 14 + segments * 2 + 2;
             for (int segment = 0; segment < segments; segment++) {
-                starts[segment] = tables.readUint16(afterTheEnds, segment * 2);
-                deltas[segment] = tables.readInt16(afterTheEnds + segments * 2, segment * 2);
-                ranges[segment] = tables.readUint16(afterTheEnds + segments * 4, segment * 2);
+                starts[segment] = tables.readUint16(afterEnds, segment * 2);
+                deltas[segment] = tables.readInt16(afterEnds + segments * 2, segment * 2);
+                ranges[segment] = tables.readUint16(afterEnds + segments * 4, segment * 2);
             }
-            int glyphsAt = afterTheEnds + segments * 6;
+            int glyphsAt = afterEnds + segments * 6;
             int left = Math.max(0, at + tables.readUint16(at, 2) - glyphsAt);
             int[] glyphIds = new int[left / 2];
             for (int glyph = 0; glyph < glyphIds.length; glyph++) {

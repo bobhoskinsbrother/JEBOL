@@ -10,21 +10,21 @@ final class BlockPath {
     }
 
     static Value read(AnyBlockValue block, Value selector) {
-        return findThePositionOf(block, selector)
+        return findPositionIn(block, selector)
                 .map(at -> block.storage().at(at))
                 .orElseGet(NoneValue::none);
     }
 
-    static Optional<Integer> findThePositionOf(AnyBlockValue block, Value selector) {
+    static Optional<Integer> findPositionIn(AnyBlockValue block, Value selector) {
         int at = switch (selector) {
             case IntegerValue position -> countPositionFrom(position.magnitude(), block.index());
             case AnyDecimalValue fraction ->
                     countPositionFrom((long) fraction.quantity(), block.index());
-            case AnyWordValue name -> findAfterTheFirstMatch(
+            case AnyWordValue name -> findAfterFirstMatch(
                     block, item ->
                     item instanceof AnyWordValue held
                             && held.canonical().equals(name.canonical()));
-            default -> findAfterTheFirstMatch(
+            default -> findAfterFirstMatch(
                     block, item ->
                     Comparison.areLooselyEqual(item, selector));
         };
@@ -47,7 +47,7 @@ final class BlockPath {
         return (int) (counted + here - 1);
     }
 
-    private static int findAfterTheFirstMatch(
+    private static int findAfterFirstMatch(
             AnyBlockValue block, java.util.function.Predicate<Value> matches) {
 
         for (int at = block.index(); at <= block.storageLength(); at++) {

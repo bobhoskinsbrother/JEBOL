@@ -49,7 +49,7 @@ public class AtzAction extends SeriesOrFileAction {
     }
 
     private long findWhereItStands(RebolSeries series, Value position) {
-        boolean aLogicCountsAsAtDoes = position instanceof LogicValue;
-        return series.findPositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + HEAD_IS_ONE;
+        boolean logicCountsAsAtDoes = position instanceof LogicValue;
+        return series.findPositionNamedBy(position, logicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + HEAD_IS_ONE;
     }
 }

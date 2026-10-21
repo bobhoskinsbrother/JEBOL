@@ -49,9 +49,9 @@ public final class MapActions implements Actions {
 
     Value addPairsFrom(Asked asked, String nativeName) {
         pairs.requireChangeable();
-        refuseWhatIsNotAWholeBlockOfPairs(
+        refuseWhatIsNotWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
-        return takeWanted(pickTheWantedPairsOf((AnyBlockValue) asked.given(), asked));
+        return takeWanted(pickWantedPairsFrom((AnyBlockValue) asked.given(), asked));
     }
 
     public MapValue combineWith(Value other, SetOperation how, boolean mindingCase) {
@@ -75,7 +75,7 @@ public final class MapActions implements Actions {
         return kept;
     }
 
-    static List<Value> pickTheWantedPairsOf(AnyBlockValue block, Asked asked) {
+    static List<Value> pickWantedPairsFrom(AnyBlockValue block, Asked asked) {
         List<Value> whole = block.head().remaining();
         int here = block.index() - 1;
         long asking = asked.howMuchOfIt().orElse((long) (whole.size() - here));
@@ -98,7 +98,7 @@ public final class MapActions implements Actions {
         return pairs;
     }
 
-    public static void refuseWhatIsNotAWholeBlockOfPairs(
+    public static void refuseWhatIsNotWholeBlockOfPairs(
             Value given, boolean duplicating, String nativeName) {
 
         if (!(given instanceof BlockValue block)) {
@@ -122,7 +122,7 @@ public final class MapActions implements Actions {
         return MapValue.of(flattened);
     }
 
-    public static List<Value> listThePairsOffered(Value given) {
+    public static List<Value> listPairsOffered(Value given) {
         return switch (given) {
             case MapValue already -> already.flatten();
             case ObjectValue object -> object.context().slots().stream()

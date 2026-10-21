@@ -25,7 +25,7 @@ public class GetEnvNative extends EnvironmentNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of("name", acceptAVariablesName()));
+        return List.of(Parameter.of("name", acceptVariablesName()));
     }
 
     @Override

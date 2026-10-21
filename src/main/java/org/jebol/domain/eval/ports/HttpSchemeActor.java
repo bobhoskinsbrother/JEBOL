@@ -76,7 +76,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
             return Optional.empty();
         }
         return switch (action) {
-            case "read" -> Optional.of(fetchThroughTheHost(port, arguments, refinements, evaluator));
+            case "read" -> Optional.of(fetchThroughHost(port, arguments, refinements, evaluator));
             case "open" -> Optional.of(open(port));
             case "close" -> Optional.of(close(port));
             default -> Optional.empty();
@@ -84,7 +84,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private Value open(PortValue port) {
-        port.findTheEventQueue();
+        port.findEventQueue();
         port.markOpen(true);
         return port;
     }
@@ -94,7 +94,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return port;
     }
 
-    private Value fetchThroughTheHost(
+    private Value fetchThroughHost(
             PortValue port, List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
 
         WhatWasAsked asked = WhatWasAsked.readFrom(arguments, refinements);
@@ -115,8 +115,8 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         HttpPort.Request request = new HttpPort.Request(
                 requestUrl(port),
                 httpMethod(port),
-                listTheHeaderNamesOf(port, asked),
-                listTheHeaderValuesOf(port, asked),
+                listHeaderNamesFrom(port, asked),
+                listHeaderValuesFrom(port, asked),
                 contentBytes(port),
                 followsRedirects(port),
                 httpTimeout(port));
@@ -133,7 +133,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         if (answer.status() < 400 && answer.status() != 300) {
             return;
         }
-        String phrase = findThePhraseFor(answer.status(), evaluator).orElse("Unknown error response");
+        String phrase = findPhraseFor(answer.status(), evaluator).orElse("Unknown error response");
         throw new Raised(ErrorValue.of(ErrorCategory.ACCESS,
                 "protocol", phrase, StringValue.of(phrase)));
     }
@@ -142,7 +142,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         if (asked.binary()) {
             return trimOf(BinaryValue.ofBytes(answer.body()), asked, answer);
         }
-        Value body = readTheTextOf(answer)
+        Value body = readTextFrom(answer)
                 .<Value>map(StringValue::of)
                 .orElseGet(() -> BinaryValue.ofBytes(answer.body()));
         if (asked.string() || asked.lines()) {
@@ -154,12 +154,12 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return trimOf(body, asked, answer);
     }
 
-    private Optional<String> readTheTextOf(HttpPort.Answer answer) {
-        Optional<String> contentType = answer.readTheHeaderNamed("Content-Type");
+    private Optional<String> readTextFrom(HttpPort.Answer answer) {
+        Optional<String> contentType = answer.readHeaderNamed("Content-Type");
         if (contentType.isEmpty()) {
             return Optional.empty();
         }
-        Optional<String> charset = findTheCharsetIn(contentType.orElseThrow());
+        Optional<String> charset = findCharsetIn(contentType.orElseThrow());
         if (charset.isPresent()) {
             return decodeAs(charset.orElseThrow(), answer.body());
         }
@@ -169,7 +169,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                 : Optional.empty();
     }
 
-    private static Optional<String> findTheCharsetIn(String contentType) {
+    private static Optional<String> findCharsetIn(String contentType) {
         int named = contentType.toLowerCase(Locale.ROOT).indexOf("charset=");
         if (named < 0) {
             return Optional.empty();
@@ -228,7 +228,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return BlockValue.of(flat);
     }
 
-    private Optional<String> findThePhraseFor(int status, Evaluator evaluator) {
+    private Optional<String> findPhraseFor(int status, Evaluator evaluator) {
         Value system = evaluator.systemContext().findSlotFor("system").value();
         Value codes = system.readFieldValue("catalog").readFieldValue("http-status-codes");
         if (!(codes instanceof MapValue phrases)) {
@@ -246,7 +246,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
             return written.text();
         }
         String hostName = readAnyStringIn(spec, "host");
-        long portNumber = readAnIntegerIn(spec, "port").orElse(0L);
+        long portNumber = readIntegerIn(spec, "port").orElse(0L);
         String path = readAnyStringIn(spec, "path");
         String namedPort = portNumber == 0 ? "" : ":" + portNumber;
         return scheme + "://" + hostName + namedPort + (path.isEmpty() ? "/" : path);
@@ -257,8 +257,8 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return method instanceof AnyWordValue word ? word.spelling() : "GET";
     }
 
-    private List<String> listTheHeaderNamesOf(PortValue port, WhatWasAsked asked) {
-        List<Value> flat = flattenTheHeadersOf(port);
+    private List<String> listHeaderNamesFrom(PortValue port, WhatWasAsked asked) {
+        List<Value> flat = flattenHeadersFrom(port);
         List<String> names = new ArrayList<>();
         for (int at = 0; at < flat.size(); at += 2) {
             names.add(((AnyStringValue) flat.get(at)).text());
@@ -267,8 +267,8 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return names;
     }
 
-    private List<String> listTheHeaderValuesOf(PortValue port, WhatWasAsked asked) {
-        List<Value> flat = flattenTheHeadersOf(port);
+    private List<String> listHeaderValuesFrom(PortValue port, WhatWasAsked asked) {
+        List<Value> flat = flattenHeadersFrom(port);
         List<String> values = new ArrayList<>();
         for (int at = 1; at < flat.size(); at += 2) {
             values.add(((AnyStringValue) flat.get(at)).text());
@@ -277,7 +277,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return values;
     }
 
-    private List<Value> flattenTheHeadersOf(PortValue port) {
+    private List<Value> flattenHeadersFrom(PortValue port) {
         Value headers = port.readFieldValue("spec").readFieldValue("headers");
         if (!(headers instanceof AnyBlockValue written)) {
             return List.of();
@@ -308,7 +308,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private Optional<Duration> httpTimeout(PortValue port) {
-        return readAnIntegerIn(port.readFieldValue("spec"), "timeout")
+        return readIntegerIn(port.readFieldValue("spec"), "timeout")
                 .filter(seconds -> seconds > 0)
                 .map(Duration::ofSeconds);
     }
@@ -318,7 +318,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return held instanceof AnyStringValue written ? written.text() : "";
     }
 
-    private static Optional<Long> readAnIntegerIn(Value spec, String field) {
+    private static Optional<Long> readIntegerIn(Value spec, String field) {
         Value held = spec.readFieldValue(field);
         return held instanceof IntegerValue(long magnitude)
                 ? Optional.of(magnitude)
@@ -340,15 +340,15 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
             boolean lines = refinements.contains("lines");
             boolean partial = !lines && (refinements.contains("part") || refinements.contains("seek"));
             long index = partial
-                    ? readTheNumberAt(arguments, refinements.contains("part") ? 2 : 1).orElse(0L)
+                    ? readNumberAt(arguments, refinements.contains("part") ? 2 : 1).orElse(0L)
                     : 0L;
-            Optional<Long> part = partial ? readTheNumberAt(arguments, 1) : Optional.empty();
+            Optional<Long> part = partial ? readNumberAt(arguments, 1) : Optional.empty();
             boolean binary = refinements.contains("binary") || (partial && !string);
             return new WhatWasAsked(binary, string, lines, refinements.contains("all"), partial,
                     index, part.map(count -> count + index));
         }
 
-        private static Optional<Long> readTheNumberAt(List<Value> arguments, int position) {
+        private static Optional<Long> readNumberAt(List<Value> arguments, int position) {
             return position < arguments.size() && arguments.get(position) instanceof IntegerValue(long magnitude)
                     ? Optional.of(magnitude)
                     : Optional.empty();

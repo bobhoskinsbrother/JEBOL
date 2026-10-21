@@ -182,7 +182,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         throw Raised.of(EvaluationFailure.BAD_REFINES);
     }
 
@@ -192,7 +192,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         return remaining();
     }
 
@@ -209,8 +209,8 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value readItemAt(int positionFromTheHead) {
-        return storage.at(positionFromTheHead);
+    public Value readItemAt(int positionFromHead) {
+        return storage.at(positionFromHead);
     }
 
     @Override
@@ -255,8 +255,8 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public void putItemAt(int positionFromTheHead, Value item) {
-        storage.set(positionFromTheHead, item);
+    public void putItemAt(int positionFromHead, Value item) {
+        storage.set(positionFromHead, item);
     }
 
     public void putEachPairOnLine() {
@@ -313,8 +313,8 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return switch (other) {
             case AnyStringValue ignored -> StringValue.of(AnyStringValue.textOf(
-                    keeping.from(AnyStringValue.listTheCharactersOf(this),
-                            AnyStringValue.listTheCharactersOf(other))));
+                    keeping.from(AnyStringValue.listCharactersFrom(this),
+                            AnyStringValue.listCharactersFrom(other))));
             case MapValue theirs -> MapValue.empty()
                     .combineWith(theirs, keeping.how(), mindingCase);
             case AnyBlockValue theirs -> BlockValue.of(
@@ -397,7 +397,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 .toList();
     }
 
-    public List<Value> listTheWordsWritten(boolean deeply, boolean settersOnly) {
+    public List<Value> listWordsWritten(boolean deeply, boolean settersOnly) {
         List<Value> found = new ArrayList<>();
         gatherWordsInto(found, deeply, settersOnly);
         return found;
@@ -424,7 +424,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 && already.canonical().equals(word.canonical()));
     }
 
-    public Optional<ContextSlot> fieldThePathNames() {
+    public Optional<ContextSlot> fieldPathNames() {
         return Optional.empty();
     }
 

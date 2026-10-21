@@ -26,7 +26,7 @@ public class PokeAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor("poke", arguments, Set.of())
+                .askRebolActor("poke", arguments, Set.of())
                 .orElseGet(() -> Actions.of(arguments.getFirst())
                         .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), this))
                         .poke(arguments.get(1), arguments.get(2)));

@@ -18,13 +18,13 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     private static final boolean LEFT_ALONE = false;
 
     private record PixelWrite(int red, int green, int blue, int alpha,
-            boolean writesTheColour, boolean writesTheAlpha) {
+                              boolean writesColour, boolean writesAlpha) {
 
         void writeInto(ImageStorage storage, int pixel) {
-            if (writesTheColour) {
+            if (writesColour) {
                 storage.setColourAt(pixel, red, green, blue);
             }
-            if (writesTheAlpha) {
+            if (writesAlpha) {
                 storage.setAlphaAt(pixel, alpha);
             }
         }
@@ -58,8 +58,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public Value readItemAt(int positionFromTheHead) {
-        int[] channels = storage.readPixelAt(positionFromTheHead);
+    public Value readItemAt(int positionFromHead) {
+        int[] channels = storage.readPixelAt(positionFromHead);
         return TupleValue.of(channels[0], channels[1], channels[2], channels[3]);
     }
 
@@ -100,7 +100,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         List<Value> read = new ArrayList<>(lengthFromHere());
         for (int at = index; at <= storageLength(); at++) {
             int[] channels = storage.readPixelAt(at);
@@ -319,10 +319,10 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     public ImageValue copyFirstWholeRows(int howMany) {
         int taking = Math.max(0, Math.min(howMany, lengthFromHere()));
-        int wideEnoughForARow = Math.max(1, storage.wide());
-        int wide = Math.min(taking, wideEnoughForARow);
+        int wideEnoughForRow = Math.max(1, storage.wide());
+        int wide = Math.min(taking, wideEnoughForRow);
         int high = wide == 0 ? 0
-                : taking <= wideEnoughForARow ? 1 : taking / wideEnoughForARow;
+                : taking <= wideEnoughForRow ? 1 : taking / wideEnoughForRow;
         ImageStorage into = ImageStorage.of(wide, high);
         for (int at = 1; at <= wide * high; at++) {
             int[] channels = readPixelAt(at);
@@ -355,9 +355,9 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     public Value change(Value given, long howManyTimes, boolean colourOnly,
-                        Value shapeOfTheRectangle) {
+                        Value rectangleShape) {
         if (given instanceof ImageValue rectangle) {
-            return writeRectangle(rectangle, howManyTimes, shapeOfTheRectangle);
+            return writeRectangle(rectangle, howManyTimes, rectangleShape);
         }
         List<PixelWrite> pixels = collectEveryPixelOrNone(given, colourOnly);
         int at = index;
@@ -392,20 +392,20 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return new ImageValue(into, 1);
     }
 
-    public Value findThePixel(Value wanted, boolean onlyWhereItStands, boolean colourOnly,
-                              boolean landingPastIt) {
+    public Value findPixel(Value wanted, boolean onlyWhereItStands, boolean colourOnly,
+                           boolean landingPastIt) {
         if (!(wanted instanceof TupleValue || wanted instanceof IntegerValue)) {
             return NoneValue.none();
         }
-        int at = findThePositionOfThePixel(wanted, onlyWhereItStands, colourOnly);
+        int at = findPixelPosition(wanted, onlyWhereItStands, colourOnly);
         if (at == 0) {
             return NoneValue.none();
         }
         return atIndex(landingPastIt ? at + 1 : at);
     }
 
-    private int findThePositionOfThePixel(Value wanted, boolean onlyWhereItStands,
-                                          boolean colourOnly) {
+    private int findPixelPosition(Value wanted, boolean onlyWhereItStands,
+                                  boolean colourOnly) {
         if (onlyWhereItStands) {
             return matchesPixel(index, wanted, colourOnly) ? index : 0;
         }
@@ -438,7 +438,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     private Value writeRectangle(ImageValue rectangle, long howManyTimes,
-                                 Value shapeOfTheRectangle) {
+                                 Value rectangleShape) {
         if (storage.wide() == 0 || howManyTimes == 0) {
             return this;
         }
@@ -446,10 +446,10 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         int row = (index - 1) / storage.wide();
         int wanted = rectangle.storage.wide();
         int tall = rectangle.storage.high();
-        if (shapeOfTheRectangle instanceof PairValue(double x, double y)) {
+        if (rectangleShape instanceof PairValue(double x, double y)) {
             wanted = Math.max(0, (int) x);
             tall = Math.max(0, (int) y);
-        } else if (!(shapeOfTheRectangle instanceof NoneValue)) {
+        } else if (!(rectangleShape instanceof NoneValue)) {
             wanted = 0;
             tall = 0;
         }
@@ -476,13 +476,13 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 : List.of(given);
         List<PixelWrite> pixels = new ArrayList<>();
         for (Value one : named) {
-            pixels.add(asAPixel(one, colourOnly).orElseThrow(() -> Raised.of(
+            pixels.add(asPixel(one, colourOnly).orElseThrow(() -> Raised.of(
                     EvaluationFailure.INVALID_TYPE, one.datatype())));
         }
         return pixels;
     }
 
-    private Optional<PixelWrite> asAPixel(Value written, boolean colourOnly) {
+    private Optional<PixelWrite> asPixel(Value written, boolean colourOnly) {
         if (written instanceof TupleValue colour) {
             int[] parts = colour.segments();
             return Optional.of(new PixelWrite(partOr(parts, 0, 0), partOr(parts, 1, 0),

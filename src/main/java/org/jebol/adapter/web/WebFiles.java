@@ -22,7 +22,7 @@ public final class WebFiles implements FilePort {
 
     private final Set<String> directories = new TreeSet<>(Set.of("/"));
 
-    private String whereARelativePathCountsFromNow = "/";
+    private String whereRelativePathCountsFromNow = "/";
 
     private final Store store;
 
@@ -93,9 +93,9 @@ public final class WebFiles implements FilePort {
 
     @Override
     public String workingDirectory() {
-        return whereARelativePathCountsFromNow.equals("/")
+        return whereRelativePathCountsFromNow.equals("/")
                 ? "/"
-                : whereARelativePathCountsFromNow + "/";
+                : whereRelativePathCountsFromNow + "/";
     }
 
     @Override
@@ -109,7 +109,7 @@ public final class WebFiles implements FilePort {
         if (!directories.contains(target)) {
             throw new Denied("cannot-open", path + " is not a directory", directory(target));
         }
-        whereARelativePathCountsFromNow = target;
+        whereRelativePathCountsFromNow = target;
     }
 
     @Override
@@ -214,13 +214,13 @@ public final class WebFiles implements FilePort {
     public Optional<FileInformation> describe(String path) {
         String target = absolute(path);
         if (directories.contains(target)) {
-            return Optional.of(FileInformation.describeADirectory(
+            return Optional.of(FileInformation.describeDirectory(
                     directory(target), Optional.empty(), Optional.empty(), Optional.empty()));
         }
         byte[] held = files.get(target);
         return held == null
                 ? Optional.empty()
-                : Optional.of(FileInformation.describeAFile(target, held.length,
+                : Optional.of(FileInformation.describeFile(target, held.length,
                         Optional.empty(), Optional.empty(), Optional.empty()));
     }
 
@@ -237,7 +237,7 @@ public final class WebFiles implements FilePort {
     private String absolute(String path) {
         Deque<String> segments = new ArrayDeque<>();
         if (!path.startsWith("/")) {
-            addEach(withoutTrailingSlash(whereARelativePathCountsFromNow), segments);
+            addEach(withoutTrailingSlash(whereRelativePathCountsFromNow), segments);
         }
         addEach(path, segments);
         return "/" + String.join("/", segments);

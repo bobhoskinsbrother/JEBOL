@@ -30,9 +30,9 @@ public abstract class MinOrMaxNative extends DefaultNative {
             return PairValue.of(
                     chooseHalfWanted(ourX, theirX), chooseHalfWanted(ourY, theirY));
         }
-        boolean theFirstIsAtLeastTheSecond =
+        boolean firstIsAtLeastSecond =
                 Comparison.holds(left, right, Comparison.Strictness.GREATER_OR_EQUAL);
-        return theFirstIsAtLeastTheSecond == wantsLarger() ? left : right;
+        return firstIsAtLeastSecond == wantsLarger() ? left : right;
     }
 
     private double chooseHalfWanted(double ours, double theirs) {

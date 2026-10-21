@@ -21,12 +21,12 @@ final class BrotliFullHasher implements BrotliHasher {
     private final int[] positions;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    static BrotliFullHasher chooseForQuality(int quality, boolean theInputIsLarge) {
-        int bucketBits = theInputIsLarge || quality >= 7 ? 15 : 14;
+    static BrotliFullHasher chooseForQuality(int quality, boolean inputIsLarge) {
+        int bucketBits = inputIsLarge || quality >= 7 ? 15 : 14;
         int blockBits = quality - 1;
         int recentDistances = quality < 7 ? 4 : quality < 9 ? 10 : 16;
         return new BrotliFullHasher(bucketBits, blockBits, recentDistances,
-                theInputIsLarge);
+                inputIsLarge);
     }
 
     private BrotliFullHasher(int bucketBits, int blockBits,
@@ -64,9 +64,9 @@ final class BrotliFullHasher implements BrotliHasher {
 
     @Override
     public void prepareFor(byte[] data, int inputSize,
-            boolean theWholeInputAtOnce) {
+            boolean wholeInputAtOnce) {
 
-        if (theWholeInputAtOnce
+        if (wholeInputAtOnce
                 && inputSize <= bucketCount >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
                 howManySeen[hashSlotFor(data, at)] = 0;

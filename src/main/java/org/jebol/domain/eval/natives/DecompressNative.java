@@ -57,7 +57,7 @@ public class DecompressNative extends CompressionNative {
         return List.of(
                 Parameter.of("data", Set.of(BinaryValue.TYPE)),
                 Parameter.of("method", Set.of(WordValue.TYPE)),
-                Parameter.belongTo("part", "length", acceptACountOrPosition()),
+                Parameter.belongTo("part", "length", acceptCountOrPosition()),
                 Parameter.belongTo("size", "bytes", Set.of(IntegerValue.TYPE)));
     }
 

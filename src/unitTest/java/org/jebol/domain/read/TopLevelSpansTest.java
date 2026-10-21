@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TopLevelSpansTest {
 
     private static List<String> textsOf(String source) {
-        return Transcoder.findTheTopLevelSpans(source).stream()
+        return Transcoder.findTopLevelSpans(source).stream()
                 .map(Transcoder.SourceSpan::text)
                 .toList();
     }

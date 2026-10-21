@@ -37,8 +37,8 @@ public record Trimming(Set<String> asked, Set<Integer> unwantedCodePoints) {
     }
 
     public void refuseContradictions() {
-        boolean atAnEnd = asked.contains("head") || asked.contains("tail");
-        if (atAnEnd && (everywhere() || ofGivenCharacters())) {
+        boolean atEnd = asked.contains("head") || asked.contains("tail");
+        if (atEnd && (everywhere() || ofGivenCharacters())) {
             throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }

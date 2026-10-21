@@ -29,7 +29,7 @@ public enum GradientShape {
 
     DIAMOND;
 
-    public static Optional<GradientShape> findTheShapeNamed(String spelling) {
+    public static Optional<GradientShape> findShapeNamed(String spelling) {
         for (GradientShape shape : values()) {
             if (shape.name().toLowerCase(Locale.ROOT).equals(spelling)) {
                 return Optional.of(shape);

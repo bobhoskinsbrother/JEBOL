@@ -85,7 +85,7 @@ public final class SeriesContents {
                 }
             }
             case AnyStringValue text ->
-                    addUtf8(takeTheFirstCodePoints(howMany, text.text()), into);
+                    addUtf8(takeFirstCodePoints(howMany, text.text()), into);
             case CharacterValue letter ->
                     addUtf8(new String(Character.toChars(letter.codepoint())), into);
             case IntegerValue whole -> {
@@ -123,7 +123,7 @@ public final class SeriesContents {
         }
     }
 
-    private static String takeTheFirstCodePoints(
+    private static String takeFirstCodePoints(
             int howManyCharacters, String text) {
         if (howManyCharacters < 0) {
             return text;

@@ -34,8 +34,8 @@ final class RichText {
 
     record Line(List<TextRun> runs, List<Integer> placeOfEachRun, TextLayout layout, TextCaret caret) {
 
-        Optional<Integer> findTheRunAt(int placeInTheBlock) {
-            int run = placeOfEachRun.indexOf(placeInTheBlock);
+        Optional<Integer> findRunAt(int placeInBlock) {
+            int run = placeOfEachRun.indexOf(placeInBlock);
             return run < 0 ? Optional.empty() : Optional.of(run);
         }
     }
@@ -58,9 +58,9 @@ final class RichText {
                 }
             }
         }
-        Line withoutACaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
-        return new Line(withoutACaret.runs(), withoutACaret.placeOfEachRun(), layout,
-                caretObject.map(fields -> readCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
+        Line withoutCaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
+        return new Line(withoutCaret.runs(), withoutCaret.placeOfEachRun(), layout,
+                caretObject.map(fields -> readCaretIn(fields, withoutCaret)).orElse(TextCaret.NONE));
     }
 
     private void obeyWord(AnyWordValue command) {
@@ -96,34 +96,34 @@ final class RichText {
         if (field.isEmpty() || !(field.get() instanceof AnyBlockValue pair) || pair.remaining().size() < 2) {
             return TextLines.RunAndCharacter.NOWHERE;
         }
-        Optional<Integer> placeInTheBlock = switch (pair.remaining().get(0)) {
-            case AnyBlockValue atTheString -> Optional.of(atTheString.index());
+        Optional<Integer> placeInBlock = switch (pair.remaining().get(0)) {
+            case AnyBlockValue atString -> Optional.of(atString.index());
             case IntegerValue(long place) when place > 0 -> Optional.of((int) place);
             default -> Optional.empty();
         };
         Optional<Integer> character = switch (pair.remaining().get(1)) {
-            case AnyStringValue atTheCaret -> Optional.of(atTheCaret.index() - 1);
+            case AnyStringValue atCaret -> Optional.of(atCaret.index() - 1);
             case IntegerValue(long place) when place > 0 -> Optional.of((int) place - 1);
             default -> Optional.empty();
         };
-        Optional<Integer> run = placeInTheBlock.flatMap(line::findTheRunAt);
+        Optional<Integer> run = placeInBlock.flatMap(line::findRunAt);
         return run.isPresent() && character.isPresent()
                 ? new TextLines.RunAndCharacter(run.get(), character.get())
                 : TextLines.RunAndCharacter.NOWHERE;
     }
 
     private void takeFontIn(ObjectValue fields) {
-        readField(fields, "size").flatMap(this::readASizeIn).ifPresent(asked -> size = asked);
+        readField(fields, "size").flatMap(this::readSizeIn).ifPresent(asked -> size = asked);
         readField(fields, "color").filter(TupleValue.class::isInstance)
                 .map(TupleValue.class::cast)
                 .ifPresent(parts -> colour = Colour.ofTuple(parts));
         readField(fields, "style").ifPresent(this::takeStyle);
-        PairValue shadow = readField(fields, "shadow").flatMap(this::readTheShadowsOffsetIn)
+        PairValue shadow = readField(fields, "shadow").flatMap(this::readShadowsOffsetIn)
                 .orElse(PairValue.of(0, 0));
         layout = layout.withShadow(roundToWholePixels(shadow.x()), roundToWholePixels(shadow.y()));
     }
 
-    private Optional<PairValue> readTheShadowsOffsetIn(Value shadow) {
+    private Optional<PairValue> readShadowsOffsetIn(Value shadow) {
         return switch (shadow) {
             case PairValue offset -> Optional.of(offset);
             case AnyBlockValue several when !several.remaining().isEmpty()
@@ -137,16 +137,16 @@ final class RichText {
                 .ifPresent(origin -> layout = layout.withOrigin(roundToWholePixels(origin.x()), roundToWholePixels(origin.y())));
         readField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
                 .ifPresent(margin -> layout = layout.withMargin(roundToWholePixels(margin.x()), roundToWholePixels(margin.y())));
-        TextAlignment across = readField(fields, "align").flatMap(this::readTheWordsSpelling)
-                .flatMap(TextAlignment::findTheAlignmentSpelt).orElse(TextAlignment.LEFT);
-        TextVerticalAlignment down = readField(fields, "valign").flatMap(this::readTheWordsSpelling)
-                .flatMap(TextVerticalAlignment::findTheAlignmentSpelt).orElse(TextVerticalAlignment.TOP);
+        TextAlignment across = readField(fields, "align").flatMap(this::readWordsSpelling)
+                .flatMap(TextAlignment::findAlignmentSpelt).orElse(TextAlignment.LEFT);
+        TextVerticalAlignment down = readField(fields, "valign").flatMap(this::readWordsSpelling)
+                .flatMap(TextVerticalAlignment::findAlignmentSpelt).orElse(TextVerticalAlignment.TOP);
         layout = layout.align(across, down);
         readField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
                 .ifPresent(wraps -> layout = layout.wrap(wraps.truth()));
     }
 
-    private Optional<String> readTheWordsSpelling(Value word) {
+    private Optional<String> readWordsSpelling(Value word) {
         return word instanceof AnyWordValue said ? Optional.of(said.canonical()) : Optional.empty();
     }
 
@@ -154,7 +154,7 @@ final class RichText {
         return (int) measurement;
     }
 
-    private Optional<Double> readASizeIn(Value given) {
+    private Optional<Double> readSizeIn(Value given) {
         return switch (given) {
             case IntegerValue(long magnitude) -> Optional.of((double) magnitude);
             case AnyDecimalValue number -> Optional.of(number.quantity());

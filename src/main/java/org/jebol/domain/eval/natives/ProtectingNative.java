@@ -34,7 +34,7 @@ public abstract class ProtectingNative extends DefaultNative {
         if (refinements.contains("values")) {
             return false;
         }
-        Optional<ContextSlot> named = path.fieldThePathNames();
+        Optional<ContextSlot> named = path.fieldPathNames();
         if (named.isEmpty()) {
             return true;
         }
@@ -67,7 +67,7 @@ public abstract class ProtectingNative extends DefaultNative {
             default -> List.of();
         };
         for (Value item : items) {
-            findTheSlotNamedInAList(item).ifPresent(slot ->
+            findSlotNamedInList(item).ifPresent(slot ->
                     protectOneNamed(slot, protectedNow, values, words, refinements));
         }
     }
@@ -93,9 +93,9 @@ public abstract class ProtectingNative extends DefaultNative {
         }
     }
 
-    private Optional<ContextSlot> findTheSlotNamedInAList(Value item) {
+    private Optional<ContextSlot> findSlotNamedInList(Value item) {
         if (item instanceof AnyPathValue path) {
-            return path.fieldThePathNames();
+            return path.fieldPathNames();
         }
         if (item instanceof AnyWordValue word && word.isBound()
                 && word.binding().contains(word.canonical())) {
@@ -105,13 +105,13 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private void setProtection(
-            Value target, boolean protectedNow, boolean deeply, boolean onlyTheWords) {
-        setProtection(target, protectedNow, deeply, onlyTheWords,
+            Value target, boolean protectedNow, boolean deeply, boolean onlyWords) {
+        setProtection(target, protectedNow, deeply, onlyWords,
                 Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
     private void setProtection(Value target, boolean protectedNow, boolean deeply,
-            boolean onlyTheWords, Set<Object> reached) {
+                               boolean onlyWords, Set<Object> reached) {
 
         switch (target) {
             case AnyBlockValue block -> {
@@ -128,8 +128,8 @@ public abstract class ProtectingNative extends DefaultNative {
             case AnyStringValue text -> text.storage().protectFromChange(protectedNow);
             case BinaryValue bytes -> bytes.storage().protectFromChange(protectedNow);
             case MapValue map -> map.protectFromChange(protectedNow);
-            case ObjectValue object -> setTheProtectionOf(
-                    object, protectedNow, deeply, onlyTheWords, reached);
+            case ObjectValue object -> setProtectionOn(
+                    object, protectedNow, deeply, onlyWords, reached);
             case AnyWordValue word -> {
                 if (protectedNow) {
                     word.findBoundSlot().protectFromAssignment();
@@ -137,7 +137,7 @@ public abstract class ProtectingNative extends DefaultNative {
                     word.findBoundSlot().allowAssignment();
                 }
                 if (deeply && carriesProtection(word.findBoundSlot().value())) {
-                    setProtection(word.findBoundSlot().value(), protectedNow, true, onlyTheWords, reached);
+                    setProtection(word.findBoundSlot().value(), protectedNow, true, onlyWords, reached);
                 }
             }
             case BitsetValue members -> members.protectFromChange(protectedNow);
@@ -146,13 +146,13 @@ public abstract class ProtectingNative extends DefaultNative {
         }
     }
 
-    private void setTheProtectionOf(ObjectValue object, boolean protectedNow,
-            boolean deeply, boolean onlyTheWords, Set<Object> reached) {
+    private void setProtectionOn(ObjectValue object, boolean protectedNow,
+                                 boolean deeply, boolean onlyWords, Set<Object> reached) {
 
         if (!reached.add(object.context())) {
             return;
         }
-        if (!onlyTheWords) {
+        if (!onlyWords) {
             object.context().closeToNewNames(protectedNow);
         }
         object.context().slots().forEach(slot -> {

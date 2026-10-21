@@ -15,20 +15,20 @@ public final class Binder {
 
     public static <Kind extends DefinedFunctionValue> Kind withItsBodyBound(Kind made) {
         made.declaredWords().markAsCallFrameOf(made);
-        Set<String> declared = listTheNamesDeclaredBy(made);
+        Set<String> declared = listNamesDeclaredBy(made);
         declared.forEach(made.declaredWords()::register);
         bindEachInPlace(made.body(), made.declaredWords(), declared);
         return made;
     }
 
-    public static FunctionValue bindTheFunctionsBody(
+    public static FunctionValue bindFunctionsBody(
             AnyBlockValue spec, AnyBlockValue body, Context closedOver) {
 
         return withItsBodyBound(new FunctionValue(
                 spec,
                 body,
-                FunctionSpec.readTheParametersIn(spec),
-                FunctionSpec.readTheLocalNamesIn(spec),
+                FunctionSpec.readParametersIn(spec),
+                FunctionSpec.readLocalNamesIn(spec),
                 closedOver));
     }
 
@@ -59,7 +59,7 @@ public final class Binder {
         };
     }
 
-    private static Set<String> listTheNamesDeclaredBy(DefinedFunctionValue function) {
+    private static Set<String> listNamesDeclaredBy(DefinedFunctionValue function) {
         Set<String> declared = new HashSet<>();
         function.parameters().forEach(
                 parameter -> declared.add(Context.canonicalise(parameter.name())));
@@ -94,7 +94,7 @@ public final class Binder {
         return block;
     }
 
-    public static AnyBlockValue bindWhatTheTargetHoldsItself(
+    public static AnyBlockValue bindWhatTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
         return bindWordsTargetHolds(block, target, ALL_WAY_DOWN);
@@ -121,7 +121,7 @@ public final class Binder {
 
     public static final boolean TOP_LEVEL_ONLY = false;
 
-    public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
+    public static AnyBlockValue bindCopyOfWhatTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
         return bindWordsTargetHoldsInCopy(block, target, ALL_WAY_DOWN);
@@ -146,7 +146,7 @@ public final class Binder {
             case AnyWordValue word when target.bindsWordSpelt(word.canonical()) ->
                     word.bindTo(target);
             case AnyWordValue word -> word;
-            case AnyBlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
+            case AnyBlockValue nested -> bindWhatTargetHoldsItself(nested, target);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, bindIfTargetHoldsIt(map.select(key), target));
@@ -197,7 +197,7 @@ public final class Binder {
         }
     }
 
-    public static AnyBlockValue rebindWhatNamedTheFunction(
+    public static AnyBlockValue rebindWhatNamedFunction(
             AnyBlockValue block, Context from, Context to) {
 
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
@@ -212,7 +212,7 @@ public final class Binder {
             case AnyWordValue word when word.isBound() && word.binding() == from ->
                     word.bindTo(to);
             case AnyWordValue word -> word;
-            case AnyBlockValue nested -> rebindWhatNamedTheFunction(nested, from, to);
+            case AnyBlockValue nested -> rebindWhatNamedFunction(nested, from, to);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, rebindOneThatNamedIt(map.select(key), from, to));

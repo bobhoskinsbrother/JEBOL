@@ -31,7 +31,7 @@ public interface ParseKeyword {
 
     Map<String, ParseKeyword> BY_SPELLING = DialectsWords.indexBySpelling();
 
-    static Optional<ParseKeyword> findTheKeywordNamed(String canonical) {
+    static Optional<ParseKeyword> findKeywordNamed(String canonical) {
         return Optional.ofNullable(BY_SPELLING.get(canonical));
     }
 }

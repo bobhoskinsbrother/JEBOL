@@ -300,7 +300,7 @@ public final class Repl {
 
         private AnyBlockValue listArgumentsForScript() {
             List<Value> given = new ArrayList<>();
-            arguments.listTheArgumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
+            arguments.listArgumentsForScript().forEach(each -> given.add(StringValue.of(each)));
             return BlockValue.of(given);
         }
 

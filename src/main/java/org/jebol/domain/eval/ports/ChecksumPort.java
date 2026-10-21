@@ -22,7 +22,7 @@ final class ChecksumPort {
         this.encodings = encodings;
     }
 
-    private interface RunningSumThatAReadDoesNotEnd {
+    private interface RunningSumThatReadDoesNotEnd {
 
         void add(byte[] octets, int from, int length);
 
@@ -36,14 +36,14 @@ final class ChecksumPort {
         port.setField("data", NoneValue.none());
     }
 
-    private RunningSumThatAReadDoesNotEnd sumNamed(String method) {
+    private RunningSumThatReadDoesNotEnd sumNamed(String method) {
         String algorithm = Optional.ofNullable(Encodings.DIGESTS.get(method))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, method));
         if (BYTE_PRESERVING_DIGESTS.contains(algorithm)) {
             return keepBytes(method);
         }
-        DigestPort.RunningDigest running = encodings.startARunningDigest(method);
-        return new RunningSumThatAReadDoesNotEnd() {
+        DigestPort.RunningDigest running = encodings.startRunningDigest(method);
+        return new RunningSumThatReadDoesNotEnd() {
 
             @Override
             public void add(byte[] octets, int from, int length) {
@@ -57,8 +57,8 @@ final class ChecksumPort {
         };
     }
 
-    private RunningSumThatAReadDoesNotEnd keepBytes(String method) {
-        return new RunningSumThatAReadDoesNotEnd() {
+    private RunningSumThatReadDoesNotEnd keepBytes(String method) {
+        return new RunningSumThatReadDoesNotEnd() {
 
             private byte[] kept = new byte[0];
 
@@ -76,14 +76,14 @@ final class ChecksumPort {
         };
     }
 
-    private Optional<RunningSumThatAReadDoesNotEnd> findTheSumInProgress(PortValue port) {
+    private Optional<RunningSumThatReadDoesNotEnd> findSumInProgress(PortValue port) {
         if (port.isOpen()
                 && port.readFieldValue("extra") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped) {
             return wrapped.held()
-                    .filter(RunningSumThatAReadDoesNotEnd.class::isInstance)
-                    .map(RunningSumThatAReadDoesNotEnd.class::cast);
+                    .filter(RunningSumThatReadDoesNotEnd.class::isInstance)
+                    .map(RunningSumThatReadDoesNotEnd.class::cast);
         }
         return Optional.empty();
     }
@@ -102,19 +102,19 @@ final class ChecksumPort {
     }
 
     void addPart(PortValue port, byte[] whole, long from, long wanted) {
-        long length = measureTheWindowCountingBackwardsWhenNegative(
+        long length = measureWindowCountingBackwardsWhenNegative(
                 wanted, from, whole.length - from);
         addWindow(port, whole, wanted < 0 ? Math.max(0, from + wanted) : from, length);
     }
 
     private void addWindow(PortValue port, byte[] whole, long from, long length) {
         if (length > 0) {
-            findTheSumInProgress(port).ifPresent(sum -> sum.add(
+            findSumInProgress(port).ifPresent(sum -> sum.add(
                     whole, (int) from, (int) Math.min(length, whole.length - from)));
         }
     }
 
-    private long measureTheWindowCountingBackwardsWhenNegative(
+    private long measureWindowCountingBackwardsWhenNegative(
             long wanted, long from, long remaining) {
         if (wanted >= 0) {
             return Math.min(wanted, remaining);
@@ -125,7 +125,7 @@ final class ChecksumPort {
     }
 
     Value digestSoFarLeftInDataFieldAsWell(PortValue port) {
-        return findTheSumInProgress(port).<Value>map(sum -> {
+        return findSumInProgress(port).<Value>map(sum -> {
             BinaryValue answered = BinaryValue.ofBytes(sum.soFar());
             port.setField("data", answered);
             return answered;

@@ -31,27 +31,27 @@ class ABlockListsTheWordsTextInItTest {
     @Test
     @DisplayName("an empty block holds no words")
     void listsNothingForAnEmptyBlock() {
-        assertThat(readABlock().listTheWordsWritten(DEEPLY, EVERY_WORD)).isEmpty();
+        assertThat(readABlock().listWordsWritten(DEEPLY, EVERY_WORD)).isEmpty();
     }
 
     @Test
     @DisplayName("at the top only, a nested block is passed over")
     void listsOnlyAtTheTop() {
-        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listTheWordsWritten(ONLY_AT_THE_TOP, EVERY_WORD)))
+        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listWordsWritten(ONLY_AT_THE_TOP, EVERY_WORD)))
                 .containsExactly("a", "b");
     }
 
     @Test
     @DisplayName("deeply, the nested block's words follow in the order they are written")
     void deeply() {
-        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listTheWordsWritten(DEEPLY, EVERY_WORD)))
+        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listWordsWritten(DEEPLY, EVERY_WORD)))
                 .containsExactly("a", "b", "c", "d");
     }
 
     @Test
     @DisplayName("setters only keeps the set-words and nothing else")
     void settersOnly() {
-        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listTheWordsWritten(DEEPLY, SETTERS_ONLY)))
+        assertThat(listTheSpellingsOf(readABlockWithANestedOne().listWordsWritten(DEEPLY, SETTERS_ONLY)))
                 .containsExactly("b", "d");
     }
 
@@ -63,7 +63,7 @@ class ABlockListsTheWordsTextInItTest {
         AnyBlockValue written = readABlock(SetWordValue.of("a").bindTo(somewhere),
                 GetWordValue.of("b"), LitWordValue.of("c"));
 
-        assertThat(written.listTheWordsWritten(DEEPLY, EVERY_WORD)).allSatisfy(word -> {
+        assertThat(written.listWordsWritten(DEEPLY, EVERY_WORD)).allSatisfy(word -> {
             assertThat(word.datatype()).isEqualTo(WordValue.TYPE);
             assertThat(((AnyWordValue) word).isBound()).isFalse();
         });
@@ -75,7 +75,7 @@ class ABlockListsTheWordsTextInItTest {
         AnyBlockValue written = readABlock(WordValue.of("Total"), SetWordValue.of("total"),
                 readABlock(WordValue.of("TOTAL")));
 
-        assertThat(listTheSpellingsOf(written.listTheWordsWritten(DEEPLY, EVERY_WORD))).containsExactly("Total");
+        assertThat(listTheSpellingsOf(written.listWordsWritten(DEEPLY, EVERY_WORD))).containsExactly("Total");
     }
 
     @Test
@@ -83,6 +83,6 @@ class ABlockListsTheWordsTextInItTest {
     void skipsValuesThatAreNotWords() {
         AnyBlockValue written = readABlock(IntegerValue.of(1), StringValue.of("a"), NoneValue.none());
 
-        assertThat(written.listTheWordsWritten(DEEPLY, EVERY_WORD)).isEmpty();
+        assertThat(written.listWordsWritten(DEEPLY, EVERY_WORD)).isEmpty();
     }
 }

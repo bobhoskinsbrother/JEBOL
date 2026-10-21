@@ -59,8 +59,8 @@ public class ResolveNative extends DefaultNative {
             Context into, Context from, Set<String> refinements, Value onlyThese) {
 
         List<ContextSlot> targetSlots = into.slots();
-        WordsToResolve writable = chooseTheWordsToResolve(targetSlots, refinements, onlyThese);
-        Map<String, Value> available = collectTheFieldsOtherThanSelfIn(from);
+        WordsToResolve writable = chooseWordsToResolve(targetSlots, refinements, onlyThese);
+        Map<String, Value> available = collectFieldsOtherThanSelfIn(from);
         for (int at = writable.startAt(); at <= targetSlots.size(); at++) {
             ContextSlot slot = targetSlots.get(at - 1);
             if (slot.isProtected()) {
@@ -84,7 +84,7 @@ public class ResolveNative extends DefaultNative {
         }
     }
 
-    private Map<String, Value> collectTheFieldsOtherThanSelfIn(Context from) {
+    private Map<String, Value> collectFieldsOtherThanSelfIn(Context from) {
         Map<String, Value> available = new LinkedHashMap<>();
         for (ContextSlot slot : from.slots()) {
             available.put(slot.canonical(), slot.value());
@@ -92,7 +92,7 @@ public class ResolveNative extends DefaultNative {
         return available;
     }
 
-    private WordsToResolve chooseTheWordsToResolve(
+    private WordsToResolve chooseWordsToResolve(
             List<ContextSlot> targetSlots, Set<String> refinements, Value onlyThese) {
 
         if (!refinements.contains("only")) {

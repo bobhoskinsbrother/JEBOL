@@ -3,14 +3,14 @@ package org.jebol.domain.parse.keyword;
 abstract class DeclaredKeyword implements ParseKeyword {
 
     private final String spelling;
-    private final int slotsBeforeTheRule;
-    private final boolean ownsTheRuleAfterIt;
+    private final int slotsBeforeRule;
+    private final boolean ownsRuleAfterIt;
     private final WhenNothingFollowsIt whenNothingFollowsIt;
 
-    DeclaredKeyword(String spelling, int slotsBeforeTheRule, boolean ownsTheRuleAfterIt, WhenNothingFollowsIt whenNothingFollowsIt) {
+    DeclaredKeyword(String spelling, int slotsBeforeRule, boolean ownsRuleAfterIt, WhenNothingFollowsIt whenNothingFollowsIt) {
         this.spelling = spelling;
-        this.slotsBeforeTheRule = slotsBeforeTheRule;
-        this.ownsTheRuleAfterIt = ownsTheRuleAfterIt;
+        this.slotsBeforeRule = slotsBeforeRule;
+        this.ownsRuleAfterIt = ownsRuleAfterIt;
         this.whenNothingFollowsIt = whenNothingFollowsIt;
     }
 
@@ -21,12 +21,12 @@ abstract class DeclaredKeyword implements ParseKeyword {
 
     @Override
     public final int slotsBeforeRule() {
-        return slotsBeforeTheRule;
+        return slotsBeforeRule;
     }
 
     @Override
     public final boolean ownsRuleAfterIt() {
-        return ownsTheRuleAfterIt;
+        return ownsRuleAfterIt;
     }
 
     @Override

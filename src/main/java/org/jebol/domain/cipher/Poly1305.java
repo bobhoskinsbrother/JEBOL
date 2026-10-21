@@ -16,16 +16,16 @@ public final class Poly1305 {
 
     /** The tag over a message, under a key that must be used once. */
     public static byte[] computeTag(byte[] key, byte[] message) {
-        BigInteger thePointThePolynomialIsEvaluatedAt = clampPoint(key);
-        BigInteger addedAtTheEndSoTheAnswerCannotBeWorkedBackwards = readLittleEndian(key, CHUNK, CHUNK);
+        BigInteger pointPolynomialIsEvaluatedAt = clampPoint(key);
+        BigInteger addedAtEndSoAnswerCannotBeWorkedBackwards = readLittleEndian(key, CHUNK, CHUNK);
         BigInteger running = BigInteger.ZERO;
         for (int at = 0; at < message.length; at += CHUNK) {
             int howMany = Math.min(CHUNK, message.length - at);
             running = running.add(readChunk(message, at, howMany));
-            running = running.multiply(thePointThePolynomialIsEvaluatedAt).mod(PRIME_ARITHMETIC_IS_DONE_MODULO);
+            running = running.multiply(pointPolynomialIsEvaluatedAt).mod(PRIME_ARITHMETIC_IS_DONE_MODULO);
         }
         return writeSixteenLittleEndianOctets(
-                running.add(addedAtTheEndSoTheAnswerCannotBeWorkedBackwards)
+                running.add(addedAtEndSoAnswerCannotBeWorkedBackwards)
                         .mod(WHOLE_TAG));
     }
 

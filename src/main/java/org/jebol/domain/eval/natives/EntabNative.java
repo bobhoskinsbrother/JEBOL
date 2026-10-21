@@ -8,7 +8,7 @@ public class EntabNative extends TabbingNative {
     }
 
     @Override
-    String tab(String text, String aTabsWorthOfSpaces) {
-        return text.replace(aTabsWorthOfSpaces, "\t");
+    String tab(String text, String spacesForTab) {
+        return text.replace(spacesForTab, "\t");
     }
 }

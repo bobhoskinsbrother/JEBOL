@@ -16,7 +16,7 @@ record IpAddressText(String written) {
     private static final int MAX_OCTET = 255;
     private static final String ZERO_RUN = "::";
 
-    Optional<String> writeTheCanonicalHex() {
+    Optional<String> writeCanonicalHex() {
         if (written.contains(":")) {
             return writeIpv6AsHex(unbracket(written));
         }

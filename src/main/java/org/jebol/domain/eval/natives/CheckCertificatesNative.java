@@ -47,7 +47,7 @@ public class CheckCertificatesNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.CERTIFICATES);
-            List<byte[]> chain = readTheCertificates((AnyBlockValue) arguments.get(0));
+            List<byte[]> chain = readCertificates((AnyBlockValue) arguments.get(0));
             String host = readHostName(arguments.get(1));
             if (chain.isEmpty()) {
                 throw refuseAsMistrusted(CertificateMistrust.NO_CERTIFICATE, host);
@@ -67,7 +67,7 @@ public class CheckCertificatesNative extends HostNative {
         }
     }
 
-    private List<byte[]> readTheCertificates(AnyBlockValue chain) {
+    private List<byte[]> readCertificates(AnyBlockValue chain) {
         return chain.remaining().stream().map(this::readBytes).toList();
     }
 

@@ -51,10 +51,10 @@ record Assigned(Value value, AnyWordValue part) {
 
     int zoneOffsetInMinutes() {
         return withinReach(switch (value) {
-            case IntegerValue aBareNumberMeansHours ->
-                    Math.toIntExact(aBareNumberMeansHours.magnitude()) * 60;
-            case AnyDecimalValue aBareNumberMeansHours ->
-                    (int) aBareNumberMeansHours.quantity() * 60;
+            case IntegerValue bareNumberMeansHours ->
+                    Math.toIntExact(bareNumberMeansHours.magnitude()) * 60;
+            case AnyDecimalValue bareNumberMeansHours ->
+                    (int) bareNumberMeansHours.quantity() * 60;
             case TimeValue clock -> (int) (clock.nanoseconds()
                     / (60L * TimeValue.NANOSECONDS_PER_SECOND));
             default -> throw refusal();

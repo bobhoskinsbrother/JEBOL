@@ -117,36 +117,36 @@ public final class ImageOperations {
     private static void blurDownColumns(byte[] from, byte[] into,
                                         int wide, int high, int spread) {
 
-        int aRow = wide * CHANNELS;
+        int row = wide * CHANNELS;
         for (int column = 0; column < wide; column++) {
             for (int channel = 0; channel < CHANNELS; channel++) {
                 int writing = (column * CHANNELS) + channel;
                 int leaving = writing;
-                int arriving = writing + (spread * aRow);
+                int arriving = writing + (spread * row);
                 int first = read(from, writing);
-                int last = read(from, writing + ((high - 1) * aRow));
+                int last = read(from, writing + ((high - 1) * row));
                 int total = (spread + 1) * first;
                 for (int step = 0; step < spread; step++) {
-                    total += read(from, writing + (step * aRow));
+                    total += read(from, writing + (step * row));
                 }
                 for (int step = 0; step <= spread; step++) {
                     total += read(from, arriving) - first;
                     write(into, writing, total / ((spread * 2) + 1));
-                    arriving += aRow;
-                    writing += aRow;
+                    arriving += row;
+                    writing += row;
                 }
                 for (int step = spread + 1; step < high - spread; step++) {
                     total += read(from, arriving) - read(from, leaving);
                     write(into, writing, total / ((spread * 2) + 1));
-                    leaving += aRow;
-                    arriving += aRow;
-                    writing += aRow;
+                    leaving += row;
+                    arriving += row;
+                    writing += row;
                 }
                 for (int step = high - spread; step < high; step++) {
                     total += last - read(from, leaving);
                     write(into, writing, total / ((spread * 2) + 1));
-                    leaving += aRow;
-                    writing += aRow;
+                    leaving += row;
+                    writing += row;
                 }
             }
         }
@@ -194,7 +194,7 @@ public final class ImageOperations {
         ImageStorage into = ImageStorage.of(wide, high);
         for (int row = 0; row < high; row++) {
             for (int column = 0; column < wide; column++) {
-                int[] sampled = readTheNearestPixelOf(from, row, column, wide, high);
+                int[] sampled = readNearestPixelFrom(from, row, column, wide, high);
                 int pixel = (row * wide) + column + 1;
                 into.setColourAt(pixel, sampled[0], sampled[1], sampled[2]);
                 into.setAlphaAt(pixel, sampled[3]);
@@ -203,7 +203,7 @@ public final class ImageOperations {
         return new ImageValue(into, 1);
     }
 
-    private static int[] readTheNearestPixelOf(
+    private static int[] readNearestPixelFrom(
             ImageStorage from, int row, int column, int wide, int high) {
         return from.readPixelAt(((row * from.high() / high) * from.wide())
                 + (column * from.wide() / wide) + 1);
@@ -221,13 +221,13 @@ public final class ImageOperations {
         return Math.min(ours, theirs);
     }
 
-    public static double measureTheDifferenceOverTheRectangle(ImageValue first, ImageValue second,
-                                                              int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
+    public static double measureDifferenceOverRectangle(ImageValue first, ImageValue second,
+                                                        int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
 
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
-        int widestOfTheTwo = Math.max(left.wide(), right.wide());
-        int tallestOfTheTwo = Math.max(left.high(), right.high());
+        int widestOfTwo = Math.max(left.wide(), right.wide());
+        int tallestOfTwo = Math.max(left.high(), right.high());
 
         int wide = rectangleWide;
         int high = rectangleHigh;
@@ -249,17 +249,17 @@ public final class ImageOperations {
             high += fromY;
             fromY = 0;
         }
-        if (fromX + wide > widestOfTheTwo) {
-            wide = widestOfTheTwo - fromX - wide;
+        if (fromX + wide > widestOfTwo) {
+            wide = widestOfTwo - fromX - wide;
         }
-        if (fromY + high > tallestOfTheTwo) {
-            high = tallestOfTheTwo - fromY - high;
+        if (fromY + high > tallestOfTwo) {
+            high = tallestOfTwo - fromY - high;
         }
         if (wide == 0 || high == 0) {
             throw Raised.of(EvaluationFailure.INVALID_DATA,
                     PairValue.of(rectangleWide, rectangleHigh));
         }
-        if (fromX >= widestOfTheTwo || fromY >= tallestOfTheTwo) {
+        if (fromX >= widestOfTwo || fromY >= tallestOfTwo) {
             throw Raised.of(EvaluationFailure.INVALID_DATA,
                     PairValue.of(cornerX, cornerY));
         }

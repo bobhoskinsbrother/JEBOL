@@ -192,7 +192,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                         instanceof AnyBlockValue block)) {
             return List.of();
         }
-        return new DrawDialect().readTheInstructionsFor(block, drawDialect, where, wide, high);
+        return new DrawDialect().readInstructionsFor(block, drawDialect, where, wide, high);
     }
 
     private static int multiplyOpacity(int inherited, int own) {

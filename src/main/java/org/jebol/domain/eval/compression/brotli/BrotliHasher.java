@@ -5,7 +5,7 @@ sealed interface BrotliHasher
 
     int countBytesItLooksAhead();
 
-    void prepareFor(byte[] data, int inputSize, boolean theWholeInputAtOnce);
+    void prepareFor(byte[] data, int inputSize, boolean wholeInputAtOnce);
 
     void remember(byte[] data, int mask, int at);
 

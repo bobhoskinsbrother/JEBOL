@@ -99,7 +99,7 @@ public final class Catalogue {
         return entries.indexOf(datatype) + 1;
     }
 
-    public Optional<Datatype> findTheDatatypeNamed(String spelling) {
+    public Optional<Datatype> findDatatypeNamed(String spelling) {
         String wanted = withoutMark(spelling);
         return entries.stream()
                 .filter(datatype -> datatype.spelling().equalsIgnoreCase(wanted))
@@ -110,7 +110,7 @@ public final class Catalogue {
         return standardTypesets;
     }
 
-    public Optional<TypesetValue> findTheTypesetNamed(String spelling) {
+    public Optional<TypesetValue> findTypesetNamed(String spelling) {
         String wanted = withoutMark(spelling);
         return standardTypesets().stream()
                 .filter(typeset -> typeset.spelling().filter(wanted::equalsIgnoreCase).isPresent())

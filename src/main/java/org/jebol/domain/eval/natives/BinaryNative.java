@@ -47,14 +47,14 @@ public class BinaryNative extends DefaultNative {
                     .ifPresent(replacement -> restartWith(held, replacement));
             if (refinements.contains("write")) {
                 arguments.getFirst().requireChangeable();
-                writeThroughTheDialect(held, readTheCodesWrittenIn(
+                writeThroughDialect(held, readCodesWrittenIn(
                         refinementArgument("write", 0, arguments, refinements).orElseThrow()), lookedUp);
                 if (arguments.getFirst() instanceof BinaryValue given) {
                     layBackInto(given, findCursorNamed(held, "buffer").head());
                 }
             }
             if (refinements.contains("read")) {
-                return readThroughTheDialect(held,
+                return readThroughDialect(held,
                         refinementArgument("read", 0, arguments, refinements).orElseThrow(),
                         lookedUp,
                         refinementArgument("with", 0, arguments, refinements)
@@ -134,8 +134,8 @@ public class BinaryNative extends DefaultNative {
                 : BinaryValue.of();
     }
 
-    private void writeThroughTheDialect(ObjectValue held, List<Value> dialect,
-            UnaryOperator<Value> lookedUp) {
+    private void writeThroughDialect(ObjectValue held, List<Value> dialect,
+                                     UnaryOperator<Value> lookedUp) {
 
         BinaryValue writing = findCursorNamed(held, "buffer-write");
         Bincode.Cursor cursor = new Bincode.Cursor(
@@ -148,18 +148,18 @@ public class BinaryNative extends DefaultNative {
         held.context().register("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
-    private Value readThroughTheDialect(ObjectValue held, Value asked,
-            UnaryOperator<Value> lookedUp, Value count, Optional<Value> into) {
+    private Value readThroughDialect(ObjectValue held, Value asked,
+                                     UnaryOperator<Value> lookedUp, Value count, Optional<Value> into) {
 
         BinaryValue reading = findCursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 bufferOctets(reading.head()), reading.index() - 1,
                 countBitsAlreadyTakenIn(held));
-        Value theBlockItself = lookedUp.apply(asked);
-        if (theBlockItself instanceof IntegerValue howMany) {
+        Value blockItself = lookedUp.apply(asked);
+        if (blockItself instanceof IntegerValue howMany) {
             return readTheseManyBytes(held, reading, cursor, howMany, into);
         }
-        List<Value> codes = new ArrayList<>(readTheCodesWrittenIn(theBlockItself));
+        List<Value> codes = new ArrayList<>(readCodesWrittenIn(blockItself));
         if (!(count instanceof NoneValue)) {
             codes.add(count);
         }
@@ -172,7 +172,7 @@ public class BinaryNative extends DefaultNative {
             held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         }
         return into.map(target -> layInto(target, read))
-                .orElseGet(() -> shapeLikeAsking(theBlockItself, read));
+                .orElseGet(() -> shapeLikeAsking(blockItself, read));
     }
 
     private Value readTheseManyBytes(ObjectValue held, BinaryValue reading,
@@ -225,7 +225,7 @@ public class BinaryNative extends DefaultNative {
         return octets;
     }
 
-    private List<Value> readTheCodesWrittenIn(Value asked) {
+    private List<Value> readCodesWrittenIn(Value asked) {
         return asked instanceof AnyBlockValue block ? block.remaining() : List.of(asked);
     }
 

@@ -96,10 +96,10 @@ public final class TimeActions {
         long ours = span.nanoseconds();
         long theirs = wholeNanoseconds(right);
         return TimeValue.ofNanoseconds(
-                requireWithinDurationRange(combineTheNanoseconds(ours, theirs, operation)));
+                requireWithinDurationRange(combineNanoseconds(ours, theirs, operation)));
     }
 
-    private static long combineTheNanoseconds(
+    private static long combineNanoseconds(
             long ours, long theirs, ArithmeticOperation operation) {
 
         if (operation.canSubtractOneFromOther()) {

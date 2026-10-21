@@ -15,9 +15,9 @@ final class BrotliGenericEncoder {
     private final byte[] source;
     private final int quality;
     private final int blockBits;
-    private final int howMuchAMetaBlockMayHold;
+    private final int howMuchMetaBlockMayHold;
     private final BrotliRingBuffer ringBuffer;
-    private final FindsTheCopies finder;
+    private final FindsCopies finder;
     private final BrotliBits writer;
     private final BrotliCommand commands = new BrotliCommand(64);
     private final BrotliDistances distances = BrotliDistances.PLAINEST;
@@ -32,9 +32,9 @@ final class BrotliGenericEncoder {
     private int insertLengthNotYetSpokenFor;
     private int howManyLiterals;
     private int previousByte;
-    private int theByteBeforeThat;
-    private boolean anythingWrittenToTheRingBuffer;
-    private boolean theHasherIsReady;
+    private int byteBeforeThat;
+    private boolean anythingWrittenToRingBuffer;
+    private boolean hasherIsReady;
 
     static byte[] encode(byte[] source, int quality) {
         if (quality < LOWEST_QUALITY_HERE || quality > HIGHEST_QUALITY_HERE) {
@@ -49,12 +49,12 @@ final class BrotliGenericEncoder {
         this.quality = quality;
         this.blockBits = countBytesReadAtOnce(quality);
         int ringBits = 1 + Math.max(WINDOW_BITS, blockBits);
-        this.howMuchAMetaBlockMayHold =
+        this.howMuchMetaBlockMayHold =
                 1 << Math.min(ringBits, MOST_BITS_META_BLOCK_MAY_SPAN);
         this.ringBuffer = new BrotliRingBuffer(ringBits, blockBits);
         this.finder = quality >= LOWEST_QUALITY_THAT_PRICES_EVERYTHING
                 ? new PriceEverything(quality, source.length)
-                : new TakeTheBestMatch(quality,
+                : new TakeBestMatch(quality,
                         source.length >= INPUT_LARGE_ENOUGH_FOR_WIDER_HASHES);
         this.writer = new BrotliBits(source.length / 2 + 64);
     }
@@ -70,15 +70,15 @@ final class BrotliGenericEncoder {
         writer.write(4, ((WINDOW_BITS - 17) << 1) | 1);
         int taken = 0;
         while (true) {
-            int roomLeftInTheBlock =
+            int roomLeftInBlock =
                     (1 << blockBits) - (inputAt - lastProcessedAt);
             int left = source.length - taken;
-            if (roomLeftInTheBlock != 0 && left != 0) {
-                int howMany = Math.min(roomLeftInTheBlock, left);
+            if (roomLeftInBlock != 0 && left != 0) {
+                int howMany = Math.min(roomLeftInBlock, left);
                 ringBuffer.write(source, taken, howMany);
                 inputAt += howMany;
                 ringBuffer.clearSlackForHashing();
-                anythingWrittenToTheRingBuffer = true;
+                anythingWrittenToRingBuffer = true;
                 taken += howMany;
                 continue;
             }
@@ -92,7 +92,7 @@ final class BrotliGenericEncoder {
 
     private void encodeOneBlock(boolean isLast) {
         int bytes = inputAt - lastProcessedAt;
-        if (bytes == 0 && !anythingWrittenToTheRingBuffer) {
+        if (bytes == 0 && !anythingWrittenToRingBuffer) {
             if (isLast) {
                 BrotliMetaBlockWriter.writeEmptyLastMetaBlock(writer);
             }
@@ -101,9 +101,9 @@ final class BrotliGenericEncoder {
 
         byte[] data = ringBuffer.data();
         int mask = ringBuffer.mask();
-        if (!theHasherIsReady) {
+        if (!hasherIsReady) {
             finder.getReady(data, bytes, lastProcessedAt == 0 && isLast);
-            theHasherIsReady = true;
+            hasherIsReady = true;
         }
         finder.stitchToPreviousBlock(data, mask, bytes, lastProcessedAt);
 
@@ -136,9 +136,9 @@ final class BrotliGenericEncoder {
         writeOneMetaBlock(data, mask, isLast);
     }
 
-    private sealed interface FindsTheCopies {
+    private sealed interface FindsCopies {
 
-        void getReady(byte[] data, int howMuchInput, boolean theWholeInputAtOnce);
+        void getReady(byte[] data, int howMuchInput, boolean wholeInputAtOnce);
 
         void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
                 int position);
@@ -149,23 +149,23 @@ final class BrotliGenericEncoder {
                 long[] howManyLiterals);
     }
 
-    private static final class TakeTheBestMatch implements FindsTheCopies {
+    private static final class TakeBestMatch implements FindsCopies {
 
         private final int quality;
         private final BrotliHasher hasher;
 
-        TakeTheBestMatch(int quality, boolean theInputIsLarge) {
+        TakeBestMatch(int quality, boolean inputIsLarge) {
             this.quality = quality;
             this.hasher = quality < 5
-                    ? BrotliQuickHasher.chooseForQuality(quality, theInputIsLarge)
-                    : BrotliFullHasher.chooseForQuality(quality, theInputIsLarge);
+                    ? BrotliQuickHasher.chooseForQuality(quality, inputIsLarge)
+                    : BrotliFullHasher.chooseForQuality(quality, inputIsLarge);
         }
 
         @Override
         public void getReady(byte[] data, int howMuchInput,
-                boolean theWholeInputAtOnce) {
+                boolean wholeInputAtOnce) {
 
-            hasher.prepareFor(data, howMuchInput, theWholeInputAtOnce);
+            hasher.prepareFor(data, howMuchInput, wholeInputAtOnce);
         }
 
         @Override
@@ -190,7 +190,7 @@ final class BrotliGenericEncoder {
         }
     }
 
-    private record PriceEverything(int quality, BrotliBinaryTreeHasher tree) implements FindsTheCopies {
+    private record PriceEverything(int quality, BrotliBinaryTreeHasher tree) implements FindsCopies {
 
             PriceEverything(int quality, int howMuchInput) {
                 this(quality, new BrotliBinaryTreeHasher(WINDOW_BITS, howMuchInput, true));
@@ -198,7 +198,7 @@ final class BrotliGenericEncoder {
 
             @Override
             public void getReady(byte[] data, int howMuchInput,
-                                 boolean theWholeInputAtOnce) {
+                                 boolean wholeInputAtOnce) {
             }
 
             @Override
@@ -228,16 +228,16 @@ final class BrotliGenericEncoder {
 
     private boolean isWorthWaitingForMoreInput() {
         int gatheredSoFar = inputAt - lastFlushAt;
-        boolean theNextBlockWouldStillFit =
-                gatheredSoFar + (1 << blockBits) <= howMuchAMetaBlockMayHold;
+        boolean nextBlockWouldStillFit =
+                gatheredSoFar + (1 << blockBits) <= howMuchMetaBlockMayHold;
         boolean enoughToBeGoingOnWith =
                 quality < QUALITY_THAT_FIRST_SPLITS_BLOCKS
                         && howManyLiterals + commands.count()
                                 >= MOST_SYMBOLS_HELD_BACK_WHEN_NOT_SPLITTING;
         return !enoughToBeGoingOnWith
-                && theNextBlockWouldStillFit
-                && howManyLiterals < howMuchAMetaBlockMayHold / 8
-                && commands.count() < howMuchAMetaBlockMayHold / 8;
+                && nextBlockWouldStillFit
+                && howManyLiterals < howMuchMetaBlockMayHold / 8
+                && commands.count() < howMuchMetaBlockMayHold / 8;
     }
 
     private void writeOneMetaBlock(byte[] data, int mask, boolean isLast) {
@@ -251,7 +251,7 @@ final class BrotliGenericEncoder {
             previousByte = data[(lastFlushAt - 1) & mask] & 0xFF;
         }
         if (lastFlushAt > 1) {
-            theByteBeforeThat = data[(lastFlushAt - 2) & mask] & 0xFF;
+            byteBeforeThat = data[(lastFlushAt - 2) & mask] & 0xFF;
         }
         commands.clear();
         howManyLiterals = 0;
@@ -282,8 +282,8 @@ final class BrotliGenericEncoder {
     }
 
     private boolean hasOutgrownInput(int length, int startedAt) {
-        int bitsWrittenIntoTheBuffer = writer.at() - startedAt + (startedAt & 7);
-        return length + 4 < bitsWrittenIntoTheBuffer >> 3;
+        int bitsWrittenIntoBuffer = writer.at() - startedAt + (startedAt & 7);
+        return length + 4 < bitsWrittenIntoBuffer >> 3;
     }
 
     private void writeCompressedForm(byte[] data, int mask, int length,
@@ -303,13 +303,13 @@ final class BrotliGenericEncoder {
             writeClusteredForm(data, mask, length, isLast);
             return;
         }
-        int[] contextMap = BrotliMetaBlock.chooseTheContextMapFor(data, mask, lastFlushAt,
+        int[] contextMap = BrotliMetaBlock.chooseContextMapFor(data, mask, lastFlushAt,
                 length, quality, source.length);
         BrotliMetaBlockSplit split = BrotliMetaBlock.buildGreedily(data, mask,
-                lastFlushAt, previousByte, theByteBeforeThat, contextMap,
+                lastFlushAt, previousByte, byteBeforeThat, contextMap,
                 commands, distances);
-        BrotliMetaBlockWriter.writeTheFullThing(data, mask, lastFlushAt, length,
-                previousByte, theByteBeforeThat, isLast, distances, commands,
+        BrotliMetaBlockWriter.writeFullThing(data, mask, lastFlushAt, length,
+                previousByte, byteBeforeThat, isLast, distances, commands,
                 split, chooseContextModeFor(data, mask, length), writer);
     }
 
@@ -326,13 +326,13 @@ final class BrotliGenericEncoder {
 
         int contextMode = chooseContextModeFor(data, mask, length);
         BrotliClusteredMetaBlock.Built built = BrotliClusteredMetaBlock.build(
-                data, mask, lastFlushAt, previousByte, theByteBeforeThat,
+                data, mask, lastFlushAt, previousByte, byteBeforeThat,
                 contextMode, quality, commands, distances);
         BrotliDistances chosenForThisOne = built.distances();
         BrotliClusteredMetaBlock.smoothForRuns(built.split(),
                 chosenForThisOne.alphabetSize());
-        BrotliMetaBlockWriter.writeTheFullThing(data, mask, lastFlushAt, length,
-                previousByte, theByteBeforeThat, isLast, chosenForThisOne,
+        BrotliMetaBlockWriter.writeFullThing(data, mask, lastFlushAt, length,
+                previousByte, byteBeforeThat, isLast, chosenForThisOne,
                 commands, built.split(), contextMode, writer);
     }
 
@@ -382,7 +382,7 @@ final class BrotliGenericEncoder {
             commands.copyLengthGrows(which);
             at++;
         }
-        commands.setCommandPrefix(which, BrotliCommand.codeTheLength(
+        commands.setCommandPrefix(which, BrotliCommand.codeLength(
                 commands.insertLengthAt(which),
                 commands.copyLengthPlusItsModifierReadPlainlyAsCReadsIt(which),
                 (commands.readDistancePrefixAt(which) & 0x3FF) == 0));

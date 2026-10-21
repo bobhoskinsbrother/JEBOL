@@ -5,10 +5,10 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-abstract class SameForABlockAndAString extends DeclaredKeyword {
+abstract class SameForBlockAndString extends DeclaredKeyword {
 
-    SameForABlockAndAString(String spelling, int slotsBeforeTheRule, boolean ownsTheRuleAfterIt, WhenNothingFollowsIt whenNothingFollowsIt) {
-        super(spelling, slotsBeforeTheRule, ownsTheRuleAfterIt, whenNothingFollowsIt);
+    SameForBlockAndString(String spelling, int slotsBeforeRule, boolean ownsRuleAfterIt, WhenNothingFollowsIt whenNothingFollowsIt) {
+        super(spelling, slotsBeforeRule, ownsRuleAfterIt, whenNothingFollowsIt);
     }
 
     abstract int apply(ParseWalk walk, List<Value> rules, int at);

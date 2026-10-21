@@ -29,7 +29,7 @@ public enum Resampling {
     private static final int CHANNELS = 4;
     private static final int OPAQUE = 255;
 
-    public static Optional<Resampling> findTheResamplingNamed(String spelling) {
+    public static Optional<Resampling> findResamplingNamed(String spelling) {
         for (Resampling how : values()) {
             if (how.name().toLowerCase(Locale.ROOT).equals(spelling)) {
                 return Optional.of(how);
@@ -54,7 +54,7 @@ public enum Resampling {
                 double fromAcross = (across + 0.5) * fromWide / wide - 0.5;
                 double fromDown = (down + 0.5) * fromHigh / high - 0.5;
                 int[] parts = this == NEAREST
-                        ? pickTheNearestIn(read, fromWide, fromHigh, fromAcross, fromDown)
+                        ? pickNearestIn(read, fromWide, fromHigh, fromAcross, fromDown)
                         : blendIn(read, fromWide, fromHigh, fromAcross, fromDown);
                 System.arraycopy(parts, 0, made,
                         (down * wide + across) * CHANNELS, CHANNELS);
@@ -63,7 +63,7 @@ public enum Resampling {
         return imageFromChannels(made, wide, high);
     }
 
-    private int[] pickTheNearestIn(
+    private int[] pickNearestIn(
             int[] source, int wide, int high, double across, double down) {
 
         return readPixelIn(source, wide, high,
@@ -84,9 +84,9 @@ public enum Resampling {
             double bottomLeft = readPixelIn(source, wide, high, leftOf, above + 1)[channel];
             double bottomRight =
                     readPixelIn(source, wide, high, leftOf + 1, above + 1)[channel];
-            double acrossTheTop = topLeft + (topRight - topLeft) * alongIt;
-            double acrossTheBottom = bottomLeft + (bottomRight - bottomLeft) * alongIt;
-            double mixed = acrossTheTop + (acrossTheBottom - acrossTheTop) * downIt;
+            double acrossTop = topLeft + (topRight - topLeft) * alongIt;
+            double acrossBottom = bottomLeft + (bottomRight - bottomLeft) * alongIt;
+            double mixed = acrossTop + (acrossBottom - acrossTop) * downIt;
             blended[channel] = Math.clamp((int) Math.round(
                     this == BICUBIC ? sharpen(mixed, topLeft, bottomRight) : mixed),
                     0, OPAQUE);

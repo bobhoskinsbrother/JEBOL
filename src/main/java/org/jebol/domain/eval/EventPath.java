@@ -22,15 +22,15 @@ public final class EventPath {
             case "type" -> event.typeIndex() == 0
                     ? NoneValue.none()
                     : WordValue.of(EventCatalogue.readTypeAt(event.typeIndex()));
-            case "port" -> findThePortOf(event, guiPort, callbackPort, consolePort);
+            case "port" -> findPortFor(event, guiPort, callbackPort, consolePort);
             case "window", "gob" -> attachedGob(event);
             case "offset" -> event.has(EventValue.Flag.HAS_XY)
                     ? PairValue.of(event.offsetX(), event.offsetY())
                     : NoneValue.none();
             case "key" -> event.readKey().orElseGet(NoneValue::none);
-            case "flags" -> event.listTheRaisedFlagWords().isEmpty()
+            case "flags" -> event.listRaisedFlagWords().isEmpty()
                     ? NoneValue.none()
-                    : BlockValue.of(event.listTheRaisedFlagWords());
+                    : BlockValue.of(event.listRaisedFlagWords());
             case "code" -> event.has(EventValue.Flag.HAS_CODE)
                     ? IntegerValue.of(event.data())
                     : NoneValue.none();
@@ -40,8 +40,8 @@ public final class EventPath {
         };
     }
 
-    private static Value findThePortOf(EventValue event, Value guiPort,
-                                       Value callbackPort, Value consolePort) {
+    private static Value findPortFor(EventValue event, Value guiPort,
+                                     Value callbackPort, Value consolePort) {
 
         return switch (event.model()) {
             case GUI -> guiPort;
@@ -82,14 +82,14 @@ public final class EventPath {
             EventValue event, String field, Value value) {
 
         return switch (field) {
-            case "type" -> writeTheType(event, value);
-            case "port" -> writeThePort(event, value);
+            case "type" -> writeType(event, value);
+            case "port" -> writePort(event, value);
             case "window", "gob" -> value instanceof GobValue gob
                     ? java.util.Optional.of(
                             event.withAttached(EventValue.Model.GUI, gob))
                     : java.util.Optional.empty();
-            case "offset" -> writeTheOffset(event, value);
-            case "key" -> writeTheKey(event, value);
+            case "offset" -> writeOffset(event, value);
+            case "key" -> writeKey(event, value);
             case "code" -> value instanceof IntegerValue(long magnitude)
                     ? java.util.Optional.of(event.withData(
                             (int) magnitude, EventValue.Flag.HAS_CODE))
@@ -98,7 +98,7 @@ public final class EventPath {
         };
     }
 
-    private static java.util.Optional<EventValue> writeTheType(
+    private static java.util.Optional<EventValue> writeType(
             EventValue event, Value value) {
 
         if (!(value instanceof AnyWordValue eventType)
@@ -106,13 +106,13 @@ public final class EventPath {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(event.withType(
-                EventCatalogue.findTheTypeIndexOf(eventType.canonical())
+                EventCatalogue.findTypeIndexOf(eventType.canonical())
                         .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG,
                                 eventType.spelling()
                                         + " is not in system/catalog/event-types"))));
     }
 
-    private static java.util.Optional<EventValue> writeThePort(
+    private static java.util.Optional<EventValue> writePort(
             EventValue event, Value value) {
 
         if (value instanceof PortValue port) {
@@ -129,7 +129,7 @@ public final class EventPath {
         return java.util.Optional.empty();
     }
 
-    private static java.util.Optional<EventValue> writeTheOffset(
+    private static java.util.Optional<EventValue> writeOffset(
             EventValue event, Value value) {
 
         if (!(value instanceof PairValue(double x, double y))) {
@@ -150,22 +150,22 @@ public final class EventPath {
         return (int) half;
     }
 
-    private static java.util.Optional<EventValue> writeTheKey(
+    private static java.util.Optional<EventValue> writeKey(
             EventValue event, Value value) {
 
-        EventValue theModelAndTypeChangeBeforeTheValueIsLookedAt =
+        EventValue modelAndTypeChangeBeforeValueIsLookedAt =
                 withModelAndTypeSetFirst(event);
         if (value instanceof CharacterValue(int codepoint)) {
             return java.util.Optional.of(
-                    theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
+                    modelAndTypeChangeBeforeValueIsLookedAt.withData(
                             codepoint, EventValue.Flag.HAS_CODE));
         }
         if (value instanceof AnyWordValue keyWord
                 && (keyWord instanceof WordValue || keyWord instanceof LitWordValue)) {
             java.util.Optional<Integer> at =
-                    EventCatalogue.findTheKeyIndexOf(keyWord.canonical());
+                    EventCatalogue.findKeyIndexOf(keyWord.canonical());
             return at.map(position ->
-                    theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
+                    modelAndTypeChangeBeforeValueIsLookedAt.withData(
                             keepNamedKeyApartFromCharacters(position),
                             EventValue.Flag.HAS_CODE));
         }
@@ -173,10 +173,10 @@ public final class EventPath {
     }
 
     private static EventValue withModelAndTypeSetFirst(EventValue event) {
-        EventValue withTheModelSet = event.withModel(EventValue.Model.GUI);
-        return withTheModelSet.typeIndex() == 0
-                ? withTheModelSet.withType(EventCatalogue.KEY)
-                : withTheModelSet;
+        EventValue withModelSet = event.withModel(EventValue.Model.GUI);
+        return withModelSet.typeIndex() == 0
+                ? withModelSet.withType(EventCatalogue.KEY)
+                : withModelSet;
     }
 
     private static int keepNamedKeyApartFromCharacters(int position) {
@@ -189,7 +189,7 @@ public final class EventPath {
         EventValue built = start;
         for (int at = 0; at < spec.size(); at += 2) {
             Value name = spec.get(at);
-            Value given = readTheValueAfterASetWord(spec, at);
+            Value given = readValueAfterSetWord(spec, at);
             Value written = given.datatype() == UnsetValue.TYPE
                     ? NoneValue.none()
                     : simpleValueOf.apply(given);
@@ -204,7 +204,7 @@ public final class EventPath {
         return built;
     }
 
-    private static Value readTheValueAfterASetWord(
+    private static Value readValueAfterSetWord(
             List<Value> spec, int at) {
         return at + 1 < spec.size() ? spec.get(at + 1) : NoneValue.none();
     }

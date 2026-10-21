@@ -49,7 +49,7 @@ class TheHostsDigestsFromTheSourceTest {
     void computesTheWholeCatalogueOnTheJvm() {
         Encodings encodings = new Encodings(new JvmDigests());
 
-        assertThat(encodings.listTheChecksumMethods())
+        assertThat(encodings.listChecksumMethods())
                 .contains("md5", "sha1", "sha256", "ripemd160", "xxh3", "crc32");
     }
 
@@ -64,7 +64,7 @@ class TheHostsDigestsFromTheSourceTest {
         assertThat(encodings.canDigest("ripemd160"))
                 .as("JEBOL's own digests are Java and are here whatever the host has")
                 .isTrue();
-        assertThat(encodings.listTheChecksumMethods())
+        assertThat(encodings.listChecksumMethods())
                 .contains("sha256", "ripemd160", "crc32")
                 .doesNotContain("sha1", "md5", "sha3-256");
     }

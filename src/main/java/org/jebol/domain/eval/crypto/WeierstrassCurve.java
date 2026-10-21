@@ -135,7 +135,7 @@ final class WeierstrassCurve {
         }
     }
 
-    boolean verifiesTheSignature(
+    boolean verifiesSignature(
             Point publicPoint, byte[] hash, BigInteger first, BigInteger second) {
 
         if (first.signum() <= 0 || second.signum() <= 0
@@ -152,11 +152,11 @@ final class WeierstrassCurve {
 
     private BigInteger truncateToOrderBits(byte[] hash) {
         BigInteger whole = new BigInteger(1, hash);
-        int beyondTheOrder = hash.length * 8 - order.bitLength();
-        return beyondTheOrder > 0 ? whole.shiftRight(beyondTheOrder) : whole;
+        int beyondOrder = hash.length * 8 - order.bitLength();
+        return beyondOrder > 0 ? whole.shiftRight(beyondOrder) : whole;
     }
 
-    Optional<Point> pointFromTheWire(byte[] written) {
+    Optional<Point> pointFromWire(byte[] written) {
         if (written.length != 1 + 2 * coordinateWidth || written[0] != 0x04) {
             return Optional.empty();
         }
@@ -180,7 +180,7 @@ final class WeierstrassCurve {
     private static final Map<String, WeierstrassCurve> ONES_JDK_DROPPED =
             listOnesJdkDropped();
 
-    static Optional<WeierstrassCurve> findTheCurveNamed(String curve) {
+    static Optional<WeierstrassCurve> findCurveNamed(String curve) {
         return Optional.ofNullable(ONES_JDK_DROPPED.get(curve));
     }
 

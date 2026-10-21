@@ -20,8 +20,8 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         if (other.context == context) {
             return true;
         }
-        java.util.Map<String, Value> ours = context.listTheFieldsExceptSelf();
-        java.util.Map<String, Value> theirs = other.context.listTheFieldsExceptSelf();
+        java.util.Map<String, Value> ours = context.listFieldsExceptSelf();
+        java.util.Map<String, Value> theirs = other.context.listFieldsExceptSelf();
         if (!ours.keySet().equals(theirs.keySet())
                 || context.fieldCount() != other.context.fieldCount()) {
             return false;
@@ -45,7 +45,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
 
     @Override
     public int hashCode() {
-        return context.listTheFieldsExceptSelf().keySet().hashCode();
+        return context.listFieldsExceptSelf().keySet().hashCode();
     }
 
     @Override
@@ -70,8 +70,8 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     }
 
     @Override
-    public List<Value> listTheItems() {
-        return context.listTheBoundWordsAndValues();
+    public List<Value> listItems() {
+        return context.listBoundWordsAndValues();
     }
 
     @Override
@@ -167,13 +167,13 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
             if (!(from instanceof ErrorValue raised)) {
                 throw refuse(from);
             }
-            if (raised.readTheField("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
+            if (raised.readField("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                     && magnitude < ErrorCatalogue.LOWEST_CODE_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, from);
             }
             Context fields = Context.makeChildOf(Context.root());
             for (String field : ErrorValue.FIELDS) {
-                fields.register(field, raised.readTheField(field).orElseGet(NoneValue::none));
+                fields.register(field, raised.readField(field).orElseGet(NoneValue::none));
             }
             return new ObjectValue(fields);
         }

@@ -31,7 +31,7 @@ public class SelectAction extends SeriesSearchAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor("select", arguments, refinements)
+                .askRebolActor("select", arguments, refinements)
                 .orElseGet(() -> select(arguments, refinements));
     }
 
@@ -74,7 +74,7 @@ public class SelectAction extends SeriesSearchAction {
         int after = found - 1 + search.measureLengthMatchedAt(found);
         return after >= search.end()
                 ? NoneValue.none()
-                : series.head().listTheItems().get(after);
+                : series.head().listItems().get(after);
     }
 
     private Value refuseRecordWidthBelowOne(RebolSeries series, long stride) {

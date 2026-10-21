@@ -164,11 +164,11 @@ public class RemoveEachNative extends LoopingNative {
 
         map.requireChangeable();
         List<AnyWordValue> names = loopNamesIn(arguments.getFirst());
-        MapActions.refuseMoreNamesThanPairHas(map, keepTheNamesThatTakeAValue(names));
+        MapActions.refuseMoreNamesThanPairHas(map, keepNamesThatTakeValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
         AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
-        List<Value> pairs = map.listTheItems();
+        List<Value> pairs = map.listItems();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {
             setLoopNamesFillingWithNonePastEnd(locals, names, pairs, at, map);

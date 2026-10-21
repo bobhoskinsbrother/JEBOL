@@ -7,7 +7,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Limit extends SameForABlockAndAString {
+final class Limit extends SameForBlockAndString {
 
     Limit() {
         super("limit", 0, false, WhenNothingFollowsIt.DOES_NOT_MATCH);

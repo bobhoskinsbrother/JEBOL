@@ -17,7 +17,7 @@ public final class JavaSocket implements NetworkPort {
     private static final int MAX_BYTES = 65_536;
 
     @Override
-    public Optional<String> resolveTheFirstIpv4Address(String hostName) {
+    public Optional<String> resolveFirstIpv4Address(String hostName) {
         try {
             return Arrays.stream(InetAddress.getAllByName(hostName))
                     .filter(Inet4Address.class::isInstance)
@@ -33,7 +33,7 @@ public final class JavaSocket implements NetworkPort {
         try {
             String hostName = InetAddress.getByName(ipv4Address).getHostName();
             return hostName.equals(ipv4Address) ? Optional.empty() : Optional.of(hostName);
-        } catch (UnknownHostException notAnAddress) {
+        } catch (UnknownHostException notAddress) {
             return Optional.empty();
         }
     }

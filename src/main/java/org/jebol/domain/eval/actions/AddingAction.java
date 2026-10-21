@@ -27,8 +27,8 @@ public abstract class AddingAction extends SeriesOrFileAction {
         return List.of(Parameter.of("series", TypesetValue.SERIES.membersAnd(
                         PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, ObjectValue.TYPE, BitsetValue.TYPE)),
                 Parameter.of("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongTo("part", "range", listThePartLimitTypes()),
-                Parameter.belongTo("dup", "count", listTheDuplicateCountTypes()));
+                Parameter.belongTo("part", "range", listPartLimitTypes()),
+                Parameter.belongTo("dup", "count", listDuplicateCountTypes()));
     }
 
     @Override

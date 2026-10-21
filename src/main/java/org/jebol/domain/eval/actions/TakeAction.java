@@ -80,8 +80,8 @@ public class TakeAction extends DefaultNative implements ActionValue {
         return takeSeveral(series, howMany);
     }
 
-    private Value takeOne(RebolSeries series, boolean fromTheEnd) {
-        RebolSeries takingFrom = fromTheEnd && series.lengthFromHere() > 0
+    private Value takeOne(RebolSeries series, boolean fromEnd) {
+        RebolSeries takingFrom = fromEnd && series.lengthFromHere() > 0
                 ? series.atIndex(series.index() + series.lengthFromHere() - 1)
                 : series;
         return Actions.of(takingFrom).orElseThrow().takeOne();

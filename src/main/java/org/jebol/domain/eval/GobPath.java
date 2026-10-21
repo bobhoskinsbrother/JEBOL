@@ -24,13 +24,13 @@ public final class GobPath {
 
     static Value childAt(GobValue gob, long count) {
         long at = (gob.index() - 1) + count;
-        if (isACountBelowOne(at, gob)) {
+        if (isCountBelowOne(at, gob)) {
             return NoneValue.none();
         }
         return gob.storage().readChildAt((int) at);
     }
 
-    private static boolean isACountBelowOne(
+    private static boolean isCountBelowOne(
             long at, GobValue gob) {
         return at < 1 || at > gob.storage().length();
     }
@@ -64,7 +64,7 @@ public final class GobPath {
 
     private static Value raisedFlagWords(GobStorage storage) {
         List<Value> words = new ArrayList<>();
-        for (GobStorage.Flag flag : storage.listTheRaisedFlags()) {
+        for (GobStorage.Flag flag : storage.listRaisedFlags()) {
             words.add(WordValue.of(flag.spelling()));
         }
         return BlockValue.of(words);
@@ -78,11 +78,11 @@ public final class GobPath {
 
     public static boolean accepts(GobStorage storage, String field, Value written) {
         return switch (field) {
-            case "offset" -> asPairWhereALoneNumberIsBothHalves(written).map(pair -> {
+            case "offset" -> asPairWhereLoneNumberIsBothHalves(written).map(pair -> {
                 storage.setOffset(pair);
                 return true;
             }).orElse(false);
-            case "size" -> asPairWhereALoneNumberIsBothHalves(written).map(pair -> {
+            case "size" -> asPairWhereLoneNumberIsBothHalves(written).map(pair -> {
                 storage.size(pair);
                 return true;
             }).orElse(false);
@@ -112,7 +112,7 @@ public final class GobPath {
         };
     }
 
-    private static java.util.Optional<PairValue> asPairWhereALoneNumberIsBothHalves(
+    private static java.util.Optional<PairValue> asPairWhereLoneNumberIsBothHalves(
             Value written) {
         if (written instanceof PairValue pair) {
             return java.util.Optional.of(pair);
@@ -234,13 +234,13 @@ public final class GobPath {
     }
 
     private static boolean writeFlags(GobStorage storage, Value written) {
-        if (written instanceof AnyWordValue aLoneWordAddsToWhatIsThere) {
-            raiseUnlessWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
+        if (written instanceof AnyWordValue loneWordAddsToWhatIsThere) {
+            raiseUnlessWordIsNoFlag(storage, loneWordAddsToWhatIsThere);
             return true;
         }
-        if (written instanceof AnyBlockValue aBlockStartsFromNothing) {
+        if (written instanceof AnyBlockValue blockStartsFromNothing) {
             storage.lowerEveryFlag();
-            for (Value item : aBlockStartsFromNothing.remaining()) {
+            for (Value item : blockStartsFromNothing.remaining()) {
                 if (item instanceof AnyWordValue word) {
                     raiseUnlessWordIsNoFlag(storage, word);
                 }

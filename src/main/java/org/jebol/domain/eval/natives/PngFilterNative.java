@@ -27,11 +27,11 @@ public abstract class PngFilterNative extends EncodingNative {
         super(encodings);
     }
 
-    protected Set<Datatype> acceptAWidth() {
+    protected Set<Datatype> acceptWidth() {
         return TypesetValue.NUMBER.members();
     }
 
-    protected Set<Datatype> acceptAFilterType() {
+    protected Set<Datatype> acceptFilterType() {
         return Set.of(IntegerValue.TYPE, WordValue.TYPE);
     }
 

@@ -14,8 +14,8 @@ public final class ClosureValue extends DefinedFunctionValue {
 
     ClosureValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
-            List<String> localNames, Context closedOver, Context wordsSharedWithTheFunctionItWasMadeFrom) {
-        super(spec, body, parameters, localNames, closedOver, wordsSharedWithTheFunctionItWasMadeFrom);
+            List<String> localNames, Context closedOver, Context wordsSharedWithFunctionItWasMadeFrom) {
+        super(spec, body, parameters, localNames, closedOver, wordsSharedWithFunctionItWasMadeFrom);
     }
 
     @Override

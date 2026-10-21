@@ -5,14 +5,14 @@ import java.util.Set;
 
 public final class Copying {
 
-    public static final Set<Datatype> DEEP_COPY_DATATYPES = listWhatADeepCopyCopies();
+    public static final Set<Datatype> DEEP_COPY_DATATYPES = listWhatDeepCopyCopies();
 
     public static final Set<Datatype> NOTHING_INSIDE = Set.of();
 
     private Copying() {
     }
 
-    private static Set<Datatype> listWhatADeepCopyCopies() {
+    private static Set<Datatype> listWhatDeepCopyCopies() {
         Set<Datatype> copies = new LinkedHashSet<>(TypesetValue.ANY_BLOCK.members());
         copies.addAll(TypesetValue.ANY_STRING.members());
         copies.addAll(Set.of(BinaryValue.TYPE, BitsetValue.TYPE, MapValue.TYPE, FunctionValue.TYPE));

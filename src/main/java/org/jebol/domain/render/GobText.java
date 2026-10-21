@@ -21,11 +21,11 @@ public final class GobText {
 
     public GobText(GobValue gob, TextMeasurement measure) {
         this.gob = gob;
-        this.line = readTheLineOf(gob);
+        this.line = readLineFrom(gob);
         this.lines = new TextLines(line.runs(), measure, line.layout().measureRoomForEachLine(findGobsOwnBox()));
     }
 
-    private RichText.Line readTheLineOf(GobValue written) {
+    private RichText.Line readLineFrom(GobValue written) {
         return switch (written.storage().contentKind()) {
             case TEXT -> written.storage().readContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue rich
                     ? new RichText(Colour.BLACK).lineIn(rich)
@@ -59,23 +59,23 @@ public final class GobText {
                 Placement.OPAQUE);
     }
 
-    public int findRunAt(int placeInTheBlock) {
-        return line.findTheRunAt(placeInTheBlock).orElse(line.runs().size());
+    public int findRunAt(int placeInBlock) {
+        return line.findRunAt(placeInBlock).orElse(line.runs().size());
     }
 
-    public Optional<AnyBlockValue> findTheBlockAtTheCaret(TextLines.RunAndCharacter caret) {
+    public Optional<AnyBlockValue> findBlockAtCaret(TextLines.RunAndCharacter caret) {
         if (caret.isNowhere()) {
             return Optional.empty();
         }
         int place = line.placeOfEachRun().get(caret.run());
-        List<Value> copied = new ArrayList<>(readTheRichTextAsWritten());
+        List<Value> copied = new ArrayList<>(readRichTextAsWritten());
         if (copied.get(place - 1) instanceof AnyStringValue written) {
             copied.set(place - 1, written.atIndex(caret.character() + 1));
         }
         return Optional.of(BlockValue.of(copied).atIndex(place));
     }
 
-    private List<Value> readTheRichTextAsWritten() {
+    private List<Value> readRichTextAsWritten() {
         Value content = gob.storage().contentKind() == GobStorage.Content.TEXT
                 ? gob.storage().readContentIfKind(GobStorage.Content.TEXT)
                 : gob.storage().readContentIfKind(GobStorage.Content.STRING);

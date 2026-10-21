@@ -93,8 +93,8 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         return data.readBytesFrom(offset, spec.size());
     }
 
-    public Optional<StructField> findTheFieldCalled(String name) {
-        return spec.findTheFieldCalled(name);
+    public Optional<StructField> findFieldCalled(String name) {
+        return spec.findFieldCalled(name);
     }
 
     /** Where one element of a field starts in the shared bytes. */
@@ -142,11 +142,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             }
             return VectorValue.hold(kind, stored);
         }
-        return BlockValue.of(readTheElementsOf(field));
+        return BlockValue.of(readElementsFrom(field));
     }
 
     /** Every element of a field, whatever its type, as a plain list. */
-    public List<Value> readTheElementsOf(StructField field) {
+    public List<Value> readElementsFrom(StructField field) {
         List<Value> found = new ArrayList<>(field.dimension());
         for (int element = 0; element < field.dimension(); element++) {
             found.add(elementAt(field, element));
@@ -165,7 +165,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      */
     public Value reflectedValue(StructField field) {
         return field.dimension() > 1
-                ? BlockValue.of(readTheElementsOf(field))
+                ? BlockValue.of(readElementsFrom(field))
                 : elementAt(field, 0);
     }
 
@@ -294,7 +294,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
                     throw StructLayoutRefused.refuseField(written.get(at),
                             "a named initialiser is a set-word and then a value");
                 }
-                writeField(spec.findTheFieldCalled(name.spelling()).orElseThrow(
+                writeField(spec.findFieldCalled(name.spelling()).orElseThrow(
                         () -> StructLayoutRefused.refuseField(name,
                                 "this struct has no field called " + name.spelling())),
                         written.get(at + 1));
@@ -342,7 +342,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     /** BODY-OF: the field names as set-words, each followed by its value. */
-    public List<Value> readTheBody() {
+    public List<Value> readBody() {
         List<Value> written = new ArrayList<>();
         for (StructField field : spec.fields()) {
             written.add(SetWordValue.of(field.name()));
@@ -373,7 +373,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             case "spec" -> spec.declaration();
             case "words", "keys" -> BlockValue.of(fieldNames());
             case "values" -> BlockValue.of(fieldValues());
-            case "body" -> BlockValue.of(readTheBody());
+            case "body" -> BlockValue.of(readBody());
             default -> throw Raised.cannotUse(asked, "reflect struct!");
         };
     }

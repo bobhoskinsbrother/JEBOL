@@ -20,7 +20,7 @@ public enum LineCap {
     }
 
     /** The one a word names, or empty when no word names one. */
-    public static Optional<LineCap> findTheCapNamed(String canonical) {
+    public static Optional<LineCap> findCapNamed(String canonical) {
         for (LineCap each : values()) {
             if (each.spelling().equals(canonical)) {
                 return Optional.of(each);

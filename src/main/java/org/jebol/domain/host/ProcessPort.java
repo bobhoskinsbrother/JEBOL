@@ -41,7 +41,7 @@ public interface ProcessPort {
     record Program(
             List<String> command,
             boolean isReadByShell,
-            boolean attachedToTheHostsConsole,
+            boolean attachedToHostsConsole,
             boolean isWaitedFor,
             ProgramInput standardInput,
             Optional<byte[]> inputBytes,
@@ -68,9 +68,9 @@ public interface ProcessPort {
 
     ProgramResult run(Program program);
 
-    enum WhoTheProcessRunsAs { REAL_USER, EFFECTIVE_USER, REAL_GROUP, EFFECTIVE_GROUP }
+    enum WhoProcessRunsAs { REAL_USER, EFFECTIVE_USER, REAL_GROUP, EFFECTIVE_GROUP }
 
-    default OptionalLong identify(WhoTheProcessRunsAs asked) {
+    default OptionalLong identify(WhoProcessRunsAs asked) {
         return OptionalLong.empty();
     }
 

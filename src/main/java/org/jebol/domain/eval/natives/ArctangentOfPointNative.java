@@ -8,7 +8,7 @@ import org.jebol.domain.value.Parameter;
 import java.util.List;
 import java.util.Set;
 
-public class ArctangentOfAPointNative extends DefaultNative {
+public class ArctangentOfPointNative extends DefaultNative {
 
     @Override
     public String nativeName() {

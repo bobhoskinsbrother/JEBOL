@@ -46,7 +46,7 @@ public abstract class GobScreen implements ScreenPort {
     @Override
     public Optional<ScreenEvent> acceptNextEvent() {
         moveEverythingPostedFromAnotherThread();
-        return queued.takeTheOldest();
+        return queued.takeOldest();
     }
 
     private void moveEverythingPostedFromAnotherThread() {
@@ -121,9 +121,9 @@ public abstract class GobScreen implements ScreenPort {
         if (outermost.parent() == null) {
             return Optional.empty();
         }
-        GobStorage inTheRootsPane = outermost;
+        GobStorage inRootsPane = outermost;
         return rootPaneChildren().stream()
-                .filter(child -> child.storage() == inTheRootsPane)
+                .filter(child -> child.storage() == inRootsPane)
                 .findFirst();
     }
 

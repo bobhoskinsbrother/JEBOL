@@ -216,7 +216,7 @@ final class BrotliTwoPassEncoder {
                         return;
                     }
                     candidate = baseAt
-                            + rehashAfterAnInsertFilingTheThirdPositionUnderTheFirstsHash(
+                            + rehashAfterInsertFilingThirdPositionUnderFirstsHash(
                                     at, baseAt);
 
                     while (at - candidate <= MAX_DISTANCE && isMatch(at, candidate)) {
@@ -252,7 +252,7 @@ final class BrotliTwoPassEncoder {
         }
 
         /** The repeated nought is the C's, and correcting it changes the bytes. */
-        private int rehashAfterAnInsertFilingTheThirdPositionUnderTheFirstsHash(
+        private int rehashAfterInsertFilingThirdPositionUnderFirstsHash(
                 int at, int baseAt) {
             if (minMatch != 4) {
                 return rehashSixBytes(at, baseAt);
@@ -375,7 +375,7 @@ final class BrotliTwoPassEncoder {
             if (doMatchesPayOutright(size)) {
                 return true;
             }
-            double mostTheSampledBytesMayCost = (double) size * 8
+            double mostSampledBytesMayCost = (double) size * 8
                     * LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID
                     / ONE_BYTE_IN_THIS_MANY_IS_SAMPLED;
             Arrays.fill(literalHistogram, 0);
@@ -384,7 +384,7 @@ final class BrotliTwoPassEncoder {
                 literalHistogram[input[at + each] & 0xFF]++;
             }
             return BrotliCodes.measureBitsEntropy(literalHistogram, 256)
-                    < mostTheSampledBytesMayCost;
+                    < mostSampledBytesMayCost;
         }
 
         private boolean doMatchesPayOutright(int size) {
@@ -433,9 +433,9 @@ final class BrotliTwoPassEncoder {
             int[] spreadDepth = new int[BrotliCodes.COMMAND_SYMBOLS];
             int[] spreadBits = new int[64];
 
-            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+            tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                     commandHistogram, 0, 64, 15, commandDepth, 0);
-            tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+            tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                     commandHistogram, 64, 64, 14, commandDepth, 64);
 
             System.arraycopy(commandDepth, 24, spreadDepth, 0, 24);

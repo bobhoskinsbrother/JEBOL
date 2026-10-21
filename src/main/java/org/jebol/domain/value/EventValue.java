@@ -170,7 +170,7 @@ public record EventValue(
      * fills one of them, the resolution has to move to where the system object is
      * reachable.
      */
-    public List<Value> moldTheSpec() {
+    public List<Value> moldSpec() {
         List<Value> spec = new ArrayList<>();
         if (typeIndex != 0) {
             setWord(spec,"type", WordValue.of(EventCatalogue.readTypeAt(typeIndex)));
@@ -185,8 +185,8 @@ public record EventValue(
             setWord(spec,"offset", PairValue.of(offsetX(), offsetY()));
         }
         readKey().ifPresent(key -> setWord(spec, "key", key));
-        if (!listTheRaisedFlagWords().isEmpty()) {
-            setWord(spec,"flags", BlockValue.of(listTheRaisedFlagWords()));
+        if (!listRaisedFlagWords().isEmpty()) {
+            setWord(spec,"flags", BlockValue.of(listRaisedFlagWords()));
         }
         if (has(Flag.HAS_CODE)) {
             setWord(spec,"code", IntegerValue.of(data));
@@ -224,7 +224,7 @@ public record EventValue(
     }
 
     /** The three flag words a script can read, in the C's order. */
-    public List<Value> listTheRaisedFlagWords() {
+    public List<Value> listRaisedFlagWords() {
         List<Value> words = new ArrayList<>();
         for (Flag flag : List.of(Flag.DOUBLE, Flag.CONTROL, Flag.SHIFT)) {
             if (flags.contains(flag)) {

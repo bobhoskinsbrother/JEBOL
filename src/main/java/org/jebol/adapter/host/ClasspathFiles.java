@@ -50,7 +50,7 @@ public final class ClasspathFiles implements FilePort {
         if (!exists(path)) {
             return Optional.empty();
         }
-        return Optional.of(FileInformation.describeAFile(path, readBytes(path).length,
+        return Optional.of(FileInformation.describeFile(path, readBytes(path).length,
                 Optional.empty(), Optional.empty(), Optional.empty()));
     }
 

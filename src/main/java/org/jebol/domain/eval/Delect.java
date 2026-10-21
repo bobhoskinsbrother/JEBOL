@@ -136,9 +136,9 @@ public final class Delect {
 
         boolean readOneCommand() {
             Value next = input.storage().at(at);
-            boolean asALitWord = next instanceof LitWordValue;
+            boolean asLitWord = next instanceof LitWordValue;
             int command = next instanceof AnyWordValue word
-                            && (word instanceof WordValue || asALitWord)
+                            && (word instanceof WordValue || asLitWord)
                     ? commandIndexFor(word)
                     : 0;
 
@@ -146,7 +146,7 @@ public final class Delect {
                 return readDialectsFirstFieldWhateverItIsNamed();
             }
             at++;
-            return readNamedCommand(command, asALitWord, countFollowingArguments());
+            return readNamedCommand(command, asLitWord, countFollowingArguments());
         }
 
         private int countFollowingArguments() {
@@ -179,20 +179,20 @@ public final class Delect {
             return true;
         }
 
-        private boolean readNamedCommand(int command, boolean asALitWord, int howMany) {
+        private boolean readNamedCommand(int command, boolean asLitWord, int howMany) {
             ContextSlot field = fields.get(command - 1);
             if (!(field.value() instanceof AnyBlockValue declared)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, input);
             }
-            List<Slot> slots = listTheSlotsDeclaredBy(declared, where);
-            output.storage().append(asALitWord
+            List<Slot> slots = listSlotsDeclaredBy(declared, where);
+            output.storage().append(asLitWord
                     ? LitWordValue.of(field.spelling())
                     : WordValue.of(field.spelling()));
 
             Placing placing = new Placing(slots);
             boolean readEverything = true;
             for (int taken = 0; taken < howMany; taken++) {
-                Optional<Value> argument = readTheArgumentAt(at);
+                Optional<Value> argument = readArgumentAt(at);
                 if (argument.isEmpty()) {
                     readEverything = false;
                     break;
@@ -224,7 +224,7 @@ public final class Delect {
             return Math.max(slotsDeclared, argumentsWritten);
         }
 
-        private Optional<Value> readTheArgumentAt(int position) {
+        private Optional<Value> readArgumentAt(int position) {
             if (position > input.storage().length()) {
                 return Optional.empty();
             }
@@ -233,7 +233,7 @@ public final class Delect {
                 case WordValue word ->
                         isWordDialectLeavesAlone(word)
                                 ? Optional.of(word)
-                                : readWhatTheWordHolds(word);
+                                : readWhatWordHolds(word);
                 case LitWordValue quoted -> Optional.of(WordValue.of(quoted.spelling()));
                 case ParenValue paren -> evaluate(paren);
                 case PathValue path -> evaluate(path);
@@ -245,7 +245,7 @@ public final class Delect {
             return commandIndexFor(word) != 0;
         }
 
-        private Optional<Value> readWhatTheWordHolds(AnyWordValue word) {
+        private Optional<Value> readWhatWordHolds(AnyWordValue word) {
             if (!word.binding().isUnbound() && word.binding().holds(word.canonical())) {
                 return Optional.of(word.binding().findSlotFor(word.canonical()).value());
             }
@@ -286,7 +286,7 @@ public final class Delect {
         }
     }
 
-    private static List<Slot> listTheSlotsDeclaredBy(AnyBlockValue declared, Context where) {
+    private static List<Slot> listSlotsDeclaredBy(AnyBlockValue declared, Context where) {
         List<Slot> slots = new ArrayList<>();
         List<Value> written = declared.remaining();
         for (int at = 0; at < written.size(); at++) {
@@ -305,7 +305,7 @@ public final class Delect {
     private static Optional<Slot> makeSlotFor(
             Value written, boolean repeats, Context where) {
 
-        Optional<java.util.Set<Datatype>> types = findTheTypesNamedBy(written, where);
+        Optional<java.util.Set<Datatype>> types = findTypesNamedBy(written, where);
         if (types.isPresent()) {
             return Optional.of(repeats
                     ? new Slot.Repeating(types.get())
@@ -316,7 +316,7 @@ public final class Delect {
                 : Optional.empty();
     }
 
-    private static Optional<java.util.Set<Datatype>> findTheTypesNamedBy(
+    private static Optional<java.util.Set<Datatype>> findTypesNamedBy(
             Value written, Context where) {
 
         if (written instanceof Datatype represents) {
@@ -328,7 +328,7 @@ public final class Delect {
         if (!(written instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<Datatype> one = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
+        Optional<Datatype> one = Catalogue.DATATYPES.findDatatypeNamed(word.spelling());
         if (one.isPresent()) {
             return Optional.of(java.util.Set.of(one.get()));
         }
@@ -343,7 +343,7 @@ public final class Delect {
                         instanceof TypesetValue family) {
             return Optional.of(family.members());
         }
-        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling()).map(TypesetValue::members);
+        return Catalogue.DATATYPES.findTypesetNamed(word.spelling()).map(TypesetValue::members);
     }
 
     private static final class Placing {

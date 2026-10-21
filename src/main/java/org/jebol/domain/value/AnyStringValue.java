@@ -128,8 +128,8 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return checksumOfTheOctets.applyAsLong(text().getBytes(StandardCharsets.UTF_8));
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
+        return octetChecksum.applyAsLong(text().getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -148,8 +148,8 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value readItemAt(int positionFromTheHead) {
-        return CharacterValue.of(storage.at(positionFromTheHead));
+    public Value readItemAt(int positionFromHead) {
+        return CharacterValue.of(storage.at(positionFromHead));
     }
 
     @Override
@@ -302,12 +302,12 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public void putItemAt(int positionFromTheHead, Value item) {
-        storage.set(positionFromTheHead, ((CharacterValue) item).codepoint());
+    public void putItemAt(int positionFromHead, Value item) {
+        storage.set(positionFromHead, ((CharacterValue) item).codepoint());
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         return text().codePoints()
                 .<Value>mapToObj(CharacterValue::of)
                 .toList();
@@ -327,7 +327,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
 
     @Override
     public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
-        return wrap(textOf(keeping.from(listTheCharactersOf(this), listTheCharactersOf(other))));
+        return wrap(textOf(keeping.from(listCharactersFrom(this), listCharactersFrom(other))));
     }
 
     static String textOf(List<Value> letters) {
@@ -337,7 +337,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return written.toString();
     }
 
-    static List<Value> listTheCharactersOf(Value value) {
+    static List<Value> listCharactersFrom(Value value) {
         if (!(value instanceof AnyStringValue text)) {
             return value instanceof AnyBlockValue block ? block.remaining() : List.of(value);
         }

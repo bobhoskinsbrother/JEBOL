@@ -18,8 +18,8 @@ public class TranscodeNative extends DefaultNative {
     private static final long FIRST_LINE = 1;
 
     private record Reading(String whole, String readable, long firstLine,
-            Transcoder.Extent extent, boolean countingLines, boolean handingBackFailures,
-            boolean answeringTheValueAlone, Value source) {
+                           Transcoder.Extent extent, boolean countingLines, boolean handingBackFailures,
+                           boolean answeringValueAlone, Value source) {
     }
 
     @Override
@@ -53,7 +53,7 @@ public class TranscodeNative extends DefaultNative {
                 .orElse(whole);
         return new Reading(whole, readable,
                 readFirstLineNumberIn(refinementArgument("line", 0, arguments, refinements)),
-                readTheExtentAskedFor(refinements),
+                readExtentAskedFor(refinements),
                 refinements.contains("line"),
                 refinements.contains("error"),
                 refinements.contains("one"),
@@ -76,7 +76,7 @@ public class TranscodeNative extends DefaultNative {
         if (stopsShortOfEnd(asked) && values.isEmpty()) {
             return handBackOrRaise(asked, pastEnd());
         }
-        if (asked.answeringTheValueAlone()) {
+        if (asked.answeringValueAlone()) {
             return values.getFirst();
         }
         return BlockValue.of(stopsShortOfEnd(asked)
@@ -146,7 +146,7 @@ public class TranscodeNative extends DefaultNative {
         };
     }
 
-    private Transcoder.Extent readTheExtentAskedFor(Set<String> refinements) {
+    private Transcoder.Extent readExtentAskedFor(Set<String> refinements) {
         if (refinements.contains("only")) {
             return Transcoder.Extent.FIRST_VALUE_AT_EVERY_DEPTH;
         }

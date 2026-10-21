@@ -168,12 +168,12 @@ public final class TextLines {
     private List<Line> breakIntoLines(List<TextRun> written) {
         List<Line> laid = new ArrayList<>();
         for (List<Piece> betweenNewlines : splitAtNewlines(written)) {
-            laid.addAll(breakToFitTheRoom(betweenNewlines));
+            laid.addAll(breakToFitRoom(betweenNewlines));
         }
         return laid;
     }
 
-    private List<Line> breakToFitTheRoom(List<Piece> betweenNewlines) {
+    private List<Line> breakToFitRoom(List<Piece> betweenNewlines) {
         List<Letter> letters = splitIntoLetters(betweenNewlines);
         if (roomForEachLine == Double.POSITIVE_INFINITY || letters.isEmpty()) {
             return List.of(makeLine(betweenNewlines));
@@ -288,10 +288,10 @@ public final class TextLines {
             int[] characters = font.text().codePoints().toArray();
             int from = 0;
             for (int at = 0; at <= characters.length; at++) {
-                boolean endsTheRun = at == characters.length;
-                if (endsTheRun || characters[at] == NEWLINE) {
+                boolean endsRun = at == characters.length;
+                if (endsRun || characters[at] == NEWLINE) {
                     current.add(makePiece(run, from, new String(characters, from, at - from), font));
-                    if (!endsTheRun) {
+                    if (!endsRun) {
                         laid.add(current);
                         current = new ArrayList<>();
                         from = at + 1;

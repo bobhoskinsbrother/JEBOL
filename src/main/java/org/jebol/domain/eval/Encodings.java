@@ -246,14 +246,14 @@ public final class Encodings {
         Octets decoded = new Octets();
         boolean urlSafe = BASE64_URL.equals(alphabet);
         int group = 0;
-        int inTheGroup = 0;
+        int inGroup = 0;
         for (int at = 0; at < text.length(); at++) {
             char letter = text.charAt(at);
             if (letter == '=') {
-                if (inTheGroup == 3) {
+                if (inGroup == 3) {
                     decoded.write((group >> 10) & 0xFF);
                     decoded.write((group >> 2) & 0xFF);
-                } else if (inTheGroup == 2 && text.indexOf('=', at + 1) >= 0) {
+                } else if (inGroup == 2 && text.indexOf('=', at + 1) >= 0) {
                     decoded.write((group >> 4) & 0xFF);
                 } else {
                     throw new IllegalArgumentException(
@@ -272,24 +272,24 @@ public final class Encodings {
                 throw new IllegalArgumentException("not a base 64 digit");
             }
             group = (group << 6) + value;
-            if (++inTheGroup == 4) {
+            if (++inGroup == 4) {
                 decoded.write((group >> 16) & 0xFF);
                 decoded.write((group >> 8) & 0xFF);
                 decoded.write(group & 0xFF);
                 group = 0;
-                inTheGroup = 0;
+                inGroup = 0;
             }
         }
-        if (inTheGroup == 0) {
+        if (inGroup == 0) {
             return decoded.toArray();
         }
         if (!urlSafe) {
             throw new IllegalArgumentException("a base 64 group that ends early");
         }
-        if (inTheGroup == 3) {
+        if (inGroup == 3) {
             decoded.write((group >> 10) & 0xFF);
             decoded.write((group >> 2) & 0xFF);
-        } else if (inTheGroup == 2) {
+        } else if (inGroup == 2) {
             decoded.write((group >> 4) & 0xFF);
         } else {
             throw new IllegalArgumentException("a base 64 group that ends early");
@@ -497,7 +497,7 @@ public final class Encodings {
             "xxh3", "xxh32", "xxh64", "xxh128",
             "tcp");
 
-    List<String> listTheChecksumMethods() {
+    List<String> listChecksumMethods() {
         List<String> served = new ArrayList<>(
                 DIGESTS.keySet().stream().filter(this::canDigest).toList());
         served.addAll(CYCLIC);
@@ -612,7 +612,7 @@ public final class Encodings {
         }
     }
 
-    public DigestPort.RunningDigest startARunningDigest(String method) {
+    public DigestPort.RunningDigest startRunningDigest(String method) {
         try {
             return port.start(method);
         } catch (DigestPort.Refused refused) {
@@ -836,27 +836,27 @@ public final class Encodings {
     }
 
     String textBehindAnyMark(byte[] octets) {
-        Charset theMarkAnnounces;
+        Charset markAnnounces;
         int width;
         if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
-            theMarkAnnounces = StandardCharsets.UTF_8;
+            markAnnounces = StandardCharsets.UTF_8;
             width = 3;
         } else if (startsWith(octets, 0xFF, 0xFE, 0x00, 0x00)) {
-            theMarkAnnounces = Charset.forName("UTF-32LE");
+            markAnnounces = Charset.forName("UTF-32LE");
             width = 4;
         } else if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
-            theMarkAnnounces = Charset.forName("UTF-32BE");
+            markAnnounces = Charset.forName("UTF-32BE");
             width = 4;
         } else if (startsWith(octets, 0xFE, 0xFF)) {
-            theMarkAnnounces = StandardCharsets.UTF_16BE;
+            markAnnounces = StandardCharsets.UTF_16BE;
             width = 2;
         } else if (startsWith(octets, 0xFF, 0xFE)) {
-            theMarkAnnounces = StandardCharsets.UTF_16LE;
+            markAnnounces = StandardCharsets.UTF_16LE;
             width = 2;
         } else {
             return new String(octets, StandardCharsets.UTF_8);
         }
-        return new String(octets, width, octets.length - width, theMarkAnnounces);
+        return new String(octets, width, octets.length - width, markAnnounces);
     }
 
     private boolean startsWith(byte[] octets, int... expected) {
@@ -871,7 +871,7 @@ public final class Encodings {
         return true;
     }
 
-    public Optional<Charset> findTheCharsetNamed(String asked) {
+    public Optional<Charset> findCharsetNamed(String asked) {
         String canonical = codepages.getOrDefault(asked.toLowerCase(Locale.ROOT), asked);
         try {
             return Optional.of(Charset.forName(canonical));
@@ -910,9 +910,9 @@ public final class Encodings {
             + "ISO-2022-JP:50220,50222;ISO-2022-KR:50225,ISO2022-KR;EUC-CN:51936;"
             + "EUC-KR:51949;GB18030:54936";
 
-    private final Map<String, String> codepages = listTheSpellingsByName();
+    private final Map<String, String> codepages = listSpellingsByName();
 
-    private Map<String, String> listTheSpellingsByName() {
+    private Map<String, String> listSpellingsByName() {
         Map<String, String> found = new HashMap<>();
         for (String group : REBOL_CODEPAGES.split(";")) {
             String[] halves = group.split(":", 2);

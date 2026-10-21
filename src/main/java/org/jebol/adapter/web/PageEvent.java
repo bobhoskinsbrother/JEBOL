@@ -62,7 +62,7 @@ final class PageEvent {
                     .filter(this::isCharacter)
                     .map(ScreenEventDetail.Typed::new);
             case CONTROL, CONTROL_UP -> eventFields.text("named")
-                    .filter(named -> EventCatalogue.findTheKeyIndexOf(named).isPresent())
+                    .filter(named -> EventCatalogue.findKeyIndexOf(named).isPresent())
                     .map(ScreenEventDetail.NamedKey::new);
             case CLOSE, RESIZE, OFFSET -> Optional.of(new ScreenEventDetail.NothingMore());
             case SCROLL_LINE, SCROLL_PAGE -> wheelTurn();

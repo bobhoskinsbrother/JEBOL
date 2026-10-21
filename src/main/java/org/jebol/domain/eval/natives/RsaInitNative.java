@@ -41,10 +41,10 @@ public class RsaInitNative extends CipherNative {
             byte[] modulus = readOctetsAt(arguments, 0);
             byte[] publicExponent = readOctetsAt(arguments, 1);
             Optional<RsaKey> built = refinements.contains("private")
-                    ? RsaKey.makeAPrivateKeyFrom(modulus, publicExponent,
+                    ? RsaKey.makePrivateKeyFrom(modulus, publicExponent,
                             readOctetsAt(arguments, 2), readOctetsAt(arguments, 3),
                             readOctetsAt(arguments, 4))
-                    : RsaKey.makeAPublicKeyFrom(modulus, publicExponent);
+                    : RsaKey.makePublicKeyFrom(modulus, publicExponent);
             return built.map(key -> wrapInHandle(RSA_HANDLE_TYPE, key, evaluator))
                     .orElseGet(NoneValue::none);
         };

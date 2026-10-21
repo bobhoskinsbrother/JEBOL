@@ -6,7 +6,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class If extends SameForABlockAndAString {
+final class If extends SameForBlockAndString {
 
     If() {
         super("if", 0, true, WhenNothingFollowsIt.RAISES_PARSE_END);

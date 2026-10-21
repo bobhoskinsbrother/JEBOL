@@ -4,7 +4,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ProcessPort;
-import org.jebol.domain.host.ProcessPort.WhoTheProcessRunsAs;
+import org.jebol.domain.host.ProcessPort.WhoProcessRunsAs;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.*;
@@ -18,11 +18,11 @@ public class AccessOsNative extends DefaultNative {
 
     private static final String PROCESS_NUMBER = "pid";
 
-    private static final Map<String, WhoTheProcessRunsAs> IDENTITY_FIELDS = Map.of(
-            "uid", WhoTheProcessRunsAs.REAL_USER,
-            "euid", WhoTheProcessRunsAs.EFFECTIVE_USER,
-            "gid", WhoTheProcessRunsAs.REAL_GROUP,
-            "egid", WhoTheProcessRunsAs.EFFECTIVE_GROUP);
+    private static final Map<String, WhoProcessRunsAs> IDENTITY_FIELDS = Map.of(
+            "uid", WhoProcessRunsAs.REAL_USER,
+            "euid", WhoProcessRunsAs.EFFECTIVE_USER,
+            "gid", WhoProcessRunsAs.REAL_GROUP,
+            "egid", WhoProcessRunsAs.EFFECTIVE_GROUP);
 
     private static final int TERMINATE = 15;
 
@@ -60,16 +60,16 @@ public class AccessOsNative extends DefaultNative {
                 return setTo.map(asked -> signal(asked, evaluator.ports().processes()))
                         .orElseGet(() -> IntegerValue.of(evaluator.ports().machine().processNumber()));
             }
-            WhoTheProcessRunsAs asked = Optional.ofNullable(IDENTITY_FIELDS.get(field.canonical()))
+            WhoProcessRunsAs asked = Optional.ofNullable(IDENTITY_FIELDS.get(field.canonical()))
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, field));
             return setTo.isPresent()
                     ? refuseToChangeWhoProcessRunsAs(field, setTo.get())
-                    : askWhoTheProcessRunsAs(field, asked, evaluator);
+                    : askWhoProcessRunsAs(field, asked, evaluator);
         };
     }
 
-    private Value askWhoTheProcessRunsAs(AnyWordValue field, WhoTheProcessRunsAs asked,
-                                         Evaluator evaluator) {
+    private Value askWhoProcessRunsAs(AnyWordValue field, WhoProcessRunsAs asked,
+                                      Evaluator evaluator) {
         long answered = evaluator.ports().processes().identify(asked)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.NOT_HERE, field));
         return IntegerValue.of(answered);

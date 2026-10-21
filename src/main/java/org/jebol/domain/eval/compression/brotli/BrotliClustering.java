@@ -13,13 +13,13 @@ final class BrotliClustering {
     private static final class Pair {
         int first;
         int second;
-        double costOfTheMerged;
+        double costOfMerged;
         double whatMergingSaves;
 
         void copyFrom(Pair other) {
             first = other.first;
             second = other.second;
-            costOfTheMerged = other.costOfTheMerged;
+            costOfMerged = other.costOfMerged;
             whatMergingSaves = other.whatMergingSaves;
         }
 
@@ -66,7 +66,7 @@ final class BrotliClustering {
             int second = Math.max(firstGiven, secondGiven);
             candidate.first = first;
             candidate.second = second;
-            candidate.costOfTheMerged = 0;
+            candidate.costOfMerged = 0;
             candidate.whatMergingSaves =
                     0.5 * mergeSaves(clusterSize[first], clusterSize[second])
                             - costOf(histograms[first])
@@ -74,10 +74,10 @@ final class BrotliClustering {
 
             boolean worthKeeping;
             if (histograms[first].total() == 0) {
-                candidate.costOfTheMerged = costOf(histograms[second]);
+                candidate.costOfMerged = costOf(histograms[second]);
                 worthKeeping = true;
             } else if (histograms[second].total() == 0) {
-                candidate.costOfTheMerged = costOf(histograms[first]);
+                candidate.costOfMerged = costOf(histograms[first]);
                 worthKeeping = true;
             } else {
                 double threshold = howMany == 0
@@ -87,13 +87,13 @@ final class BrotliClustering {
                 double merged = BrotliHistogramCost.of(scratch, alphabetSize);
                 worthKeeping = merged < threshold - candidate.whatMergingSaves;
                 if (worthKeeping) {
-                    candidate.costOfTheMerged = merged;
+                    candidate.costOfMerged = merged;
                 }
             }
             if (!worthKeeping) {
                 return;
             }
-            candidate.whatMergingSaves += candidate.costOfTheMerged;
+            candidate.whatMergingSaves += candidate.costOfMerged;
             if (howMany > 0 && pairs[0].isWorseThan(candidate)) {
                 if (howMany < room) {
                     pairs[howMany].copyFrom(pairs[0]);
@@ -160,7 +160,7 @@ final class BrotliClustering {
             int keep = queue.pairs[0].first;
             int drop = queue.pairs[0].second;
             histograms[keep].addAll(histograms[drop]);
-            histograms[keep].costIs(queue.pairs[0].costOfTheMerged);
+            histograms[keep].costIs(queue.pairs[0].costOfMerged);
             clusterSize[keep] += clusterSize[drop];
             for (int each = 0; each < howManySymbols; each++) {
                 if (belongsTo[belongsToAt + each] == drop) {
@@ -232,7 +232,7 @@ final class BrotliClustering {
 
         remap(given, howManyGiven, clusters, howManyClusters, into, scratch,
                 whichOneEachUses, alphabetSize);
-        return renumberNoughtUpwardInTheOrderTheyAreFirstUsed(
+        return renumberNoughtUpwardInOrderTheyAreFirstUsed(
                 into, whichOneEachUses, howManyGiven, alphabetSize);
     }
 
@@ -262,8 +262,8 @@ final class BrotliClustering {
         }
     }
 
-    private static int renumberNoughtUpwardInTheOrderTheyAreFirstUsed(BrotliHistogram[] into, int[] whichOneEachUses,
-            int howMany, int alphabetSize) {
+    private static int renumberNoughtUpwardInOrderTheyAreFirstUsed(BrotliHistogram[] into, int[] whichOneEachUses,
+                                                                   int howMany, int alphabetSize) {
 
         int[] newName = new int[howMany];
         Arrays.fill(newName, -1);

@@ -599,7 +599,7 @@ final class LzmaEncoder {
         return price;
     }
 
-    private int priceAMatchedLiteral(
+    private int priceMatchedLiteral(
             int probabilitiesAt, int symbol, int matchByte) {
 
         int price = 0;
@@ -836,7 +836,7 @@ final class LzmaEncoder {
         choicePrice[1] = priceZeroIn(isMatch, matchModel)
                 + (state < 7
                         ? priceLiteral(probabilitiesAt, currentByte)
-                        : priceAMatchedLiteral(probabilitiesAt, currentByte, matchByte));
+                        : priceMatchedLiteral(probabilitiesAt, currentByte, matchByte));
         makeLiteral(1);
 
         int matchPrice = priceOneIn(isMatch, matchModel);
@@ -1001,7 +1001,7 @@ final class LzmaEncoder {
                     findLiteralProbabilitiesAt(position, source[data - 1] & 0xFF);
             literalPrice += stateHere < 7
                     ? priceLiteral(probabilitiesAt, currentByte)
-                    : priceAMatchedLiteral(probabilitiesAt, currentByte, matchByte);
+                    : priceMatchedLiteral(probabilitiesAt, currentByte, matchByte);
             if (literalPrice < choicePrice[at + 1]) {
                 choicePrice[at + 1] = literalPrice;
                 choiceLength[at + 1] = 1;
@@ -1105,7 +1105,7 @@ final class LzmaEncoder {
                     price += repeatLengthPrices.prices[positionState][length - 2]
                             + priceZeroIn(isMatch,
                                     stateAfter * POSITION_STATES_MAX + positionAfter)
-                            + priceAMatchedLiteral(
+                            + priceMatchedLiteral(
                                     findLiteralProbabilitiesAt(position + length,
                                             source[data + length - 1] & 0xFF),
                                     source[data + length] & 0xFF,
@@ -1182,7 +1182,7 @@ final class LzmaEncoder {
                             int positionAfter = (position + length) & positionMask;
                             price += priceZeroIn(isMatch,
                                     stateAfter * POSITION_STATES_MAX + positionAfter);
-                            price += priceAMatchedLiteral(
+                            price += priceMatchedLiteral(
                                     findLiteralProbabilitiesAt(position + length,
                                             source[data + length - 1] & 0xFF),
                                     source[data + length] & 0xFF,
@@ -1270,11 +1270,11 @@ final class LzmaEncoder {
             int[] row = prices[positionState];
             int base = positionState << (1 + LENGTH_LOW_BITS);
             setEightPrices(model.low, base, priceZeroIn(model.low, 0), row, 0);
-            int afterTheFirstOne = priceOneIn(model.low, 0);
+            int afterFirstOne = priceOneIn(model.low, 0);
             setEightPrices(model.low, base + LENGTH_LOW_SYMBOLS,
-                    afterTheFirstOne + priceZeroIn(model.low, LENGTH_LOW_SYMBOLS),
+                    afterFirstOne + priceZeroIn(model.low, LENGTH_LOW_SYMBOLS),
                     row, LENGTH_LOW_SYMBOLS);
-            int afterBothOnes = afterTheFirstOne
+            int afterBothOnes = afterFirstOne
                     + priceOneIn(model.low, LENGTH_LOW_SYMBOLS);
             counters[positionState] = tableSize;
             for (int symbol = LENGTH_LOW_SYMBOLS * 2; symbol < tableSize; symbol++) {

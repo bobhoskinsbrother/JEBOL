@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Then extends SameForABlockAndAString {
+final class Then extends SameForBlockAndString {
 
     Then() {
         super("then", 0, true, WhenNothingFollowsIt.DOES_NOT_MATCH);

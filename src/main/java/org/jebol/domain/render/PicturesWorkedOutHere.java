@@ -37,7 +37,7 @@ final class PicturesWorkedOutHere {
         int[] made = new int[Math.max(0, wide * high * CHANNELS)];
         for (int down = 0; down < high; down++) {
             for (int across = 0; across < wide; across++) {
-                double[] found = findWhereInTheOriginal(
+                double[] found = findWhereInOriginal(
                         corners, leftAt + across + 0.5, topAt + down + 0.5);
                 int at = (down * wide + across) * CHANNELS;
                 if (found == null) {
@@ -59,25 +59,25 @@ final class PicturesWorkedOutHere {
 
     private static final int HOW_MANY_TIMES_TO_NARROW_IT = 24;
 
-    private static double[] findWhereInTheOriginal(
+    private static double[] findWhereInOriginal(
             PairValue[] corners, double across, double down) {
 
-        double alongTheTop = 0.5;
-        double downTheSide = 0.5;
+        double alongTop = 0.5;
+        double downSide = 0.5;
         double step = 0.25;
         for (int narrowing = 0; narrowing < HOW_MANY_TIMES_TO_NARROW_IT; narrowing++) {
-            double[] here = pointOnTheQuad(corners, alongTheTop, downTheSide);
-            double[] rightABit = pointOnTheQuad(
-                    corners, Math.min(1, alongTheTop + step), downTheSide);
-            double[] downABit = pointOnTheQuad(
-                    corners, alongTheTop, Math.min(1, downTheSide + step));
-            alongTheTop = stepCloserOn(alongTheTop, step, here, rightABit, across, down);
-            downTheSide = stepCloserOn(downTheSide, step, here, downABit, across, down);
+            double[] here = pointOnQuad(corners, alongTop, downSide);
+            double[] movedRight = pointOnQuad(
+                    corners, Math.min(1, alongTop + step), downSide);
+            double[] movedDown = pointOnQuad(
+                    corners, alongTop, Math.min(1, downSide + step));
+            alongTop = stepCloserOn(alongTop, step, here, movedRight, across, down);
+            downSide = stepCloserOn(downSide, step, here, movedDown, across, down);
             step /= 2;
         }
-        double[] landed = pointOnTheQuad(corners, alongTheTop, downTheSide);
+        double[] landed = pointOnQuad(corners, alongTop, downSide);
         double howFarOut = Math.hypot(landed[0] - across, landed[1] - down);
-        return howFarOut > 1.5 ? null : new double[] {alongTheTop, downTheSide};
+        return howFarOut > 1.5 ? null : new double[] {alongTop, downSide};
     }
 
     private static double stepCloserOn(
@@ -90,20 +90,20 @@ final class PicturesWorkedOutHere {
         return Math.clamp(changed, 0, 1);
     }
 
-    private static double[] pointOnTheQuad(
-            PairValue[] corners, double alongTheTop, double downTheSide) {
+    private static double[] pointOnQuad(
+            PairValue[] corners, double alongTop, double downSide) {
 
-        double acrossTheTop = corners[0].x()
-                + (corners[1].x() - corners[0].x()) * alongTheTop;
-        double downTheTop = corners[0].y()
-                + (corners[1].y() - corners[0].y()) * alongTheTop;
-        double acrossTheBottom = corners[3].x()
-                + (corners[2].x() - corners[3].x()) * alongTheTop;
-        double downTheBottom = corners[3].y()
-                + (corners[2].y() - corners[3].y()) * alongTheTop;
+        double acrossTop = corners[0].x()
+                + (corners[1].x() - corners[0].x()) * alongTop;
+        double downTop = corners[0].y()
+                + (corners[1].y() - corners[0].y()) * alongTop;
+        double acrossBottom = corners[3].x()
+                + (corners[2].x() - corners[3].x()) * alongTop;
+        double downBottom = corners[3].y()
+                + (corners[2].y() - corners[3].y()) * alongTop;
         return new double[] {
-                acrossTheTop + (acrossTheBottom - acrossTheTop) * downTheSide,
-                downTheTop + (downTheBottom - downTheTop) * downTheSide};
+                acrossTop + (acrossBottom - acrossTop) * downSide,
+                downTop + (downBottom - downTop) * downSide};
     }
 
     private static int alphaIn(int[] parts) {

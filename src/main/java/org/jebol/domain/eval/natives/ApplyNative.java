@@ -86,7 +86,7 @@ public class ApplyNative extends DefaultNative {
         Map<String, List<Value>> belongingTo = new LinkedHashMap<>();
         Optional<String> reading = Optional.empty();
         int at = 0;
-        for (Value word : listTheWordsItTakes(builtIn, evaluator)) {
+        for (Value word : listWordsItTakes(builtIn, evaluator)) {
             Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
             at++;
             if (word instanceof RefinementValue marker) {
@@ -106,7 +106,7 @@ public class ApplyNative extends DefaultNative {
                 listArgumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
     }
 
-    private List<Value> listTheWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
+    private List<Value> listWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
         Value reflect = evaluator.systemContext().readValueAt("reflect");
         return evaluator.applyFunction(reflect, List.of(builtIn, WordValue.of("words")))
                 instanceof AnyBlockValue words

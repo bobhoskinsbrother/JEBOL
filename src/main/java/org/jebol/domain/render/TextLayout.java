@@ -81,8 +81,8 @@ public record TextLayout(
         return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, across, down, wraps);
     }
 
-    public TextLayout wrap(boolean breaksALongLine) {
+    public TextLayout wrap(boolean breaksLongLine) {
         return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, shadowAcross,
-                shadowDown, breaksALongLine);
+                shadowDown, breaksLongLine);
     }
 }

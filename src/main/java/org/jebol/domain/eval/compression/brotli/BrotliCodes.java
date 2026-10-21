@@ -242,9 +242,9 @@ final class BrotliCodes {
         if (!isWorthSmoothing(counts, length)) {
             return;
         }
-        boolean[] alreadyARun =
+        boolean[] alreadyRun =
                 runsAlreadyCheapEnoughToLeaveUndisturbed(counts, length);
-        flattenRestIntoRuns(counts, length, alreadyARun);
+        flattenRestIntoRuns(counts, length, alreadyRun);
     }
 
     private static boolean isWorthSmoothing(int[] counts, int length) {
@@ -308,15 +308,15 @@ final class BrotliCodes {
     private static final int COUNT_STRAY_LIMIT = 1240;
 
     private static void flattenRestIntoRuns(int[] counts, int length,
-                                            boolean[] alreadyARun) {
+                                            boolean[] alreadyRun) {
 
         int run = 0;
         long limit = 256L * (counts[0] + counts[1] + counts[2]) / 3 + 420;
         long sum = 0;
         for (int each = 0; each <= length; each++) {
             boolean streakEnds = each == length
-                    || alreadyARun[each]
-                    || (each != 0 && alreadyARun[each - 1])
+                    || alreadyRun[each]
+                    || (each != 0 && alreadyRun[each - 1])
                     || straysTooFarFromInEitherDirection(limit, counts[each]);
             if (streakEnds) {
                 if (run >= 4 || (run >= 3 && sum == 0)) {
@@ -394,7 +394,7 @@ final class BrotliCodes {
         valueIndex[at] = value;
     }
 
-    void buildBreakingTiesByPuttingTheLaterSymbolFirst(
+    void buildBreakingTiesByPuttingLaterSymbolFirst(
             int[] counts, int countsAt, int length, int limit,
             int[] depth, int depthAt) {
 
@@ -644,7 +644,7 @@ final class BrotliCodes {
         }
 
         int[] lengthDepth = new int[CODE_LENGTH_CODES];
-        tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+        tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                 counts, 0, CODE_LENGTH_CODES, 5, lengthDepth, 0);
         int[] lengthBits = new int[CODE_LENGTH_CODES];
         convertBitDepthsToSymbols(lengthDepth, 0, CODE_LENGTH_CODES, lengthBits, 0);

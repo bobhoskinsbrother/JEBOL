@@ -98,7 +98,7 @@ public final class SeriesChange {
     }
 
     private Value overwrite(VectorValue vector) {
-        List<Value> numbers = collectTheNumbersAdded(vector);
+        List<Value> numbers = collectNumbersAdded(vector);
         int asked = refinements.contains("part") ? partCount() : numbers.size();
         int removing = Math.max(0, Math.min(asked, vector.lengthFromHere()));
         for (int gone = 0; gone < removing; gone++) {
@@ -124,10 +124,10 @@ public final class SeriesChange {
             } else {
                 block.storage().insertAt(where, replacements.get(at));
             }
-            int fromWithinTheSpread = at;
+            int fromWithinSpread = at;
             block.storage().setLineBreakAt(where, spread
                     .map(several -> several.storage()
-                            .breaksLineAt(several.index() + fromWithinTheSpread))
+                            .breaksLineAt(several.index() + fromWithinSpread))
                     .orElse(false));
         }
         return block.atIndex(block.index() + replacements.size());
@@ -194,7 +194,7 @@ public final class SeriesChange {
         }
     }
 
-    private List<Value> collectTheNumbersAdded(VectorValue vector) {
+    private List<Value> collectNumbersAdded(VectorValue vector) {
         List<Value> once = vector.kind().collectNumbersContributedBy(replacement);
         long rounds = refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)

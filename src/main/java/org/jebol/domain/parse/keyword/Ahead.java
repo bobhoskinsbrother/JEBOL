@@ -5,7 +5,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-final class Ahead extends SameForABlockAndAString {
+final class Ahead extends SameForBlockAndString {
 
     Ahead(String spelling) {
         super(spelling, 0, true, WhenNothingFollowsIt.DOES_NOT_MATCH);

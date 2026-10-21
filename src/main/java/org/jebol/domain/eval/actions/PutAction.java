@@ -32,7 +32,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor("put", arguments, refinements)
+                .askRebolActor("put", arguments, refinements)
                 .orElseGet(() -> put(arguments, refinements));
     }
 
@@ -45,7 +45,7 @@ public class PutAction extends DefaultNative implements ActionValue {
                     putIntoObject(object, field, written);
             case ObjectValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(key) + " is not a word an object can hold a field under");
-            case AnyBlockValue block -> putIntoTheBlock(block, key, written,
+            case AnyBlockValue block -> putIntoBlock(block, key, written,
                     recordWidth(arguments, refinements), refinements.contains("case"));
             case Value anythingElse -> refuseDatatype(anythingElse);
         }
@@ -60,10 +60,10 @@ public class PutAction extends DefaultNative implements ActionValue {
         object.context().register(field.spelling(), written);
     }
 
-    private void putIntoTheBlock(
+    private void putIntoBlock(
             AnyBlockValue block, Value key, Value written, int stride, boolean mindingCase) {
         List<Value> items = block.remaining();
-        int found = findThePositionOfTheKey(items, key, stride, mindingCase);
+        int found = findKeyPosition(items, key, stride, mindingCase);
         if (found == NOT_FOUND) {
             block.storage().append(key);
             block.storage().append(written);
@@ -74,7 +74,7 @@ public class PutAction extends DefaultNative implements ActionValue {
         }
     }
 
-    private int findThePositionOfTheKey(
+    private int findKeyPosition(
             List<Value> items, Value key, int stride, boolean mindingCase) {
         for (int at = 0; at < items.size(); at += stride) {
             boolean matches = mindingCase

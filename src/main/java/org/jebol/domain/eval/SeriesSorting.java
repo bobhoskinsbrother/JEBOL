@@ -57,7 +57,7 @@ public final class SeriesSorting {
 
     public Value sort(RebolSeries series, int stride, int howMany) {
         int step = Math.max(1, stride);
-        List<Value> items = series.listTheItems().subList(0, Math.min(howMany, series.listTheItems().size()));
+        List<Value> items = series.listItems().subList(0, Math.min(howMany, series.listItems().size()));
         List<List<Value>> records = new ArrayList<>();
         Map<List<Value>, Integer> whereEachRecordBegan = new IdentityHashMap<>();
         for (int at = 0; at + step <= items.size(); at += step) {
@@ -74,7 +74,7 @@ public final class SeriesSorting {
         if (unstably) {
             SymmetryPartitionSort.sort(records, ordering);
         } else {
-            records = mergeSortedTakingFromTheLeftUnlessOutOfOrder(records, ordering);
+            records = mergeSortedTakingFromLeftUnlessOutOfOrder(records, ordering);
         }
         if (series instanceof AnyBlockValue block) {
             putRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
@@ -156,15 +156,15 @@ public final class SeriesSorting {
                 : element;
     }
 
-    private <T> List<T> mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+    private <T> List<T> mergeSortedTakingFromLeftUnlessOutOfOrder(
             List<T> items, Comparator<T> order) {
         if (items.size() < 2) {
             return items;
         }
         int half = items.size() / 2;
-        List<T> front = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+        List<T> front = mergeSortedTakingFromLeftUnlessOutOfOrder(
                 new ArrayList<>(items.subList(0, half)), order);
-        List<T> back = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
+        List<T> back = mergeSortedTakingFromLeftUnlessOutOfOrder(
                 new ArrayList<>(items.subList(half, items.size())), order);
         List<T> merged = new ArrayList<>(items.size());
         int here = 0;

@@ -87,7 +87,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             case "read" -> collectWhatHasArrived(port);
             case "write" -> send(port, arguments.get(1));
             case "query" -> answerQuery(arguments.get(1), evaluator);
-            case "open?" -> LogicValue.of(findTheConnectionBehind(port).isPresent());
+            case "open?" -> LogicValue.of(findConnectionBehind(port).isPresent());
             case "update" -> NoneValue.none();
             default -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(action));
         });
@@ -112,11 +112,11 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private void makeOneDeviceOutput(ObjectValue spec) {
-        long asAnInput = spec.readFieldValue("device-in") instanceof IntegerValue(long number)
+        long asInput = spec.readFieldValue("device-in") instanceof IntegerValue(long number)
                 ? number
                 : NO_DEVICE_AT_ALL;
         spec.context().register("device-in", NoneValue.none());
-        spec.context().register("device-out", IntegerValue.of(asAnInput));
+        spec.context().register("device-out", IntegerValue.of(asInput));
     }
 
     private MidiRoute findRouteSpecNames(PortValue port, ObjectValue spec, MidiDevices devices) {
@@ -125,8 +125,8 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         if (input == NO_DEVICE_AT_ALL && output == NO_DEVICE_AT_ALL) {
             throw refuseToOpen(port, NO_DEVICE_IS_NAMED);
         }
-        Optional<MidiDevice> listedInput = findTheListedDevice(port, input, devices.inputs());
-        Optional<MidiDevice> listedOutput = findTheListedDevice(port, output, devices.outputs());
+        Optional<MidiDevice> listedInput = findListedDevice(port, input, devices.inputs());
+        Optional<MidiDevice> listedOutput = findListedDevice(port, output, devices.outputs());
         return new MidiRoute(listedInput, listedOutput);
     }
 
@@ -134,7 +134,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         return field instanceof IntegerValue(long number) ? number : NO_DEVICE_AT_ALL;
     }
 
-    private Optional<MidiDevice> findTheListedDevice(PortValue port, long number, List<String> listed) {
+    private Optional<MidiDevice> findListedDevice(PortValue port, long number, List<String> listed) {
         if (number == NO_DEVICE_AT_ALL) {
             return Optional.empty();
         }
@@ -153,7 +153,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private Value close(PortValue port, Evaluator evaluator) {
-        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
+        MidiDevices.Connection connection = findOpenConnectionBehind(port);
         connection.close();
         port.setField("state", NoneValue.none());
         queueWhatHappenedTo(port, "close", evaluator);
@@ -162,7 +162,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private Value collectWhatHasArrived(PortValue port) {
         granted.require(HostService.MIDI);
-        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
+        MidiDevices.Connection connection = findOpenConnectionBehind(port);
         try {
             BinaryValue arrived = BinaryValue.ofBytes(connection.arrivedSinceLastRead());
             port.setField("data", arrived);
@@ -175,7 +175,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private Value send(PortValue port, Value data) {
         granted.require(HostService.MIDI);
-        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
+        MidiDevices.Connection connection = findOpenConnectionBehind(port);
         if (!(data instanceof BinaryValue message)) {
             return port;
         }
@@ -195,12 +195,12 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         return new DevicesHostLists(evaluator.ports().midiDevices()).answer(field, evaluator);
     }
 
-    private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {
-        return findTheConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
+    private MidiDevices.Connection findOpenConnectionBehind(PortValue port) {
+        return findConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
                 portReference(port), IntegerValue.of(PORT_IS_NOT_OPEN)));
     }
 
-    private Optional<MidiDevices.Connection> findTheConnectionBehind(PortValue port) {
+    private Optional<MidiDevices.Connection> findConnectionBehind(PortValue port) {
         if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof MidiDevices.Connection connection) {
             return Optional.of(connection);
@@ -220,7 +220,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
-        evaluator.queueOnSystemPort(new EventValue(EventCatalogue.findTheTypeIndexOf(happened).orElseThrow(),
+        evaluator.queueOnSystemPort(new EventValue(EventCatalogue.findTypeIndexOf(happened).orElseThrow(),
                 Set.of(), EventValue.Model.PORT, 0, port));
     }
 

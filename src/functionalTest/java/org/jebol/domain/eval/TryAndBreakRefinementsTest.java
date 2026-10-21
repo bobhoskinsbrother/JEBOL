@@ -30,7 +30,7 @@ class TryAndBreakRefinementsTest {
         assertThat(outcome.conclusion())
                 .as("%s must fail as a script rather than as a host exception", source)
                 .isEqualTo(Conclusion.RAISED);
-        return ((ErrorValue) outcome.value()).readTheField("id")
+        return ((ErrorValue) outcome.value()).readField("id")
                 .map(Molder::form)
                 .orElse("no id");
     }

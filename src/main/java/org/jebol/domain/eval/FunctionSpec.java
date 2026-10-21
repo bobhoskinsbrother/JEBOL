@@ -11,7 +11,7 @@ final class FunctionSpec {
     private FunctionSpec() {
     }
 
-    static List<Parameter> readTheParametersIn(AnyBlockValue spec) {
+    static List<Parameter> readParametersIn(AnyBlockValue spec) {
         List<Parameter> parameters = new ArrayList<>();
         String currentRefinement = null;
         List<Value> items = spec.remaining();
@@ -31,7 +31,7 @@ final class FunctionSpec {
             }
             if (!(item instanceof AnyWordValue word)
                     || word instanceof IssueValue
-                    || word instanceof SetWordValue && !isTheOneSetWordASpecMayHold(word, items, index)) {
+                    || word instanceof SetWordValue && !isOneSetWordSpecMayHold(word, items, index)) {
                 throw refuseWholeSpec(spec);
             }
             refuseDuplicateNamingItAsItWasWritten(word, alreadyNamed);
@@ -49,7 +49,7 @@ final class FunctionSpec {
             parameters.add(new Parameter(
                     word.spelling(),
                     word.kindOfParameterItDeclares(),
-                    readTheAcceptedTypesAfter(items, index),
+                    readAcceptedTypesAfter(items, index),
                     Optional.ofNullable(currentRefinement)));
         }
         return List.copyOf(parameters);
@@ -59,7 +59,7 @@ final class FunctionSpec {
         return item instanceof IntegerValue;
     }
 
-    static List<String> readTheLocalNamesIn(AnyBlockValue spec) {
+    static List<String> readLocalNamesIn(AnyBlockValue spec) {
         List<String> locals = new ArrayList<>();
         boolean collecting = false;
 
@@ -75,7 +75,7 @@ final class FunctionSpec {
         return List.copyOf(locals);
     }
 
-    private static boolean isTheOneSetWordASpecMayHold(
+    private static boolean isOneSetWordSpecMayHold(
             AnyWordValue word, List<Value> items, int index) {
 
         return word instanceof SetWordValue
@@ -104,15 +104,15 @@ final class FunctionSpec {
                 spec.head()));
     }
 
-    private static Set<Datatype> readTheAcceptedTypesAfter(List<Value> items, int index) {
+    private static Set<Datatype> readAcceptedTypesAfter(List<Value> items, int index) {
         if (index + 1 >= items.size() || !(items.get(index + 1) instanceof AnyBlockValue types)) {
             return Set.of();
         }
-        boolean describesTheReturn = items.get(index) instanceof SetWordValue word
+        boolean describesReturn = items.get(index) instanceof SetWordValue word
                 && word.canonical().equals("return");
         Set<Datatype> accepted = new HashSet<>();
         for (Value declared : types.remaining()) {
-            if (describesTheReturn && declared instanceof AnyStringValue) {
+            if (describesReturn && declared instanceof AnyStringValue) {
                 continue;
             }
             switch (resolveTypeName(declared)) {
@@ -130,11 +130,11 @@ final class FunctionSpec {
         if (!(declared instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
             return declared;
         }
-        Optional<Datatype> named = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
+        Optional<Datatype> named = Catalogue.DATATYPES.findDatatypeNamed(word.spelling());
         if (named.isPresent()) {
             return named.get();
         }
-        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling())
+        return Catalogue.DATATYPES.findTypesetNamed(word.spelling())
                 .<Value>map(typeset -> typeset)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
                         word.spelling() + " names no datatype"));

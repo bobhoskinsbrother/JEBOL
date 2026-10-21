@@ -18,7 +18,7 @@ public class TruncateNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("series"),
-                Parameter.belongTo("part", "count", listThePartLimitTypes()));
+                Parameter.belongTo("part", "count", listPartLimitTypes()));
     }
 
     @Override

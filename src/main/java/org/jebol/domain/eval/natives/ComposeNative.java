@@ -62,7 +62,7 @@ public class ComposeNative extends DefaultNative {
         for (Value item : template.remaining()) {
             boolean asWritten = true;
             if (!(item instanceof ParenValue paren)) {
-                built.append(composeAnItem(item, evaluator, context, keepingBlocksWhole,
+                built.append(composeItem(item, evaluator, context, keepingBlocksWhole,
                         goingDeep));
             } else {
                 asWritten = false;
@@ -76,8 +76,8 @@ public class ComposeNative extends DefaultNative {
         return BlockValue.wrapStorage(built);
     }
 
-    private Value composeAnItem(Value item, Evaluator evaluator, Context context,
-                                boolean keepingBlocksWhole, boolean goingDeep) {
+    private Value composeItem(Value item, Evaluator evaluator, Context context,
+                              boolean keepingBlocksWhole, boolean goingDeep) {
         if (goingDeep && item instanceof BlockValue nested) {
             return compose(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
         }

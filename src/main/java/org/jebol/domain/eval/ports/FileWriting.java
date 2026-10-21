@@ -23,19 +23,19 @@ final class FileWriting {
     private final Value data;
     private final Optional<Long> bound;
     private final Optional<Long> position;
-    private final boolean atTheEnd;
+    private final boolean atEnd;
     private final boolean oneValuePerLine;
 
     FileWriting(String path, Value data, PortRequest asked) {
         this.path = path;
         this.data = data;
-        this.bound = refuseANegative(asked.part());
-        this.position = refuseANegative(asked.seek());
-        this.atTheEnd = asked.refinements().contains("append");
+        this.bound = refuseNegative(asked.part());
+        this.position = refuseNegative(asked.seek());
+        this.atEnd = asked.refinements().contains("append");
         this.oneValuePerLine = asked.refinements().contains("lines");
     }
 
-    private Optional<Long> refuseANegative(Optional<Value> asked) {
+    private Optional<Long> refuseNegative(Optional<Value> asked) {
         Optional<Long> magnitude = asked.map(number -> (long) Arithmetic.asMagnitude(number));
         if (magnitude.isPresent() && magnitude.get() < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.get());
@@ -47,7 +47,7 @@ final class FileWriting {
         byte[] bytes = encodeBytesToWrite();
         if (position.isPresent()) {
             files.writeAt(path, clipToFileSize(files), bytes);
-        } else if (atTheEnd) {
+        } else if (atEnd) {
             files.appendTo(path, bytes);
         } else {
             files.write(path, bytes);

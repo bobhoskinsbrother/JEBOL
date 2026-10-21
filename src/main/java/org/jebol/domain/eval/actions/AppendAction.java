@@ -26,7 +26,7 @@ public class AppendAction extends AddingAction {
         return (arguments, evaluator, context, refinements) -> {
             Value added = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue queue when queue.findTheEventQueue().isPresent() ->
+                case PortValue queue when queue.findEventQueue().isPresent() ->
                         queue.queue(added, AT_END);
                 case PortValue file when file.isAFile() -> {
                     if (refinements.contains("dup") || refinements.contains("only")) {

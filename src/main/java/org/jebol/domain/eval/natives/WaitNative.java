@@ -70,7 +70,7 @@ public class WaitNative extends PortWakingNative {
             List<Value> waitedOn = asked instanceof AnyBlockValue block
                     ? evaluator.evaluateEachOrRaise(block, context)
                     : List.of(asked);
-            Optional<PortValue> eventPort = findTheEventPortAmong(waitedOn);
+            Optional<PortValue> eventPort = findEventPortAmong(waitedOn);
             if (eventPort.isPresent()) {
                 return findHowLongToWaitAmong(waitedOn)
                         .map(milliseconds -> waitOnScreenFor(eventPort.get(), milliseconds, evaluator))
@@ -178,7 +178,7 @@ public class WaitNative extends PortWakingNative {
         return asked instanceof PortValue port && port.schemeName().equals("event");
     }
 
-    private Optional<PortValue> findTheEventPortAmong(List<Value> waitedOn) {
+    private Optional<PortValue> findEventPortAmong(List<Value> waitedOn) {
         return waitedOn.stream()
                 .filter(this::isAnEventPort)
                 .map(PortValue.class::cast)
@@ -211,19 +211,19 @@ public class WaitNative extends PortWakingNative {
         spec.addAll(reported.window() == null
                 ? List.of(SetWordValue.of("port"), NoneValue.none())
                 : List.of(SetWordValue.of("window"), reported.window()));
-        spec.addAll(writeTheDetail(reported.detail()));
+        spec.addAll(writeDetail(reported.detail()));
         return EventPath.make(BlockValue.of(spec), UnaryOperator.identity()) instanceof EventValue made
                 ? made
                 : EventValue.fresh();
     }
 
-    private List<Value> writeTheDetail(ScreenEventDetail detail) {
+    private List<Value> writeDetail(ScreenEventDetail detail) {
         return switch (detail) {
             case ScreenEventDetail.At(int across, int down) ->
                     List.of(SetWordValue.of("offset"), PairValue.of(across, down));
             case ScreenEventDetail.Typed(int codepoint) ->
                     List.of(SetWordValue.of("key"), CharacterValue.of(codepoint));
-            case ScreenEventDetail.NamedKey(String name) -> EventCatalogue.findTheKeyIndexOf(name)
+            case ScreenEventDetail.NamedKey(String name) -> EventCatalogue.findKeyIndexOf(name)
                     .<List<Value>>map(position -> List.of(
                             SetWordValue.of("code"), IntegerValue.of(position + 1)))
                     .orElse(List.of());

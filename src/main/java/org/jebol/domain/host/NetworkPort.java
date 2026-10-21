@@ -26,7 +26,7 @@ public interface NetworkPort {
      * refusal is for the service not being granted, and it happens before
      * this is reached.
      */
-    Optional<String> resolveTheFirstIpv4Address(String hostName);
+    Optional<String> resolveFirstIpv4Address(String hostName);
 
     /** The name an IPv4 address, written with dots, belongs to, or empty. */
     Optional<String> resolveHostName(String ipv4Address);
@@ -103,7 +103,7 @@ public interface NetworkPort {
         return new NetworkPort() {
 
             @Override
-            public Optional<String> resolveTheFirstIpv4Address(String hostName) {
+            public Optional<String> resolveFirstIpv4Address(String hostName) {
                 throw refuse(hostName);
             }
 
@@ -135,7 +135,7 @@ public interface NetworkPort {
     }
 
     /** What a scheme's default port number is, where it has one. */
-    static Optional<Integer> findTheWellKnownPortFor(String scheme) {
+    static Optional<Integer> findWellKnownPortFor(String scheme) {
         return switch (scheme) {
             case "http" -> Optional.of(80);
             case "https", "tls" -> Optional.of(443);

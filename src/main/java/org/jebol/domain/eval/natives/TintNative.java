@@ -19,7 +19,7 @@ public class TintNative extends ColourNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.of("target", acceptAColourOrAnImage()),
+                Parameter.of("target", acceptColourOrImage()),
                 Parameter.of("rgb", Set.of(TupleValue.TYPE)),
                 Parameter.of("amount", TypesetValue.NUMBER.members()));
     }

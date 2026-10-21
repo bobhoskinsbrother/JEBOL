@@ -8,7 +8,7 @@ import java.util.function.UnaryOperator;
 
 public abstract class ColourNative extends DefaultNative {
 
-    protected Set<Datatype> acceptAColourOrAnImage() {
+    protected Set<Datatype> acceptColourOrImage() {
         return Set.of(TupleValue.TYPE, ImageValue.TYPE);
     }
 
@@ -28,15 +28,15 @@ public abstract class ColourNative extends DefaultNative {
     }
 
     protected Value recolourEveryColour(
-            Value target, Function<TupleValue, Value> ofAColour, UnaryOperator<int[]> ofAPixel) {
+            Value target, Function<TupleValue, Value> ofColour, UnaryOperator<int[]> ofPixel) {
 
         if (target instanceof TupleValue colour) {
-            return ofAColour.apply(colour);
+            return ofColour.apply(colour);
         }
         ImageValue image = (ImageValue) target;
         for (int pixel = 1; pixel <= image.lengthFromHere(); pixel++) {
             int[] channels = image.readPixelAt(pixel);
-            int[] recoloured = ofAPixel.apply(new int[] {channels[0], channels[1], channels[2]});
+            int[] recoloured = ofPixel.apply(new int[] {channels[0], channels[1], channels[2]});
             image.storage().setColourAt(image.index() + pixel - 1,
                     recoloured[0], recoloured[1], recoloured[2]);
         }

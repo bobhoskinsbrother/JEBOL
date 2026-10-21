@@ -44,10 +44,10 @@ public final class DateArithmetic {
     }
 
     private void refuseSpanDateCannotMoveBy(Value span, ArithmeticOperation operation) {
-        boolean movesADate = operation.isCommutative()
+        boolean movesDate = operation.isCommutative()
                 ? !operation.multiplies()
                 : operation.canSubtractOneFromOther();
-        if (!movesADate
+        if (!movesDate
                 || !(span instanceof IntegerValue
                         || span instanceof DecimalValue
                         || span instanceof TimeValue)) {
@@ -62,7 +62,7 @@ public final class DateArithmetic {
             requireSupportedYear(shifted);
             return new DateValue(shifted.getYear(), shifted.getMonthValue(),
                     shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
-        } catch (ArithmeticException | DateTimeException outsideTheSupportedYears) {
+        } catch (ArithmeticException | DateTimeException outsideSupportedYears) {
             throw typeLimit();
         }
     }
@@ -78,7 +78,7 @@ public final class DateArithmetic {
                     Optional.of(TimeValue.ofNanoseconds(
                             Math.floorMod(shifted, TimeValue.NANOSECONDS_PER_DAY))),
                     moment.zoneMinutes());
-        } catch (ArithmeticException | DateTimeException outsideTheSupportedYears) {
+        } catch (ArithmeticException | DateTimeException outsideSupportedYears) {
             throw typeLimit();
         }
     }

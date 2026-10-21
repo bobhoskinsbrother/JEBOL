@@ -11,7 +11,7 @@ public abstract class TabbingNative extends DefaultNative {
 
     private static final int SPACES_TAB_STANDS_FOR = 4;
 
-    abstract String tab(String text, String aTabsWorthOfSpaces);
+    abstract String tab(String text, String spacesForTab);
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -28,14 +28,14 @@ public abstract class TabbingNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String aTabsWorthOfSpaces = spacesText(refinementArgument("size", 0, arguments, refinements)
+            String spacesForTab = spacesText(refinementArgument("size", 0, arguments, refinements)
                     .map(this::countSpacesTabStandsFor)
                     .orElse(SPACES_TAB_STANDS_FOR));
             return switch (arguments.getFirst()) {
                 case BinaryValue octets -> BinaryValue.ofBytes(tab(
                         new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),
-                        aTabsWorthOfSpaces).getBytes(StandardCharsets.ISO_8859_1));
-                case AnyStringValue text -> text.wrap(tab(text.text(), aTabsWorthOfSpaces));
+                        spacesForTab).getBytes(StandardCharsets.ISO_8859_1));
+                case AnyStringValue text -> text.wrap(tab(text.text(), spacesForTab));
                 case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };

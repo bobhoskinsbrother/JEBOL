@@ -31,15 +31,15 @@ final class BrotliHistogramCost {
             }
         }
         if (howManyAreUsed <= 4) {
-            return priceTheShortForm(counts, whichAreUsed, howManyAreUsed,
+            return priceShortForm(counts, whichAreUsed, howManyAreUsed,
                     histogram.total());
         }
         return priceEntropyAndCode(
                 counts, alphabetSize, histogram.total());
     }
 
-    private static double priceTheShortForm(int[] counts, int[] whichAreUsed,
-                                            int howManyAreUsed, long total) {
+    private static double priceShortForm(int[] counts, int[] whichAreUsed,
+                                         int howManyAreUsed, long total) {
 
         if (howManyAreUsed == 1) {
             return ONE_SYMBOL;

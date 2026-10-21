@@ -21,7 +21,7 @@ public final class SymbolTable {
 
     private final Map<String, Integer> canonByFoldedSpelling = new HashMap<>();
 
-    private boolean countingWhatTheSessionReads;
+    private boolean countingWhatSessionReads;
 
     public void useBootSymbols(String source) {
         for (String spelling : source.strip().split(SYMBOL_SEPARATOR)) {
@@ -30,7 +30,7 @@ public final class SymbolTable {
     }
 
     public void startCountingSessionReads() {
-        countingWhatTheSessionReads = true;
+        countingWhatSessionReads = true;
     }
 
     public int canonicalIndexFor(String spelling) {
@@ -46,7 +46,7 @@ public final class SymbolTable {
     }
 
     public void internWhatWasRead(List<Value> read) {
-        if (countingWhatTheSessionReads) {
+        if (countingWhatSessionReads) {
             read.forEach(this::internEveryWordIn);
         }
     }
@@ -55,7 +55,7 @@ public final class SymbolTable {
         switch (read) {
             case AnyWordValue word -> canonicalIndexFor(word.spelling());
             case AnyBlockValue block -> block.remaining().forEach(this::internEveryWordIn);
-            case MapValue map -> map.listTheItems().forEach(this::internEveryWordIn);
+            case MapValue map -> map.listItems().forEach(this::internEveryWordIn);
             default -> addNoWord();
         }
     }

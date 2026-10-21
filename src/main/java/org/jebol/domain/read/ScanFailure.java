@@ -43,7 +43,7 @@ final class ScanFailure extends RuntimeException {
         return relaxable;
     }
 
-    TranscodeResult.Failure asAFailure() {
+    TranscodeResult.Failure asFailure() {
         return new TranscodeResult.Failure(failure, arguments, near);
     }
 }

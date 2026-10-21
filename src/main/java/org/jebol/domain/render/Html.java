@@ -37,7 +37,7 @@ public final class Html {
         StringBuilder rendered = new StringBuilder("<").append(element);
 
         rendered.append(" class=\"jebol-").append(face.kind()).append('"');
-        face.writeTheStyleAttribute().ifPresent(styles ->
+        face.writeStyleAttribute().ifPresent(styles ->
                 rendered.append(" style=\"").append(escape(styles)).append('"'));
         if (!handle.isEmpty()) {
             rendered.append(" data-jebol-action=\"").append(escape(handle)).append('"');

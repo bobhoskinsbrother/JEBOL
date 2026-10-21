@@ -24,8 +24,8 @@ public abstract class EncodingNative extends DefaultNative {
         return TypesetValue.ANY_STRING.membersAnd(alsoAccepted);
     }
 
-    protected Set<Datatype> acceptACountOrPosition() {
-        Set<Datatype> accepted = new LinkedHashSet<>(listThePartLimitTypes());
+    protected Set<Datatype> acceptCountOrPosition() {
+        Set<Datatype> accepted = new LinkedHashSet<>(listPartLimitTypes());
         accepted.remove(PairValue.TYPE);
         return accepted;
     }

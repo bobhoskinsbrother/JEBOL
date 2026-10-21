@@ -58,14 +58,14 @@ public final class SecurityPolicies {
     }
 
     private TupleValue findTupleAmong(List<Value> entries, PolicyClass kind, Optional<Value> subject) {
-        Optional<TupleValue> theDefault = Optional.empty();
+        Optional<TupleValue> fallback = Optional.empty();
         for (int at = 0; at < entries.size(); at += 2) {
             Value key = entries.get(at);
             if (at + 1 >= entries.size() || !(entries.get(at + 1) instanceof TupleValue flags)) {
                 throw refuseAsMalformed(key);
             }
             if (key instanceof WordValue) {
-                theDefault = Optional.of(flags);
+                fallback = Optional.of(flags);
             } else if (isAName(key) && subject.isPresent()) {
                 if (covers(key, subject.get())) {
                     return flags;
@@ -74,7 +74,7 @@ public final class SecurityPolicies {
                 throw refuseAsMalformed(key);
             }
         }
-        return theDefault.orElseThrow(() -> Raised.of(EvaluationFailure.SECURITY,
+        return fallback.orElseThrow(() -> Raised.of(EvaluationFailure.SECURITY,
                 subject.orElseGet(() -> WordValue.of(kind.word()))));
     }
 

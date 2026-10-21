@@ -55,7 +55,7 @@ public final class Face {
     }
 
     /** The styles as a CSS declaration list, or empty if there are none. */
-    public Optional<String> writeTheStyleAttribute() {
+    public Optional<String> writeStyleAttribute() {
         if (styles.isEmpty()) {
             return Optional.empty();
         }

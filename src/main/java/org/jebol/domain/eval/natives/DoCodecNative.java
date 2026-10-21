@@ -42,7 +42,7 @@ public class DoCodecNative extends DefaultNative {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
         }
-        Codecs.Action asked = readTheActionAskedBy(action);
+        Codecs.Action asked = readActionAskedBy(action);
         refuseDataActionCannotTake(asked, data);
         Codecs.Answer answered = codecs.run(((AnyWordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
@@ -52,7 +52,7 @@ public class DoCodecNative extends DefaultNative {
         return answered.value();
     }
 
-    private Codecs.Action readTheActionAskedBy(AnyWordValue action) {
+    private Codecs.Action readActionAskedBy(AnyWordValue action) {
         return switch (action.canonical()) {
             case "identify" -> Codecs.Action.IDENTIFY;
             case "decode" -> Codecs.Action.DECODE;

@@ -45,11 +45,11 @@ final class ChosenScreen {
     }
 
     static ScreenPort screenFor(
-            String[] arguments, PrintStream out, boolean forAScript, FilePort files) {
+            String[] arguments, PrintStream out, boolean forScript, FilePort files) {
         String asked = switchValue(arguments).orElseThrow();
         return switch (asked.toLowerCase(Locale.ROOT)) {
             case WINDOW -> windowScreen(out, files);
-            case PAGE -> pageScreen(out, forAScript, files);
+            case PAGE -> pageScreen(out, forScript, files);
             default -> refuseAsNotUnderstood(asked);
         };
     }
@@ -62,12 +62,12 @@ final class ChosenScreen {
         return screen;
     }
 
-    private static ScreenPort pageScreen(PrintStream out, boolean forAScript, FilePort files) {
+    private static ScreenPort pageScreen(PrintStream out, boolean forScript, FilePort files) {
         try {
             WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, files);
             BrowserScreen screen = BrowserScreen.showTo(serving, files);
             serving.reportTo(screen);
-            if (forAScript) {
+            if (forScript) {
                 out.println("Screen: a page at " + serving.address()
                         + " -- the script starts once it is open.");
                 waitForBrowser(screen);

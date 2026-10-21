@@ -16,7 +16,7 @@ public abstract class SeriesSearchAction extends DefaultNative implements Action
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.of("series"),
                 Parameter.of("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongTo("part", "range", listThePartLimitTypes()),
+                Parameter.belongTo("part", "range", listPartLimitTypes()),
                 Parameter.belongTo("with", "wild", Set.of(StringValue.TYPE)),
                 Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }

@@ -17,7 +17,7 @@ import java.util.OptionalInt;
 public final class Parser implements ParseWalk {
 
 
-    private static final ParseKeyword WORD_NOT = ParseKeyword.findTheKeywordNamed("not").orElseThrow();
+    private static final ParseKeyword WORD_NOT = ParseKeyword.findKeywordNamed("not").orElseThrow();
 
     Evaluator evaluator;
     Context context;
@@ -25,7 +25,7 @@ public final class Parser implements ParseWalk {
     RebolSeries source;
     int position;
     boolean mindingCase;
-    boolean blockEndedInAMatch;
+    boolean blockEndedInMatch;
 
     Deque<List<Value>> collectionsOpenInnermostLast = new ArrayDeque<>();
     List<Value> gathered;
@@ -77,7 +77,7 @@ public final class Parser implements ParseWalk {
                 at += 2;
             } catch (BlockEnded ended) {
                 if (ended.endedAsMatch()) {
-                    blockEndedInAMatch = true;
+                    blockEndedInMatch = true;
                     return true;
                 }
                 position = startedAt;
@@ -117,11 +117,11 @@ public final class Parser implements ParseWalk {
     }
 
     int applyKeyword(ParseKeyword keyword, List<Value> rules, int at) {
-        Optional<Integer> refused = refuseAMissingArgument(keyword, rules, at);
+        Optional<Integer> refused = refuseMissingArgument(keyword, rules, at);
         return refused.isPresent() ? refused.orElseThrow() : applyKeywordThatHasWhatItNeeds(keyword, rules, at);
     }
 
-    private Optional<Integer> refuseAMissingArgument(ParseKeyword keyword, List<Value> rules, int at) {
+    private Optional<Integer> refuseMissingArgument(ParseKeyword keyword, List<Value> rules, int at) {
 
         if (!keyword.needsSomethingAfterIt()) {
             return Optional.empty();
@@ -153,7 +153,7 @@ public final class Parser implements ParseWalk {
             if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.COLLECT_TARGET_WORDS.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
-            return ParseKeyword.findTheKeywordNamed(word.canonical()).map(keyword -> countSlotsTakenBy(keyword, rules, at)).orElse(1);
+            return ParseKeyword.findKeywordNamed(word.canonical()).map(keyword -> countSlotsTakenBy(keyword, rules, at)).orElse(1);
         }
         return 1;
     }
@@ -225,7 +225,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static boolean isWordNot(List<Value> rules, int at) {
-        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findTheKeywordNamed(word.canonical()).filter(WORD_NOT::equals).isPresent();
+        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findKeywordNamed(word.canonical()).filter(WORD_NOT::equals).isPresent();
     }
 
     @Override
@@ -260,14 +260,14 @@ public final class Parser implements ParseWalk {
         while (true) {
             int before = position;
             int wasLong = inputLength();
-            blockEndedInAMatch = false;
+            blockEndedInMatch = false;
             if (matchOne(rules, at + 1) == NO_MATCH) {
                 position = before;
                 break;
             }
             matched++;
-            if (blockEndedInAMatch) {
-                blockEndedInAMatch = false;
+            if (blockEndedInMatch) {
+                blockEndedInMatch = false;
                 return 1 + ruleSpan(rules, at + 1);
             }
             if (position == before && inputLength() == wasLong) {
@@ -278,16 +278,16 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private final boolean walkingABlock;
+    private final boolean walkingBlock;
 
     private List<Value> input;
 
     private Parser(Evaluator evaluator, Context context, Value given) {
         this.evaluator = evaluator;
         this.context = context;
-        this.walkingABlock = !(given instanceof AnyStringValue || given instanceof BinaryValue);
+        this.walkingBlock = !(given instanceof AnyStringValue || given instanceof BinaryValue);
         this.parsing = given.datatype();
-        if (walkingABlock) {
+        if (walkingBlock) {
             AnyBlockValue block = given instanceof AnyBlockValue whole ? whole : null;
             this.source = block;
             this.input = new ArrayList<>(block != null ? block.remaining() : List.of(given));
@@ -317,7 +317,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public void assign(AnyWordValue word, Value value) {
-        if (walkingABlock) {
+        if (walkingBlock) {
             assignOverBlock(word, value);
         } else {
             assignOverString(word, value);
@@ -343,7 +343,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public void removeBetween(int from, int howMany) {
-        if (walkingABlock) {
+        if (walkingBlock) {
             removeSpan(from, howMany);
             return;
         }
@@ -375,7 +375,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public void deliverCollectedTo(AnyWordValue target, List<Value> mine, boolean appending) {
-        if (walkingABlock) {
+        if (walkingBlock) {
             Value existing = valueOf(target);
             requireBlockTargetForParseInto(existing);
             if (existing instanceof AnyBlockValue block) {
@@ -406,7 +406,7 @@ public final class Parser implements ParseWalk {
         if (collectionsOpenInnermostLast.isEmpty()) {
             return;
         }
-        if (walkingABlock) {
+        if (walkingBlock) {
             collectionsOpenInnermostLast.peek().addAll(input.subList(from, to));
             return;
         }
@@ -417,7 +417,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public java.util.Optional<Value> readWhatMatchedBetween(int from, int to) {
-        if (!walkingABlock) {
+        if (!walkingBlock) {
             return to > from ? java.util.Optional.of(takeOneOrSliceFrom(from)) : java.util.Optional.empty();
         }
         List<Value> matched = input.subList(from, to);
@@ -465,7 +465,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value sliceBetween(int from, int to) {
-        return walkingABlock ? sliceInSourceKind(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
+        return walkingBlock ? sliceInSourceKind(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
     }
 
     private AnyBlockValue readBlockBeingWalked() {
@@ -474,21 +474,21 @@ public final class Parser implements ParseWalk {
 
     @Override
     public int inputLength() {
-        return walkingABlock ? inputLengthOverBlock() : inputLengthOverString();
+        return walkingBlock ? inputLengthOverBlock() : inputLengthOverString();
     }
 
     @Override
     public int matchOne(List<Value> rules, int at) {
-        return walkingABlock ? matchOneOverBlock(rules, at) : matchOneOverString(rules, at);
+        return walkingBlock ? matchOneOverBlock(rules, at) : matchOneOverString(rules, at);
     }
 
     @Override
     public boolean matchValue(Value rule) {
-        return walkingABlock ? matchValueOverBlock(rule) : matchValueOverString(rule);
+        return walkingBlock ? matchValueOverBlock(rule) : matchValueOverString(rule);
     }
 
     private int applyKeywordThatHasWhatItNeeds(ParseKeyword keyword, List<Value> rules, int at) {
-        return walkingABlock ? keyword.applyToBlock(this, rules, at) : keyword.applyToString(this, rules, at);
+        return walkingBlock ? keyword.applyToBlock(this, rules, at) : keyword.applyToString(this, rules, at);
     }
 
 
@@ -596,7 +596,7 @@ public final class Parser implements ParseWalk {
     }
 
     private OptionalInt matchKeyword(String spelling, List<Value> rules, int at) {
-        Optional<ParseKeyword> keyword = ParseKeyword.findTheKeywordNamed(spelling);
+        Optional<ParseKeyword> keyword = ParseKeyword.findKeywordNamed(spelling);
         return keyword.isPresent() ? OptionalInt.of(applyKeyword(keyword.get(), rules, at)) : OptionalInt.empty();
     }
 
@@ -787,11 +787,11 @@ public final class Parser implements ParseWalk {
             return text.text().codePoints().toArray();
         }
         BinaryValue bytes = (BinaryValue) series;
-        int[] eachByteStandingInForACodePoint = new int[bytes.lengthFromHere()];
-        for (int at = 0; at < eachByteStandingInForACodePoint.length; at++) {
-            eachByteStandingInForACodePoint[at] = bytes.storage().at(bytes.index() + at);
+        int[] eachByteStandingInForCodePoint = new int[bytes.lengthFromHere()];
+        for (int at = 0; at < eachByteStandingInForCodePoint.length; at++) {
+            eachByteStandingInForCodePoint[at] = bytes.storage().at(bytes.index() + at);
         }
-        return eachByteStandingInForACodePoint;
+        return eachByteStandingInForCodePoint;
     }
 
 
@@ -838,7 +838,7 @@ public final class Parser implements ParseWalk {
             return NO_MATCH;
         }
         if (rule instanceof WordValue word) {
-            Optional<ParseKeyword> keyword = ParseKeyword.findTheKeywordNamed(word.canonical());
+            Optional<ParseKeyword> keyword = ParseKeyword.findKeywordNamed(word.canonical());
             if (keyword.isPresent()) {
                 return applyKeyword(keyword.get(), rules, at);
             }

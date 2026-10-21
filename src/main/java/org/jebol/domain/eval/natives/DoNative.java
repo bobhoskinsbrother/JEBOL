@@ -52,7 +52,7 @@ public class DoNative extends DefaultNative {
     private Value stepOnceThrough(
             Value value, AnyWordValue var, Evaluator evaluator, Context context) {
 
-        Optional<AnyBlockValue> steppable = findTheSteppableBlock(value, evaluator, context);
+        Optional<AnyBlockValue> steppable = findSteppableBlock(value, evaluator, context);
         if (steppable.isEmpty()) {
             var.findBoundSlot().setValue(NoneValue.none());
             return value;
@@ -67,7 +67,7 @@ public class DoNative extends DefaultNative {
         return taken.value();
     }
 
-    private Optional<AnyBlockValue> findTheSteppableBlock(
+    private Optional<AnyBlockValue> findSteppableBlock(
             Value value, Evaluator evaluator, Context context) {
 
         return switch (value) {

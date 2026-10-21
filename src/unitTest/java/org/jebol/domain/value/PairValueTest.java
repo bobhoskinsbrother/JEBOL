@@ -90,12 +90,12 @@ class PairValueTest {
 
         @Test
         void answersTheFirstHalfByName() {
-            assertThat(PairValue.of(1, 2).readTheHalf("x")).contains(DecimalValue.of(1.0d));
+            assertThat(PairValue.of(1, 2).readHalf("x")).contains(DecimalValue.of(1.0d));
         }
 
         @Test
         void answersTheSecondHalfByName() {
-            assertThat(PairValue.of(1, 2).readTheHalf("y")).contains(DecimalValue.of(2.0d));
+            assertThat(PairValue.of(1, 2).readHalf("y")).contains(DecimalValue.of(2.0d));
         }
 
         @Test
@@ -120,7 +120,7 @@ class PairValueTest {
 
         @Test
         void findsNoHalfForAnotherName() {
-            assertThat(PairValue.of(1, 2).readTheHalf("z")).isEmpty();
+            assertThat(PairValue.of(1, 2).readHalf("z")).isEmpty();
         }
     }
 

@@ -358,7 +358,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         return plus(adding).denormaliseTo(scale);
     }
 
-    private record AgainstHalf(Deci left, Deci towardsTheNext) {
+    private record AgainstHalf(Deci left, Deci towardsNext) {
     }
 
     private AgainstHalf compareWithHalfOf(Deci scale) {
@@ -368,8 +368,8 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
 
     public Deci roundHalfEvenTo(Deci scale) {
         AgainstHalf half = compareWithHalfOf(scale);
-        if (!half.left().isEqualTo(half.towardsTheNext())) {
-            return roundEitherWay(half, half.left().isLesserOrEqualTo(half.towardsTheNext()), scale);
+        if (!half.left().isEqualTo(half.towardsNext())) {
+            return roundEitherWay(half, half.left().isLesserOrEqualTo(half.towardsNext()), scale);
         }
         Deci unsignedScale = scale.withSign(false);
         Deci within = takeRemainderAfterDividingBy(unsignedScale.plus(unsignedScale)).withSign(false);
@@ -378,32 +378,32 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
 
     public Deci roundHalfAwayTo(Deci scale) {
         AgainstHalf half = compareWithHalfOf(scale);
-        return roundEitherWay(half, !half.towardsTheNext().isLesserOrEqualTo(half.left()), scale);
+        return roundEitherWay(half, !half.towardsNext().isLesserOrEqualTo(half.left()), scale);
     }
 
     public Deci roundHalfTowardZeroTo(Deci scale) {
         AgainstHalf half = compareWithHalfOf(scale);
-        return roundEitherWay(half, half.left().isLesserOrEqualTo(half.towardsTheNext()), scale);
+        return roundEitherWay(half, half.left().isLesserOrEqualTo(half.towardsNext()), scale);
     }
 
     public Deci roundHalfTowardCeilingTo(Deci scale) {
         AgainstHalf half = compareWithHalfOf(scale);
         return roundEitherWay(half, negative
-                ? half.left().isLesserOrEqualTo(half.towardsTheNext())
-                : !half.towardsTheNext().isLesserOrEqualTo(half.left()), scale);
+                ? half.left().isLesserOrEqualTo(half.towardsNext())
+                : !half.towardsNext().isLesserOrEqualTo(half.left()), scale);
     }
 
     public Deci roundHalfTowardFloorTo(Deci scale) {
         AgainstHalf half = compareWithHalfOf(scale);
         return roundEitherWay(half, negative
-                ? !half.towardsTheNext().isLesserOrEqualTo(half.left())
-                : half.left().isLesserOrEqualTo(half.towardsTheNext()), scale);
+                ? !half.towardsNext().isLesserOrEqualTo(half.left())
+                : half.left().isLesserOrEqualTo(half.towardsNext()), scale);
     }
 
     private Deci roundEitherWay(AgainstHalf half, boolean towardsZero, Deci scale) {
         Deci adding = towardsZero
                 ? half.left().withSign(!negative)
-                : half.towardsTheNext().withSign(negative);
+                : half.towardsNext().withSign(negative);
         return plus(adding).denormaliseTo(scale);
     }
 }

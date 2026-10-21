@@ -87,7 +87,7 @@ public final class Crush {
         return ((hash << HASH2_SHIFT) + octet) & HASH2_MASK;
     }
 
-    private static int penaliseTheDistance(
+    private static int penaliseDistance(
             int distance, int against) {
         int penalty = 0;
         while (distance > against) {
@@ -157,7 +157,7 @@ public final class Crush {
                             matched++;
                         }
                         if (matched > length
-                                + penaliseTheDistance(
+                                + penaliseDistance(
                                         (at - start) >> 4, offset)) {
                             length = matched;
                             offset = at - start;
@@ -190,7 +190,7 @@ public final class Crush {
                             matched++;
                         }
                         if (matched > length
-                                + penaliseTheDistance(
+                                + penaliseDistance(
                                         next - start, offset)) {
                             length = 0;
                             break;

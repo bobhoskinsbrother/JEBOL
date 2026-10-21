@@ -36,7 +36,7 @@ public final class EllipticCurveKey implements ReleasableKey {
         return handedBack;
     }
 
-    private enum HowThePointIsPublished {
+    private enum HowPointIsPublished {
 
         BOTH_COORDINATES_AFTER_LEAD_BYTE,
 
@@ -59,13 +59,13 @@ public final class EllipticCurveKey implements ReleasableKey {
     private KeyPair pair;
     private String curveName;
     private int coordinateWidth;
-    private HowThePointIsPublished published;
+    private HowPointIsPublished published;
     private WeierstrassCurve computedHere;
     private BigInteger privateNumber;
     private WeierstrassCurve.Point publicPoint;
 
     private EllipticCurveKey(KeyPair pair, String curveName,
-            int coordinateWidth, HowThePointIsPublished published) {
+            int coordinateWidth, HowPointIsPublished published) {
         this.pair = pair;
         this.curveName = curveName;
         this.coordinateWidth = coordinateWidth;
@@ -80,7 +80,7 @@ public final class EllipticCurveKey implements ReleasableKey {
         this.pair = null;
         this.curveName = curveName;
         this.coordinateWidth = curve.coordinateWidth();
-        this.published = HowThePointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE;
+        this.published = HowPointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE;
         this.computedHere = curve;
         this.privateNumber = privateNumber;
         this.publicPoint = publicPoint;
@@ -112,20 +112,20 @@ public final class EllipticCurveKey implements ReleasableKey {
     }
 
     public static Optional<EllipticCurveKey> onCurve(String curveName) {
-        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.findTheCurveNamed(curveName);
+        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.findCurveNamed(curveName);
         if (carriedHere.isPresent()) {
-            return Optional.of(makeOnACurveThisBuildComputes(curveName, carriedHere.get()));
+            return Optional.of(makeOnCurveThisBuildComputes(curveName, carriedHere.get()));
         }
         String known = CURVES_THIS_BUILD_HAS.get(curveName);
         if (known == null) {
             return Optional.empty();
         }
         return EXCHANGE_CURVE_WIDTHS.containsKey(curveName)
-                ? makeForTheExchangeAlone(curveName, known)
-                : makeOnACurveWithTwoCoordinates(curveName, known);
+                ? makeForExchangeAlone(curveName, known)
+                : makeOnCurveWithTwoCoordinates(curveName, known);
     }
 
-    private static EllipticCurveKey makeOnACurveThisBuildComputes(
+    private static EllipticCurveKey makeOnCurveThisBuildComputes(
             String curveName, WeierstrassCurve curve) {
 
         BigInteger privateNumber = curve.drawPrivateNumber(RANDOMLY);
@@ -133,31 +133,31 @@ public final class EllipticCurveKey implements ReleasableKey {
                 curve.multiplyGenerator(privateNumber), curveName);
     }
 
-    private static Optional<EllipticCurveKey> makeOnACurveWithTwoCoordinates(
-            String curveName, String asTheJdkCallsIt) {
+    private static Optional<EllipticCurveKey> makeOnCurveWithTwoCoordinates(
+            String curveName, String asJdkCallsIt) {
 
         try {
             KeyPairGenerator generating = KeyPairGenerator.getInstance("EC");
-            generating.initialize(new ECGenParameterSpec(asTheJdkCallsIt));
+            generating.initialize(new ECGenParameterSpec(asJdkCallsIt));
             KeyPair pair = generating.generateKeyPair();
             int width = (findCurveBehind(pair).getCurve().getField().getFieldSize() + 7) / 8;
             return Optional.of(new EllipticCurveKey(pair, curveName, width,
-                    HowThePointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE));
+                    HowPointIsPublished.BOTH_COORDINATES_AFTER_LEAD_BYTE));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
         }
     }
 
-    private static Optional<EllipticCurveKey> makeForTheExchangeAlone(
-            String curveName, String asTheJdkCallsIt) {
+    private static Optional<EllipticCurveKey> makeForExchangeAlone(
+            String curveName, String asJdkCallsIt) {
 
         try {
             KeyPairGenerator generating = KeyPairGenerator.getInstance("XDH");
-            generating.initialize(new NamedParameterSpec(asTheJdkCallsIt));
+            generating.initialize(new NamedParameterSpec(asJdkCallsIt));
             return Optional.of(new EllipticCurveKey(
                     generating.generateKeyPair(), curveName,
                     EXCHANGE_CURVE_WIDTHS.get(curveName),
-                    HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
+                    HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
         }
@@ -171,7 +171,7 @@ public final class EllipticCurveKey implements ReleasableKey {
         if (doesArithmeticInThisBuild()) {
             return writeCoordinates(publicPoint.x(), publicPoint.y());
         }
-        return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
+        return published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
                 ? writeLittleEndianAsRfc7748(
                         ((XECPublicKey) pair.getPublic()).getU())
                 : writeBothCoordinatesAfterLeadByte();
@@ -220,12 +220,12 @@ public final class EllipticCurveKey implements ReleasableKey {
             return Optional.empty();
         }
         if (doesArithmeticInThisBuild()) {
-            return computedHere.pointFromTheWire(peersPoint)
+            return computedHere.pointFromWire(peersPoint)
                     .map(theirs -> computedHere.writeCoordinateOnWire(
                             computedHere.multiply(theirs, privateNumber).x()));
         }
         try {
-            return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
+            return published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
                     ? agreeOnOneCoordinateWith(peersPoint)
                     : agreeOnBothCoordinatesWith(peersPoint);
         } catch (GeneralSecurityException | RuntimeException cannotAgree) {
@@ -267,13 +267,13 @@ public final class EllipticCurveKey implements ReleasableKey {
 
     public Optional<byte[]> sign(byte[] hash) {
         if (handedBack
-                || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
+                || published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return Optional.empty();
         }
         if (doesArithmeticInThisBuild()) {
             BigInteger[] pair =
                     computedHere.signOver(privateNumber, hash, RANDOMLY);
-            return Optional.of(writeADerSequenceOfTwoIntegers(pair[0], pair[1]));
+            return Optional.of(writeDerSequenceOfTwoIntegers(pair[0], pair[1]));
         }
         try {
             Signature signing = Signature.getInstance("NONEwithECDSA");
@@ -287,12 +287,12 @@ public final class EllipticCurveKey implements ReleasableKey {
 
     public boolean verifies(byte[] hash, byte[] signature) {
         if (handedBack
-                || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
+                || published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return false;
         }
         if (doesArithmeticInThisBuild()) {
-            return readTheTwoIntegersOf(signature)
-                    .filter(pair -> computedHere.verifiesTheSignature(
+            return readTwoIntegersFrom(signature)
+                    .filter(pair -> computedHere.verifiesSignature(
                             publicPoint, hash, pair[0], pair[1]))
                     .isPresent();
         }
@@ -306,14 +306,14 @@ public final class EllipticCurveKey implements ReleasableKey {
         }
     }
 
-    public static boolean verifiesWithAPublishedPoint(
+    public static boolean verifiesWithPublishedPoint(
             byte[] point, String curveName, byte[] hash, byte[] signature) {
 
-        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.findTheCurveNamed(curveName);
+        Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.findCurveNamed(curveName);
         if (carriedHere.isPresent()) {
-            return carriedHere.get().pointFromTheWire(point)
-                    .flatMap(theirs -> readTheTwoIntegersOf(signature)
-                            .filter(pair -> carriedHere.get().verifiesTheSignature(
+            return carriedHere.get().pointFromWire(point)
+                    .flatMap(theirs -> readTwoIntegersFrom(signature)
+                            .filter(pair -> carriedHere.get().verifiesSignature(
                                     theirs, hash, pair[0], pair[1])))
                     .isPresent();
         }
@@ -345,7 +345,7 @@ public final class EllipticCurveKey implements ReleasableKey {
     private static final int DER_SEQUENCE = 0x30;
     private static final int DER_INTEGER = 0x02;
 
-    private static byte[] writeADerSequenceOfTwoIntegers(
+    private static byte[] writeDerSequenceOfTwoIntegers(
             BigInteger first, BigInteger second) {
 
         byte[] left = derInteger(first);
@@ -370,7 +370,7 @@ public final class EllipticCurveKey implements ReleasableKey {
         return written;
     }
 
-    private static Optional<BigInteger[]> readTheTwoIntegersOf(byte[] signature) {
+    private static Optional<BigInteger[]> readTwoIntegersFrom(byte[] signature) {
         if (signature.length < 8 || (signature[0] & 0xFF) != DER_SEQUENCE) {
             return Optional.empty();
         }
@@ -381,16 +381,16 @@ public final class EllipticCurveKey implements ReleasableKey {
         if (content != signature.length - firstInteger) {
             return Optional.empty();
         }
-        Optional<BigInteger> first = readADerIntegerAt(signature, firstInteger);
+        Optional<BigInteger> first = readDerIntegerAt(signature, firstInteger);
         if (first.isEmpty()) {
             return Optional.empty();
         }
         int after = firstInteger + 2 + (signature[firstInteger + 1] & 0xFF);
-        return readADerIntegerAt(signature, after)
+        return readDerIntegerAt(signature, after)
                 .map(second -> new BigInteger[] {first.get(), second});
     }
 
-    private static Optional<BigInteger> readADerIntegerAt(byte[] written, int at) {
+    private static Optional<BigInteger> readDerIntegerAt(byte[] written, int at) {
         if (at + 1 >= written.length || (written[at] & 0xFF) != DER_INTEGER) {
             return Optional.empty();
         }
@@ -402,7 +402,7 @@ public final class EllipticCurveKey implements ReleasableKey {
                 Arrays.copyOfRange(written, at + 2, at + 2 + length)));
     }
 
-    public static List<String> curveNamesInTheCataloguesOrder() {
+    public static List<String> curveNamesInCataloguesOrder() {
         return List.of("secp192r1", "secp224r1", "secp256r1",
                 "secp384r1", "secp521r1", "secp192k1", "secp224k1", "secp256k1",
                 "bp256r1", "bp384r1", "bp512r1", "curve25519", "curve448");

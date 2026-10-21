@@ -33,7 +33,7 @@ class APathNamesAFieldTest {
         Context script = makeAScriptHoldingAnObject();
         assertThat(List.of(PathValue.TYPE, SetPathValue.TYPE, GetPathValue.TYPE, LitPathValue.TYPE))
                 .allSatisfy(kind -> assertThat(kind.wrap(List.of(
-                                bindIn("account", script), WordValue.of("balance"))).fieldThePathNames())
+                                bindIn("account", script), WordValue.of("balance"))).fieldPathNames())
                         .hasValueSatisfying(slot ->
                                 assertThat(slot.value()).isEqualTo(IntegerValue.of(10))));
     }
@@ -45,7 +45,7 @@ class APathNamesAFieldTest {
                 new ObjectValue(makeAContextHolding("balance", IntegerValue.of(10))))));
 
         assertThat(makeAPath(bindIn("bank", script), WordValue.of("account"),
-                WordValue.of("balance")).fieldThePathNames())
+                WordValue.of("balance")).fieldPathNames())
                 .hasValueSatisfying(slot ->
                         assertThat(slot.value()).isEqualTo(IntegerValue.of(10)));
     }
@@ -57,7 +57,7 @@ class APathNamesAFieldTest {
         Context script = makeAContextHolding("account", new ObjectValue(balanceHolder));
 
         makeAPath(bindIn("account", script), WordValue.of("balance"))
-                .fieldThePathNames().orElseThrow().setValue(IntegerValue.of(20));
+                .fieldPathNames().orElseThrow().setValue(IntegerValue.of(20));
 
         assertThat(balanceHolder.findSlotFor("balance").value()).isEqualTo(IntegerValue.of(20));
     }
@@ -65,27 +65,27 @@ class APathNamesAFieldTest {
     @Test
     @DisplayName("a path of one segment names no field")
     void namesAFieldWithOneSegment() {
-        assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject())).fieldThePathNames())
+        assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject())).fieldPathNames())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("an empty path names no field")
     void namesNothingWithNoSegments() {
-        assertThat(makeAPath().fieldThePathNames()).isEmpty();
+        assertThat(makeAPath().fieldPathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("an unbound first word names no field")
     void answersAnUnboundStart() {
-        assertThat(makeAPath(WordValue.of("account"), WordValue.of("balance")).fieldThePathNames())
+        assertThat(makeAPath(WordValue.of("account"), WordValue.of("balance")).fieldPathNames())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("a first segment that is not a word names no field")
     void answersAStartThatIsNotAWord() {
-        assertThat(makeAPath(IntegerValue.of(1), WordValue.of("balance")).fieldThePathNames())
+        assertThat(makeAPath(IntegerValue.of(1), WordValue.of("balance")).fieldPathNames())
                 .isEmpty();
     }
 
@@ -95,21 +95,21 @@ class APathNamesAFieldTest {
         Context script = makeAContextHolding("account", IntegerValue.of(1));
 
         assertThat(makeAPath(bindIn("account", script), WordValue.of("balance"))
-                .fieldThePathNames()).isEmpty();
+                .fieldPathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a field the object does not hold is named by nothing")
     void answersAMissingField() {
         assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject()), WordValue.of("owner"))
-                .fieldThePathNames()).isEmpty();
+                .fieldPathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a segment that is not a word names no field")
     void answersASegmentThatIsNotAWord() {
         assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject()), IntegerValue.of(1))
-                .fieldThePathNames()).isEmpty();
+                .fieldPathNames()).isEmpty();
     }
 
     @Test
@@ -120,7 +120,7 @@ class APathNamesAFieldTest {
         Context script = makeAContextHolding("account", new ObjectValue(balanceHolder));
 
         assertThat(makeAPath(bindIn("account", script), WordValue.of("balance"))
-                .fieldThePathNames()).isEmpty();
+                .fieldPathNames()).isEmpty();
     }
 
     @Test
@@ -129,6 +129,6 @@ class APathNamesAFieldTest {
         AnyBlockValue block = BlockValue.of(List.of(
                 bindIn("account", makeAScriptHoldingAnObject()), WordValue.of("balance")));
 
-        assertThat(block.fieldThePathNames()).isEmpty();
+        assertThat(block.fieldPathNames()).isEmpty();
     }
 }

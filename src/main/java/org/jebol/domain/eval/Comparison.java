@@ -332,10 +332,10 @@ public final class Comparison {
             if (at == theirs.size()) {
                 return 1;
             }
-            int theFirstItemThatTellsThemApart =
+            int firstItemThatTellsThemApart =
                     compareInsideSeries(ours.get(at), theirs.get(at));
-            if (theFirstItemThatTellsThemApart != 0) {
-                return theFirstItemThatTellsThemApart;
+            if (firstItemThatTellsThemApart != 0) {
+                return firstItemThatTellsThemApart;
             }
         }
         return compareByLength(ours, theirs);
@@ -362,16 +362,16 @@ public final class Comparison {
     }
 
     private static int comparePairs(PairValue left, PairValue right) {
-        int theXHalvesDecideItFirst = differenceSign(left.x(), right.x());
-        return theXHalvesDecideItFirst != 0
-                ? theXHalvesDecideItFirst
+        int xHalvesDecideItFirst = differenceSign(left.x(), right.x());
+        return xHalvesDecideItFirst != 0
+                ? xHalvesDecideItFirst
                 : differenceSign(left.y(), right.y());
     }
 
     private static int compareTuples(TupleValue left, TupleValue right) {
-        int asFarAsTheLongerOfThem =
+        int longerSegmentCount =
                 Math.max(left.segmentCount(), right.segmentCount());
-        for (int at = 1; at <= asFarAsTheLongerOfThem; at++) {
+        for (int at = 1; at <= longerSegmentCount; at++) {
             int difference = left.readOctetAt(at) - right.readOctetAt(at);
             if (difference != 0) {
                 return difference > 0 ? 1 : -1;

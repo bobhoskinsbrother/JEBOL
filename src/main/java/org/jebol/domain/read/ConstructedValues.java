@@ -80,18 +80,18 @@ final class ConstructedValues {
         if ("vector!".equals(leading.canonical())) {
             return howManyParts > 1;
         }
-        return VectorKind.findTheKindNamed(leading.spelling()).isPresent();
+        return VectorKind.findKindNamed(leading.spelling()).isPresent();
     }
 
     private Value findDatatypeNamed(AnyWordValue word) {
         if (!word.spelling().endsWith("!")) {
             throw new CannotConstruct();
         }
-        Optional<Datatype> datatype = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
+        Optional<Datatype> datatype = Catalogue.DATATYPES.findDatatypeNamed(word.spelling());
         if (datatype.isPresent()) {
             return datatype.get();
         }
-        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling())
+        return Catalogue.DATATYPES.findTypesetNamed(word.spelling())
                 .<Value>map(typeset -> typeset)
                 .orElseThrow(CannotConstruct::new);
     }

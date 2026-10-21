@@ -20,12 +20,12 @@ final class BrotliBinaryTreeHasher {
     private final int[] forest;
 
     BrotliBinaryTreeHasher(int windowBits, int howMuchInputThereIs,
-            boolean theWholeInputAtOnce) {
+            boolean wholeInputAtOnce) {
 
         this.windowMask = (1 << windowBits) - 1;
         this.nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt = -windowMask;
         int positions = 1 << windowBits;
-        if (theWholeInputAtOnce && howMuchInputThereIs < positions) {
+        if (wholeInputAtOnce && howMuchInputThereIs < positions) {
             positions = howMuchInputThereIs;
         }
         this.forest = new int[2 * Math.max(positions, 1)];
@@ -118,13 +118,13 @@ final class BrotliBinaryTreeHasher {
     }
 
     int findAll(byte[] data, int mask, int at, int maxLength, int maxBackward,
-            int dictionaryDistance, int furthestDistanceAllowed,
-            boolean atTheTopLevel, BrotliMatches into) {
+                int dictionaryDistance, int furthestDistanceAllowed,
+                boolean atTopLevel, BrotliMatches into) {
 
         int here = at & mask;
         int[] bestLength = {1};
         int written = 0;
-        int howFarBackToScanPlainly = atTheTopLevel ? 64 : 16;
+        int howFarBackToScanPlainly = atTopLevel ? 64 : 16;
         int stop = at < howFarBackToScanPlainly ? 0 : at - howFarBackToScanPlainly;
         for (int back = at - 1; back > stop && bestLength[0] <= 2; back--) {
             int backward = at - back;

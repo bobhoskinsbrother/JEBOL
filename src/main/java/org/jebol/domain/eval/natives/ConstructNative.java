@@ -36,13 +36,13 @@ public class ConstructNative extends DefaultNative {
             Context built = Context.makeChildOf(evaluator.systemContext());
             ObjectValue constructed = new ObjectValue(built);
             built.pointItsOwnSelfAt(constructed);
-            List<Value> items = listTheItemsOf(arguments.getFirst());
+            List<Value> items = listItemsFrom(arguments.getFirst());
             refuseAnyFieldSpeltLikeItsOwnSelf(built, items);
             if (refinements.contains("with")
                     && arguments.size() > WHERE_PROTOTYPE_ARRIVES
                     && arguments.get(WHERE_PROTOTYPE_ARRIVES)
                             instanceof ObjectValue(Context prototype)) {
-                prototype.listTheFieldsExceptSelf().forEach(built::register);
+                prototype.listFieldsExceptSelf().forEach(built::register);
             }
             constructInto(built, items, refinements.contains("only"));
             return constructed;
@@ -55,11 +55,11 @@ public class ConstructNative extends DefaultNative {
                 .forEach(built::refuseFieldSpeltLikeItsOwnSelf);
     }
 
-    private List<Value> listTheItemsOf(Value body) {
+    private List<Value> listItemsFrom(Value body) {
         return switch (body) {
             case AnyBlockValue block -> block.remaining();
-            case AnyStringValue text -> readTheHeaderFieldsIn(text.text());
-            case BinaryValue bytes -> readTheHeaderFieldsIn(
+            case AnyStringValue text -> readHeaderFieldsIn(text.text());
+            case BinaryValue bytes -> readHeaderFieldsIn(
                     new String(bytes.octetsFromHere(), StandardCharsets.UTF_8));
             default -> List.of();
         };
@@ -102,7 +102,7 @@ public class ConstructNative extends DefaultNative {
         };
     }
 
-    private List<Value> readTheHeaderFieldsIn(String header) {
+    private List<Value> readHeaderFieldsIn(String header) {
         List<Value> fields = new ArrayList<>();
         String[] lines = header.split("\n", -1);
         for (int at = 0; at < lines.length; at++) {

@@ -245,7 +245,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     @Override
-    public List<Value> listTheItems() {
+    public List<Value> listItems() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
             flat.add(handBackKeyAsWord(key));
@@ -268,8 +268,8 @@ public final class MapValue implements Value, PathTarget {
         List<Value> flattened = flatten();
         List<Value> copiedPairs = new ArrayList<>(flattened.size());
         for (int at = 0; at < flattened.size(); at++) {
-            boolean isAValueRatherThanAKey = at % 2 == 1;
-            copiedPairs.add(isAValueRatherThanAKey
+            boolean isValueRatherThanKey = at % 2 == 1;
+            copiedPairs.add(isValueRatherThanKey
                     ? flattened.get(at).copyAsMember(deeply, kinds)
                     : flattened.get(at));
         }
@@ -331,7 +331,7 @@ public final class MapValue implements Value, PathTarget {
         }
 
         private Value makeFromPairsIn(Value source) {
-            List<Value> pairs = MapActions.listThePairsOffered(source);
+            List<Value> pairs = MapActions.listPairsOffered(source);
             if (pairs == null) {
                 throw refuse(source);
             }

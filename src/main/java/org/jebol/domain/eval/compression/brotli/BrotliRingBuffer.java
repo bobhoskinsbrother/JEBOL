@@ -52,21 +52,21 @@ final class BrotliRingBuffer {
             data[size] = (byte) 241;
         }
         int writingAt = at & mask;
-        copyIntoTheTailSoAWrappedMatchReadsAsOneRun(
+        copyIntoTailSoWrappedMatchReadsAsOneRun(
                 source, from, howMany, writingAt);
         if (writingAt + howMany <= size) {
             System.arraycopy(source, from, data, writingAt, howMany);
         } else {
-            int upToTheEnd = Math.min(howMany, totalSize - writingAt);
-            System.arraycopy(source, from, data, writingAt, upToTheEnd);
+            int upToEnd = Math.min(howMany, totalSize - writingAt);
+            System.arraycopy(source, from, data, writingAt, upToEnd);
             System.arraycopy(source, from + size - writingAt, data, 0,
                     howMany - (size - writingAt));
         }
         at += howMany;
     }
 
-    private void copyIntoTheTailSoAWrappedMatchReadsAsOneRun(byte[] source, int from, int howMany,
-            int writingAt) {
+    private void copyIntoTailSoWrappedMatchReadsAsOneRun(byte[] source, int from, int howMany,
+                                                         int writingAt) {
 
         if (writingAt >= tailSize) {
             return;

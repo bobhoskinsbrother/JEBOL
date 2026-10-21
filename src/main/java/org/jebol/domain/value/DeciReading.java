@@ -30,7 +30,7 @@ public final class DeciReading {
         this.text = text;
     }
 
-    public Optional<Deci> readTheWhole() {
+    public Optional<Deci> readWhole() {
         Deci read = readFrom(0);
         return at == 0 || at != text.length() ? Optional.empty() : Optional.of(read);
     }

@@ -20,7 +20,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return magnitude;
     }
 
@@ -225,7 +225,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
                     .replace("'", "");
             try {
                 return IntegerValue.of(Long.parseLong(withoutSeparators));
-            } catch (NumberFormatException notAWholeNumber) {
+            } catch (NumberFormatException notWholeNumber) {
                 return truncateDecimal(withoutSeparators, text);
             }
         }
@@ -237,7 +237,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             double asNumber;
             try {
                 asNumber = Double.parseDouble(candidate);
-            } catch (NumberFormatException notANumberEither) {
+            } catch (NumberFormatException notNumberEither) {
                 throw refuse(original);
             }
             if (!(Math.abs(asNumber) < TOO_LARGE_FOR_WHOLE_NUMBER)) {

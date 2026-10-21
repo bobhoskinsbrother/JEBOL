@@ -43,9 +43,9 @@ public class ForEachNative extends LoopingNative {
                                Value target, Value series, AnyBlockValue body) {
 
         List<AnyWordValue> names = loopNamesIn(target);
-        List<AnyWordValue> taking = keepTheNamesThatTakeAValue(names);
+        List<AnyWordValue> taking = keepNamesThatTakeValue(names);
         MapActions.refuseMoreNamesThanPairHas(series, taking);
-        Supplier<List<Value>> itemsAsTheyStandNow = () -> takeTheKeysOnly(series, taking.size());
+        Supplier<List<Value>> itemsAsTheyStandNow = () -> takeKeysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
@@ -64,16 +64,16 @@ public class ForEachNative extends LoopingNative {
         });
     }
 
-    private List<Value> takeTheKeysOnly(Value series, int howManyNames) {
+    private List<Value> takeKeysOnly(Value series, int howManyNames) {
         if (howManyNames != 1) {
-            return series.listTheItems();
+            return series.listItems();
         }
         return switch (series) {
             case ObjectValue object -> object.context().slots().stream()
                     .<Value>map(slot -> WordValue.of(slot.spelling()))
                     .toList();
             case MapValue map -> map.keys();
-            default -> series.listTheItems();
+            default -> series.listItems();
         };
     }
 }

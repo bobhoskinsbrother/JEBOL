@@ -23,8 +23,8 @@ final class BrotliMetaBlock {
     private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE =
             {0, 0, 1, 2};
 
-    private static final int[] TWO_CONTEXTS = makeTheContextMapOf(0, 0, 1, 1);
-    private static final int[] THREE_CONTEXTS = makeTheContextMapOf(1, 1, 2, 2);
+    private static final int[] TWO_CONTEXTS = makeContextMap(0, 0, 1, 1);
+    private static final int[] THREE_CONTEXTS = makeContextMap(1, 1, 2, 2);
 
     private static final int INPUT_LARGE_ENOUGH_FOR_THIRTEEN_CONTEXTS = 1 << 20;
     private static final int THIRTEEN_CONTEXTS_COUNT = 13;
@@ -51,8 +51,8 @@ final class BrotliMetaBlock {
     private BrotliMetaBlock() {
     }
 
-    private static int[] makeTheContextMapOf(int first, int second, int third,
-                                             int fourth) {
+    private static int[] makeContextMap(int first, int second, int third,
+                                        int fourth) {
 
         int[] map = new int[1 << LITERAL_CONTEXT_BITS];
         map[0] = first;
@@ -62,8 +62,8 @@ final class BrotliMetaBlock {
         return map;
     }
 
-    static int[] chooseTheContextMapFor(byte[] data, int mask, int from, int length,
-                                        int quality, int howMuchInputThereIs) {
+    static int[] chooseContextMapFor(byte[] data, int mask, int from, int length,
+                                     int quality, int howMuchInputThereIs) {
 
         if (quality < QUALITY_THAT_FIRST_MODELS_CONTEXT
                 || length < SHORTEST_INPUT_WORTH_CONTEXT_MODELLING) {
@@ -173,7 +173,7 @@ final class BrotliMetaBlock {
     }
 
     static BrotliMetaBlockSplit buildGreedily(byte[] ringBuffer, int mask,
-                                              int from, int previousByte, int theByteBeforeThat,
+                                              int from, int previousByte, int byteBeforeThat,
                                               int[] contextMap, BrotliCommand commands, BrotliDistances distances) {
 
         BrotliMetaBlockSplit built = new BrotliMetaBlockSplit();
@@ -205,7 +205,7 @@ final class BrotliMetaBlock {
 
         int at = from;
         int previous = previousByte;
-        int beforeThat = theByteBeforeThat;
+        int beforeThat = byteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
             commandSymbols.add(commands.readCommandPrefixAt(which));
             for (int left = commands.insertLengthAt(which); left != 0; left--) {

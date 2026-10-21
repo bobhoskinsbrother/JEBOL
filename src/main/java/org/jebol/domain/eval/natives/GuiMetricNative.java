@@ -58,7 +58,7 @@ public class GuiMetricNative extends ScreenNative {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "gui-metric takes a word, not " + asked.datatype().literalSpelling());
         }
-        return ScreenMetric.findTheMetricNamed(word.canonical()).orElseThrow(() ->
+        return ScreenMetric.findMetricNamed(word.canonical()).orElseThrow(() ->
                 Raised.of(EvaluationFailure.INVALID_ARG, "no host serves the metric " + word.canonical()));
     }
 

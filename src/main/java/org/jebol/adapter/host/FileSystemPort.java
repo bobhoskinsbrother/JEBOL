@@ -182,8 +182,8 @@ public final class FileSystemPort implements FilePort {
             Optional<Instant> accessed = Optional.of(read.lastAccessTime().toInstant());
             Optional<Instant> created = Optional.of(read.creationTime().toInstant());
             return Optional.of(read.isDirectory()
-                    ? FileInformation.describeADirectory(name, modified, accessed, created)
-                    : FileInformation.describeAFile(name, read.size(), modified, accessed, created));
+                    ? FileInformation.describeDirectory(name, modified, accessed, created)
+                    : FileInformation.describeFile(name, read.size(), modified, accessed, created));
         } catch (IOException unreadable) {
             throw new Denied("cannot-open", "cannot read the details of " + path);
         }

@@ -79,9 +79,9 @@ final class BrotliMetaBlockWriter {
         int at = from & mask;
         int left = length;
         if (at + left > mask + 1) {
-            int upToTheWrap = mask + 1 - at;
-            into.writeBytes(data, at, upToTheWrap);
-            left -= upToTheWrap;
+            int upToWrap = mask + 1 - at;
+            into.writeBytes(data, at, upToWrap);
+            left -= upToWrap;
             at = 0;
         }
         into.writeBytes(data, at, left);
@@ -93,9 +93,9 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    private static void writeATreeFor(int[] histogram, int histogramLength,
-            int alphabetSize, BrotliCodes.Tree tree, int[] depth, int depthAt,
-            int[] bits, int bitsAt, BrotliBits into) {
+    private static void writeTreeFor(int[] histogram, int histogramLength,
+                                     int alphabetSize, BrotliCodes.Tree tree, int[] depth, int depthAt,
+                                     int[] bits, int bitsAt, BrotliBits into) {
 
         int used = 0;
         int[] firstFour = new int[4];
@@ -110,35 +110,35 @@ final class BrotliMetaBlockWriter {
             }
         }
 
-        int widthOfASymbol = 0;
+        int widthOfSymbol = 0;
         for (int left = alphabetSize - 1; left != 0; left >>= 1) {
-            widthOfASymbol++;
+            widthOfSymbol++;
         }
 
         if (used <= 1) {
             into.write(4, 1);
-            into.write(widthOfASymbol, firstFour[0]);
+            into.write(widthOfSymbol, firstFour[0]);
             depth[depthAt + firstFour[0]] = 0;
             bits[bitsAt + firstFour[0]] = 0;
             return;
         }
 
         Arrays.fill(depth, depthAt, depthAt + histogramLength, 0);
-        tree.buildBreakingTiesByPuttingTheLaterSymbolFirst(
+        tree.buildBreakingTiesByPuttingLaterSymbolFirst(
                 histogram, 0, histogramLength, 15, depth, depthAt);
         BrotliCodes.convertBitDepthsToSymbols(depth, depthAt, histogramLength,
                 bits, bitsAt);
 
         if (used <= 4) {
-            writeTheFewSymbolsOutright(depth, depthAt, firstFour, used,
-                    widthOfASymbol, into);
+            writeFewSymbolsOutright(depth, depthAt, firstFour, used,
+                    widthOfSymbol, into);
         } else {
             BrotliCodes.storeHuffmanTree(tree, depth, depthAt, histogramLength, into);
         }
     }
 
-    private static void writeTheFewSymbolsOutright(int[] depth, int depthAt,
-            int[] symbols, int howMany, int widthOfASymbol, BrotliBits into) {
+    private static void writeFewSymbolsOutright(int[] depth, int depthAt,
+                                                int[] symbols, int howMany, int widthOfSymbol, BrotliBits into) {
 
         into.write(2, 1);
         into.write(2, howMany - 1);
@@ -152,7 +152,7 @@ final class BrotliMetaBlockWriter {
             }
         }
         for (int each = 0; each < howMany; each++) {
-            into.write(widthOfASymbol, symbols[each]);
+            into.write(widthOfSymbol, symbols[each]);
         }
         if (howMany == 4) {
             into.write(1, depth[depthAt + symbols[0]] == 1 ? 1 : 0);
@@ -182,7 +182,7 @@ final class BrotliMetaBlockWriter {
         int alphabetSize = howManyHistograms + longestRunCode;
         int[] depth = new int[alphabetSize];
         int[] bits = new int[alphabetSize];
-        writeATreeFor(histogram, alphabetSize, alphabetSize, tree, depth, 0,
+        writeTreeFor(histogram, alphabetSize, alphabetSize, tree, depth, 0,
                 bits, 0, into);
         for (int each = 0; each < howManySymbols; each++) {
             int symbol = recentlyUsedFirst[each] & ((1 << SYMBOL_BITS) - 1);
@@ -223,7 +223,7 @@ final class BrotliMetaBlockWriter {
     private record RunCoded(int howManySymbols, int longestRunCode) {
     }
 
-    private static RunCoded codeRunsOfZeros(int[] values, int mostBitsARunMayUse) {
+    private static RunCoded codeRunsOfZeros(int[] values, int mostBitsRunMayUse) {
         int longestRun = 0;
         for (int at = 0; at < values.length; ) {
             int run = 0;
@@ -237,7 +237,7 @@ final class BrotliMetaBlockWriter {
             longestRun = Math.max(longestRun, run);
         }
         int longestCode = longestRun > 0 ? BrotliCodes.floorLog2(longestRun) : 0;
-        longestCode = Math.min(longestCode, mostBitsARunMayUse);
+        longestCode = Math.min(longestCode, mostBitsRunMayUse);
 
         int written = 0;
         for (int at = 0; at < values.length; ) {
@@ -285,7 +285,7 @@ final class BrotliMetaBlockWriter {
         }
         int[] depth = new int[alphabetSize];
         int[] bits = new int[alphabetSize];
-        writeATreeFor(histogram, alphabetSize, alphabetSize, tree, depth, 0,
+        writeTreeFor(histogram, alphabetSize, alphabetSize, tree, depth, 0,
                 bits, 0, into);
         for (int type = 0; type < howManyTypes; type++) {
             int code = type == 0 ? 0 : type + contextBits - 1;
@@ -310,9 +310,9 @@ final class BrotliMetaBlockWriter {
         private int[] lengthBits = new int[0];
 
         private int whichBlock;
-        private int leftInTheBlock;
+        private int leftInBlock;
 
-        private int whereTheCurrentBlockTypesCodeStarts;
+        private int whereCurrentBlockTypesCodeStarts;
         private int[] depths = new int[0];
         private int[] bits = new int[0];
 
@@ -320,7 +320,7 @@ final class BrotliMetaBlockWriter {
             this.alphabetLength = alphabetLength;
             this.howManyTypes = split.countTypes();
             this.split = split;
-            this.leftInTheBlock =
+            this.leftInBlock =
                     split.countBlocks() == 0 ? 0 : split.readLengthAt(0);
         }
 
@@ -351,19 +351,19 @@ final class BrotliMetaBlockWriter {
             typeBits = new int[howManyTypes + 2];
             lengthDepth = new int[BLOCK_LENGTH_SYMBOLS];
             lengthBits = new int[BLOCK_LENGTH_SYMBOLS];
-            writeATreeFor(typeHistogram, howManyTypes + 2, howManyTypes + 2,
+            writeTreeFor(typeHistogram, howManyTypes + 2, howManyTypes + 2,
                     tree, typeDepth, 0, typeBits, 0, into);
-            writeATreeFor(lengthHistogram, BLOCK_LENGTH_SYMBOLS,
+            writeTreeFor(lengthHistogram, BLOCK_LENGTH_SYMBOLS,
                     BLOCK_LENGTH_SYMBOLS, tree, lengthDepth, 0, lengthBits, 0,
                     into);
             writeSwitch(split.readLengthAt(0), split.readTypeAt(0), true, into);
         }
 
         private void writeSwitch(int blockLength, int blockType,
-                                 boolean isTheFirst, BrotliBits into) {
+                                 boolean isFirst, BrotliBits into) {
 
             int typeCode = findNextTypeCode(blockType);
-            if (!isTheFirst) {
+            if (!isFirst) {
                 into.write(typeDepth[typeCode], typeBits[typeCode]);
             }
             int lengthCode = codeBlockLength(blockLength);
@@ -372,26 +372,26 @@ final class BrotliMetaBlockWriter {
                     blockLength - BLOCK_LENGTH_FROM[lengthCode]);
         }
 
-        void writeTheCodes(BrotliHistogram[] histograms, int howMany,
-                           int alphabetSize, BrotliCodes.Tree tree, BrotliBits into) {
+        void writeCodes(BrotliHistogram[] histograms, int howMany,
+                        int alphabetSize, BrotliCodes.Tree tree, BrotliBits into) {
 
             depths = new int[howMany * alphabetLength];
             bits = new int[howMany * alphabetLength];
             for (int which = 0; which < howMany; which++) {
                 int at = which * alphabetLength;
-                writeATreeFor(histograms[which].counts(), alphabetLength,
+                writeTreeFor(histograms[which].counts(), alphabetLength,
                         alphabetSize, tree, depths, at, bits, at, into);
             }
         }
 
         private int startNextBlockIfThisOneRanOut(BrotliBits into) {
-            if (leftInTheBlock != 0) {
+            if (leftInBlock != 0) {
                 return -1;
             }
             whichBlock++;
             int length = split.readLengthAt(whichBlock);
             int type = split.readTypeAt(whichBlock);
-            leftInTheBlock = length;
+            leftInBlock = length;
             writeSwitch(length, type, false, into);
             return type;
         }
@@ -399,11 +399,11 @@ final class BrotliMetaBlockWriter {
         void write(int symbol, BrotliBits into) {
             int newType = startNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
-                whereTheCurrentBlockTypesCodeStarts = newType * alphabetLength;
+                whereCurrentBlockTypesCodeStarts = newType * alphabetLength;
             }
-            leftInTheBlock--;
-            into.write(depths[whereTheCurrentBlockTypesCodeStarts + symbol],
-                    bits[whereTheCurrentBlockTypesCodeStarts + symbol]);
+            leftInBlock--;
+            into.write(depths[whereCurrentBlockTypesCodeStarts + symbol],
+                    bits[whereCurrentBlockTypesCodeStarts + symbol]);
         }
 
         void writeInContext(int symbol, int context, int[] contextMap,
@@ -411,11 +411,11 @@ final class BrotliMetaBlockWriter {
 
             int newType = startNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
-                whereTheCurrentBlockTypesCodeStarts = newType << contextBits;
+                whereCurrentBlockTypesCodeStarts = newType << contextBits;
             }
-            leftInTheBlock--;
+            leftInBlock--;
             int whichCode =
-                    contextMap[whereTheCurrentBlockTypesCodeStarts + context];
+                    contextMap[whereCurrentBlockTypesCodeStarts + context];
             int at = whichCode * alphabetLength + symbol;
             into.write(depths[at], bits[at]);
         }
@@ -436,10 +436,10 @@ final class BrotliMetaBlockWriter {
                 (copyExtra << insertExtraBits) | insertExtra);
     }
 
-    static void writeTheFullThing(byte[] data, int mask, int from, int length,
-            int previousByte, int theByteBeforeThat, boolean isLast,
-            BrotliDistances distances, BrotliCommand commands,
-            BrotliMetaBlockSplit split, int contextMode, BrotliBits into) {
+    static void writeFullThing(byte[] data, int mask, int from, int length,
+                               int previousByte, int byteBeforeThat, boolean isLast,
+                               BrotliDistances distances, BrotliCommand commands,
+                               BrotliMetaBlockSplit split, int contextMode, BrotliBits into) {
 
         writeCompressedHeader(isLast, length, into);
         BrotliCodes.Tree tree = new BrotliCodes.Tree();
@@ -475,12 +475,12 @@ final class BrotliMetaBlockWriter {
                     split.howManyDistanceHistograms, tree, into);
         }
 
-        literals.writeTheCodes(split.literalHistograms,
+        literals.writeCodes(split.literalHistograms,
                 split.howManyLiteralHistograms, LITERAL_SYMBOLS, tree, into);
-        commandSymbols.writeTheCodes(split.commandHistograms,
+        commandSymbols.writeCodes(split.commandHistograms,
                 split.howManyCommandHistograms, BrotliCodes.COMMAND_SYMBOLS,
                 tree, into);
-        distanceSymbols.writeTheCodes(split.distanceHistograms,
+        distanceSymbols.writeCodes(split.distanceHistograms,
                 split.howManyDistanceHistograms, distances.alphabetSize(),
                 tree, into);
 
@@ -488,7 +488,7 @@ final class BrotliMetaBlockWriter {
         boolean distancesCarryContext = split.distanceContextMap.length != 0;
         int at = from;
         int previous = previousByte;
-        int beforeThat = theByteBeforeThat;
+        int beforeThat = byteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
             commandSymbols.write(commands.readCommandPrefixAt(which), into);
             writeLengthExtraBits(commands, which, into);
@@ -560,10 +560,10 @@ final class BrotliMetaBlockWriter {
         return counted;
     }
 
-    private static void writeTheSymbols(byte[] data, int mask, int from,
-            BrotliCommand commands, int[] literalDepth, int[] literalBits,
-            int[] commandDepth, int[] commandBits, int[] distanceDepth,
-            int[] distanceBits, BrotliBits into) {
+    private static void writeSymbols(byte[] data, int mask, int from,
+                                     BrotliCommand commands, int[] literalDepth, int[] literalBits,
+                                     int[] commandDepth, int[] commandBits, int[] distanceDepth,
+                                     int[] distanceBits, BrotliBits into) {
 
         int at = from;
         for (int which = 0; which < commands.count(); which++) {
@@ -605,15 +605,15 @@ final class BrotliMetaBlockWriter {
         int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
         int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS];
 
-        writeATreeFor(counted.literals.counts(), LITERAL_SYMBOLS,
+        writeTreeFor(counted.literals.counts(), LITERAL_SYMBOLS,
                 LITERAL_SYMBOLS, tree, literalDepth, 0, literalBits, 0, into);
-        writeATreeFor(counted.commands.counts(), BrotliCodes.COMMAND_SYMBOLS,
+        writeTreeFor(counted.commands.counts(), BrotliCodes.COMMAND_SYMBOLS,
                 BrotliCodes.COMMAND_SYMBOLS, tree, commandDepth, 0,
                 commandBits, 0, into);
-        writeATreeFor(counted.distances.counts(),
+        writeTreeFor(counted.distances.counts(),
                 MOST_DISTANCE_SYMBOLS_SIMPLE_CODE_NEEDS, distanceSymbols,
                 tree, distanceDepth, 0, distanceBits, 0, into);
-        writeTheSymbols(data, mask, from, commands, literalDepth, literalBits,
+        writeSymbols(data, mask, from, commands, literalDepth, literalBits,
                 commandDepth, commandBits, distanceDepth, distanceBits, into);
         if (isLast) {
             into.jumpToByteBoundary();
@@ -650,7 +650,7 @@ final class BrotliMetaBlockWriter {
                     howManyLiterals, 8, literalDepth, literalBits, into);
             BrotliStaticCodes.writeCommandTree(into);
             BrotliStaticCodes.writeDistanceTree(into);
-            writeTheSymbols(data, mask, from, commands, literalDepth, literalBits,
+            writeSymbols(data, mask, from, commands, literalDepth, literalBits,
                     BrotliStaticCodes.COMMAND_DEPTH, BrotliStaticCodes.COMMAND_BITS,
                     BrotliStaticCodes.DISTANCE_DEPTH, BrotliStaticCodes.DISTANCE_BITS,
                     into);
@@ -672,7 +672,7 @@ final class BrotliMetaBlockWriter {
             BrotliCodes.buildAndStoreHuffmanTreeFast(tree,
                     counted.distances.counts(), counted.distances.total(),
                     distanceCodeWidth, distanceDepth, distanceBits, into);
-            writeTheSymbols(data, mask, from, commands, literalDepth, literalBits,
+            writeSymbols(data, mask, from, commands, literalDepth, literalBits,
                     commandDepth, commandBits, distanceDepth, distanceBits, into);
         }
         if (isLast) {

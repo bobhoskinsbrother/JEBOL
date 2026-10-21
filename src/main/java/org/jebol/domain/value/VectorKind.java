@@ -72,7 +72,7 @@ public enum VectorKind {
         return settledName + "!";
     }
 
-    public static Optional<VectorKind> findTheKindNamed(String word) {
+    public static Optional<VectorKind> findKindNamed(String word) {
         return Optional.ofNullable(BY_NAME.get(word.toLowerCase(Locale.ROOT)));
     }
 
@@ -223,7 +223,7 @@ public enum VectorKind {
         };
     }
 
-    public List<Value> collectTheNumbersOfferedBy(Value value, int limit) {
+    public List<Value> collectNumbersOfferedBy(Value value, int limit) {
         if (!(value instanceof RebolSeries source)) {
             return collectNumbersContributedBy(value);
         }

@@ -38,7 +38,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
         return switch (subject) {
             case UnsetValue nothing -> throw Raised.cannotUse(nothing, this);
             case VectorValue vector -> reflectFrom(vector, field);
-            case Datatype represents -> declarations.findTheSpecOf(represents)
+            case Datatype represents -> declarations.findDatatypeSpec(represents)
                     .map(described -> reflectFrom(described, field.canonical()))
                     .orElseGet(NoneValue::none);
             case NativeValue built -> reflectFrom(built, field.canonical());
@@ -50,7 +50,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
     private Value reflectFrom(VectorValue vector, AnyWordValue field) {
         return field.canonical().equals("spec")
                 ? VectorQuery.vectorSpec(vector)
-                : VectorQuery.readTheField(vector, field.canonical()).orElseThrow(
+                : VectorQuery.readField(vector, field.canonical()).orElseThrow(
                         () -> Raised.of(EvaluationFailure.INVALID_ARG, field));
     }
 

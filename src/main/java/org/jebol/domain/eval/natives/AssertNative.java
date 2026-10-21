@@ -50,8 +50,8 @@ public class AssertNative extends DefaultNative {
     }
 
     private Value readValueNamedBy(Value subject, Evaluator evaluator, Context context) {
-        boolean namesAValue = subject instanceof WordValue || subject instanceof PathValue;
-        if (!namesAValue) {
+        boolean namesValue = subject instanceof WordValue || subject instanceof PathValue;
+        if (!namesValue) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
         }
         return evaluator.evaluateOrRaise(BlockValue.of(List.of(subject)), context);

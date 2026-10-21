@@ -33,7 +33,7 @@ final class PendingCall {
         this.infix = infix;
         this.refinements = List.copyOf(refinements);
         this.mentioned = List.copyOf(mentioned);
-        this.parameters = readTheParametersOf(callee);
+        this.parameters = readParametersFor(callee);
         this.arguments.addAll(supplied);
     }
 
@@ -55,7 +55,7 @@ final class PendingCall {
         entered = true;
     }
 
-    Optional<String> findTheNameInTheBacktrace() {
+    Optional<String> findNameInBacktrace() {
         if (!entered) {
             return Optional.empty();
         }
@@ -67,7 +67,7 @@ final class PendingCall {
                 : Optional.empty();
     }
 
-    Optional<Parameter> findTheParameterBeingFilled() {
+    Optional<Parameter> findParameterBeingFilled() {
         return Optional.ofNullable(consumeAt(arguments.size()));
     }
 
@@ -164,11 +164,11 @@ final class PendingCall {
         };
     }
 
-    private static List<Parameter> readTheParametersOf(Value callee) {
+    private static List<Parameter> readParametersFor(Value callee) {
         return switch (callee) {
             case DefinedFunctionValue function -> function.parameters();
             case NativeValue built -> built.parameters();
-            case OperatorValue operator -> readTheParametersOf(operator.underlying());
+            case OperatorValue operator -> readParametersFor(operator.underlying());
             case null, default -> List.of();
         };
     }
@@ -212,7 +212,7 @@ final class PendingCall {
         return arguments.get(0);
     }
 
-    List<Value> listTheArgumentsInDeclaredOrder() {
+    List<Value> listArgumentsInDeclaredOrder() {
         if (arguments.size() != consumingCount()
                 || (mentioned.size() < 2
                         && mentioned.size() == refinements.size())) {

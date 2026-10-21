@@ -80,19 +80,19 @@ public final class CommandValue extends DefaultNative {
             if (declared.size() > MOST_WORDS_COMMAND_CARRIES) {
                 throw Raised.of(EvaluationFailure.BAD_COMMAND);
             }
-            return findTheDispatcher()
+            return findDispatcher()
                     .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_EXTENSION, (Value) extension))
                     .dispatch(index, arguments, refinements, evaluator, context);
         };
     }
 
-    public Optional<ExtensionDispatcher> findTheDispatcher() {
+    public Optional<ExtensionDispatcher> findDispatcher() {
         List<ContextSlot> fields = extension.context().slots();
         if (fields.isEmpty()) {
             return Optional.empty();
         }
         return fields.getFirst().value() instanceof HandleValue handle
-                ? new DispatcherHandle(handle).findTheDispatcher()
+                ? new DispatcherHandle(handle).findDispatcher()
                 : Optional.empty();
     }
 }

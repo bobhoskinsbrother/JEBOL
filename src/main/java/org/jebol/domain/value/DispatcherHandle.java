@@ -8,7 +8,7 @@ public record DispatcherHandle(HandleValue handle) {
 
     public static final String KIND_DISPATCHER_IS = "extension";
 
-    public Optional<ExtensionDispatcher> findTheDispatcher() {
+    public Optional<ExtensionDispatcher> findDispatcher() {
         if (!handle.typeName().equals(KIND_DISPATCHER_IS)
                 || !(handle.payload() instanceof JavaObjectValue carried)) {
             return Optional.empty();

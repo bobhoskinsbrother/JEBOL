@@ -37,7 +37,7 @@ public class ImageDiffNative extends DefaultNative {
             }
             PairValue corner = (PairValue) arguments.get(2);
             PairValue size = (PairValue) arguments.get(3);
-            return PercentValue.of(ImageOperations.measureTheDifferenceOverTheRectangle(
+            return PercentValue.of(ImageOperations.measureDifferenceOverRectangle(
                     first, second, (int) corner.x(), (int) corner.y(),
                     (int) size.x(), (int) size.y()));
         };

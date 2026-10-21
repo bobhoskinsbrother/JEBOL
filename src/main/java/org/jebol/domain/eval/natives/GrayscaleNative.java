@@ -15,7 +15,7 @@ public class GrayscaleNative extends ColourNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of("target", acceptAColourOrAnImage()));
+        return List.of(Parameter.of("target", acceptColourOrImage()));
     }
 
     @Override

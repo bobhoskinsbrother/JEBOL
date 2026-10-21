@@ -15,7 +15,7 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
     }
 
     public boolean cover(String hostName) {
-        Optional<String> address = new IpAddressText(hostName).writeTheCanonicalHex();
+        Optional<String> address = new IpAddressText(hostName).writeCanonicalHex();
         if (address.isPresent()) {
             return vouchesForAddress(address.get());
         }
@@ -25,7 +25,7 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
 
     private boolean vouchesForAddress(String canonicalHex) {
         return ipAddresses.stream()
-                .map(vouched -> new IpAddressText(vouched).writeTheCanonicalHex())
+                .map(vouched -> new IpAddressText(vouched).writeCanonicalHex())
                 .anyMatch(vouched -> vouched.equals(Optional.of(canonicalHex)));
     }
 
@@ -36,10 +36,10 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
         String suffix = pattern.substring(WILDCARD_PREFIX.length());
         return isWellFormed(suffix)
                 && hasTwoOrMoreLabels(suffix)
-                && findTheParentDomain(host).equals(Optional.of(suffix));
+                && findParentDomain(host).equals(Optional.of(suffix));
     }
 
-    private Optional<String> findTheParentDomain(String host) {
+    private Optional<String> findParentDomain(String host) {
         int firstSeparator = host.indexOf(LABEL_SEPARATOR);
         return firstSeparator > 0 ? Optional.of(host.substring(firstSeparator + 1)) : Optional.empty();
     }

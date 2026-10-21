@@ -32,7 +32,7 @@ class WaitingOnAPortFromTheSourceTest {
         }
 
         @Override
-        public Optional<String> resolveTheFirstIpv4Address(String hostName) {
+        public Optional<String> resolveFirstIpv4Address(String hostName) {
             return Optional.of("203.0.113.1");
         }
 

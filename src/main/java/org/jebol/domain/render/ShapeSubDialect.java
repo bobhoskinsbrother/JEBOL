@@ -7,9 +7,9 @@ import java.util.List;
 
 final class ShapeSubDialect {
 
-    List<PathStep> readThePathFrom(AnyBlockValue steps) {
-        WhereARelativeStepIsMeasuredFrom walk =
-                new WhereARelativeStepIsMeasuredFrom();
+    List<PathStep> readPathFrom(AnyBlockValue steps) {
+        WhereRelativeStepIsMeasuredFrom walk =
+                new WhereRelativeStepIsMeasuredFrom();
         List<Value> written = steps.remaining();
         int at = 0;
         while (at < written.size()) {
@@ -34,7 +34,7 @@ final class ShapeSubDialect {
         return ahead;
     }
 
-    private static final class WhereARelativeStepIsMeasuredFrom {
+    private static final class WhereRelativeStepIsMeasuredFrom {
 
         private final DrawArguments read = new DrawArguments();
         private final List<PathStep> path = new ArrayList<>();
@@ -61,7 +61,7 @@ final class ShapeSubDialect {
                 case "curv" -> drawCubicThrough(points, relative);
                 case "qcurve" -> drawQuadraticThrough(points, relative);
                 case "qcurv" -> drawQuadraticThrough(points, relative);
-                case "arc" -> drawAnArcThrough(points, arguments, relative);
+                case "arc" -> drawArcThrough(points, arguments, relative);
                 case "close" -> close();
                 default -> {
                 }
@@ -120,7 +120,7 @@ final class ShapeSubDialect {
                     firstAcross, firstDown, secondAcross, secondDown, across, down));
         }
 
-        private void drawAnArcThrough(
+        private void drawArcThrough(
                 List<PairValue> points, List<Value> arguments, boolean relative) {
 
             if (points.size() < 2) {

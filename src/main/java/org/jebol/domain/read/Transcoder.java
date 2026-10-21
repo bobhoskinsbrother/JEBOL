@@ -25,7 +25,7 @@ public final class Transcoder {
         return new String(codepoints, begins, spans.get(last).to() - begins);
     }
 
-    public static List<SourceSpan> findTheTopLevelSpans(String source) {
+    public static List<SourceSpan> findTopLevelSpans(String source) {
         if (source == null) {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
@@ -83,11 +83,11 @@ public final class Transcoder {
             Optional<TranscodeResult.Failure> whyItStopped,
             int endedAtCodePoint,
             int lineEndedOn,
-            Set<Integer> positionsThatBeginALine) {
+            Set<Integer> lineStartPositions) {
 
         public AnyBlockValue asBlock() {
             AnyBlockValue block = BlockValue.of(valuesReadBeforeStopping);
-            for (int position : positionsThatBeginALine) {
+            for (int position : lineStartPositions) {
                 block.storage().setLineBreakAt(position, true);
             }
             return block;
@@ -137,7 +137,7 @@ public final class Transcoder {
             return new Reading(whole.values(), Optional.empty(), readCodepointAt(scanner.end()),
                     scanner.lineCount(), scanner.topLineStarts());
         } catch (ScanFailure malformed) {
-            return new Reading(List.copyOf(scanner.topValues()), Optional.of(malformed.asAFailure()),
+            return new Reading(List.copyOf(scanner.topValues()), Optional.of(malformed.asFailure()),
                     readCodepointAt(scanner.end()), scanner.lineCount(), scanner.topLineStarts());
         }
     }

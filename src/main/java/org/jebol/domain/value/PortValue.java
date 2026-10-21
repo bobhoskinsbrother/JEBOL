@@ -21,8 +21,8 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     @Override
-    public List<Value> listTheItems() {
-        return context.listTheBoundWordsAndValues();
+    public List<Value> listItems() {
+        return context.listBoundWordsAndValues();
     }
 
     public String schemeName() {
@@ -31,7 +31,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
                 : "";
     }
 
-    public Optional<AnyBlockValue> findTheEventQueue() {
+    public Optional<AnyBlockValue> findEventQueue() {
         if (!QUEUE_SCHEMES.contains(schemeName())) {
             return Optional.empty();
         }
@@ -43,18 +43,18 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
         return Optional.of(queue);
     }
 
-    public Value queue(Value happening, boolean atTheEnd) {
+    public Value queue(Value happening, boolean atEnd) {
         if (!(happening instanceof EventValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, happening);
         }
-        AnyBlockValue queue = findTheEventQueue().orElseThrow();
+        AnyBlockValue queue = findEventQueue().orElseThrow();
         queue.storage().insertAt(
-                atTheEnd ? queue.storage().length() + 1 : queue.index(), happening);
+                atEnd ? queue.storage().length() + 1 : queue.index(), happening);
         return this;
     }
 
     public PortValue withItsQueueEmptied() {
-        findTheEventQueue().ifPresent(queue -> {
+        findEventQueue().ifPresent(queue -> {
             while (queue.storage().length() > 0) {
                 queue.storage().removeAt(1);
             }
@@ -96,9 +96,9 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public boolean isOpen() {
-        Value whatTheActorLeft = readFieldValue("state");
-        return !(whatTheActorLeft instanceof ObjectValue)
-                && whatTheActorLeft.isTruthy();
+        Value whatActorLeft = readFieldValue("state");
+        return !(whatActorLeft instanceof ObjectValue)
+                && whatActorLeft.isTruthy();
     }
 
     public void markOpen(boolean open) {

@@ -15,15 +15,15 @@ final class BrotliQuickHasher implements BrotliHasher {
     private final int bucketMask;
     private final int sweepMask;
     private final int bytesHashed;
-    private final boolean consultsTheDictionary;
+    private final boolean consultsDictionary;
     private final int[] buckets;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    static BrotliQuickHasher chooseForQuality(int quality, boolean theInputIsLarge) {
+    static BrotliQuickHasher chooseForQuality(int quality, boolean inputIsLarge) {
         return switch (quality) {
             case 2 -> new BrotliQuickHasher(16, 0, 5, true);
             case 3 -> new BrotliQuickHasher(16, 1, 5, false);
-            case 4 -> theInputIsLarge
+            case 4 -> inputIsLarge
                     ? new BrotliQuickHasher(20, 2, 7, false)
                     : new BrotliQuickHasher(17, 2, 5, true);
             default -> throw new IllegalArgumentException(
@@ -32,14 +32,14 @@ final class BrotliQuickHasher implements BrotliHasher {
     }
 
     private BrotliQuickHasher(int bucketBits, int sweepBits, int bytesHashed,
-            boolean consultsTheDictionary) {
+            boolean consultsDictionary) {
 
         this.bucketBits = bucketBits;
         this.sweep = 1 << sweepBits;
         this.bucketMask = (1 << bucketBits) - 1;
         this.sweepMask = (this.sweep - 1) << 3;
         this.bytesHashed = bytesHashed;
-        this.consultsTheDictionary = consultsTheDictionary;
+        this.consultsDictionary = consultsDictionary;
         this.buckets = new int[1 << bucketBits];
     }
 
@@ -59,9 +59,9 @@ final class BrotliQuickHasher implements BrotliHasher {
 
     @Override
     public void prepareFor(byte[] data, int inputSize,
-            boolean theWholeInputAtOnce) {
+            boolean wholeInputAtOnce) {
 
-        if (theWholeInputAtOnce
+        if (wholeInputAtOnce
                 && inputSize <= (1 << bucketBits) >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
                 int slot = hashSlotFor(data, at);
@@ -189,7 +189,7 @@ final class BrotliQuickHasher implements BrotliHasher {
             }
         }
 
-        if (consultsTheDictionary && scoreToBeat == best.score) {
+        if (consultsDictionary && scoreToBeat == best.score) {
             dictionary.searchFrom(data, here, maxLength, dictionaryDistance,
                     maxDistance, best, true);
         }

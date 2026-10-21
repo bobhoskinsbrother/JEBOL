@@ -31,9 +31,9 @@ public final class ChaChaWithPoly1305 {
             byte[] authenticatorKey = generateKeystream(key, nonce, AUTHENTICATORS_BLOCK, Poly1305.KEY);
             byte[] masked = maskWith(generateKeystream(
                     key, nonce, WHERE_MESSAGE_STARTS, octets.length), octets);
-            byte[] overTheCipherText = deciphering ? octets : masked;
+            byte[] overCipherText = deciphering ? octets : masked;
             return new Sealed(masked, Poly1305.computeTag(authenticatorKey,
-                    collectAuthenticated(header, overTheCipherText)));
+                    collectAuthenticated(header, overCipherText)));
         } catch (GeneralSecurityException refused) {
             return new Sealed(new byte[0], new byte[0]);
         }

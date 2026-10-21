@@ -46,7 +46,7 @@ public class UniqueNative extends DefaultNative {
                             ((IntegerValue) size).magnitude()))
                     .orElse(EVERY_MEMBER_ON_ITS_OWN);
             return Combining.sets(arguments.getFirst(), arguments.getFirst(),
-                    SetOperation.findTheOperationNamed("union").orElseThrow(),
+                    SetOperation.findOperationNamed("union").orElseThrow(),
                     refinements.contains("case"), stride);
         };
     }

@@ -30,7 +30,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .askTheRebolActor(nativeName(), List.of(arguments.getFirst()), refinements)
+                .askRebolActor(nativeName(), List.of(arguments.getFirst()), refinements)
                 .orElseGet(() -> copy(arguments, refinements));
     }
 

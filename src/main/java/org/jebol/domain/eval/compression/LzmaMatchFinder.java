@@ -158,8 +158,8 @@ final class LzmaMatchFinder {
             longest = 3;
         }
         int total = binaryTree
-                ? matchesDownTheTree(chainHead, distances, written, longest)
-                : matchesDownTheChain(chainHead, distances, written, longest);
+                ? matchesDownTree(chainHead, distances, written, longest)
+                : matchesDownChain(chainHead, distances, written, longest);
         step();
         return total;
     }
@@ -202,7 +202,7 @@ final class LzmaMatchFinder {
                 + (distance > cyclicBufferPosition ? cyclicBufferSize : 0);
     }
 
-    private int matchesDownTheChain(
+    private int matchesDownChain(
             int chainHead, int[] distances, int written, int longestSoFar) {
 
         int candidate = chainHead;
@@ -237,7 +237,7 @@ final class LzmaMatchFinder {
         }
     }
 
-    private int matchesDownTheTree(
+    private int matchesDownTree(
             int chainHead, int[] distances, int written, int longestSoFar) {
 
         int candidate = chainHead;

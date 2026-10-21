@@ -26,7 +26,7 @@ public record LogicValue(boolean truth) implements Value {
     }
 
     @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+    public long asRandomSeed(ToLongFunction<byte[]> octetChecksum) {
         return truth ? System.nanoTime() : SEED_FALSE_GIVES;
     }
 

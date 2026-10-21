@@ -29,7 +29,7 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
         return TypesetValue.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
     }
 
-    protected Set<Datatype> listTheOffsetTypes() {
+    protected Set<Datatype> listOffsetTypes() {
         return TypesetValue.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
     }
 }
