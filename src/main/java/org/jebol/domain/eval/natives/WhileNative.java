@@ -28,7 +28,7 @@ public class WhileNative extends LoopingNative {
             AnyBlockValue body = (AnyBlockValue) arguments.get(1);
             return answerOfTheLoop(() -> {
                 Value last = NoneValue.none();
-                while (isTrueForALoop(evaluator.evaluateOrRaise(
+                while (isTrueForLoop(evaluator.evaluateOrRaise(
                         condition, evaluator.systemContext()))) {
                     last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
                 }

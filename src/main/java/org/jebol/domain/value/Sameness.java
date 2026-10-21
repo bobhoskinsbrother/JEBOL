@@ -6,7 +6,7 @@ public record Sameness(long stepsAllowed, boolean theyWereBroughtTogetherFirst) 
 
     private static final long STEPS_ALLOWED_BETWEEN_DECIMALS = 21;
 
-    public static Sameness insideASeries() {
+    public static Sameness insideSeries() {
         return new Sameness(STEPS_ALLOWED_INSIDE_A_SERIES, false);
     }
 

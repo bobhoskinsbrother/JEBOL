@@ -474,7 +474,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public int inputLength() {
-        return walkingABlock ? inputLengthOverABlock() : inputLengthOverAString();
+        return walkingABlock ? inputLengthOverBlock() : inputLengthOverString();
     }
 
     @Override
@@ -495,7 +495,7 @@ public final class Parser implements ParseWalk {
     private Datatype parsing = BlockValue.TYPE;
 
 
-    int inputLengthOverABlock() {
+    int inputLengthOverBlock() {
         return input.size();
     }
 
@@ -753,7 +753,7 @@ public final class Parser implements ParseWalk {
     private boolean walkingBytes;
 
 
-    int inputLengthOverAString() {
+    int inputLengthOverString() {
         return codePoints.length;
     }
 

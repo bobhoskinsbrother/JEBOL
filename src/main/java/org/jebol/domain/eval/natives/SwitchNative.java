@@ -38,7 +38,7 @@ public class SwitchNative extends DefaultNative {
             boolean matchedSomething = false;
             Value lastBranchTaken = NoneValue.none();
             for (int at = 0; at < choices.size(); at++) {
-                if (isExactlyABlock(choices.get(at))
+                if (isExactlyBlock(choices.get(at))
                         || !matches(choices.get(at), wanted, caseSensitive)) {
                     continue;
                 }
@@ -71,13 +71,13 @@ public class SwitchNative extends DefaultNative {
 
     private int findNextBlockFrom(List<Value> choices, int from) {
         int at = from;
-        while (at < choices.size() && !isExactlyABlock(choices.get(at))) {
+        while (at < choices.size() && !isExactlyBlock(choices.get(at))) {
             at++;
         }
         return at;
     }
 
-    private boolean isExactlyABlock(Value value) {
+    private boolean isExactlyBlock(Value value) {
         return value instanceof BlockValue;
     }
 

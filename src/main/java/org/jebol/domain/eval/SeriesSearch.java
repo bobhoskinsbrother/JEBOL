@@ -179,7 +179,7 @@ public final class SeriesSearch {
                 && !(series instanceof BinaryValue)) {
             return refinements.contains("only")
                     ? Comparison.isSameValue(items.get(at), wanted)
-                    : hasTheSameRunAt(items, at);
+                    : hasSameRunAt(items, at);
         }
         if (series instanceof AnyStringValue || series instanceof BinaryValue) {
             return textRunMatchesAt(items, at);
@@ -260,7 +260,7 @@ public final class SeriesSearch {
         return true;
     }
 
-    private boolean hasTheSameRunAt(List<Value> items, int at) {
+    private boolean hasSameRunAt(List<Value> items, int at) {
         List<Value> run = looksForARunOfValues()
                 ? listTheRunOfValues()
                 : List.of(wanted);

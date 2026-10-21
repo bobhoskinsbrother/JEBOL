@@ -565,7 +565,7 @@ public final class Ports {
         if (!wildcard.isPresent()) {
             return files.exists(path);
         }
-        if (wildcard.isInTheDirectory()) {
+        if (wildcard.isInDirectory()) {
             return false;
         }
         try {

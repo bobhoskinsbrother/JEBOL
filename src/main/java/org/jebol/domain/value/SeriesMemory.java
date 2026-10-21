@@ -123,7 +123,7 @@ public final class SeriesMemory {
         long heldBeforeTheCycle = Long.MAX_VALUE;
         while (System.nanoTime() < giveUpAt && heldBeforeTheCycle != HELD.get()) {
             heldBeforeTheCycle = HELD.get();
-            hasFinishedACollection();
+            hasFinishedCollection();
             giveBackWhatTheCollectorTook();
         }
         giveBackWhatTheCollectorTook();
@@ -132,7 +132,7 @@ public final class SeriesMemory {
 
     private static final long SECONDS_TO_WAIT_FOR_A_COLLECTION = 2;
 
-    private static boolean hasFinishedACollection() {
+    private static boolean hasFinishedCollection() {
         ReferenceQueue<Object> proof = new ReferenceQueue<>();
         PhantomReference<Object> unreachable =
                 new PhantomReference<>(new Object(), proof);

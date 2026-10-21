@@ -169,7 +169,7 @@ final class SourceScanner {
         return index < 0 || index >= in.length ? 0 : in[index] & 0xFF;
     }
 
-    private boolean isNotANewline(int octet) {
+    private boolean isNotNewline(int octet) {
         return octet != 0 && octet != CR && octet != LF;
     }
 
@@ -181,7 +181,7 @@ final class SourceScanner {
         return (flags & shiftToAFlag(special)) != 0;
     }
 
-    private boolean hasOnlyTheFlag(int flags, int special) {
+    private boolean hasOnlyFlag(int flags, int special) {
         return flags == shiftToAFlag(special);
     }
 
@@ -279,7 +279,7 @@ final class SourceScanner {
         return switch (lex.classify(at(cp))) {
             case CLASS_DELIMIT -> scanDelimiter(cp);
             case CLASS_SPECIAL -> scanSpecial(cp, flags);
-            case CLASS_WORD -> hasOnlyTheFlag(flags, SPECIAL_WORD) ? TOKEN_WORD : scanWord(cp, flags, TOKEN_WORD);
+            case CLASS_WORD -> hasOnlyFlag(flags, SPECIAL_WORD) ? TOKEN_WORD : scanWord(cp, flags, TOKEN_WORD);
             default -> scanNumber(cp, flags);
         };
     }
@@ -288,7 +288,7 @@ final class SourceScanner {
         int cp = from;
         switch (lex.valueOf(at(cp))) {
             case DELIMIT_SPACE, DELIMIT_SEMICOLON -> {
-                while (isNotANewline(at(cp))) {
+                while (isNotNewline(at(cp))) {
                     cp++;
                 }
                 if (at(cp) == 0) {
@@ -354,7 +354,7 @@ final class SourceScanner {
             return TOKEN_STRING;
         }
         int cp = begin + 1;
-        while (isNotANewline(at(cp))) {
+        while (isNotNewline(at(cp))) {
             cp++;
         }
         end = cp;
@@ -381,7 +381,7 @@ final class SourceScanner {
             begin = cp;
             int flags = prescan();
             begin--;
-            if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
+            if (hasOnlyFlag(flags, SPECIAL_WORD)) {
                 return TOKEN_REFINE;
             }
             if (at(end - 1) == ':') {
@@ -531,7 +531,7 @@ final class SourceScanner {
         if (lex.isNumber(at(cp + 1))) {
             return TOKEN_TIME;
         }
-        if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
+        if (hasOnlyFlag(flags, SPECIAL_WORD)) {
             return TOKEN_GET;
         }
         if (at(cp + 1) == '_' && lex.isDelimit(at(cp + 2))) {
@@ -570,7 +570,7 @@ final class SourceScanner {
         if (at(cp + 1) == '_' && lex.isDelimit(at(cp + 2))) {
             return -TOKEN_LIT;
         }
-        if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
+        if (hasOnlyFlag(flags, SPECIAL_WORD)) {
             return TOKEN_LIT;
         }
         cp++;
@@ -698,7 +698,7 @@ final class SourceScanner {
                 return TOKEN_CHAR;
             }
             cp = begin + 1;
-            while (isNotANewline(at(cp))) {
+            while (isNotNewline(at(cp))) {
                 cp++;
             }
             end = cp;
@@ -724,7 +724,7 @@ final class SourceScanner {
             return TOKEN_BINARY;
         }
         int cp = begin + 1;
-        while (isNotANewline(at(cp))) {
+        while (isNotNewline(at(cp))) {
             cp++;
         }
         end = cp;
@@ -1269,7 +1269,7 @@ final class SourceScanner {
             cp++;
         }
         int lineStart = cp;
-        while (isNotANewline(at(cp))) {
+        while (isNotNewline(at(cp))) {
             cp++;
         }
         String near = "(line " + lineCount + ") " + textOf(lineStart, cp - lineStart);
@@ -1781,10 +1781,10 @@ final class SourceScanner {
 
     private Optional<Value> decodeBase64(byte[] digits) {
         Optional<Value> standard = decodeBase64(digits, false);
-        return standard.isPresent() || !holdsAUrlSafeDigit(digits) ? standard : decodeBase64(digits, true);
+        return standard.isPresent() || !holdsUrlSafeDigit(digits) ? standard : decodeBase64(digits, true);
     }
 
-    private boolean holdsAUrlSafeDigit(byte[] digits) {
+    private boolean holdsUrlSafeDigit(byte[] digits) {
         for (byte each : digits) {
             if (each == '-' || each == '_') {
                 return true;

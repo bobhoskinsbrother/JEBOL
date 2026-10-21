@@ -28,7 +28,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     @Override
     public String writeInHex(HexWidth width) {
-        return width.keepSixteenDigitsToTheRight(magnitude, ALL_SIXTEEN_HEX_DIGITS);
+        return width.keepSixteenDigitsToRight(magnitude, ALL_SIXTEEN_HEX_DIGITS);
     }
 
     @Override

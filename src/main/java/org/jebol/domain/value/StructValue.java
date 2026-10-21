@@ -25,7 +25,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     @Override
     public boolean isEqualTo(Value other, Sameness how) {
-        return other instanceof StructValue theirs && holdsTheSameAs(theirs);
+        return other instanceof StructValue theirs && holdsSameAs(theirs);
     }
 
 
@@ -326,7 +326,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * inside carries one.
      */
     public boolean acceptsRawBytes() {
-        return !spec.holdsALiveValue();
+        return !spec.holdsLiveValue();
     }
 
     /** WORDS-OF and KEYS-OF: the field names, in declaration order. */
@@ -390,7 +390,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * field types and the data byte for byte, so two structs whose fields are
      * spelt differently are still equal.
      */
-    public boolean holdsTheSameAs(StructValue other) {
+    public boolean holdsSameAs(StructValue other) {
         return spec.describesSameBytesAs(other.spec)
                 && java.util.Arrays.equals(octets(), other.octets());
     }

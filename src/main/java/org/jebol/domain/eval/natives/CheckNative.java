@@ -30,12 +30,12 @@ public class CheckNative extends DefaultNative {
     private boolean carriesZeroAnywhere(Value series) {
         return switch (series) {
             case AnyStringValue text -> text.head().text().indexOf(0) >= 0;
-            case BinaryValue octets -> holdsAZero(octets.head().octetsFromHere());
+            case BinaryValue octets -> holdsZero(octets.head().octetsFromHere());
             default -> false;
         };
     }
 
-    private boolean holdsAZero(byte[] octets) {
+    private boolean holdsZero(byte[] octets) {
         for (byte one : octets) {
             if (one == 0) {
                 return true;

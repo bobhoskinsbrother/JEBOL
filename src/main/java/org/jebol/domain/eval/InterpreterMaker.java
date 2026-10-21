@@ -153,7 +153,7 @@ public final class InterpreterMaker implements Maker {
         if (parts.size() != PARTS_OF_A_COMMAND_DEFINITION
                 || !(parts.getFirst() instanceof AnyBlockValue spec)
                 || !(parts.get(1) instanceof PathTargetWithFields extension)
-                || !hasAnExtensionHandleFirst(extension)
+                || !hasExtensionHandleFirst(extension)
                 || !(parts.get(2) instanceof IntegerValue(long index))
                 || index > THE_LARGEST_COMMAND_INDEX) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_DEF, definition);
@@ -169,7 +169,7 @@ public final class InterpreterMaker implements Maker {
 
     private static final long THE_LARGEST_COMMAND_INDEX = 0xFFFF;
 
-    private boolean hasAnExtensionHandleFirst(PathTargetWithFields extension) {
+    private boolean hasExtensionHandleFirst(PathTargetWithFields extension) {
         List<ContextSlot> fields = extension.context().slots();
         return !fields.isEmpty()
                 && fields.getFirst().value() instanceof HandleValue handle

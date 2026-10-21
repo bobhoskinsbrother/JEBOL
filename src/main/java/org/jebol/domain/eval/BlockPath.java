@@ -31,7 +31,7 @@ final class BlockPath {
         return at >= 1 && at <= block.storageLength() ? Optional.of(at) : Optional.empty();
     }
 
-    static boolean isNowhereAtAllSoAWriteQuietlyDoesNothing(Value selector) {
+    static boolean isNowhereAtAllSoWriteQuietlyDoesNothing(Value selector) {
         return switch (selector) {
             case IntegerValue position -> position.magnitude() == 0;
             case AnyDecimalValue fraction -> (long) fraction.quantity() == 0;

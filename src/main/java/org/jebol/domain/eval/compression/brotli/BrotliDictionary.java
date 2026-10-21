@@ -103,12 +103,12 @@ final class BrotliDictionary {
         if (known != null) {
             return known;
         }
-        byte[] built = inflateTheWords();
+        byte[] built = inflateWords();
         words = built;
         return built;
     }
 
-    private static byte[] inflateTheWords() {
+    private static byte[] inflateWords() {
         StringBuilder joined = new StringBuilder();
         for (String piece
                 : DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT) {

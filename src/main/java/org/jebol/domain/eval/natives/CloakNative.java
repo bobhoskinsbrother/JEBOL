@@ -57,13 +57,13 @@ public abstract class CloakNative extends EncodingNative {
     private byte[] readKeyBytesFor(Value key, boolean asItStands) {
         return switch (key) {
             case IntegerValue(long magnitude) ->
-                    encodings.hashTheKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));
+                    encodings.hashKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));
             case BinaryValue octets -> hashUnless(asItStands, octets.octetsFromHere());
             default -> hashUnless(asItStands, ((AnyStringValue) key).text().getBytes(StandardCharsets.UTF_8));
         };
     }
 
     private byte[] hashUnless(boolean asItStands, byte[] key) {
-        return asItStands ? key : encodings.hashTheKey(key);
+        return asItStands ? key : encodings.hashKey(key);
     }
 }

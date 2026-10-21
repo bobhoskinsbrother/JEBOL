@@ -181,10 +181,10 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
      * VAL_STRUCT_FLAGS(inner)} -- so a struct is protected from a raw binary
      * change when any struct inside it carries one.
      */
-    public boolean holdsALiveValue() {
+    public boolean holdsLiveValue() {
         return fields.stream().anyMatch(field -> switch (field.type()) {
             case StructFieldType.LiveValue ignored -> true;
-            case StructFieldType.Nested inside -> inside.spec().holdsALiveValue();
+            case StructFieldType.Nested inside -> inside.spec().holdsLiveValue();
             default -> false;
         });
     }

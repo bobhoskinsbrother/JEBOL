@@ -44,7 +44,7 @@ final class ScanningATime {
     }
 
     long readNanoseconds() {
-        long counted = itCountsTheFirstNumberAsHours()
+        long counted = itCountsFirstNumberAsHours()
                 ? readHoursMinutesAndSeconds()
                 : minutesAndSeconds();
         if (fractionInNanoseconds > 0) {
@@ -53,7 +53,7 @@ final class ScanningATime {
         return negated ? -counted : counted;
     }
 
-    private boolean itCountsTheFirstNumberAsHours() {
+    private boolean itCountsFirstNumberAsHours() {
         return thirdNumber >= 0 || fractionInNanoseconds < 0;
     }
 
@@ -126,7 +126,7 @@ final class ScanningATime {
         }
         afternoonOrMorning = letter;
         at += 2;
-        if (itCountsTheFirstNumberAsHours()) {
+        if (itCountsFirstNumberAsHours()) {
             return firstNumber <= NOON;
         }
         return false;

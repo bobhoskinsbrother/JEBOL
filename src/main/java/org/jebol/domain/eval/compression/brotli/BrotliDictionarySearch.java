@@ -10,7 +10,7 @@ final class BrotliDictionarySearch {
     private long lookups;
     private long matches;
 
-    private static int hashTheSlotFor(byte[] data, int at) {
+    private static int hashSlotFor(byte[] data, int at) {
         int fourBytes = (data[at] & 0xFF)
                 | ((data[at + 1] & 0xFF) << 8)
                 | ((data[at + 2] & 0xFF) << 16)
@@ -28,7 +28,7 @@ final class BrotliDictionarySearch {
         if (!stillPayingItsWay()) {
             return;
         }
-        int slot = hashTheSlotFor(data, at) << 1;
+        int slot = hashSlotFor(data, at) << 1;
         int howManySlots = onlyTheFirstSlot ? 1 : 2;
         for (int tried = 0; tried < howManySlots; tried++, slot++) {
             lookups++;

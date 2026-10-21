@@ -12,7 +12,7 @@ public final class DecimalValue extends AnyDecimalValue {
         }
 
         @Override
-        boolean isWrittenWithAPercentSign() {
+        boolean isWrittenWithPercentSign() {
             return false;
         }
 

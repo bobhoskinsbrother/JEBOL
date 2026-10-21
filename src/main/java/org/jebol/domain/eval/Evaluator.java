@@ -198,7 +198,7 @@ public final class Evaluator {
         return ports;
     }
 
-    public void installTheHostsHttpActor() {
+    public void installHostsHttpActor() {
         ports.http().ifPresent(port -> {
             for (String scheme : List.of("http", "https")) {
                 findTheSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
@@ -868,7 +868,7 @@ public final class Evaluator {
             frame.pendingCalls.pop();
             frame.theCallNearAndWhereAreAbout = waiting;
             StepOutcome outcome = invoke(frame, waiting, frames);
-            if (isStillRunningHavingPushedABody(outcome)) {
+            if (isStillRunningHavingPushedBody(outcome)) {
                 return;
             }
             StepOutcome.Produced invoked = (StepOutcome.Produced) outcome;
@@ -888,7 +888,7 @@ public final class Evaluator {
         return parameter.owningRefinement().map(waiting.refinements()::contains).orElse(true);
     }
 
-    private static boolean isStillRunningHavingPushedABody(StepOutcome outcome) {
+    private static boolean isStillRunningHavingPushedBody(StepOutcome outcome) {
         return !(outcome instanceof StepOutcome.Produced);
     }
 
@@ -1390,7 +1390,7 @@ public final class Evaluator {
         }
         if (target instanceof AnyBlockValue block) {
             Value selector = makeSelectorFor(lastSegment, frame.context);
-            if (BlockPath.isNowhereAtAllSoAWriteQuietlyDoesNothing(selector)) {
+            if (BlockPath.isNowhereAtAllSoWriteQuietlyDoesNothing(selector)) {
                 return;
             }
             int at = BlockPath.findThePositionOf(block, selector)

@@ -176,14 +176,14 @@ public final class UnicodeCases {
     }
 
     public int toUpper(int codepoint) {
-        return isInTheTable(codepoint) ? upper[codepoint] : codepoint;
+        return isInTable(codepoint) ? upper[codepoint] : codepoint;
     }
 
     public int toLower(int codepoint) {
-        return isInTheTable(codepoint) ? lower[codepoint] : codepoint;
+        return isInTable(codepoint) ? lower[codepoint] : codepoint;
     }
 
-    private boolean isInTheTable(int codepoint) {
+    private boolean isInTable(int codepoint) {
         return codepoint >= 0 && codepoint < TABLE_SIZE;
     }
 }

@@ -81,7 +81,7 @@ public final class TextLines {
         if (lines.isEmpty()) {
             return new CaretPlace(layout.findWhereALineStarts(box, 0), layout.findWhereTheStackStarts(box, 0), 0);
         }
-        RunAndCharacter caret = holdWithinTheText(run, character);
+        RunAndCharacter caret = holdWithinText(run, character);
         for (int index = lines.size() - 1; index >= 0; index--) {
             double across = startOfLine(index, layout, box);
             for (Piece piece : lines.get(index).pieces()) {
@@ -129,7 +129,7 @@ public final class TextLines {
         return lines.size() - 1;
     }
 
-    private RunAndCharacter holdWithinTheText(int run, int character) {
+    private RunAndCharacter holdWithinText(int run, int character) {
         if (run < 0 || run >= runs.size()) {
             return new RunAndCharacter(runs.size(), 0);
         }

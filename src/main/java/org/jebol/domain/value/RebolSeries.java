@@ -66,7 +66,7 @@ public sealed interface RebolSeries extends Value
         return Math.max(0, storageLength() - index() + 1);
     }
 
-    default boolean isPastTheEnd() {
+    default boolean isPastEnd() {
         return index() > storageLength() + 1;
     }
 

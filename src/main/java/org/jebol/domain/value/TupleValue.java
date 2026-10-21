@@ -48,7 +48,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         for (int padded = segments.length; padded < MINIMUM_SHOWN_SEGMENTS; padded++) {
             hex.append("00");
         }
-        return width.keepFromTheLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
+        return width.keepFromLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
     }
 
     public TupleValue {

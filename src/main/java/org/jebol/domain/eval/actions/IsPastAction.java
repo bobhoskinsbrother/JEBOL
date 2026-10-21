@@ -20,7 +20,7 @@ public class IsPastAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case RebolSeries series -> LogicValue.of(series.isPastTheEnd());
+            case RebolSeries series -> LogicValue.of(series.isPastEnd());
             case Value anythingElse -> refuseArgument(anythingElse, "series");
         };
     }

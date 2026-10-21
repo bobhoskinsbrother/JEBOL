@@ -53,8 +53,8 @@ public class EnhexNative extends PercentEncodingNative {
         return readTheArgumentOf("except", 0, arguments, refinements)
                 .<IntPredicate>map(asked -> octet -> encodings.setHolds((BitsetValue) asked, octet))
                 .orElseGet(() -> keepsItsSeparators(value)
-                        ? encodings::isKeptByAUri
-                        : encodings::isKeptByAUriComponent);
+                        ? encodings::isKeptByUri
+                        : encodings::isKeptByUriComponent);
     }
 
     private boolean keepsItsSeparators(Value value) {

@@ -42,11 +42,11 @@ public final class Encodings {
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                     + "!'()*-._~";
 
-    public boolean isKeptByAUri(int octet) {
+    public boolean isKeptByUri(int octet) {
         return octet < 128 && URI_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    public boolean isKeptByAUriComponent(int octet) {
+    public boolean isKeptByUriComponent(int octet) {
         return octet < 128 && URI_COMPONENT_UNESCAPED.indexOf(octet) >= 0;
     }
 
@@ -802,7 +802,7 @@ public final class Encodings {
         return true;
     }
 
-    public byte[] hashTheKey(byte[] key) {
+    public byte[] hashKey(byte[] key) {
         if (key.length == 0) {
             return key;
         }

@@ -31,7 +31,7 @@ public abstract class LoopingNative extends DefaultNative {
         }
     }
 
-    protected boolean isTrueForALoop(Value tested) {
+    protected boolean isTrueForLoop(Value tested) {
         if (tested instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NO_RETURN);
         }

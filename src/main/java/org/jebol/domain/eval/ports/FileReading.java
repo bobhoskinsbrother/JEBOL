@@ -52,7 +52,7 @@ final class FileReading {
     Value answerThrough(FilePort files) {
         Wildcard wildcard = new Wildcard(path);
         if (wildcard.isPresent()) {
-            return wildcard.isInTheDirectory()
+            return wildcard.isInDirectory()
                     ? BlockValue.of(List.of())
                     : listNamesMatchingPattern(wildcard, files);
         }
@@ -127,15 +127,15 @@ final class FileReading {
             int lastSeparator = path.lastIndexOf('/');
             this.directory = path.substring(0, lastSeparator + 1);
             this.pattern = path.substring(lastSeparator + 1);
-            this.present = holdsAWildcard(path);
+            this.present = holdsWildcard(path);
         }
 
         boolean isPresent() {
             return present;
         }
 
-        boolean isInTheDirectory() {
-            return holdsAWildcard(directory);
+        boolean isInDirectory() {
+            return holdsWildcard(directory);
         }
 
         List<String> listTheNamesMatchingIn(FilePort files) {
@@ -145,7 +145,7 @@ final class FileReading {
                     .toList();
         }
 
-        private boolean holdsAWildcard(String written) {
+        private boolean holdsWildcard(String written) {
             return written.indexOf('*') >= 0 || written.indexOf('?') >= 0;
         }
 

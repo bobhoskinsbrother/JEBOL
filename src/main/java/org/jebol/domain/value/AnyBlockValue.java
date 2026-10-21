@@ -302,7 +302,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             return false;
         }
         for (int at = 0; at < ours.size(); at++) {
-            if (!ours.get(at).isEqualTo(yours.get(at), Sameness.insideASeries())) {
+            if (!ours.get(at).isEqualTo(yours.get(at), Sameness.insideSeries())) {
                 return false;
             }
         }

@@ -426,7 +426,7 @@ public final class Molder {
             StringBuilder written = new StringBuilder();
             for (int at = 0; at < flat.size(); at += 2) {
                 if (onSeparateLines) {
-                    written.append(indentALineAsDeepAsWeAre());
+                    written.append(indentLineAsDeepAsWeAre());
                 } else if (at > 0) {
                     written.append(' ');
                 }
@@ -437,7 +437,7 @@ public final class Molder {
             return written.toString();
         });
         return opens + pairs
-                + (onSeparateLines ? indentALineAsDeepAsWeAre() : "") + shuts;
+                + (onSeparateLines ? indentLineAsDeepAsWeAre() : "") + shuts;
     }
 
     private static String formThePairsOf(MapValue map) {
@@ -693,7 +693,7 @@ public final class Molder {
 
     private static final String ONE_INDENT = "    ";
 
-    private static String indentALineAsDeepAsWeAre() {
+    private static String indentLineAsDeepAsWeAre() {
         return "\n" + ONE_INDENT.repeat(LINED_DEPTH.get());
     }
 
@@ -826,7 +826,7 @@ public final class Molder {
             for (int at = 0; at < spec.size(); at++) {
                 boolean opensAField = spec.get(at) instanceof SetWordValue;
                 if (onSeparateLines && opensAField) {
-                    written.append(indentALineAsDeepAsWeAre());
+                    written.append(indentLineAsDeepAsWeAre());
                 } else if (at > 0) {
                     written.append(' ');
                 }
@@ -837,7 +837,7 @@ public final class Molder {
             return written.toString();
         });
         return openFor(EventValue.TYPE) + "[" + fields
-                + (onSeparateLines ? indentALineAsDeepAsWeAre() : "")
+                + (onSeparateLines ? indentLineAsDeepAsWeAre() : "")
                 + "]" + closedAfterTypeName();
     }
 
@@ -939,7 +939,7 @@ public final class Molder {
             StringBuilder out = new StringBuilder();
             for (Map.Entry<String, Value> field : fields.entrySet()) {
                 if (onSeparateLines) {
-                    out.append(indentALineAsDeepAsWeAre());
+                    out.append(indentLineAsDeepAsWeAre());
                 } else if (!out.isEmpty()) {
                     out.append(' ');
                 }
@@ -948,7 +948,7 @@ public final class Molder {
             }
             return out.toString();
         });
-        return written + (onSeparateLines ? indentALineAsDeepAsWeAre() : "");
+        return written + (onSeparateLines ? indentLineAsDeepAsWeAre() : "");
     }
 
     private static String formFields(ObjectValue object) {

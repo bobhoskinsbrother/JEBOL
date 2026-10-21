@@ -69,15 +69,15 @@ public abstract class GobScreen implements ScreenPort {
             closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt();
             return;
         }
-        if (isInTheRootsPane(gob)) {
+        if (isInRootsPane(gob)) {
             openOrRepaint(gob);
             return;
         }
-        if (hasAWindow(gob)) {
+        if (hasWindow(gob)) {
             closeWindowFor(gob);
             return;
         }
-        findWindowHolding(gob).filter(this::hasAWindow).ifPresent(this::repaintWindowFor);
+        findWindowHolding(gob).filter(this::hasWindow).ifPresent(this::repaintWindowFor);
     }
 
     protected abstract Denied refuseWithNoService();
@@ -90,13 +90,13 @@ public abstract class GobScreen implements ScreenPort {
 
     protected abstract void closeWindowFor(GobValue gob);
 
-    protected boolean hasAWindow(GobValue gob) {
+    protected boolean hasWindow(GobValue gob) {
         return gobWithWindow().stream().anyMatch(gob::sharesStorageWith);
     }
 
     private void closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt() {
         for (GobValue standing : List.copyOf(gobWithWindow())) {
-            if (!isInTheRootsPane(standing)) {
+            if (!isInRootsPane(standing)) {
                 closeWindowFor(standing);
             }
         }
@@ -106,7 +106,7 @@ public abstract class GobScreen implements ScreenPort {
     }
 
     private void openOrRepaint(GobValue gob) {
-        if (hasAWindow(gob)) {
+        if (hasWindow(gob)) {
             repaintWindowFor(gob);
             return;
         }
@@ -137,7 +137,7 @@ public abstract class GobScreen implements ScreenPort {
         return List.copyOf(children);
     }
 
-    protected boolean isInTheRootsPane(GobValue gob) {
+    protected boolean isInRootsPane(GobValue gob) {
         return listTheChildrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
     }
 }

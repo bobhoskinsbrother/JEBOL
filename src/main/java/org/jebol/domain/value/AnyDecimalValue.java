@@ -119,7 +119,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             return wrap(quantity);
         }
 
-        abstract boolean isWrittenWithAPercentSign();
+        abstract boolean isWrittenWithPercentSign();
 
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
@@ -175,7 +175,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         private OptionalDouble scanDecimalFrom(String written) {
             String body = written;
             if (body.endsWith("%")) {
-                if (!isWrittenWithAPercentSign()) {
+                if (!isWrittenWithPercentSign()) {
                     return OptionalDouble.empty();
                 }
                 body = body.substring(0, body.length() - 1);

@@ -197,7 +197,7 @@ class AWordKnowsItsOwnKindTest {
         @Test
         @DisplayName("Rebol's own equality compares the names, whatever the type and the case")
         void rebolEqualityComparesNames() {
-            assertThat(SetWordValue.of("a").isEqualTo(WordValue.of("A"), Sameness.insideASeries())).isTrue();
+            assertThat(SetWordValue.of("a").isEqualTo(WordValue.of("A"), Sameness.insideSeries())).isTrue();
         }
     }
 }

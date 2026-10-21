@@ -78,7 +78,7 @@ public final class Interpreter {
         library.load(evaluator);
         declareLauncherAfterLibraryLoads();
         library.registerSchemes();
-        evaluator.installTheHostsHttpActor();
+        evaluator.installHostsHttpActor();
         boot.grantOnly(bounds.grantedServices());
         boot.markOnlyUnavailable(bounds.unavailableServices());
         boot.useHostName(bounds.hostName());

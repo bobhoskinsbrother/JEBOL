@@ -42,7 +42,7 @@ public record CharacterValue(int codepoint) implements Value {
 
     @Override
     public String writeInHex(HexWidth width) {
-        return width.keepSixteenDigitsToTheRight(codepoint, digitsItsMagnitudeNeeds());
+        return width.keepSixteenDigitsToRight(codepoint, digitsItsMagnitudeNeeds());
     }
 
     private int digitsItsMagnitudeNeeds() {

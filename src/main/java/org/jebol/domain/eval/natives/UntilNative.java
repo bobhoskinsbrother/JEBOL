@@ -27,7 +27,7 @@ public class UntilNative extends LoopingNative {
                 Value last;
                 do {
                     last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
-                } while (!isTrueForALoop(last));
+                } while (!isTrueForLoop(last));
                 return last;
             });
         };

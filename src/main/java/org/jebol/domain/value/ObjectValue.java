@@ -11,7 +11,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof ObjectValue theirs
                 && agreesInEveryField(theirs, (ours, yours) ->
-                        ours.isEqualTo(yours, Sameness.insideASeries()));
+                        ours.isEqualTo(yours, Sameness.insideSeries()));
     }
 
     public boolean agreesInEveryField(
@@ -104,7 +104,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
                 ? pairs.remaining()
                 : List.of(target);
         for (Value each : written) {
-            if (each instanceof AnyWordValue word && hidesTheDeclaredField(word)) {
+            if (each instanceof AnyWordValue word && hidesDeclaredField(word)) {
                 throw Raised.of(EvaluationFailure.HIDDEN, word.spelling());
             }
         }
@@ -114,7 +114,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         return context.slots().stream();
     }
 
-    private boolean hidesTheDeclaredField(AnyWordValue word) {
+    private boolean hidesDeclaredField(AnyWordValue word) {
         return context.listEverySlot().stream().anyMatch(
                 slot -> slot.isHidden() && slot.canonical().equals(word.canonical()));
     }

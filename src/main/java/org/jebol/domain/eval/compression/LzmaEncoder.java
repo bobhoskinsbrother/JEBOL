@@ -511,7 +511,7 @@ final class LzmaEncoder {
                     break;
                 }
                 int shorter = matches[pairs - 3];
-                if (!isWorthTheExtraDistance(shorter, mainDistance)) {
+                if (!isWorthExtraDistance(shorter, mainDistance)) {
                     break;
                 }
                 pairs -= 2;
@@ -539,10 +539,10 @@ final class LzmaEncoder {
             int newDistance = matches[numPairs - 1];
             if ((longestMatchLen >= mainLength && newDistance < mainDistance)
                     || (longestMatchLen == mainLength + 1
-                            && !isWorthTheExtraDistance(mainDistance, newDistance))
+                            && !isWorthExtraDistance(mainDistance, newDistance))
                     || longestMatchLen > mainLength + 1
                     || (longestMatchLen + 1 >= mainLength && mainLength >= 3
-                            && isWorthTheExtraDistance(newDistance, mainDistance))) {
+                            && isWorthExtraDistance(newDistance, mainDistance))) {
                 return 1;
             }
         }
@@ -570,7 +570,7 @@ final class LzmaEncoder {
         return mainLength;
     }
 
-    private static boolean isWorthTheExtraDistance(int nearer, int further) {
+    private static boolean isWorthExtraDistance(int nearer, int further) {
         return (further >>> 7) > nearer;
     }
 

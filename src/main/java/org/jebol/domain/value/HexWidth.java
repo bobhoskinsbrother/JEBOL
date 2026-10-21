@@ -16,7 +16,7 @@ public record HexWidth(OptionalLong asked) {
         });
     }
 
-    String keepSixteenDigitsToTheRight(long number, int whenNoWidthIsAsked) {
+    String keepSixteenDigitsToRight(long number, int whenNoWidthIsAsked) {
         String hex = "%016X".formatted(number);
         int kept = asked.isPresent()
                 ? (int) Math.min(asked.getAsLong(), THE_WIDEST_A_NUMBER_IS_WRITTEN)
@@ -24,7 +24,7 @@ public record HexWidth(OptionalLong asked) {
         return hex.substring(Math.max(0, hex.length() - kept));
     }
 
-    String keepFromTheLeft(String hex, int longestThatCanBeAsked) {
+    String keepFromLeft(String hex, int longestThatCanBeAsked) {
         return asked.isEmpty()
                 ? hex
                 : hex.substring(0, (int) Math.min(

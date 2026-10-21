@@ -15,7 +15,7 @@ public final class PercentValue extends AnyDecimalValue {
         }
 
         @Override
-        boolean isWrittenWithAPercentSign() {
+        boolean isWrittenWithPercentSign() {
             return true;
         }
     };

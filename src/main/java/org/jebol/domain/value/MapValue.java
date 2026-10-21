@@ -33,7 +33,7 @@ public final class MapValue implements Value, PathTarget {
                 return false;
             }
             Value ours = select(key, MINDING_CASE);
-            if (!ours.isEqualTo(theirs.select(key, MINDING_CASE), Sameness.insideASeries())) {
+            if (!ours.isEqualTo(theirs.select(key, MINDING_CASE), Sameness.insideSeries())) {
                 return false;
             }
         }

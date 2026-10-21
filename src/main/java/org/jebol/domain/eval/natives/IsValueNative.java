@@ -21,10 +21,10 @@ public class IsValueNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                LogicValue.of(holdsAValue((AnyWordValue) arguments.getFirst()));
+                LogicValue.of(holdsValue((AnyWordValue) arguments.getFirst()));
     }
 
-    private boolean holdsAValue(AnyWordValue word) {
+    private boolean holdsValue(AnyWordValue word) {
         return word.isBound()
                 && word.binding().contains(word.canonical())
                 && !word.binding().findSlotFor(word.canonical()).holdsUnset();

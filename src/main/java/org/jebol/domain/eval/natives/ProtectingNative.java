@@ -121,7 +121,7 @@ public abstract class ProtectingNative extends DefaultNative {
                 block.storage().protectFromChange(protectedNow);
                 if (deeply) {
                     block.remaining().stream()
-                            .filter(this::isReachedByADeepProtection)
+                            .filter(this::isReachedByDeepProtection)
                             .forEach(item -> setProtection(item, protectedNow, true, false, reached));
                 }
             }
@@ -161,13 +161,13 @@ public abstract class ProtectingNative extends DefaultNative {
             } else {
                 slot.allowAssignment();
             }
-            if (deeply && isReachedByADeepProtection(slot.value())) {
+            if (deeply && isReachedByDeepProtection(slot.value())) {
                 setProtection(slot.value(), protectedNow, true, false, reached);
             }
         });
     }
 
-    private boolean isReachedByADeepProtection(Value value) {
+    private boolean isReachedByDeepProtection(Value value) {
         return value instanceof AnyBlockValue || value instanceof AnyStringValue || value instanceof BinaryValue
                 || value instanceof MapValue || value instanceof ObjectValue
                 || value instanceof BitsetValue || value instanceof VectorValue;

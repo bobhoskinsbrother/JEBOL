@@ -273,7 +273,7 @@ final class BrotliGenericEncoder {
             return;
         }
         writeCompressedForm(data, mask, length, isLast);
-        if (hasOutgrownTheInput(length, startedAt)) {
+        if (hasOutgrownInput(length, startedAt)) {
             System.arraycopy(savedRecentDistances, 0, recentDistances, 0, 4);
             writer.rewindTo(startedAt);
             BrotliMetaBlockWriter.writeUncompressed(data, mask, lastFlushAt,
@@ -281,7 +281,7 @@ final class BrotliGenericEncoder {
         }
     }
 
-    private boolean hasOutgrownTheInput(int length, int startedAt) {
+    private boolean hasOutgrownInput(int length, int startedAt) {
         int bitsWrittenIntoTheBuffer = writer.at() - startedAt + (startedAt & 7);
         return length + 4 < bitsWrittenIntoTheBuffer >> 3;
     }
