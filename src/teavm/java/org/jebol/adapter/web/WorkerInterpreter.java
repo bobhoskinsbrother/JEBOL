@@ -1,7 +1,6 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.ClasspathFiles;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostPorts;
@@ -25,15 +24,15 @@ public class WorkerInterpreter {
 
     public static void main(String[] args) {
         ThePageOnTheOtherSide thePage = new ThePageOnTheOtherSide();
-        screen = BrowserScreen.showTo(thePage, new ClasspathFiles());
         console = new WebConsole(thePage::takeWhatThePagePosts);
         files = new WebFiles(BrowserStore.openForThePage());
+        HostPorts ports = Interpreter.standardPorts()
+                .withConsole(console)
+                .withFiles(files)
+                .withHttp(new WebHttp());
+        screen = BrowserScreen.showTo(thePage, ports.carriedFiles());
         interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
-                        .withScreen(screen)
-                        .withConsole(console)
-                        .withFiles(files)
-                        .withHttp(new WebHttp()),
+                ports.withScreen(screen),
                 WorkerInterpreter::asTheScriptPrints,
                 boundAWorkerToTheScreen());
         say("booted", "");

@@ -49,10 +49,11 @@ public final class Interpreter {
     private String sharedRoot = "";
 
     private Interpreter(HostPorts ports, OutputPort output, Bounds bounds) {
-        this.ports = anInterpreterIsBuiltWith(ports);
+        checkPorts(ports);
+        this.ports = ports;
         Set<HostService> duringBoot = EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringBoot.addAll(bounds.grantedServices());
-        RebolFiles rebolFiles = new RebolFiles(new ClasspathFiles());
+        RebolFiles rebolFiles = new RebolFiles(this.ports.carriedFiles());
         Boot boot = Boot.makeStandard(this.ports.machine(), rebolFiles, duringBoot);
         this.bounds = bounds;
         SystemObject system = boot.start();
@@ -111,6 +112,7 @@ public final class Interpreter {
 
     public static HostPorts standardPorts() {
         return HostPorts.none()
+                .withCarriedFiles(new ClasspathFiles())
                 .withMachine(new JavaMachine())
                 .withPause(new ThreadPause());
     }
@@ -143,15 +145,14 @@ public final class Interpreter {
         return outcome;
     }
 
-    private static HostPorts anInterpreterIsBuiltWith(HostPorts ports) {
+    private void checkPorts(HostPorts ports) {
         if (ports == null) {
             throw new IllegalArgumentException(
-                    "an interpreter is built with its ports; use HostPorts.none() to reach nothing");
+                    "an interpreter is built with its ports; use standardPorts() for the JVM's own");
         }
         if (ports.machine().operatingSystem().isBlank()) {
             throw new IllegalArgumentException("Unknown operating system");
         }
-        return ports;
     }
 
     private void declareLauncherAfterLibraryLoads() {
