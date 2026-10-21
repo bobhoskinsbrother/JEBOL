@@ -250,7 +250,7 @@ public final class GobStorage {
     }
 
     /** Where a child sits in the pane, or zero when it is not in it. */
-    public int findThePositionOf(GobStorage child) {
+    public int panePosition(GobStorage child) {
         for (int at = 1; at <= pane.size(); at++) {
             if (pane.get(at - 1) instanceof GobValue held && held.storage() == child) {
                 return at;

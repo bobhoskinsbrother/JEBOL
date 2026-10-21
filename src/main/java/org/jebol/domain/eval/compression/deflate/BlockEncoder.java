@@ -130,7 +130,7 @@ final class BlockEncoder {
                 into.lengths, HuffmanCodes.OFFSET_LENGTHS_FROM, into.offsetCodewords);
     }
 
-    int findTheOffsetSlotOf(int offset) {
+    int offsetSlotFor(int offset) {
         int shift = (256 - offset) >>> OFFSET_SLOT_SHIFT_ABOVE_256;
         return OFFSET_SLOT_BELOW_257[(offset - 1) >> shift] + (shift << 1);
     }

@@ -122,23 +122,23 @@ public class WaitNative extends PortWakingNative {
                 return takeFirstWokenAndEmptyWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
-                findTheWakeListOf(queue).ifPresent(this::empty);
+                wakeList(queue).ifPresent(this::empty);
                 return NoneValue.none();
             }
         }
     }
 
     private Value takeFirstWokenAndEmptyWakeList(List<Value> waitedOn, PortValue queue) {
-        List<Value> woken = findTheWakeListOf(queue).map(AnyBlockValue::remaining).orElse(List.of());
+        List<Value> woken = wakeList(queue).map(AnyBlockValue::remaining).orElse(List.of());
         Value answer = waitedOn.stream()
                 .filter(one -> one instanceof PortValue && woken.contains(one))
                 .findFirst()
                 .orElse(NoneValue.none());
-        findTheWakeListOf(queue).ifPresent(this::empty);
+        wakeList(queue).ifPresent(this::empty);
         return answer;
     }
 
-    private Optional<AnyBlockValue> findTheWakeListOf(PortValue queue) {
+    private Optional<AnyBlockValue> wakeList(PortValue queue) {
         return queue.readFieldValue("data") instanceof AnyBlockValue list
                 ? Optional.of(list)
                 : Optional.empty();

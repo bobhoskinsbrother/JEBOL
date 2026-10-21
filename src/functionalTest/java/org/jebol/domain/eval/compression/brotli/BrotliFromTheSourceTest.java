@@ -253,7 +253,7 @@ class BrotliFromTheSourceTest {
         @DisplayName("and each length starts where the table says it does")
         void eachLengthStartsWhereItShould() {
             assertThat(new String(
-                    BrotliDictionary.readWordAt(BrotliDictionary.findTheOffsetFor(5), 15),
+                    BrotliDictionary.readWordAt(BrotliDictionary.offsetFor(5), 15),
                     java.nio.charset.StandardCharsets.US_ASCII))
                     .isEqualTo("firstvideolight");
         }
@@ -269,7 +269,7 @@ class BrotliFromTheSourceTest {
         private static String transformed(int which) {
             byte[] into = new byte[64];
             int howMany = BrotliDictionary.writeTransformedWord(
-                    into, 0, BrotliDictionary.findTheOffsetFor(4), 4, which);
+                    into, 0, BrotliDictionary.offsetFor(4), 4, which);
             return new String(into, 0, howMany,
                     java.nio.charset.StandardCharsets.US_ASCII);
         }

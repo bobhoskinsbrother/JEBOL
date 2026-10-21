@@ -72,8 +72,8 @@ public class ReflectAction extends DefaultNative implements ActionValue {
 
     private Value reflectFrom(NativeValue built, String field) {
         return switch (field) {
-            case "spec" -> declarations.findTheSpecOf(built);
-            case "words" -> declarations.findTheSpecOf(built).declaredParameters();
+            case "spec" -> declarations.specFor(built);
+            case "words" -> declarations.specFor(built).declaredParameters();
             case "types" -> built.listTypesets();
             default -> NoneValue.none();
         };

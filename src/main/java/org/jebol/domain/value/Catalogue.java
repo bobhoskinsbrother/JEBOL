@@ -95,7 +95,7 @@ public final class Catalogue {
         return entries;
     }
 
-    public int findThePositionOf(Datatype datatype) {
+    public int cataloguePosition(Datatype datatype) {
         return entries.indexOf(datatype) + 1;
     }
 

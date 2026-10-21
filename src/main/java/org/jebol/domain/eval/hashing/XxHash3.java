@@ -76,7 +76,7 @@ public final class XxHash3 extends XxHashFamily {
             long low = octets.readLittleEndianLongAt(message, 0) ^ flipLow;
             long high = octets.readLittleEndianLongAt(message, length - 8) ^ flipHigh;
             return avalanche(length + Long.reverseBytes(low) + high
-                    + foldTheProductOf(low, high));
+                    + foldProduct(low, high));
         }
         if (length >= 4) {
             long first = octets.readLittleEndianWordAt(message, 0) & 0xFFFFFFFFL;
@@ -103,7 +103,7 @@ public final class XxHash3 extends XxHashFamily {
     }
 
     private long mixSixteen(byte[] message, int at, int secretAt) {
-        return foldTheProductOf(
+        return foldProduct(
                 octets.readLittleEndianLongAt(message, at) ^ octets.readLittleEndianLongAt(SECRET, secretAt),
                 octets.readLittleEndianLongAt(message, at + 8) ^ octets.readLittleEndianLongAt(SECRET, secretAt + 8));
     }
@@ -195,7 +195,7 @@ public final class XxHash3 extends XxHashFamily {
     private long merge(long[] accumulators, int secretAt, long start) {
         long running = start;
         for (int pair = 0; pair < 4; pair++) {
-            running += foldTheProductOf(
+            running += foldProduct(
                     accumulators[2 * pair] ^ octets.readLittleEndianLongAt(SECRET, secretAt + 16 * pair),
                     accumulators[2 * pair + 1] ^ octets.readLittleEndianLongAt(SECRET, secretAt + 16 * pair + 8));
         }
@@ -341,7 +341,7 @@ public final class XxHash3 extends XxHashFamily {
         return takeBothHalvesFrom(accumulators, length);
     }
 
-    private long foldTheProductOf(long left, long right) {
+    private long foldProduct(long left, long right) {
         return left * right ^ UnsignedProducts.multiplyForHighHalf(left, right);
     }
 

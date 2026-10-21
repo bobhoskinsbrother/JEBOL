@@ -149,7 +149,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private Raised refuseToOpen(PortValue port, int devicesOwnNumber) {
-        return Raised.of(EvaluationFailure.CANNOT_OPEN, readTheReferenceOf(port), IntegerValue.of(devicesOwnNumber));
+        return Raised.of(EvaluationFailure.CANNOT_OPEN, portReference(port), IntegerValue.of(devicesOwnNumber));
     }
 
     private Value close(PortValue port, Evaluator evaluator) {
@@ -168,7 +168,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             port.setField("data", arrived);
             return arrived;
         } catch (MidiDevices.Refused refused) {
-            throw Raised.of(EvaluationFailure.READ_ERROR, readTheReferenceOf(port),
+            throw Raised.of(EvaluationFailure.READ_ERROR, portReference(port),
                     IntegerValue.of(refused.devicesOwnNumber()));
         }
     }
@@ -182,7 +182,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         try {
             connection.send(message.octetsFromHere());
         } catch (MidiDevices.Refused refused) {
-            throw Raised.of(EvaluationFailure.WRITE_ERROR, readTheReferenceOf(port),
+            throw Raised.of(EvaluationFailure.WRITE_ERROR, portReference(port),
                     IntegerValue.of(refused.devicesOwnNumber()));
         }
         return port;
@@ -197,7 +197,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {
         return findTheConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
-                readTheReferenceOf(port), IntegerValue.of(PORT_IS_NOT_OPEN)));
+                portReference(port), IntegerValue.of(PORT_IS_NOT_OPEN)));
     }
 
     private Optional<MidiDevices.Connection> findTheConnectionBehind(PortValue port) {
@@ -215,7 +215,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         return spec;
     }
 
-    private Value readTheReferenceOf(PortValue port) {
+    private Value portReference(PortValue port) {
         return portSpec(port).readFieldValue("ref");
     }
 

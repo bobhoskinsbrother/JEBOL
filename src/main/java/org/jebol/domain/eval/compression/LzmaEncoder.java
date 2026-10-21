@@ -91,14 +91,14 @@ final class LzmaEncoder {
         return table;
     }
 
-    private static int findTheSlotOf(int distance) {
+    private static int slotForDistance(int distance) {
         if (Integer.compareUnsigned(distance, FULL_DISTANCES) < 0) {
             return SLOT_OF_A_SMALL_DISTANCE[distance & (FULL_DISTANCES - 1)];
         }
-        return findTheSlotOfALargeDistance(distance);
+        return slotForLargeDistance(distance);
     }
 
-    private static int findTheSlotOfALargeDistance(int distance) {
+    private static int slotForLargeDistance(int distance) {
         int shift = Integer.compareUnsigned(distance, 1 << (LOG_BITS + 6)) < 0
                 ? 6
                 : 6 + LOG_BITS - 1;
@@ -401,7 +401,7 @@ final class LzmaEncoder {
         repeats[1] = repeats[0];
         repeats[0] = distance + 1;
         matchPriceCount++;
-        int slot = findTheSlotOf(distance);
+        int slot = slotForDistance(distance);
         writer.encodeSlot(slotEncoder,
                 mapLengthToPositionState(length) << POSITION_SLOT_BITS, slot);
         if (distance < START_POSITION_MODEL_INDEX) {
@@ -899,7 +899,7 @@ final class LzmaEncoder {
                 } else {
                     price += alignPrices[distance & ALIGN_MASK]
                             + slotPrices[span * DISTANCE_TABLE_SIZE_MAX
-                                    + findTheSlotOfALargeDistance(distance)];
+                                    + slotForLargeDistance(distance)];
                 }
                 if (price < choicePrice[length]) {
                     choicePrice[length] = price;
@@ -1149,7 +1149,7 @@ final class LzmaEncoder {
                     offset += 2;
                 }
                 int distance = matches[offset + 1];
-                int slot = findTheSlotOfALargeDistance(distance);
+                int slot = slotForLargeDistance(distance);
                 for (int length = startLength; ; length++) {
                     int price = normalMatchPrice
                             + matchLengthPrices.prices[positionState][length - MATCH_LEN_MIN];
@@ -1209,7 +1209,7 @@ final class LzmaEncoder {
                             break;
                         }
                         distance = matches[offset + 1];
-                        slot = findTheSlotOfALargeDistance(distance);
+                        slot = slotForLargeDistance(distance);
                     }
                 }
             }

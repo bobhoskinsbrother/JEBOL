@@ -232,7 +232,7 @@ class WhatEachScreenNativeDeclaresTest {
             holder.storage().insertChild(1, root);
             call(definition, makeAScreenOf(1), Set.of(), root);
             assertThat(root.storage().parent()).isNull();
-            assertThat(holder.storage().findThePositionOf(root.storage())).isNotPositive();
+            assertThat(holder.storage().panePosition(root.storage())).isNotPositive();
         }
 
         @Test

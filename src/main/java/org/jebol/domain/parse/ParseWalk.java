@@ -64,7 +64,7 @@ public interface ParseWalk {
 
     void assign(AnyWordValue word, Value value);
 
-    Integer findTheSameStorageOffset(Value item);
+    Integer sameStorageOffset(Value item);
 
     Value sliceBetween(int from, int to);
 

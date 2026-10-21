@@ -412,7 +412,7 @@ public final class LibContext {
         for (int at = 0; at + 1 < written.size(); at += 2) {
             if (written.get(at) instanceof AnyWordValue operator && written.get(at + 1) instanceof AnyWordValue twin) {
                 lib.register(operator.spelling(), new OperatorValue(operator.spelling(),
-                        findThePrefixTwinOf(operator, twin)));
+                        prefixTwin(operator, twin)));
             }
         }
     }
@@ -432,7 +432,7 @@ public final class LibContext {
     }
 
     private void registerWithItsDeclaredSpec(DefaultNative built) {
-        declare(built, declarations.findTheSpecOf(built));
+        declare(built, declarations.specFor(built));
         lib.register(built.nativeName(), built);
     }
 
@@ -440,7 +440,7 @@ public final class LibContext {
         built.declare(spec, new DeclaredArguments(spec).standInFor(built.parametersAsWritten()));
     }
 
-    private AnyFunctionValue findThePrefixTwinOf(AnyWordValue operator, AnyWordValue twin) {
+    private AnyFunctionValue prefixTwin(AnyWordValue operator, AnyWordValue twin) {
         String canonical = Context.canonicalise(twin.spelling());
         if (!lib.holds(canonical)
                 || !(lib.ownSlotFor(canonical).value() instanceof AnyFunctionValue function)) {

@@ -48,7 +48,7 @@ public final class ParseTargets {
         throw refuseNonVariable(read);
     }
 
-    public static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
+    public static void requireSeriesInput(Value rule, Value held) {
         if (!(held instanceof RebolSeries)) {
             throw Raised.of(EvaluationFailure.PARSE_SERIES, rule);
         }

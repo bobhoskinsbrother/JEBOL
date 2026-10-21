@@ -330,7 +330,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public Integer findTheSameStorageOffset(Value item) {
+    public Integer sameStorageOffset(Value item) {
         if (source == null || !(item instanceof AnyWordValue word) || !word.looksUpItsDeclaration() || (word instanceof WordValue && ParseTargets.WORDS_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
@@ -517,7 +517,7 @@ public final class Parser implements ParseWalk {
     private int seekToMark(AnyWordValue back) {
         Context holder = back.isBound() ? back.binding() : context;
         Value held = holder.contains(back.canonical()) ? holder.findSlotFor(back.canonical()).value() : NoneValue.none();
-        ParseTargets.refuseAnInputThatIsNotASeries(back, held);
+        ParseTargets.requireSeriesInput(back, held);
         if (!(held instanceof AnyBlockValue marked)) {
             return NO_MATCH;
         }
@@ -563,7 +563,7 @@ public final class Parser implements ParseWalk {
             return matchValueOverBlock(resolved) ? 1 : NO_MATCH;
         }
         if (rule instanceof GetPathValue path) {
-            ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context));
+            ParseTargets.requireSeriesInput(path, evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context));
             return NO_MATCH;
         }
         return matchValueOverBlock(rule) ? 1 : NO_MATCH;
@@ -822,7 +822,7 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof GetWordValue back) {
             Context holder = back.isBound() ? back.binding() : context;
-            ParseTargets.refuseAnInputThatIsNotASeries(back, slotValue(holder, back));
+            ParseTargets.requireSeriesInput(back, slotValue(holder, back));
             if (holder.findSlotFor(back.canonical()).value() instanceof AnyStringValue marked) {
                 if (!marked.sharesStorageWith(source)) {
                     adoptInput(marked);
@@ -863,7 +863,7 @@ public final class Parser implements ParseWalk {
 
     private int adoptInputNamedBy(AnyBlockValue path) {
         Value held = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
-        ParseTargets.refuseAnInputThatIsNotASeries(path, held);
+        ParseTargets.requireSeriesInput(path, held);
         if (held instanceof AnyStringValue marked) {
             adoptInput(marked);
             return 1;

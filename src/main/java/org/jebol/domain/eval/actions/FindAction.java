@@ -67,7 +67,7 @@ public class FindAction extends SeriesSearchAction {
         if (!(wanted instanceof GobValue child)) {
             return NoneValue.none();
         }
-        int at = searched.storage().findThePositionOf(child.storage());
+        int at = searched.storage().panePosition(child.storage());
         return at == 0 ? NoneValue.none() : searched.atIndex(at);
     }
 

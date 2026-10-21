@@ -26,7 +26,7 @@ public final class SeriesChange {
 
     public Value change(Value subject) {
         if (subject instanceof StructValue struct) {
-            refuseWhatAGobOrAStructDoesNotServe();
+            refuseGobOrStructChange();
             return struct.changeBy(replacement);
         }
         if (subject instanceof ImageValue picture) {
@@ -37,7 +37,7 @@ public final class SeriesChange {
             return replaceAcrossPart(stranded, part.get());
         }
         if (subject instanceof GobValue gob) {
-            refuseWhatAGobOrAStructDoesNotServe();
+            refuseGobOrStructChange();
             GobPath.pokeWhichInsertsRatherThanReplaces(gob, gob.index(), replacement);
             return gob.atIndex(gob.index() + 1);
         }
@@ -227,7 +227,7 @@ public final class SeriesChange {
                 : 1;
     }
 
-    private void refuseWhatAGobOrAStructDoesNotServe() {
+    private void refuseGobOrStructChange() {
         for (String unfinished : List.of("part", "only", "dup")) {
             if (refinements.contains(unfinished)) {
                 throw Raised.of(EvaluationFailure.FEATURE_NA,

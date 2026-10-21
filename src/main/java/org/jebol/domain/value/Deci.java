@@ -38,7 +38,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     public Deci(double quantity) {
-        this(SIGNIFICANDS.findTheShortestDigitsOf(quantity));
+        this(SIGNIFICANDS.decimalWithShortestDigits(quantity));
     }
 
     private Deci(Deci built) {

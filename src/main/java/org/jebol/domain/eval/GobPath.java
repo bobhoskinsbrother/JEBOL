@@ -49,14 +49,14 @@ public final class GobPath {
             case "effect" -> storage.readContentIfKind(GobStorage.Content.EFFECT);
             case "color" -> storage.readContentIfKind(GobStorage.Content.COLOUR);
             case "pane" -> BlockValue.of(storage.pane());
-            case "parent" -> findTheParentOf(storage);
+            case "parent" -> parentGob(storage);
             case "data" -> storage.data();
             case "flags" -> raisedFlagWords(storage);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, asked.spelling());
         };
     }
 
-    private static Value findTheParentOf(GobStorage storage) {
+    private static Value parentGob(GobStorage storage) {
         return storage.parent() == null
                 ? NoneValue.none()
                 : new GobValue(storage.parent(), 1);

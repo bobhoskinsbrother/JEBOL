@@ -44,11 +44,11 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         advanceOneByte(input, base, position, niceLength, niceLength, maxSearchDepth, cache, 0, false);
     }
 
-    private int findTheLeftChildOf(int node) {
+    private int leftChild(int node) {
         return 2 * (node & WINDOW_MASK);
     }
 
-    private int findTheRightChildOf(int node) {
+    private int rightChild(int node) {
         return 2 * (node & WINDOW_MASK) + 1;
     }
 
@@ -78,8 +78,8 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         }
         node = hash4Table[hash4];
         hash4Table[hash4] = (short) position;
-        int pendingLess = findTheLeftChildOf(position);
-        int pendingGreater = findTheRightChildOf(position);
+        int pendingLess = leftChild(position);
+        int pendingGreater = rightChild(position);
         if (node <= cutoff) {
             childTable[pendingLess] = NO_POSITION;
             childTable[pendingGreater] = NO_POSITION;
@@ -98,15 +98,15 @@ final class BinaryTreeMatchFinder extends MatchFinder {
                         cache.record(cacheAt++, length, next - match);
                     }
                     if (length >= niceLength) {
-                        childTable[pendingLess] = childTable[findTheLeftChildOf(node)];
-                        childTable[pendingGreater] = childTable[findTheRightChildOf(node)];
+                        childTable[pendingLess] = childTable[leftChild(node)];
+                        childTable[pendingGreater] = childTable[rightChild(node)];
                         return cacheAt;
                     }
                 }
             }
             if ((input[match + length] & 0xFF) < (input[next + length] & 0xFF)) {
                 childTable[pendingLess] = (short) node;
-                pendingLess = findTheRightChildOf(node);
+                pendingLess = rightChild(node);
                 node = childTable[pendingLess];
                 bestLessLength = length;
                 if (bestGreaterLength < length) {
@@ -114,7 +114,7 @@ final class BinaryTreeMatchFinder extends MatchFinder {
                 }
             } else {
                 childTable[pendingGreater] = (short) node;
-                pendingGreater = findTheLeftChildOf(node);
+                pendingGreater = leftChild(node);
                 node = childTable[pendingGreater];
                 bestGreaterLength = length;
                 if (bestLessLength < length) {

@@ -956,7 +956,7 @@ final class BrotliDictionary {
         return SIZE_BITS_BY_LENGTH[wordLength];
     }
 
-    static int findTheOffsetFor(int wordLength) {
+    static int offsetFor(int wordLength) {
         return OFFSETS_BY_LENGTH[wordLength];
     }
 

@@ -26,7 +26,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     }
 
     public int position() {
-        return Catalogue.DATATYPES.findThePositionOf(this);
+        return Catalogue.DATATYPES.cataloguePosition(this);
     }
 
     public int numberCGivesIt() {

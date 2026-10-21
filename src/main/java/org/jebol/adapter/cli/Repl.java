@@ -312,8 +312,8 @@ public final class Repl {
         }
 
         private String asScriptSeesIt(Path host) {
-            Path absolute = findTheRealPathOf(host);
-            Path realRoot = findTheRealPathOf(root);
+            Path absolute = realPath(host);
+            Path realRoot = realPath(root);
             if (!absolute.startsWith(realRoot)) {
                 return nameRoot();
             }
@@ -321,7 +321,7 @@ public final class Repl {
             return inside.isEmpty() ? nameRoot() : "/" + inside;
         }
 
-        private Path findTheRealPathOf(Path host) {
+        private Path realPath(Path host) {
             try {
                 return host.toRealPath();
             } catch (IOException notThere) {

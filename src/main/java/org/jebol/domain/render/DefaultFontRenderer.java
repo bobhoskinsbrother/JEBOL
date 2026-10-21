@@ -42,10 +42,10 @@ public final class DefaultFontRenderer {
     }
 
     public TextMeasurement measure() {
-        return this::measureTheExtentOf;
+        return this::textExtent;
     }
 
-    private TextExtent measureTheExtentOf(TextRun run) {
+    private TextExtent textExtent(TextRun run) {
         double scale = run.size() / unitsPerEm;
         double wide = 0;
         String text = run.text();

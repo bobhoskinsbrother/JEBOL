@@ -45,11 +45,11 @@ final class BrotliBinaryTreeHasher {
         return (fourBytes * MIXING_MULTIPLIER) >>> (32 - BUCKET_BITS);
     }
 
-    private int findTheLeftChildOf(int position) {
+    private int leftChild(int position) {
         return 2 * (position & windowMask);
     }
 
-    private int findTheRightChildOf(int position) {
+    private int rightChild(int position) {
         return 2 * (position & windowMask) + 1;
     }
 
@@ -62,8 +62,8 @@ final class BrotliBinaryTreeHasher {
         boolean shouldReRoot = maxLength >= LONGEST_COMPARED;
         int slot = hashSlotFor(data, here);
         int previousAt = buckets[slot];
-        int nodeLeft = findTheLeftChildOf(at);
-        int nodeRight = findTheRightChildOf(at);
+        int nodeLeft = leftChild(at);
+        int nodeRight = rightChild(at);
         int bestLeft = 0;
         int bestRight = 0;
         int written = writtenSoFar;
@@ -93,8 +93,8 @@ final class BrotliBinaryTreeHasher {
             }
             if (length >= mostToCompare) {
                 if (shouldReRoot) {
-                    forest[nodeLeft] = forest[findTheLeftChildOf(previousAt)];
-                    forest[nodeRight] = forest[findTheRightChildOf(previousAt)];
+                    forest[nodeLeft] = forest[leftChild(previousAt)];
+                    forest[nodeRight] = forest[rightChild(previousAt)];
                 }
                 break;
             }
@@ -103,14 +103,14 @@ final class BrotliBinaryTreeHasher {
                 if (shouldReRoot) {
                     forest[nodeLeft] = previousAt;
                 }
-                nodeLeft = findTheRightChildOf(previousAt);
+                nodeLeft = rightChild(previousAt);
                 previousAt = forest[nodeLeft];
             } else {
                 bestRight = length;
                 if (shouldReRoot) {
                     forest[nodeRight] = previousAt;
                 }
-                nodeRight = findTheLeftChildOf(previousAt);
+                nodeRight = leftChild(previousAt);
                 previousAt = forest[nodeRight];
             }
         }

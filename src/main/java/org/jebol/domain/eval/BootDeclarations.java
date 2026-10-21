@@ -89,7 +89,7 @@ public final class BootDeclarations {
         return Optional.ofNullable(readTheDatatypeSpecs().get(datatype.spelling()));
     }
 
-    public AnyBlockValue findTheSpecOf(NativeValue built) {
+    public AnyBlockValue specFor(NativeValue built) {
         if (built.ownSpec().isPresent()) {
             return built.ownSpec().orElseThrow();
         }

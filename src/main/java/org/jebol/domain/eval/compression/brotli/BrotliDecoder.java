@@ -364,7 +364,7 @@ final class BrotliDecoder {
                         "Brotli names a transform that is not there");
             }
             recentDistanceAt += howFarTheRecentDistanceCursorWasRolledBack;
-            int wordAt = BrotliDictionary.findTheOffsetFor(wordLength) + wordIndex * wordLength;
+            int wordAt = BrotliDictionary.offsetFor(wordLength) + wordIndex * wordLength;
             makeRoom(LONGEST_TRANSFORMED_WORD);
             int written = BrotliDictionary.writeTransformedWord(
                     out, outAt, wordAt, wordLength, transform);

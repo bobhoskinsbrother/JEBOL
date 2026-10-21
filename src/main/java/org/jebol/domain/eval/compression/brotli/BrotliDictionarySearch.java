@@ -49,7 +49,7 @@ final class BrotliDictionarySearch {
             return false;
         }
         byte[] words = BrotliDictionary.readWords();
-        int wordAt = BrotliDictionary.findTheOffsetFor(wordLength) + wordLength * wordIndex;
+        int wordAt = BrotliDictionary.offsetFor(wordLength) + wordLength * wordIndex;
         int agreeing = countTheAgreeingBytes(data, at, words, wordAt, wordLength);
         if (agreeing == 0 || agreeing + MOST_THAT_MAY_BE_CUT <= wordLength) {
             return false;

@@ -61,7 +61,7 @@ abstract class DeflateParser {
     }
 
     int chooseMatch(int length, int offset, boolean gatheringStatistics, Sequences sequences, int sequence) {
-        int offsetSlot = encoder.findTheOffsetSlotOf(offset);
+        int offsetSlot = encoder.offsetSlotFor(offset);
         encoder.litlenFrequencies[FIRST_LENGTH_SYMBOL + LENGTH_SLOT[length]]++;
         encoder.offsetFrequencies[offsetSlot]++;
         if (gatheringStatistics) {

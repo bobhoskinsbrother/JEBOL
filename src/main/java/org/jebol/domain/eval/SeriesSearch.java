@@ -57,8 +57,8 @@ public final class SeriesSearch {
         boolean forcedToSingleStep = refinements.contains("reverse")
                 || refinements.contains("last");
         return forcedToSingleStep || stride == 1 || stride == 0
-                ? findThePositionOfMatch()
-                : findThePositionOfMatchInRecords();
+                ? matchPosition()
+                : matchPositionInRecords();
     }
 
     private boolean seeksEmptyRun() {
@@ -113,7 +113,7 @@ public final class SeriesSearch {
                 : 1;
     }
 
-    private int findThePositionOfMatch() {
+    private int matchPosition() {
         boolean lookingBehind = refinements.contains("reverse");
         boolean takingTheLast = refinements.contains("last");
         List<Value> items = series.head().listTheItems();
@@ -267,7 +267,7 @@ public final class SeriesSearch {
         return runMatchesAt(items, at, run, true);
     }
 
-    private int findThePositionOfMatchInRecords() {
+    private int matchPositionInRecords() {
         boolean backwards = stride < 0 || refinements.contains("reverse")
                 || refinements.contains("last");
         int width = (int) Math.abs(stride);

@@ -20,7 +20,7 @@ final class Change extends DeclaredKeyword {
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         refuseModifierBeforeRule(rules.get(at + 1));
-        Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
+        Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
                 throw Raised.of(EvaluationFailure.PARSE_END,
@@ -46,7 +46,7 @@ final class Change extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
+        Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
                 return ParseWalk.NO_MATCH;

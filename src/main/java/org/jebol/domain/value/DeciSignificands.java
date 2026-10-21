@@ -123,7 +123,7 @@ final class DeciSignificands {
         return new Scaled(significand, raised);
     }
 
-    Deci findTheShortestDigitsOf(double quantity) {
+    Deci decimalWithShortestDigits(double quantity) {
         boolean signed = quantity < 0 || (quantity == 0 && 1 / quantity < 0);
         if (Double.isNaN(quantity) || Double.isInfinite(quantity) || quantity == 0) {
             return new Deci(BigInteger.ZERO, 0, signed);
