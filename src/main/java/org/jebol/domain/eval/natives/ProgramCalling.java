@@ -55,7 +55,7 @@ final class ProgramCalling {
         output.ifPresent(buffer -> result.capturedOutput().ifPresent(bytes -> appendInto(buffer, bytes)));
         errors.ifPresent(buffer -> result.capturedError().ifPresent(bytes -> appendInto(buffer, bytes)));
         if (answersAnObject) {
-            return makeTheInformationObject(result, evaluator);
+            return makeInformationObject(result, evaluator);
         }
         if (result.refusalMessage().isPresent()) {
             throw Raised.of(EvaluationFailure.CALL_FAIL, StringValue.of(result.refusalMessage().orElseThrow()));
@@ -156,7 +156,7 @@ final class ProgramCalling {
     private void refuseABufferThatIsNeitherAStringNorABinary() {
     }
 
-    private Value makeTheInformationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {
+    private Value makeInformationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {
         Context fields = Context.makeChildOf(evaluator.systemContext());
         ObjectValue built = new ObjectValue(fields);
         fields.pointItsOwnSelfAt(built);

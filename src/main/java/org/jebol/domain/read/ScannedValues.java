@@ -519,7 +519,7 @@ final class ScannedValues {
                 separator = at(cp++);
                 if (cp >= end) {
                     scannedTo = cp;
-                    return Optional.of(makeADate(year, month, day, time, zone));
+                    return Optional.of(makeDate(year, month, day, time, zone));
                 }
                 time = scanATime(cp);
                 if (time.isEmpty() || time.get().nanoseconds() < 0
@@ -536,7 +536,7 @@ final class ScannedValues {
                     return Optional.empty();
                 }
                 scannedTo = cp;
-                return Optional.of(makeADate(year, month, day, time, zone));
+                return Optional.of(makeDate(year, month, day, time, zone));
             }
             if (at(cp) == '-' || at(cp) == '+') {
                 ep = findIntegerEnd(cp + 1);
@@ -574,7 +574,7 @@ final class ScannedValues {
             }
         }
         scannedTo = cp;
-        return Optional.of(makeADate(year, month, day, time, zone));
+        return Optional.of(makeDate(year, month, day, time, zone));
     }
 
     private boolean namesTheMonth(int month, int from, int size) {
@@ -588,7 +588,7 @@ final class ScannedValues {
         return true;
     }
 
-    private Value makeADate(int year, int month, int day, Optional<TimeValue> time, int zone) {
+    private Value makeDate(int year, int month, int day, Optional<TimeValue> time, int zone) {
         if (time.isEmpty() && zone == 0) {
             return DateValue.of(year, month, day);
         }

@@ -43,7 +43,7 @@ public final class DecimalValue extends AnyDecimalValue {
     }
 
     @Override
-    DecimalValue makeTheSameKindHolding(double another) {
+    DecimalValue makeSameKindHolding(double another) {
         return new DecimalValue(another);
     }
 

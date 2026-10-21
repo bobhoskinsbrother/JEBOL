@@ -33,7 +33,7 @@ final class BrotliBlockSplitter {
         int mostTypes = Math.min(mostBlocks, BrotliBlockSplit.MOST_TYPES_ALLOWED + 1);
         split.makeRoomFor(mostBlocks);
         split.setTheBlockCount(mostBlocks);
-        this.histograms = BrotliHistogram.makeAFreshRow(mostTypes, alphabetSize);
+        this.histograms = BrotliHistogram.makeFreshRow(mostTypes, alphabetSize);
         this.howManyHistogramsAreUsed = mostTypes;
         this.merged[0] = new BrotliHistogram(alphabetSize);
         this.merged[1] = new BrotliHistogram(alphabetSize);

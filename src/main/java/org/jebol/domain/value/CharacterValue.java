@@ -154,13 +154,13 @@ public record CharacterValue(int codepoint) implements Value {
                 case StringValue text -> CharacterValue.of(text.text().codePointAt(0));
                 case BinaryValue octets -> decodeTheLeadingCharacter(octets);
                 case IssueValue issue -> decodeAHexIssue(issue);
-                case IntegerValue whole -> makeTheCharacterAt(whole.magnitude());
-                case DecimalValue number -> makeTheCharacterAt((long) number.quantity());
+                case IntegerValue whole -> makeCharacterAt(whole.magnitude());
+                case DecimalValue number -> makeCharacterAt((long) number.quantity());
                 default -> throw refuse(from);
             };
         }
 
-        private Value makeTheCharacterAt(long asked) {
+        private Value makeCharacterAt(long asked) {
             if (asked < Integer.MIN_VALUE || asked > Integer.MAX_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(asked));
             }

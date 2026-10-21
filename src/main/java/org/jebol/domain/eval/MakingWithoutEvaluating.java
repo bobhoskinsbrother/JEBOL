@@ -36,7 +36,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+    public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
         return bindAFunction(spec, body);
     }
 

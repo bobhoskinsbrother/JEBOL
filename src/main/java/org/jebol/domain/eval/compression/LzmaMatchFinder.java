@@ -11,9 +11,9 @@ final class LzmaMatchFinder {
     private static final int CRC_POLYNOMIAL = 0xEDB88320;
     private static final int MAX_HISTORY_SIZE = 7 << 29;
 
-    private static final int[] CRC = makeTheCrcTable();
+    private static final int[] CRC = makeCrcTable();
 
-    private static int[] makeTheCrcTable() {
+    private static int[] makeCrcTable() {
         int[] table = new int[256];
         for (int each = 0; each < 256; each++) {
             int running = each;

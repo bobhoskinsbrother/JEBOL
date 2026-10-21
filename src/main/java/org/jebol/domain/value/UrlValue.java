@@ -49,7 +49,7 @@ public final class UrlValue extends AnyStringValue {
     }
 
     @Override
-    UrlValue makeTheSameKindOver(StringStorage storage, int index) {
+    UrlValue makeSameKindOver(StringStorage storage, int index) {
         return new UrlValue(storage, index);
     }
 

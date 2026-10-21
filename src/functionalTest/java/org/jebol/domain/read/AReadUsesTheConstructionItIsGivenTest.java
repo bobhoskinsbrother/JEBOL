@@ -35,7 +35,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         }
 
         @Override
-        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
             return WHAT_THE_FUNCTION_BUILDER_MADE;
         }
     }
@@ -48,7 +48,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         }
 
         @Override
-        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalArgumentException("refused");
         }
     }

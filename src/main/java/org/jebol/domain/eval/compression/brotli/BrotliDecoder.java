@@ -64,9 +64,9 @@ final class BrotliDecoder {
             int copyOffset) {
     }
 
-    private static final Command[] COMMANDS = makeTheCommandTable();
+    private static final Command[] COMMANDS = makeCommandTable();
 
-    private static Command[] makeTheCommandTable() {
+    private static Command[] makeCommandTable() {
         Command[] table = new Command[COMMAND_SYMBOLS];
         for (int symbol = 0; symbol < COMMAND_SYMBOLS; symbol++) {
             int cell = symbol >> 6;

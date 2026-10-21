@@ -31,7 +31,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyStringValue makeTheSameKindOver(StringStorage storage, int index);
+    abstract AnyStringValue makeSameKindOver(StringStorage storage, int index);
 
     public abstract String mold();
 
@@ -91,7 +91,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     public AnyStringValue wrap(String text) {
-        return makeTheSameKindOver(StringStorage.of(text), 1);
+        return makeSameKindOver(StringStorage.of(text), 1);
     }
 
     public StringStorage storage() {
@@ -351,7 +351,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
 
     @Override
     public AnyStringValue atIndex(int oneBasedIndex) {
-        return makeTheSameKindOver(storage, oneBasedIndex);
+        return makeSameKindOver(storage, oneBasedIndex);
     }
 
     @Override

@@ -45,12 +45,12 @@ public class SetSchemeNative extends DefaultNative {
                 return NoneValue.none();
             }
             fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR)
-                    .setBeneathAnyProtection(makeTheNativeActorFor(named));
+                    .setBeneathAnyProtection(makeNativeActorFor(named));
             return LogicValue.of(true);
         };
     }
 
-    private Value makeTheNativeActorFor(AnyWordValue named) {
+    private Value makeNativeActorFor(AnyWordValue named) {
         if (named.canonical().equals("midi")) {
             return new MidiSchemeActor(granted);
         }

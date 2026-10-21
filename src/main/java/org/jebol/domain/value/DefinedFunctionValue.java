@@ -67,13 +67,13 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
                     || !(definition.remaining().get(1) instanceof BlockValue body)) {
                 throw refuseTheConstruction(contents);
             }
-            return construction.makeAFunction(functionSpec, body);
+            return construction.makeFunction(functionSpec, body);
         }
     }
 
-    public abstract DefinedFunctionValue makeTheSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead);
+    public abstract DefinedFunctionValue makeSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead);
 
-    public abstract Context makeAFreshCallFrame();
+    public abstract Context makeFreshCallFrame();
 
     public AnyBlockValue spec() {
         return spec;

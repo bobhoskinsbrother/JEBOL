@@ -475,11 +475,11 @@ public final class CryptPort {
             working.chaining = fitTo(working.vector, Camellia.BLOCK);
             return;
         }
-        working.running = makeACipherFor(working, works.mode() == Mode.CHAINED
+        working.running = makeCipherFor(working, works.mode() == Mode.CHAINED
                 || works.mode() == Mode.STREAM);
     }
 
-    private OneBlock makeTheBlockCipherBehind(
+    private OneBlock makeBlockCipherBehind(
             Working working, boolean undoing) {
 
         Cipherworks works = working.works();
@@ -498,7 +498,7 @@ public final class CryptPort {
         }
     }
 
-    private Cipher makeACipherFor(Working working, boolean needsAVector) {
+    private Cipher makeCipherFor(Working working, boolean needsAVector) {
         Cipherworks works = working.works();
         try {
             Cipher cipher = Cipher.getInstance(works.transformation());
@@ -544,7 +544,7 @@ public final class CryptPort {
 
     private byte[] runThroughAWrittenOutCipher(
             Working working, byte[] octets) {
-        OneBlock cipher = makeTheBlockCipherBehind(working, working.decrypting);
+        OneBlock cipher = makeBlockCipherBehind(working, working.decrypting);
         if (working.works().mode() == Mode.CODEBOOK) {
             return BlockModes.runCodebook(cipher, octets);
         }
@@ -597,7 +597,7 @@ public final class CryptPort {
 
     private void runThroughCounterWithCbcMac(Working working) {
         OneBlock cipher =
-                makeTheBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
+                makeBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
         CounterWithCbcMac.Sealed answer = working.decrypting
                 ? counterWithCbcMac.decipher(cipher, working.vector,
                         working.tagOctets, working.authenticated,
@@ -666,7 +666,7 @@ public final class CryptPort {
 
     private CounterWithGalois.Sealed sealWithGalois(Working working) {
         return CounterWithGalois.seal(
-                makeTheBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE),
+                makeBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE),
                 working.vector,
                 working.authenticated, working.gatheredForGalois,
                 working.decrypting);

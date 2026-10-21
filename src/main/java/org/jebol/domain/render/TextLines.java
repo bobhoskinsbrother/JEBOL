@@ -276,7 +276,7 @@ public final class TextLines {
                 .mapToInt(Letter::codePoint)
                 .filter(codePoint -> codePoint != Letter.STANDS_FOR_AN_EMPTY_PIECE)
                 .toArray();
-        return makeAPiece(first.run(), first.character(), new String(characters, 0, characters.length),
+        return makePiece(first.run(), first.character(), new String(characters, 0, characters.length),
                 runs.get(first.run()));
     }
 
@@ -290,7 +290,7 @@ public final class TextLines {
             for (int at = 0; at <= characters.length; at++) {
                 boolean endsTheRun = at == characters.length;
                 if (endsTheRun || characters[at] == A_NEWLINE) {
-                    current.add(makeAPiece(run, from, new String(characters, from, at - from), font));
+                    current.add(makePiece(run, from, new String(characters, from, at - from), font));
                     if (!endsTheRun) {
                         laid.add(current);
                         current = new ArrayList<>();
@@ -305,7 +305,7 @@ public final class TextLines {
         return laid;
     }
 
-    private Piece makeAPiece(int run, int from, String text, TextRun font) {
+    private Piece makePiece(int run, int from, String text, TextRun font) {
         return new Piece(run, from, text, font, measure.measureTheExtentOf(withText(font, text)).wide());
     }
 

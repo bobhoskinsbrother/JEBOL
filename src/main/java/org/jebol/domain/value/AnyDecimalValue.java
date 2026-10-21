@@ -18,7 +18,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyDecimalValue makeTheSameKindHolding(double another);
+    abstract AnyDecimalValue makeSameKindHolding(double another);
 
     public double quantity() {
         return quantity;
@@ -26,7 +26,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
 
     @Override
     public Value randomise(RandomDraw draw) {
-        return makeTheSameKindHolding(draw.fraction() * quantity);
+        return makeSameKindHolding(draw.fraction() * quantity);
     }
 
     @Override
@@ -41,17 +41,17 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
 
     @Override
     public Value makeAbsolute() {
-        return quantity == 0.0 ? this : makeTheSameKindHolding(Math.abs(quantity));
+        return quantity == 0.0 ? this : makeSameKindHolding(Math.abs(quantity));
     }
 
     @Override
     public Value negated() {
-        return makeTheSameKindHolding(-quantity);
+        return makeSameKindHolding(-quantity);
     }
 
     @Override
     public Value holdBetween(Value lowest, Value highest) {
-        return makeTheSameKindHolding(Math.max(((AnyDecimalValue) lowest).quantity,
+        return makeSameKindHolding(Math.max(((AnyDecimalValue) lowest).quantity,
                 Math.min(((AnyDecimalValue) highest).quantity, quantity)));
     }
 

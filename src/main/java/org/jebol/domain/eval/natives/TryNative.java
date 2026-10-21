@@ -43,7 +43,7 @@ public class TryNative extends DefaultNative {
                 if (!refinements.contains("all")) {
                     throw escaping;
                 }
-                failure = makeTheErrorStandingFor(escaping);
+                failure = makeErrorStandingFor(escaping);
             }
             evaluator.setSystemState("last-error", failure);
             return refinements.contains("with")
@@ -52,7 +52,7 @@ public class TryNative extends DefaultNative {
         };
     }
 
-    private ErrorValue makeTheErrorStandingFor(RuntimeException escaping) {
+    private ErrorValue makeErrorStandingFor(RuntimeException escaping) {
         return switch (escaping) {
             case ThrownSignal thrown -> ErrorValue.of(ErrorCategory.THROW, "throw",
                     "a throw that nothing caught",

@@ -100,7 +100,7 @@ public final class BootDeclarations {
         return makeTheSpecBlockOf(built.parameters());
     }
 
-    public AnyBlockValue makeTheSpecEveryDatatypeTestHas() {
+    public AnyBlockValue makeSpecEveryDatatypeTestHas() {
         return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 

@@ -40,13 +40,13 @@ public final class BlockValue extends AnyBlockValue {
     }
 
     @Override
-    BlockValue makeTheSameKindOver(BlockStorage storage, int index) {
+    BlockValue makeSameKindOver(BlockStorage storage, int index) {
         return new BlockValue(storage, index);
     }
 
     @Override
     public BlockValue atIndex(int oneBasedIndex) {
-        return makeTheSameKindOver(storage(), oneBasedIndex);
+        return makeSameKindOver(storage(), oneBasedIndex);
     }
 
     @Override

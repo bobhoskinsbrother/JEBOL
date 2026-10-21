@@ -166,7 +166,7 @@ public class WaitNative extends PortWakingNative {
     private boolean doesAQueuedEventWake(PortValue port, Evaluator evaluator) {
         Optional<ScreenEvent> next = evaluator.ports().screen().acceptNextEvent();
         while (next.isPresent()) {
-            if (wakes(port, makeAGuiEventFor(next.get()), evaluator)) {
+            if (wakes(port, makeGuiEventFor(next.get()), evaluator)) {
                 return true;
             }
             next = evaluator.ports().screen().acceptNextEvent();
@@ -205,7 +205,7 @@ public class WaitNative extends PortWakingNative {
         return root instanceof GobValue gob && gob.storage().length() > 0;
     }
 
-    private EventValue makeAGuiEventFor(ScreenEvent reported) {
+    private EventValue makeGuiEventFor(ScreenEvent reported) {
         List<Value> spec = new ArrayList<>(List.of(
                 SetWordValue.of("type"), LitWordValue.of(reported.type().spelling())));
         spec.addAll(reported.window() == null

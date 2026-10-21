@@ -24,13 +24,13 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                makeAnObjectFrom((AnyBlockValue) arguments.getFirst(), evaluator, context);
+                makeObjectFrom((AnyBlockValue) arguments.getFirst(), evaluator, context);
     }
 
-    protected ObjectValue makeAnObjectFrom(
+    protected ObjectValue makeObjectFrom(
             AnyBlockValue spec, Evaluator evaluator, Context enclosing) {
 
-        return evaluator.evaluateInto(evaluator.makeAFreshObjectWithin(enclosing), spec);
+        return evaluator.evaluateInto(evaluator.makeFreshObjectWithin(enclosing), spec);
     }
 
 }

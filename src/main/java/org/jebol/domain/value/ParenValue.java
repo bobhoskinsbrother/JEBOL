@@ -41,7 +41,7 @@ public final class ParenValue extends AnyBlockValue {
     }
 
     @Override
-    ParenValue makeTheSameKindOver(BlockStorage storage, int index) {
+    ParenValue makeSameKindOver(BlockStorage storage, int index) {
         return new ParenValue(storage, index);
     }
 }

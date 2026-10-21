@@ -41,7 +41,7 @@ public class RenameAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
-            PortValue from = ports.makeAPortFor(asked, evaluator, context);
+            PortValue from = ports.makePortFor(asked, evaluator, context);
             return evaluator.askTheRebolActor(nativeName(), List.of(from, arguments.get(1)), Set.of())
                     .orElseGet(() -> rename(asked, from, arguments.get(1), evaluator));
         };

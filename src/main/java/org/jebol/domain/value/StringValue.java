@@ -24,7 +24,7 @@ public final class StringValue extends AnyStringValue {
     }
 
     @Override
-    StringValue makeTheSameKindOver(StringStorage storage, int index) {
+    StringValue makeSameKindOver(StringStorage storage, int index) {
         return new StringValue(storage, index);
     }
 

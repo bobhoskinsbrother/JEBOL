@@ -24,7 +24,7 @@ public final class TagValue extends AnyStringValue {
     }
 
     @Override
-    TagValue makeTheSameKindOver(StringStorage storage, int index) {
+    TagValue makeSameKindOver(StringStorage storage, int index) {
         return new TagValue(storage, index);
     }
 

@@ -54,12 +54,12 @@ public class LoadExtensionNative extends DefaultNative {
             if (dispatcher.isEmpty()) {
                 throw refuseNativeCode(name, evaluator);
             }
-            return makeAnExtensionHolding(makeAFreshExtensionHandleFor((HandleValue) dispatcher.get(), evaluator),
+            return makeExtensionHolding(makeFreshExtensionHandleFor((HandleValue) dispatcher.get(), evaluator),
                     readSourceIn(name), evaluator);
         };
     }
 
-    private HandleValue makeAFreshExtensionHandleFor(HandleValue given, Evaluator evaluator) {
+    private HandleValue makeFreshExtensionHandleFor(HandleValue given, Evaluator evaluator) {
         Value carried = new DispatcherHandle(given).findTheDispatcher()
                 .<Value>map(JavaObjectValue::of)
                 .orElseGet(NoneValue::none);
@@ -81,7 +81,7 @@ public class LoadExtensionNative extends DefaultNative {
                 : BinaryValue.ofBytes(((AnyStringValue) name).text().getBytes(StandardCharsets.UTF_8));
     }
 
-    private ObjectValue makeAnExtensionHolding(HandleValue handle, BinaryValue source, Evaluator evaluator) {
+    private ObjectValue makeExtensionHolding(HandleValue handle, BinaryValue source, Evaluator evaluator) {
         Context fields = Context.root();
         if (evaluator.systemContext().readValueAt("system", "standard", "extension") instanceof ObjectValue(Context standard)) {
             standard.slots().forEach(slot -> fields.register(slot.spelling(), NoneValue.none()));

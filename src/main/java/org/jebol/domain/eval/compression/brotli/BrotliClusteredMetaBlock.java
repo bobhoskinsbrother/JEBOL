@@ -31,10 +31,10 @@ final class BrotliClusteredMetaBlock {
         int distanceHistograms =
                 built.distances.countTheTypes() << DISTANCE_CONTEXT_BITS;
         BrotliHistogram[] byContext =
-                BrotliHistogram.makeAFreshRow(literalHistograms, LITERAL_SYMBOLS);
-        BrotliHistogram[] distanceByContext = BrotliHistogram.makeAFreshRow(
+                BrotliHistogram.makeFreshRow(literalHistograms, LITERAL_SYMBOLS);
+        BrotliHistogram[] distanceByContext = BrotliHistogram.makeFreshRow(
                 distanceHistograms, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
-        built.commandHistograms = BrotliHistogram.makeAFreshRow(
+        built.commandHistograms = BrotliHistogram.makeFreshRow(
                 built.commands.countTheTypes(), BrotliCodes.COMMAND_SYMBOLS);
         built.howManyCommandHistograms = built.commands.countTheTypes();
 
@@ -44,14 +44,14 @@ final class BrotliClusteredMetaBlock {
 
         built.literalContextMap = new int[literalHistograms];
         BrotliHistogram[] literalSurvivors =
-                BrotliHistogram.makeAFreshRow(literalHistograms, LITERAL_SYMBOLS);
+                BrotliHistogram.makeFreshRow(literalHistograms, LITERAL_SYMBOLS);
         built.howManyLiteralHistograms = BrotliClustering.clusterInto(byContext,
                 literalHistograms, literalSurvivors, built.literalContextMap,
                 LITERAL_SYMBOLS);
         built.literalHistograms = literalSurvivors;
 
         built.distanceContextMap = new int[distanceHistograms];
-        BrotliHistogram[] distanceSurvivors = BrotliHistogram.makeAFreshRow(
+        BrotliHistogram[] distanceSurvivors = BrotliHistogram.makeFreshRow(
                 distanceHistograms, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
         built.howManyDistanceHistograms = BrotliClustering.clusterInto(
                 distanceByContext, distanceHistograms, distanceSurvivors,

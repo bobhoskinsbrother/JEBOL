@@ -232,7 +232,7 @@ public final class Evaluator {
         return construction;
     }
 
-    public Maker makeAMakerIn(Context where) {
+    public Maker makeMakerIn(Context where) {
         return makerSource.makeMakerFor(this, where);
     }
 
@@ -367,7 +367,7 @@ public final class Evaluator {
             case DefinedFunctionValue function -> {
                 List<Parameter> parameters = function.parameters();
                 checkArgumentTypes(parameters, arguments, AN_APPLIED_FUNCTION);
-                Context locals = function.makeAFreshCallFrame();
+                Context locals = function.makeFreshCallFrame();
                 function.localNames().forEach(
                         name -> locals.register(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
@@ -504,7 +504,7 @@ public final class Evaluator {
         return walk(code, context, 1, null);
     }
 
-    public ObjectValue makeAFreshObjectWithin(Context enclosing) {
+    public ObjectValue makeFreshObjectWithin(Context enclosing) {
         ObjectValue built = new ObjectValue(Context.makeChildOf(enclosing));
         built.context().pointItsOwnSelfAt(built);
         return built;
@@ -843,7 +843,7 @@ public final class Evaluator {
                     int wroteTheOperatorAt = frame.position;
                     frame.advance();
                     PendingCall infix =
-                            PendingCall.makeAnInfix(operator.orElseThrow(), carrying);
+                            PendingCall.makeInfix(operator.orElseThrow(), carrying);
                     infix.startAt(wroteTheOperatorAt,
                             readNameWrittenAt(frame, wroteTheOperatorAt, AN_OPERATOR_TAKES_NO_REFINEMENT));
                     frame.pendingCalls.push(infix);
@@ -951,7 +951,7 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NEED_VALUE, word);
         }
         word.refuseToBeWrittenWhenItReachesItsContextsOwnSelf();
-        frame.pendingCalls.push(PendingCall.makeAnAssignment(slot));
+        frame.pendingCalls.push(PendingCall.makeAssignment(slot));
         return StepOutcome.waiting();
     }
 
@@ -1146,7 +1146,7 @@ public final class Evaluator {
         checkArgumentTypes(function.parameters(),
                 refinements::contains, arguments, call.nameInAnArgumentError());
         call.enter();
-        Context locals = function.makeAFreshCallFrame();
+        Context locals = function.makeFreshCallFrame();
 
         int at = 0;
         for (Parameter parameter : function.parameters()) {
@@ -1307,7 +1307,7 @@ public final class Evaluator {
         if (frame.atEnd()) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
-        frame.pendingCalls.push(PendingCall.makeAnAssignmentInto(
+        frame.pendingCalls.push(PendingCall.makeAssignmentInto(
                 written -> writeThroughPath(frame, path, written)));
         return StepOutcome.waiting();
     }
@@ -1351,7 +1351,7 @@ public final class Evaluator {
         if (segments.size() == 3 && lastSegment instanceof IntegerValue(long magnitude1)
                 && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof ImageValue image) {
-            Value pixelSegment = makeTheSelectorFor(segments.get(1), frame.context);
+            Value pixelSegment = makeSelectorFor(segments.get(1), frame.context);
             ImagePath.writeOneChannel(
                     image, pixelSegment, (int) magnitude1, written);
             return;
@@ -1372,12 +1372,12 @@ public final class Evaluator {
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.readField(holdingPair, pairField) instanceof PairValue half) {
             GobPath.write(holdingPair, pairField, half.withHalfWritten(
-                    makeTheSelectorFor(lastSegment, frame.context), written));
+                    makeSelectorFor(lastSegment, frame.context), written));
             return;
         }
         if (target instanceof PathTarget steppedInto) {
             steppedInto.writeThrough(
-                    place, makeTheSelectorFor(lastSegment, frame.context), written);
+                    place, makeSelectorFor(lastSegment, frame.context), written);
             return;
         }
         if (segments.size() >= 3 && target instanceof AnyBlockValue elements
@@ -1389,7 +1389,7 @@ public final class Evaluator {
             return;
         }
         if (target instanceof AnyBlockValue block) {
-            Value selector = makeTheSelectorFor(lastSegment, frame.context);
+            Value selector = makeSelectorFor(lastSegment, frame.context);
             if (BlockPath.isNowhereAtAllSoAWriteQuietlyDoesNothing(selector)) {
                 return;
             }
@@ -1405,36 +1405,36 @@ public final class Evaluator {
                             + " names another one rather than a place to write");
         }
         if (target instanceof VectorValue vector) {
-            VectorPath.write(vector, makeTheSelectorFor(lastSegment, frame.context), written);
+            VectorPath.write(vector, makeSelectorFor(lastSegment, frame.context), written);
             return;
         }
         if (target instanceof ImageValue picture) {
             ImagePath.writeThroughPath(
-                    picture, makeTheSelectorFor(lastSegment, frame.context), written);
+                    picture, makeSelectorFor(lastSegment, frame.context), written);
             return;
         }
         if (target instanceof StructValue struct) {
-            StructPath.write(struct, makeTheSelectorFor(lastSegment, frame.context), written);
+            StructPath.write(struct, makeSelectorFor(lastSegment, frame.context), written);
             return;
         }
         if (target instanceof TimeValue time) {
             place.setValue(new WritingIntoATime().write(
-                    time, makeTheSelectorFor(lastSegment, frame.context), written));
+                    time, makeSelectorFor(lastSegment, frame.context), written));
             return;
         }
         if ((target instanceof AnyStringValue || target instanceof BinaryValue)
-                && makeTheSelectorFor(lastSegment, frame.context) instanceof IntegerValue counted) {
+                && makeSelectorFor(lastSegment, frame.context) instanceof IntegerValue counted) {
             new WritingIntoText((RebolSeries) target).write(counted, written);
             return;
         }
         if (target instanceof RebolSeries series
-                && makeTheSelectorFor(lastSegment, frame.context) instanceof IntegerValue(long magnitude)) {
+                && makeSelectorFor(lastSegment, frame.context) instanceof IntegerValue(long magnitude)) {
             SeriesSlot.write(series,
                     series.index() + (int) magnitude - 1, written);
             return;
         }
         if (target instanceof BitsetValue set) {
-            Value chosen = makeTheSelectorFor(lastSegment, frame.context);
+            Value chosen = makeSelectorFor(lastSegment, frame.context);
             Integer bit = switch (chosen) {
                 case CharacterValue letter -> letter.codepoint();
                 case IntegerValue number -> (int) number.magnitude();
@@ -1456,13 +1456,13 @@ public final class Evaluator {
             return;
         }
         if (target instanceof EmailValue address
-                && makeTheSelectorFor(lastSegment, frame.context) instanceof AnyWordValue half
+                && makeSelectorFor(lastSegment, frame.context) instanceof AnyWordValue half
                 && (half.canonical().equals("user") || half.canonical().equals("host"))) {
             writeEmailPart(address, half, written);
             return;
         }
         if ((target instanceof AnyStringValue || target instanceof BinaryValue)
-                && makeTheSelectorFor(lastSegment, frame.context) instanceof AnyWordValue) {
+                && makeSelectorFor(lastSegment, frame.context) instanceof AnyWordValue) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH);
@@ -1479,7 +1479,7 @@ public final class Evaluator {
     private Slot findTheSlotWithTheSegment(
             AnyBlockValue asWritten, Slot holder, Value segment, Context context) {
 
-        Value selector = makeTheSelectorFor(segment, context);
+        Value selector = makeSelectorFor(segment, context);
         try {
             return findSlotWith(holder, selector);
         } catch (Raised refused) {
@@ -1600,7 +1600,7 @@ public final class Evaluator {
         return new ComputedSlot(segment, segment);
     }
 
-    private Value makeTheSelectorFor(Value segment, Context context) {
+    private Value makeSelectorFor(Value segment, Context context) {
         return withAnyFractionTruncated(resolveTheSegment(segment, context));
     }
 

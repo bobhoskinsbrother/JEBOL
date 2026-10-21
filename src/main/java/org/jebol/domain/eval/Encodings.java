@@ -942,7 +942,7 @@ public final class Encodings {
     public byte[] pngFilter(byte[] data, int width, int filter, int bytesPerPixel) {
         int rows = data.length / width;
         byte[] out = new byte[data.length];
-        byte[] previous = makeTheZeroLineAbove(width);
+        byte[] previous = makeZeroLineAbove(width);
         for (int row = 0; row < rows; row++) {
             int from = row * width;
             applyOneLine(data, from, out, from, width, filter, bytesPerPixel,
@@ -959,7 +959,7 @@ public final class Encodings {
         int stride = everyLineOpensWithItsOwnFilterByte ? width + 1 : width;
         int rows = data.length / stride;
         byte[] out = new byte[everyLineOpensWithItsOwnFilterByte ? data.length - rows : data.length];
-        byte[] previous = makeTheZeroLineAbove(width);
+        byte[] previous = makeZeroLineAbove(width);
         for (int row = 0; row < rows; row++) {
             int from = row * stride;
             int filter = namedFilter;
@@ -975,7 +975,7 @@ public final class Encodings {
         return out;
     }
 
-    private byte[] makeTheZeroLineAbove(int width) {
+    private byte[] makeZeroLineAbove(int width) {
         return new byte[width];
     }
 

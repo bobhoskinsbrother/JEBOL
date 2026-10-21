@@ -55,7 +55,7 @@ final class LzmaEncoder {
 
     private static final int[] PROBABILITY_PRICES =
             priceEveryRoundedProbability();
-    private static final byte[] SLOT_OF_A_SMALL_DISTANCE = makeTheSlotTable();
+    private static final byte[] SLOT_OF_A_SMALL_DISTANCE = makeSlotTable();
 
     private static int[] priceEveryRoundedProbability() {
         int[] prices = new int[BIT_MODEL_TOTAL >> MOVE_REDUCING_BITS];
@@ -77,7 +77,7 @@ final class LzmaEncoder {
         return prices;
     }
 
-    private static byte[] makeTheSlotTable() {
+    private static byte[] makeSlotTable() {
         byte[] table = new byte[1 << LOG_BITS];
         table[0] = 0;
         table[1] = 1;

@@ -115,7 +115,7 @@ final class BrotliBlockSplitting {
         }
 
         BrotliHistogram[] histograms =
-                BrotliHistogram.makeAFreshRow(howManyHistograms + 1, alphabetSize);
+                BrotliHistogram.makeFreshRow(howManyHistograms + 1, alphabetSize);
         seedFromSamples(symbols, howMany, stride, howManyHistograms, histograms);
         refineFromSamples(symbols, howMany, stride, howManyHistograms, histograms);
 
@@ -298,7 +298,7 @@ final class BrotliBlockSplitting {
         int roomForPairs = HISTOGRAMS_PER_BATCH * HISTOGRAMS_PER_BATCH / 2;
         BrotliClustering.Queue queue = new BrotliClustering.Queue(roomForPairs);
         BrotliHistogram[] batch =
-                BrotliHistogram.makeAFreshRow(Math.min(howManyBlocks,
+                BrotliHistogram.makeFreshRow(Math.min(howManyBlocks,
                         HISTOGRAMS_PER_BATCH), alphabetSize);
         int[] sizes = new int[HISTOGRAMS_PER_BATCH];
         int[] survivorsOfTheBatch = new int[HISTOGRAMS_PER_BATCH];
@@ -306,7 +306,7 @@ final class BrotliBlockSplitting {
         int[] renamed = new int[HISTOGRAMS_PER_BATCH];
 
         BrotliHistogram[] survivors =
-                BrotliHistogram.makeAFreshRow(Math.max(1, howManyBlocks), alphabetSize);
+                BrotliHistogram.makeFreshRow(Math.max(1, howManyBlocks), alphabetSize);
         int[] survivorSizes = new int[survivors.length];
         int howManySurvivors = 0;
         int at = 0;

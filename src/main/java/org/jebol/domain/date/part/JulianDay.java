@@ -59,10 +59,10 @@ final class JulianDay {
         int day = (int) (adjusted - daysBeforeThisDay - daysBeforeThisMonth + fraction);
         int month = monthNumber < 14 ? monthNumber - 1 : monthNumber - 13;
         int year = month > 2 ? estimatedYear - 4716 : estimatedYear - 4715;
-        return makeADayFromAFraction(year, month, day, fraction);
+        return makeDayFromFraction(year, month, day, fraction);
     }
 
-    private static DateValue makeADayFromAFraction(
+    private static DateValue makeDayFromFraction(
             int year, int month, int day, double fraction) {
 
         double hoursAndOver = fraction * 24;

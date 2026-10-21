@@ -44,7 +44,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public ObjectValue evaluateAnObject(AnyBlockValue body) {
-        return evaluator.evaluateInto(evaluator.makeAFreshObjectWithin(context), body);
+        return evaluator.evaluateInto(evaluator.makeFreshObjectWithin(context), body);
     }
 
     @Override
@@ -93,7 +93,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     private ObjectValue copyTheObject(ObjectValue prototype) {
-        ObjectValue built = evaluator.makeAFreshObjectWithin(context);
+        ObjectValue built = evaluator.makeFreshObjectWithin(context);
         Context fields = built.context();
         prototype.context().slots().forEach(slot -> fields.register(
                 slot.spelling(), Binder.cloneAndRebind(

@@ -274,7 +274,7 @@ final class BrotliClustering {
                 nextName++;
             }
         }
-        BrotliHistogram[] shuffled = BrotliHistogram.makeAFreshRow(nextName, alphabetSize);
+        BrotliHistogram[] shuffled = BrotliHistogram.makeFreshRow(nextName, alphabetSize);
         nextName = 0;
         for (int each = 0; each < howMany; each++) {
             if (newName[whichOneEachUses[each]] == nextName) {

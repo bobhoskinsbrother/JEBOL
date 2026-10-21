@@ -29,7 +29,7 @@ public final class SystemObject {
         this.ports = ports;
         this.encodings = encodings;
         this.registeredStructLayouts = registeredStructLayouts;
-        lib.context().register("system", makeTheSystem(machine));
+        lib.context().register("system", makeSystem(machine));
     }
 
     public Context lib() {
@@ -45,22 +45,22 @@ public final class SystemObject {
         runState.register("last-result", NoneValue.none());
     }
 
-    private ObjectValue makeTheSystem(MachinePort machine) {
+    private ObjectValue makeSystem(MachinePort machine) {
         Context system = Context.root();
-        system.register("catalog", makeTheCatalog());
-        system.register("options", makeTheOptions(machine));
-        system.register("state", makeTheState());
+        system.register("catalog", makeCatalog());
+        system.register("options", makeOptions(machine));
+        system.register("state", makeState());
         system.register("version", lib.version().numbered());
         system.register("platform", WordValue.of(machine.operatingSystem()));
         system.register("product", WordValue.of("core"));
         system.register("license", NoneValue.none());
-        system.register("modules", makeTheModules());
-        system.register("codecs", makeTheCodecs());
-        system.register("contexts", makeTheContexts());
+        system.register("modules", makeModules());
+        system.register("codecs", makeCodecs());
+        system.register("contexts", makeContexts());
         return new ObjectValue(system);
     }
 
-    private Value makeTheContexts() {
+    private Value makeContexts() {
         Context contexts = Context.root();
         contexts.register("lib", new ObjectValue(lib.context()));
         contexts.register("sys", new ObjectValue(internals));
@@ -68,7 +68,7 @@ public final class SystemObject {
         return new ObjectValue(contexts);
     }
 
-    private Value makeTheCodecs() {
+    private Value makeCodecs() {
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
             String codec = Codecs.REGISTERED.get(at);
@@ -77,13 +77,13 @@ public final class SystemObject {
         return new ObjectValue(codecs);
     }
 
-    private Value makeTheModules() {
+    private Value makeModules() {
         Context modules = Context.root();
         modules.register("help", NoneValue.none());
         return new ObjectValue(modules);
     }
 
-    private Value makeTheState() {
+    private Value makeState() {
         Context policies = Context.root();
         for (String policy : new String[]{"file", "net", "eval", "memory", "secure", "protect", "debug", "envr", "call", "browse", "extension"}) {
             policies.register(policy, TupleValue.of(0, 0, 0));
@@ -98,7 +98,7 @@ public final class SystemObject {
         return new ObjectValue(runState);
     }
 
-    private Value makeTheOptions(MachinePort machine) {
+    private Value makeOptions(MachinePort machine) {
         Context options = Context.root();
         String[] fields = {"boot", "path", "home", "data", "modules", "flags", "script", "args", "do-arg",
                 "import", "debug", "secure", "version", "boot-level", "domain-name", "module-paths", "result-types"};
@@ -118,7 +118,7 @@ public final class SystemObject {
         return path.endsWith("/") ? path : path + "/";
     }
 
-    private Value makeTheErrors() {
+    private Value makeErrors() {
         Context errors = Context.root();
         List<Value> catalogued = declarations.errorCatalogueRows();
         for (int at = 0; at + 1 < catalogued.size(); at += 2) {
@@ -137,7 +137,7 @@ public final class SystemObject {
         return new ObjectValue(errors);
     }
 
-    private Value makeTheCatalog() {
+    private Value makeCatalog() {
         Context catalog = Context.root();
         catalog.register("datatypes", BlockValue.of(List.copyOf(Catalogue.DATATYPES.entries())));
         catalog.register("structs", registeredStructLayouts);
@@ -150,7 +150,7 @@ public final class SystemObject {
         catalog.register("checksums", BlockValue.of(encodings.listTheChecksumMethods().stream().<Value>map(WordValue::of).toList()));
         catalog.register("compressions", BlockValue.of(Encodings.COMPRESSIONS.stream().<Value>map(WordValue::of).toList()));
         catalog.register("file-types", BlockValue.of(List.of(FileValue.of(".txt"), WordValue.of("text"), FileValue.of(".html"), WordValue.of("markup"), FileValue.of(".htm"), WordValue.of("markup"), FileValue.of(".qoi"), WordValue.of("qoi"))));
-        catalog.register("errors", makeTheErrors());
+        catalog.register("errors", makeErrors());
         return new ObjectValue(catalog);
     }
 }

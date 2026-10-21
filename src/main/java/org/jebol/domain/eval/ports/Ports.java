@@ -143,7 +143,7 @@ public final class Ports {
                 || source instanceof AnyWordValue;
     }
 
-    public PortValue makeAPortFor(Value target, Evaluator evaluator, Context context) {
+    public PortValue makePortFor(Value target, Evaluator evaluator, Context context) {
         if (target instanceof PortValue already) {
             return already;
         }
@@ -156,7 +156,7 @@ public final class Ports {
     }
 
     public PortValue openAPortFor(Value address, Evaluator evaluator, Context context) {
-        PortValue port = makeAPortFor(address, evaluator, context);
+        PortValue port = makePortFor(address, evaluator, context);
         if (port.actorWrittenInRebol().isPresent()) {
             return port;
         }

@@ -23,7 +23,7 @@ public final class WindowsOnOneSurface {
             case CLOSE -> showingFromBottomToTop;
             case RESIZE, OFFSET -> List.of();
         };
-        return makeTheEvents(heardBy, kind, detail);
+        return makeEvents(heardBy, kind, detail);
     }
 
     private void forgetWindowsNoLongerShowing(List<GobValue> showing) {
@@ -92,7 +92,7 @@ public final class WindowsOnOneSurface {
                 && down >= place.y() && down < place.y() + size.y();
     }
 
-    private List<ScreenEvent> makeTheEvents(List<GobValue> heardBy, ScreenEventType kind, ScreenEventDetail detail) {
+    private List<ScreenEvent> makeEvents(List<GobValue> heardBy, ScreenEventType kind, ScreenEventDetail detail) {
         List<ScreenEvent> addressed = new ArrayList<>();
         for (GobValue window : heardBy) {
             addressed.add(new ScreenEvent(kind, window, countFromTheWindow(detail, window)));

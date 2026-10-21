@@ -106,7 +106,7 @@ public record Parameter(
                 : acceptedTypes.contains(datatype);
     }
 
-    TypesetValue makeTheTypeset() {
+    TypesetValue makeTypeset() {
         if (kind == ParameterKind.REFINEMENT) {
             return TypesetValue.of(A_REFINEMENTS_SLOT);
         }

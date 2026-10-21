@@ -170,7 +170,7 @@ public record TimeValue(long nanoseconds) implements Value {
         @Override
         public Value makeFrom(Value spec, Maker maker) {
             return spec instanceof AnyBlockValue parts
-                    ? makeATimeFromParts(parts.remaining())
+                    ? makeTimeFromParts(parts.remaining())
                     : super.makeFrom(spec, maker);
         }
 
@@ -192,7 +192,7 @@ public record TimeValue(long nanoseconds) implements Value {
             };
         }
 
-        private Value makeATimeFromParts(List<Value> parts) {
+        private Value makeTimeFromParts(List<Value> parts) {
             if (parts.isEmpty() || parts.size() > 3
                     || !(parts.get(0) instanceof IntegerValue(long hours))) {
                 throw refuse(BlockValue.of(parts));

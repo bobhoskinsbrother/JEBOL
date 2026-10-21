@@ -385,7 +385,7 @@ public final class LibContext {
     private void registerDatatypePredicates() {
         for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
-            declare(predicate, declarations.makeTheSpecEveryDatatypeTestHas());
+            declare(predicate, declarations.makeSpecEveryDatatypeTestHas());
             lib.register(predicate.nativeName(), predicate);
         }
     }

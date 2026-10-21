@@ -34,7 +34,7 @@ public final class PercentValue extends AnyDecimalValue {
     }
 
     @Override
-    PercentValue makeTheSameKindHolding(double another) {
+    PercentValue makeSameKindHolding(double another) {
         return new PercentValue(another);
     }
 

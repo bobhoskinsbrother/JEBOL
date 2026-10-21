@@ -31,7 +31,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyBlockValue makeTheSameKindOver(BlockStorage storage, int index);
+    abstract AnyBlockValue makeSameKindOver(BlockStorage storage, int index);
 
     public abstract static class AnyBlockDatatype extends PositionedSeriesDatatype {
 
@@ -139,11 +139,11 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     public AnyBlockValue wrap(BlockStorage another) {
-        return makeTheSameKindOver(another, 1);
+        return makeSameKindOver(another, 1);
     }
 
     public AnyBlockValue wrap(List<Value> items) {
-        return makeTheSameKindOver(new BlockStorage(items), 1);
+        return makeSameKindOver(new BlockStorage(items), 1);
     }
 
     String opensWith() {
@@ -205,7 +205,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         }
         BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
-        return makeTheSameKindOver(built, 1);
+        return makeSameKindOver(built, 1);
     }
 
     @Override
@@ -224,7 +224,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         }
         BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
-        return makeTheSameKindOver(built, 1);
+        return makeSameKindOver(built, 1);
     }
 
     @Override
@@ -330,7 +330,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     @Override
     public AnyBlockValue atIndex(int oneBasedIndex) {
-        return makeTheSameKindOver(storage, oneBasedIndex);
+        return makeSameKindOver(storage, oneBasedIndex);
     }
 
     @Override

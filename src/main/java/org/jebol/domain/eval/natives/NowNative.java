@@ -60,7 +60,7 @@ public class NowNative extends DefaultNative {
 
     private Value takeThePartAskedFor(ZonedDateTime here, Set<String> refinements) {
         if (refinements.contains("utc")) {
-            return makeADateWithZone(here.withZoneSameInstant(ZoneOffset.UTC), 0);
+            return makeDateWithZone(here.withZoneSameInstant(ZoneOffset.UTC), 0);
         }
         int offsetMinutes = here.getOffset().getTotalSeconds() / SECONDS_A_MINUTE;
         if (refinements.contains("date")) {
@@ -88,10 +88,10 @@ public class NowNative extends DefaultNative {
         if (refinements.contains("day")) {
             return IntegerValue.of(here.getDayOfMonth());
         }
-        return makeADateWithZone(here, offsetMinutes);
+        return makeDateWithZone(here, offsetMinutes);
     }
 
-    private DateValue makeADateWithZone(ZonedDateTime moment, int offsetMinutes) {
+    private DateValue makeDateWithZone(ZonedDateTime moment, int offsetMinutes) {
         return new DateValue(moment.getYear(), moment.getMonthValue(), moment.getDayOfMonth(),
                 Optional.of(TimeValue.ofNanoseconds(moment.toLocalTime().toNanoOfDay())),
                 Optional.of(offsetMinutes));

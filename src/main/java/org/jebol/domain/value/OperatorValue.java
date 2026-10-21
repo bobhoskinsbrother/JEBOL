@@ -50,7 +50,7 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
         @Override
         public Value makeFrom(Value spec, Maker maker) {
             Value offered = spec instanceof AnyBlockValue parts
-                    ? makeAFunctionFrom(parts, maker)
+                    ? makeFunctionFrom(parts, maker)
                     : spec;
             if (!(offered instanceof AnyFunctionValue dispatching)
                     || countTheArgumentsBeforeAnyRefinement(dispatching)
@@ -60,7 +60,7 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
             return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
         }
 
-        private Value makeAFunctionFrom(AnyBlockValue parts, Maker maker) {
+        private Value makeFunctionFrom(AnyBlockValue parts, Maker maker) {
             List<Value> items = parts.remaining();
             if (items.size() < 2
                     || !(items.get(0) instanceof AnyBlockValue functionSpec)

@@ -43,7 +43,7 @@ class ConditionalTruthTest {
                     WordValue.of("anything"),
                     BinaryValue.of(),
                     IntegerValue.TYPE,
-                    ErrorValue.makeAScriptError("some-error", "a message"));
+                    ErrorValue.makeScriptError("some-error", "a message"));
 
             assertThat(everythingElse)
                     .allSatisfy(value -> assertThat(value.isTruthy())
@@ -87,7 +87,7 @@ class ConditionalTruthTest {
         @Test
         @DisplayName("an error value is true; raising it is a separate matter")
         void coversAnErrorValue() {
-            assertThat(ErrorValue.makeAScriptError("no-value", "x has no value").isTruthy()).isTrue();
+            assertThat(ErrorValue.makeScriptError("no-value", "x has no value").isTruthy()).isTrue();
         }
 
         @Test

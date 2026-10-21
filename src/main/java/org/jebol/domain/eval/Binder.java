@@ -53,7 +53,7 @@ public final class Binder {
                 }
                 yield cloned;
             }
-            case DefinedFunctionValue function -> withItsBodyBound(function.makeTheSameKindRunning(
+            case DefinedFunctionValue function -> withItsBodyBound(function.makeSameKindRunning(
                     (AnyBlockValue) cloneAndRebind(function.body(), from, into), into));
             default -> value;
         };

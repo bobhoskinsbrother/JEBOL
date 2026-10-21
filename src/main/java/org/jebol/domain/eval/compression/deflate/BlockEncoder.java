@@ -97,10 +97,10 @@ final class BlockEncoder {
     private int precodeItemCount;
 
     BlockEncoder() {
-        makeTheStaticCodes();
+        makeStaticCodes();
     }
 
-    private void makeTheStaticCodes() {
+    private void makeStaticCodes() {
         for (int symbol = 0; symbol < LITLEN_SYMBOL_COUNT; symbol++) {
             litlenFrequencies[symbol] = readTheStaticLitlenFrequencyOf(symbol);
         }

@@ -25,7 +25,7 @@ public final class GetPathValue extends AnyPathValue {
     }
 
     @Override
-    GetPathValue makeTheSameKindOver(BlockStorage storage, int index) {
+    GetPathValue makeSameKindOver(BlockStorage storage, int index) {
         return new GetPathValue(storage, index);
     }
 

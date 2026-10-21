@@ -51,7 +51,7 @@ public final class EmailValue extends AnyStringValue {
     }
 
     @Override
-    EmailValue makeTheSameKindOver(StringStorage storage, int index) {
+    EmailValue makeSameKindOver(StringStorage storage, int index) {
         return new EmailValue(storage, index);
     }
 

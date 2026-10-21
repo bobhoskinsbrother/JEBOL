@@ -34,14 +34,14 @@ final class BrotliContextBlockSplitter {
         this.split = split;
         this.targetBlockSize = smallestBlock;
         this.lastEntropy = new double[2 * howManyContexts];
-        this.merged = BrotliHistogram.makeAFreshRow(2 * howManyContexts, alphabetSize);
+        this.merged = BrotliHistogram.makeFreshRow(2 * howManyContexts, alphabetSize);
 
         int mostBlocks = howManySymbols / smallestBlock + 1;
         int mostTypes = Math.min(mostBlocks, mostTypesAllowed + 1);
         split.makeRoomFor(mostBlocks);
         split.setTheBlockCount(mostBlocks);
         this.howManyHistogramsAreUsed = mostTypes * howManyContexts;
-        this.histograms = BrotliHistogram.makeAFreshRow(
+        this.histograms = BrotliHistogram.makeFreshRow(
                 howManyHistogramsAreUsed, alphabetSize);
     }
 

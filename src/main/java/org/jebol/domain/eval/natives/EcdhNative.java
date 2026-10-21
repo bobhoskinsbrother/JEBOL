@@ -44,7 +44,7 @@ public class EcdhNative extends CipherNative {
         return (arguments, evaluator, context, refinements) -> {
             refuseMoreThanOneThingAtOnce(refinements);
             if (refinements.contains("init")) {
-                return makeACurveKeyOn(arguments.getFirst(),
+                return makeCurveKeyOn(arguments.getFirst(),
                         ((AnyWordValue) arguments.get(1)).canonical(), evaluator);
             }
             Optional<EllipticCurveKey> key = readKeyHeldBy(
@@ -73,7 +73,7 @@ public class EcdhNative extends CipherNative {
         }
     }
 
-    private Value makeACurveKeyOn(Value given, String curveName, Evaluator evaluator) {
+    private Value makeCurveKeyOn(Value given, String curveName, Evaluator evaluator) {
         Optional<EllipticCurveKey> standing =
                 readKeyHeldBy(given, ECDH_HANDLE_TYPE, EllipticCurveKey.class);
         if (standing.isPresent()) {

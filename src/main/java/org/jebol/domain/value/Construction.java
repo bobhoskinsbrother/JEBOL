@@ -4,7 +4,7 @@ public interface Construction {
 
     Value make(Datatype datatype, Value specification);
 
-    Value makeAFunction(AnyBlockValue spec, AnyBlockValue body);
+    Value makeFunction(AnyBlockValue spec, AnyBlockValue body);
 
     static Construction refused() {
         return Refused.INSTANCE;
@@ -24,7 +24,7 @@ public interface Construction {
         }
 
         @Override
-        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalStateException("nothing here makes a function");
         }
     }

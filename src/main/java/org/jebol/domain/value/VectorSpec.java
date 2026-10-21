@@ -60,7 +60,7 @@ public final class VectorSpec {
             UnaryOperator<Value> resolveGetWord) {
 
         if (parts.isEmpty()) {
-            return Optional.of(makeAnEmpty(WHEN_NOTHING_SAYS_OTHERWISE));
+            return Optional.of(makeEmpty(WHEN_NOTHING_SAYS_OTHERWISE));
         }
         Value leading = parts.getFirst();
         if (leading instanceof IntegerValue || leading instanceof AnyDecimalValue) {
@@ -202,7 +202,7 @@ public final class VectorSpec {
         return Optional.of(new VectorValue(storage, position));
     }
 
-    private static VectorValue makeAnEmpty(VectorKind kind) {
+    private static VectorValue makeEmpty(VectorKind kind) {
         return new VectorValue(new VectorStorage(kind, 0), 1);
     }
 

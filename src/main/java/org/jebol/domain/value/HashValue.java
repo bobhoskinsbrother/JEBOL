@@ -30,7 +30,7 @@ public final class HashValue extends AnyBlockValue {
     }
 
     @Override
-    HashValue makeTheSameKindOver(BlockStorage storage, int index) {
+    HashValue makeSameKindOver(BlockStorage storage, int index) {
         return new HashValue(storage, index);
     }
 }

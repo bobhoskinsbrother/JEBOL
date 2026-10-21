@@ -25,7 +25,7 @@ public final class LitPathValue extends AnyPathValue {
     }
 
     @Override
-    LitPathValue makeTheSameKindOver(BlockStorage storage, int index) {
+    LitPathValue makeSameKindOver(BlockStorage storage, int index) {
         return new LitPathValue(storage, index);
     }
 }

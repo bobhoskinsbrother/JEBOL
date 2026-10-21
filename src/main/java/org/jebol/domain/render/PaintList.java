@@ -165,7 +165,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 gathered.addAll(writeAsRichText(richText, where));
             }
         } else if (titledDepths <= 0 || !hasATitleForItsText(gob)) {
-            makeTheInstructionFor(gob, where).ifPresent(gathered::add);
+            makeInstructionFor(gob, where).ifPresent(gathered::add);
         }
 
         for (Value child : gob.pane()) {
@@ -200,7 +200,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 / (float) Placement.OPAQUE);
     }
 
-    private static Optional<PaintInstruction> makeTheInstructionFor(
+    private static Optional<PaintInstruction> makeInstructionFor(
             GobStorage gob, Placement where) {
 
         return switch (gob.contentKind()) {

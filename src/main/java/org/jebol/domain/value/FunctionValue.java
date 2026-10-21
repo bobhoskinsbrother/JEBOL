@@ -24,12 +24,12 @@ public final class FunctionValue extends DefinedFunctionValue {
     }
 
     @Override
-    public FunctionValue makeTheSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
+    public FunctionValue makeSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
         return new FunctionValue(spec(), anotherBody, parameters(), localNames(), closedOverInstead);
     }
 
     @Override
-    public Context makeAFreshCallFrame() {
+    public Context makeFreshCallFrame() {
         Context frame = Context.makeChildOf(closedOver());
         frame.markAsCallFrameOf(this);
         return frame;

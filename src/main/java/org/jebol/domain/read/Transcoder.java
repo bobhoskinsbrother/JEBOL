@@ -150,7 +150,7 @@ public final class Transcoder {
         }
 
         @Override
-        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
             return NoneValue.none();
         }
     }

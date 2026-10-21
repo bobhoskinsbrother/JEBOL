@@ -89,13 +89,13 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        PairValue theirs = makeAPointFrom(right);
+        PairValue theirs = makePointFrom(right);
         return PairValue.of(
                 combineTheBitsOf(x, theirs.x, operation),
                 combineTheBitsOf(y, theirs.y, operation));
     }
 
-    private PairValue makeAPointFrom(Value right) {
+    private PairValue makePointFrom(Value right) {
         return switch (right) {
             case PairValue point -> point;
             case IntegerValue(long magnitude) -> PairValue.of(magnitude, magnitude);

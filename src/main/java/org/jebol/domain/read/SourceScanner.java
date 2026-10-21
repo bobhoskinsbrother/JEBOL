@@ -1516,7 +1516,7 @@ final class SourceScanner {
                 return NoneValue.none();
             }
             case TOKEN_LIT, TOKEN_GET, TOKEN_SET, TOKEN_WORD -> {
-                return makeAWord(token, bp, ep, len, modeChar);
+                return makeWord(token, bp, ep, len, modeChar);
             }
             case TOKEN_REFINE -> {
                 return RefinementValue.of(textOf(bp + 1, len - 1));
@@ -1627,7 +1627,7 @@ final class SourceScanner {
         }
     }
 
-    private Value makeAWord(int token, int from, int to, int length, int modeChar) {
+    private Value makeWord(int token, int from, int to, int length, int modeChar) {
         int bp = from;
         int len = length;
         int kind = token;

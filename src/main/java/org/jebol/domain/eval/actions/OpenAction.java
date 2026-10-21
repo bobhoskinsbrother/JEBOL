@@ -36,7 +36,7 @@ public class OpenAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortValue port = ports.makeAPortFor(arguments.getFirst(), evaluator, context);
+            PortValue port = ports.makePortFor(arguments.getFirst(), evaluator, context);
             return evaluator.askTheRebolActor(nativeName(), List.of(port), refinements)
                     .orElseGet(() -> ports.open(port, evaluator, refinements));
         };

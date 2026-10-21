@@ -28,7 +28,7 @@ public final class RefValue extends AnyStringValue {
     }
 
     @Override
-    RefValue makeTheSameKindOver(StringStorage storage, int index) {
+    RefValue makeSameKindOver(StringStorage storage, int index) {
         return new RefValue(storage, index);
     }
 

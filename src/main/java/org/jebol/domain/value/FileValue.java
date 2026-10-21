@@ -26,7 +26,7 @@ public final class FileValue extends AnyStringValue {
     }
 
     @Override
-    FileValue makeTheSameKindOver(StringStorage storage, int index) {
+    FileValue makeSameKindOver(StringStorage storage, int index) {
         return new FileValue(storage, index);
     }
 

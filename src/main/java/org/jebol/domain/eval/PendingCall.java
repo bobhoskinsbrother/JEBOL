@@ -125,18 +125,18 @@ final class PendingCall {
         return refinements;
     }
 
-    static PendingCall makeAnInfix(OperatorValue operator, Value leftOperand) {
+    static PendingCall makeInfix(OperatorValue operator, Value leftOperand) {
         return new PendingCall(
                 operator, null, 2, List.of(leftOperand), true, List.of(), List.of());
     }
 
-    static PendingCall makeAnAssignment(ContextSlot slot) {
+    static PendingCall makeAssignment(ContextSlot slot) {
         return new PendingCall(null, slot, 1, List.of(), false, List.of(), List.of());
     }
 
     private java.util.function.Consumer<Value> destination;
 
-    static PendingCall makeAnAssignmentInto(java.util.function.Consumer<Value> destination) {
+    static PendingCall makeAssignmentInto(java.util.function.Consumer<Value> destination) {
         PendingCall call = new PendingCall(
                 null, null, 1, List.of(), false, List.of(), List.of());
         call.destination = destination;

@@ -217,10 +217,10 @@ public final class EventPath {
             throw Raised.of(EvaluationFailure.EXPECT_VAL, EventValue.TYPE, spec.datatype());
         }
         return fillFromSpec(
-                makeAClearedEvent(), block.remaining(), simpleValueOf);
+                makeClearedEvent(), block.remaining(), simpleValueOf);
     }
 
-    private static EventValue makeAClearedEvent() {
+    private static EventValue makeClearedEvent() {
         return EventValue.fresh();
     }
 

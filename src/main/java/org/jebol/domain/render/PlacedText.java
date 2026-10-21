@@ -82,15 +82,15 @@ public record PlacedText(
                 || (from.top() == to.top() && from.across() <= to.across()) ? from : to;
         TextLines.CaretPlace last = first == from ? to : from;
         if (first.top() == last.top()) {
-            return List.of(makeAPatch(first.across(), first.top(), last.across(), first.top() + first.high()));
+            return List.of(makePatch(first.across(), first.top(), last.across(), first.top() + first.high()));
         }
         return List.of(
-                makeAPatch(first.across(), first.top(), where.across() + where.wide(), first.top() + first.high()),
-                makeAPatch(where.across(), first.top() + first.high(), where.across() + where.wide(), last.top()),
-                makeAPatch(where.across(), last.top(), last.across(), last.top() + last.high()));
+                makePatch(first.across(), first.top(), where.across() + where.wide(), first.top() + first.high()),
+                makePatch(where.across(), first.top() + first.high(), where.across() + where.wide(), last.top()),
+                makePatch(where.across(), last.top(), last.across(), last.top() + last.high()));
     }
 
-    private static PlacedPatch makeAPatch(double left, double top, double right, double bottom) {
+    private static PlacedPatch makePatch(double left, double top, double right, double bottom) {
         return new PlacedPatch(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
     }
 

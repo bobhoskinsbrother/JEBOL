@@ -21,7 +21,7 @@ public sealed interface DeclaresParameters extends AnyFunctionValue
                     types.add(TypesetValue.of(Parameter.A_REFINEMENTS_SLOT));
                 }
             });
-            types.add(parameter.makeTheTypeset());
+            types.add(parameter.makeTypeset());
         }
         for (String leftover : refinementsDeclaredApart()) {
             if (!woven.contains(leftover)) {

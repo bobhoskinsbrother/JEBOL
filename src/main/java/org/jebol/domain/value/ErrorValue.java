@@ -81,10 +81,10 @@ public record ErrorValue(
         public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case ObjectValue(Context fields) ->
-                        makeAnErrorSpeltOutBy(BlockValue.of(fields.setWordsAndValues()), true, spec, maker);
-                case BlockValue body -> makeAnErrorSpeltOutBy(BlockValue.of(
+                        makeErrorSpeltOutBy(BlockValue.of(fields.setWordsAndValues()), true, spec, maker);
+                case BlockValue body -> makeErrorSpeltOutBy(BlockValue.of(
                         maker.evaluateAnObject(body).context().setWordsAndValues()), false, spec, maker);
-                case AnyBlockValue fields -> makeAnErrorSpeltOutBy(fields, false, spec, maker);
+                case AnyBlockValue fields -> makeErrorSpeltOutBy(fields, false, spec, maker);
                 case StringValue written -> maker.speakHere(new ErrorValue(ErrorCategory.USER, "message",
                         written.text(), Optional.of(spec),
                         Optional.empty(), Optional.empty(),
@@ -94,7 +94,7 @@ public record ErrorValue(
             };
         }
 
-        private Value makeAnErrorSpeltOutBy(
+        private Value makeErrorSpeltOutBy(
                 AnyBlockValue fields, boolean fromAnObject, Value theSpecAsWritten, Maker maker) {
 
             List<Value> items = fields.remaining();
@@ -437,15 +437,15 @@ public record ErrorValue(
                 : built.toString();
     }
 
-    public static ErrorValue makeAScriptError(String errorId, String message) {
+    public static ErrorValue makeScriptError(String errorId, String message) {
         return of(ErrorCategory.SCRIPT, errorId, message);
     }
 
-    public static ErrorValue makeAMathError(String errorId, String message) {
+    public static ErrorValue makeMathError(String errorId, String message) {
         return of(ErrorCategory.MATH, errorId, message);
     }
 
-    public static ErrorValue makeASyntaxError(String errorId, String message) {
+    public static ErrorValue makeSyntaxError(String errorId, String message) {
         return of(ErrorCategory.SYNTAX, errorId, message);
     }
 

@@ -297,12 +297,12 @@ public final class Delect {
                 at++;
                 item = written.get(at);
             }
-            makeASlotFor(item, repeats, where).ifPresent(slots::add);
+            makeSlotFor(item, repeats, where).ifPresent(slots::add);
         }
         return List.copyOf(slots);
     }
 
-    private static Optional<Slot> makeASlotFor(
+    private static Optional<Slot> makeSlotFor(
             Value written, boolean repeats, Context where) {
 
         Optional<java.util.Set<Datatype>> types = findTheTypesNamedBy(written, where);

@@ -158,7 +158,7 @@ public final class DrawDialect {
             paintTheGapsBetweenTheDashes(path);
             paintAGradientNoToolkitHas(path);
             painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(),
-                    path, findTransformOnSurface(), makeTheStateARendererGets()));
+                    path, findTransformOnSurface(), makeStateRendererGets()));
             paintAnyArrowheads(path);
         }
 
@@ -166,7 +166,7 @@ public final class DrawDialect {
             return Transform.moveBy(where.across(), where.down()).combineWith(transform);
         }
 
-        private PaintState makeTheStateARendererGets() {
+        private PaintState makeStateRendererGets() {
             PaintState carried = state.fillGradient()
                     .filter(gradient -> !gradient.shape().canBeDrawnByAToolkit())
                     .isPresent()
@@ -471,10 +471,10 @@ public final class DrawDialect {
                 clip = where.clip();
                 return;
             }
-            clip = where.clip().overlapWith(makeTheBoxBetween(origin.get(), corner.get()));
+            clip = where.clip().overlapWith(makeBoxBetween(origin.get(), corner.get()));
         }
 
-        private ClipRectangle makeTheBoxBetween(PairValue origin, PairValue corner) {
+        private ClipRectangle makeBoxBetween(PairValue origin, PairValue corner) {
             int left = (int) Math.round(Math.min(origin.x(), corner.x()));
             int top = (int) Math.round(Math.min(origin.y(), corner.y()));
             int right = (int) Math.round(Math.max(origin.x(), corner.x()));
@@ -676,7 +676,7 @@ public final class DrawDialect {
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
                         findWhereTheClipStandsNow().fitInsideTheShape(outline),
-                        piece.path(), findTransformOnSurface(), makeTheStateARendererGets()));
+                        piece.path(), findTransformOnSurface(), makeStateRendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())
                     .withFillGradient(Optional.empty());

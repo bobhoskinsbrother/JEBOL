@@ -142,7 +142,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                         clampTheSide(y));
             }
             if (spec instanceof AnyBlockValue parts && !parts.remaining().isEmpty()) {
-                return makeAnImageFromParts(parts);
+                return makeImageFromParts(parts);
             }
             throw refuseAsMalconstructed(spec);
         }
@@ -193,7 +193,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return Math.max(side, 0);
         }
 
-        private Value makeAnImageFromParts(AnyBlockValue specification) {
+        private Value makeImageFromParts(AnyBlockValue specification) {
             List<Value> parts = specification.remaining();
             if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
                 throw refuseAsMalconstructed(specification);

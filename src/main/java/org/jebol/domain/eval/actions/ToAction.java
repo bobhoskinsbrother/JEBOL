@@ -24,7 +24,7 @@ public class ToAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value converted = arguments.getFirst().findDatatypeItStandsFor()
-                    .convert(arguments.get(1), evaluator.makeAMakerIn(context));
+                    .convert(arguments.get(1), evaluator.makeMakerIn(context));
             evaluator.symbols().internWhatWasRead(List.of(converted));
             return converted;
         };

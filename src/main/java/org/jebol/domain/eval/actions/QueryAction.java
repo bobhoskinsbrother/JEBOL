@@ -99,7 +99,7 @@ public class QueryAction extends PortAction {
         if (target instanceof FileValue file) {
             return askAFile(file.text(), field, evaluator);
         }
-        PortValue port = ports.makeAPortFor(target, evaluator, context);
+        PortValue port = ports.makePortFor(target, evaluator, context);
         return evaluator.askTheRebolActor(nativeName(), List.of(port, field), Set.of())
                 .orElseGet(() -> askANativelyServedPort(port, field, evaluator));
     }
@@ -128,7 +128,7 @@ public class QueryAction extends PortAction {
     }
 
     private Value listTheNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
-        PortValue port = ports.makeAPortFor(target, evaluator, context);
+        PortValue port = ports.makePortFor(target, evaluator, context);
         return listTheNamesItsJavaActorGives(port, evaluator)
                 .orElseGet(() -> listTheNamesInTheSchemesInfo(port));
     }
