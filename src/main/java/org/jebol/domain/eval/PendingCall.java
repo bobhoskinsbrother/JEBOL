@@ -76,7 +76,7 @@ final class PendingCall {
         return wanted != null ? wanted.asWrittenInSpec() : NoneValue.none();
     }
 
-    String nameInAnArgumentError() {
+    String nameInArgumentError() {
         return calledThrough != null ? calledThrough : AN_UNNAMED_CALL;
     }
 
@@ -101,7 +101,7 @@ final class PendingCall {
         };
     }
 
-    boolean takesTheNextValueAsWritten() {
+    boolean takesNextValueAsWritten() {
         Parameter taking = consumeAt(arguments.size());
         return taking != null
                 && switch (taking.kind()) {
@@ -208,7 +208,7 @@ final class PendingCall {
         return slot;
     }
 
-    Value takeTheOnlyArgument() {
+    Value takeOnlyArgument() {
         return arguments.get(0);
     }
 

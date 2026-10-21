@@ -43,7 +43,7 @@ public final class CharacterActions {
         return codepoint / other;
     }
 
-    private static long takeTheRemainder(long codepoint, long other) {
+    private static long takeRemainder(long codepoint, long other) {
         if (other == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }

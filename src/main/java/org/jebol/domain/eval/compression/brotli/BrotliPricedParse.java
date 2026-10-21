@@ -82,7 +82,7 @@ final class BrotliPricedParse {
         costIs(landing, cost);
     }
 
-    private static final class TheCheapestPlacesACommandCouldHaveStarted {
+    private static final class CheapestPlacesCommandCouldHaveStarted {
 
         private final int[] position = new int[HOW_MANY_STARTS_ARE_KEPT];
         private final int[][] recentDistances = new int[HOW_MANY_STARTS_ARE_KEPT][4];
@@ -163,7 +163,7 @@ final class BrotliPricedParse {
     private void workOutTheShortcutAndQueueItIfWorthStartingFrom(
             int blockStart, int position, int furthestBack,
             int[] startingDistances, BrotliCostModel model,
-            TheCheapestPlacesACommandCouldHaveStarted starts) {
+            CheapestPlacesCommandCouldHaveStarted starts) {
 
         float itsCost = costAt(position);
         costThenShortcutThenNext[position] =
@@ -198,7 +198,7 @@ final class BrotliPricedParse {
             int furthestBack, int[] startingDistances, int howManyMatches,
             BrotliMatches matches, BrotliDistances distances,
             BrotliCostModel model,
-            TheCheapestPlacesACommandCouldHaveStarted starts) {
+            CheapestPlacesCommandCouldHaveStarted starts) {
 
         int here = blockStart + position;
         int hereMasked = here & mask;
@@ -379,8 +379,8 @@ final class BrotliPricedParse {
         int rememberUntil = howManyBytes >= BrotliBinaryTreeHasher.LONGEST_COMPARED
                 ? blockStart + howManyBytes - BrotliBinaryTreeHasher.LONGEST_COMPARED + 1
                 : blockStart;
-        TheCheapestPlacesACommandCouldHaveStarted starts =
-                new TheCheapestPlacesACommandCouldHaveStarted();
+        CheapestPlacesCommandCouldHaveStarted starts =
+                new CheapestPlacesCommandCouldHaveStarted();
         BrotliMatches matches = new BrotliMatches();
 
         for (int at = 0; at + 3 < howManyBytes; at++) {
@@ -503,8 +503,8 @@ final class BrotliPricedParse {
             BrotliMatches allMatches, BrotliDistances distances,
             BrotliCostModel model) {
 
-        TheCheapestPlacesACommandCouldHaveStarted starts =
-                new TheCheapestPlacesACommandCouldHaveStarted();
+        CheapestPlacesCommandCouldHaveStarted starts =
+                new CheapestPlacesCommandCouldHaveStarted();
         BrotliMatches window = new BrotliMatches();
         int matchesSoFar = 0;
         for (int at = 0; at + 3 < howManyBytes; at++) {

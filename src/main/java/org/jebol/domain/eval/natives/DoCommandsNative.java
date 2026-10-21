@@ -42,7 +42,7 @@ public class DoCommandsNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 new CommandsInTurn(((AnyBlockValue) arguments.getFirst()).remaining(), evaluator, context)
-                        .runToTheLastAnswer();
+                        .runToLastAnswer();
     }
 
     private static final class CommandsInTurn {
@@ -61,7 +61,7 @@ public class DoCommandsNative extends DefaultNative {
             this.context = context;
         }
 
-        private Value runToTheLastAnswer() {
+        private Value runToLastAnswer() {
             Value last = UnsetValue.unset();
             while (at < items.size()) {
                 Optional<SetWordValue> answerGoesTo = items.get(at) instanceof SetWordValue named
@@ -70,14 +70,14 @@ public class DoCommandsNative extends DefaultNative {
                 if (answerGoesTo.isPresent()) {
                     at++;
                 }
-                Value answer = runTheNextCommand();
+                Value answer = runNextCommand();
                 answerGoesTo.ifPresent(named -> named.findBoundSlot().setValue(answer));
                 last = answer;
             }
             return last;
         }
 
-        private Value runTheNextCommand() {
+        private Value runNextCommand() {
             Value named = items.get(at++);
             Value function = named instanceof WordValue word ? word.findBoundSlot().value() : named;
             if (!(function instanceof CommandValue command)) {

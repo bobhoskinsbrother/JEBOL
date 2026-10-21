@@ -24,12 +24,12 @@ public class AsColorNative extends ArithmeticNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> TupleValue.of(
-                roundAChannel(arguments.get(0)),
-                roundAChannel(arguments.get(1)),
-                roundAChannel(arguments.get(2)));
+                roundChannel(arguments.get(0)),
+                roundChannel(arguments.get(1)),
+                roundChannel(arguments.get(2)));
     }
 
-    private int roundAChannel(Value given) {
+    private int roundChannel(Value given) {
         double number = switch (given) {
             case IntegerValue whole -> whole.magnitude();
             case PercentValue portion -> portion.quantity() * THE_BRIGHTEST_CHANNEL + A_HALF_THAT_ROUNDS_UP;

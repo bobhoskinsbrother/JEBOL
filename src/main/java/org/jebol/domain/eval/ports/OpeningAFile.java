@@ -11,16 +11,16 @@ import java.util.Set;
 record OpeningAFile(Set<String> refinements) {
 
     void refuseNewFileNobodyMayWriteTo(String path) {
-        if (refinements.contains("new") && !mayWrite()) {
+        if (refinements.contains("new") && !canWrite()) {
             throw Raised.of(EvaluationFailure.BAD_FILE_MODE, FileValue.of(path));
         }
     }
 
-    boolean mayWrite() {
+    boolean canWrite() {
         return refinements.contains("write") || namesNeitherWay();
     }
 
-    private boolean mayRead() {
+    private boolean canRead() {
         return refinements.contains("read") || namesNeitherWay();
     }
 
@@ -30,16 +30,16 @@ record OpeningAFile(Set<String> refinements) {
 
     Set<PolicyAccess> listTheAccessesItAsksFor() {
         Set<PolicyAccess> asked = EnumSet.noneOf(PolicyAccess.class);
-        if (mayRead()) {
+        if (canRead()) {
             asked.add(PolicyAccess.READ);
         }
-        if (mayWrite()) {
+        if (canWrite()) {
             asked.add(PolicyAccess.WRITE);
         }
         return asked;
     }
 
     boolean emptiesWhatIsThere() {
-        return refinements.contains("new") || !(mayRead() || refinements.contains("seek"));
+        return refinements.contains("new") || !(canRead() || refinements.contains("seek"));
     }
 }

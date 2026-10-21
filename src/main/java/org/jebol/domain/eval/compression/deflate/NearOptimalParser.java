@@ -215,7 +215,7 @@ final class NearOptimalParser extends DeflateParser {
                 int rewound = originalCacheEnd - cacheAt;
                 previousBlockUsedOnlyLiterals = optimiseAndFlushBlock(out, input, blockBegin,
                         previousEndBlockCheck - blockBegin, cacheAt, blockBegin == 0, false);
-                cache.moveToTheStart(cacheAt, rewound);
+                cache.moveToStart(cacheAt, rewound);
                 cacheAt = rewound;
                 saveStatistics();
                 splitStatistics.clearOldObservations();
@@ -354,11 +354,11 @@ final class NearOptimalParser extends DeflateParser {
             nodeCosts[node] = bestCost;
         } while (node != 0);
         encoder.resetFrequencies();
-        tallyThePath(blockLength);
+        tallyPath(blockLength);
         encoder.makeHuffmanCodes(encoder.codes);
     }
 
-    private void tallyThePath(int blockLength) {
+    private void tallyPath(int blockLength) {
         int node = 0;
         do {
             int length = nodeItems[node] & LENGTH_MASK;

@@ -46,7 +46,7 @@ public abstract class CaseChangeNative extends DefaultNative {
         int changing = wanted < 0
                 ? text.index() - changingFrom.index()
                 : (int) Math.min(wanted, text.lengthFromHere());
-        changingFrom.rewriteTheFront(changing, this::changeText);
+        changingFrom.rewriteFront(changing, this::changeText);
         return text;
     }
 

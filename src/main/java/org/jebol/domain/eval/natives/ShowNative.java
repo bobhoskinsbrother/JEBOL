@@ -32,7 +32,7 @@ public class ShowNative extends ScreenNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             if (arguments.getFirst() instanceof GobValue gob) {
-                runThroughTheScreen(() -> evaluator.ports().screen().show(gob));
+                runThroughScreen(() -> evaluator.ports().screen().show(gob));
             }
             return arguments.getFirst();
         };

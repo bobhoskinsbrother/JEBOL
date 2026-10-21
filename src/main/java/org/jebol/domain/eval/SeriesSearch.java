@@ -51,7 +51,7 @@ public final class SeriesSearch {
     }
 
     public int findPosition() {
-        if (seeksAnEmptyRun()) {
+        if (seeksEmptyRun()) {
             return -1;
         }
         boolean forcedToSingleStep = refinements.contains("reverse")
@@ -61,7 +61,7 @@ public final class SeriesSearch {
                 : findThePositionOfMatchInRecords();
     }
 
-    private boolean seeksAnEmptyRun() {
+    private boolean seeksEmptyRun() {
         if (looksForARunOfValues()) {
             return listTheRunOfValues().isEmpty();
         }
@@ -295,12 +295,12 @@ public final class SeriesSearch {
             return runMatchesAt(items, at, listTheRunOfValues(), refinements.contains("same"));
         }
         if (wanted instanceof AnyStringValue needle && !refinements.contains("only")) {
-            return matchesTheTextRunIgnoringCaseAt(items, at, needle);
+            return matchesTextRunIgnoringCaseAt(items, at, needle);
         }
         return matches(items.get(at), wanted, refinements.contains("case"));
     }
 
-    private boolean matchesTheTextRunIgnoringCaseAt(
+    private boolean matchesTextRunIgnoringCaseAt(
             List<Value> items, int at, AnyStringValue needle) {
         int[] sought = (needle instanceof StringValue
                 ? needle.text()

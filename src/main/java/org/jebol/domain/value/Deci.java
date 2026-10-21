@@ -102,10 +102,10 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     private RoundedPair roundForComparing(Comparable made) {
-        if (SIGNIFICANDS.roundsTheTruncationUp(made.leftTruncation(), made.left())) {
+        if (SIGNIFICANDS.roundsTruncationUp(made.leftTruncation(), made.left())) {
             return new RoundedPair(made.left().add(BigInteger.ONE), made.right());
         }
-        if (SIGNIFICANDS.roundsTheTruncationUp(made.rightTruncation(), made.right())) {
+        if (SIGNIFICANDS.roundsTruncationUp(made.rightTruncation(), made.right())) {
             return new RoundedPair(made.left(), made.right().add(BigInteger.ONE));
         }
         return new RoundedPair(made.left(), made.right());
@@ -141,7 +141,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         Comparable made = makeComparableWith(other);
         return negative == other.negative
                 ? addMagnitudes(made)
-                : subtractTheMagnitudes(made, other.negative);
+                : subtractMagnitudes(made, other.negative);
     }
 
     private Deci addMagnitudes(Comparable made) {
@@ -163,10 +163,10 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
 
     private boolean needsAnotherDigitOff(BigInteger sum, int truncation) {
         int compared = sum.compareTo(THE_LARGEST_SIGNIFICAND);
-        return compared > 0 || (compared == 0 && SIGNIFICANDS.roundsTheTruncationUp(truncation, sum));
+        return compared > 0 || (compared == 0 && SIGNIFICANDS.roundsTruncationUp(truncation, sum));
     }
 
-    private Deci subtractTheMagnitudes(Comparable made, boolean otherSign) {
+    private Deci subtractMagnitudes(Comparable made, boolean otherSign) {
         BigInteger difference = made.left().subtract(made.right());
         int truncation = made.leftTruncation() - made.rightTruncation();
         boolean signed = negative;
@@ -175,9 +175,9 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
             signed = otherSign;
             truncation = -truncation;
         }
-        if (SIGNIFICANDS.roundsTheTruncationUp(truncation, difference)) {
+        if (SIGNIFICANDS.roundsTruncationUp(truncation, difference)) {
             difference = difference.add(BigInteger.ONE);
-        } else if (SIGNIFICANDS.roundsTheTruncationUp(-truncation, difference)) {
+        } else if (SIGNIFICANDS.roundsTruncationUp(-truncation, difference)) {
             difference = difference.subtract(BigInteger.ONE);
         }
         return new Deci(difference, made.exponent(), signed);
@@ -203,7 +203,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     private Deci scaleBy(BigInteger significandSoFar, int power, int truncation, boolean signed) {
-        Scaled scaled = SIGNIFICANDS.multiplyByTenToThe(significandSoFar, 0, power, truncation);
+        Scaled scaled = SIGNIFICANDS.multiplyByTenTo(significandSoFar, 0, power, truncation);
         return new Deci(scaled.significand(), scaled.exponent(), signed);
     }
 
@@ -223,7 +223,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         BigInteger[] quotientAndRemainder = widened.divideAndRemainder(other.significand);
         Shifted normalised = SIGNIFICANDS.shiftRight(quotientAndRemainder[0],
                 SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]),
-                truncateADivision(quotientAndRemainder[1], other.significand));
+                truncateDivision(quotientAndRemainder[1], other.significand));
         lowered += SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]);
         BigInteger quotient = lowered >= THE_SMALLEST_EXPONENT
                 ? SIGNIFICANDS.roundUpWhenTheTruncationSays(normalised)
@@ -231,7 +231,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         return scaleBy(quotient, lowered, normalised.truncation(), signed);
     }
 
-    private int truncateADivision(BigInteger remainder, BigInteger divisor) {
+    private int truncateDivision(BigInteger remainder, BigInteger divisor) {
         int compared = remainder.shiftLeft(1).compareTo(divisor);
         if (compared > 0) {
             return MORE_THAN_HALF;
@@ -242,7 +242,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         return remainder.signum() == 0 ? EXACT : LESS_THAN_HALF;
     }
 
-    public Deci takeTheRemainderAfterDividingBy(Deci other) {
+    public Deci takeRemainderAfterDividingBy(Deci other) {
         if (other.isZero()) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
@@ -333,17 +333,17 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     public Deci truncateTo(Deci scale) {
-        return plus(takeTheRemainderAfterDividingBy(scale).negated()).denormaliseTo(scale);
+        return plus(takeRemainderAfterDividingBy(scale).negated()).denormaliseTo(scale);
     }
 
     public Deci roundAwayFromZeroTo(Deci scale) {
-        Deci left = takeTheRemainderAfterDividingBy(scale);
+        Deci left = takeRemainderAfterDividingBy(scale);
         Deci adding = left.isZero() ? left : left.negated().plus(scale.withSign(left.negative));
         return plus(adding).denormaliseTo(scale);
     }
 
     public Deci floorTo(Deci scale) {
-        Deci adding = takeTheRemainderAfterDividingBy(scale).negated();
+        Deci adding = takeRemainderAfterDividingBy(scale).negated();
         if (!adding.negative && !adding.isZero()) {
             adding = scale.withSign(true).plus(adding);
         }
@@ -351,7 +351,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     public Deci ceilTo(Deci scale) {
-        Deci adding = takeTheRemainderAfterDividingBy(scale).negated();
+        Deci adding = takeRemainderAfterDividingBy(scale).negated();
         if (adding.negative && !adding.isZero()) {
             adding = adding.plus(scale.withSign(false));
         }
@@ -362,7 +362,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     private AgainstHalf compareWithHalfOf(Deci scale) {
-        Deci left = takeTheRemainderAfterDividingBy(scale);
+        Deci left = takeRemainderAfterDividingBy(scale);
         return new AgainstHalf(left.withSign(false), scale.withSign(false).plus(left.withSign(true)));
     }
 
@@ -372,7 +372,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
             return roundEitherWay(half, half.left().isLesserOrEqualTo(half.towardsTheNext()), scale);
         }
         Deci unsignedScale = scale.withSign(false);
-        Deci within = takeTheRemainderAfterDividingBy(unsignedScale.plus(unsignedScale)).withSign(false);
+        Deci within = takeRemainderAfterDividingBy(unsignedScale.plus(unsignedScale)).withSign(false);
         return roundEitherWay(half, within.isLesserOrEqualTo(unsignedScale), scale);
     }
 

@@ -27,7 +27,7 @@ public class DhInitNative extends CipherNative {
         return (arguments, evaluator, context, refinements) -> DiffieHellmanKey.generateFor(
                         ((BinaryValue) arguments.get(0)).octetsFromHere(),
                         ((BinaryValue) arguments.get(1)).octetsFromHere())
-                .map(key -> wrapInAHandle(DHM_HANDLE_TYPE, key, evaluator))
+                .map(key -> wrapInHandle(DHM_HANDLE_TYPE, key, evaluator))
                 .orElseGet(NoneValue::none);
     }
 }

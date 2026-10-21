@@ -14,19 +14,19 @@ public final class CommandValue extends DefaultNative {
 
         @Override
         public Value makeFrom(Value spec, Maker maker) {
-            return spec instanceof AnyBlockValue definition && opensWithASpec(definition)
+            return spec instanceof AnyBlockValue definition && opensWithSpec(definition)
                     ? maker.makeCommandFrom(definition)
                     : super.makeFrom(spec, maker);
         }
 
         @Override
         public Value convert(Value value, Maker maker) {
-            return value instanceof AnyBlockValue definition && opensWithASpec(definition)
+            return value instanceof AnyBlockValue definition && opensWithSpec(definition)
                     ? maker.makeCommandFrom(definition)
                     : super.convert(value, maker);
         }
 
-        private boolean opensWithASpec(AnyBlockValue definition) {
+        private boolean opensWithSpec(AnyBlockValue definition) {
             List<Value> parts = definition.remaining();
             return parts.size() >= THE_FEWEST_PARTS_A_FUNCTION_IS_MADE_FROM
                     && parts.getFirst() instanceof AnyBlockValue;

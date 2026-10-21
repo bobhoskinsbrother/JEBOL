@@ -20,12 +20,12 @@ abstract class DeclaredKeyword implements ParseKeyword {
     }
 
     @Override
-    public final int slotsBeforeTheRule() {
+    public final int slotsBeforeRule() {
         return slotsBeforeTheRule;
     }
 
     @Override
-    public final boolean ownsTheRuleAfterIt() {
+    public final boolean ownsRuleAfterIt() {
         return ownsTheRuleAfterIt;
     }
 

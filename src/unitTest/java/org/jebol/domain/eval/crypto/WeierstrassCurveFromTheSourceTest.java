@@ -45,15 +45,15 @@ class WeierstrassCurveFromTheSourceTest {
         BigInteger first = curve.drawPrivateNumber(randomly);
         BigInteger second = curve.drawPrivateNumber(randomly);
 
-        WeierstrassCurve.Point onePoint = curve.multiplyTheGenerator(first);
-        WeierstrassCurve.Point another = curve.multiplyTheGenerator(second);
+        WeierstrassCurve.Point onePoint = curve.multiplyGenerator(first);
+        WeierstrassCurve.Point another = curve.multiplyGenerator(second);
 
         assertThat(curve.holds(onePoint)).as("%s: a multiple is on the curve", name)
                 .isTrue();
         assertThat(curve.addPoints(onePoint, another))
                 .as("%s: adding commutes", name)
                 .isEqualTo(curve.addPoints(another, onePoint));
-        assertThat(curve.multiplyTheGenerator(first.add(second).mod(curve.order())))
+        assertThat(curve.multiplyGenerator(first.add(second).mod(curve.order())))
                 .as("%s: the generator's multiples add", name)
                 .isEqualTo(curve.addPoints(onePoint, another));
         assertThat(curve.doublePoint(onePoint))
@@ -70,9 +70,9 @@ class WeierstrassCurveFromTheSourceTest {
         BigInteger hers = curve.drawPrivateNumber(randomly);
         BigInteger his = curve.drawPrivateNumber(randomly);
 
-        assertThat(curve.multiply(curve.multiplyTheGenerator(his), hers))
+        assertThat(curve.multiply(curve.multiplyGenerator(his), hers))
                 .as("%s", name)
-                .isEqualTo(curve.multiply(curve.multiplyTheGenerator(hers), his));
+                .isEqualTo(curve.multiply(curve.multiplyGenerator(hers), his));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -81,7 +81,7 @@ class WeierstrassCurveFromTheSourceTest {
     void carriesAPointThroughTheWireForm(String name) {
         WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         WeierstrassCurve.Point point =
-                curve.multiplyTheGenerator(curve.drawPrivateNumber(new SecureRandom()));
+                curve.multiplyGenerator(curve.drawPrivateNumber(new SecureRandom()));
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;

@@ -17,9 +17,9 @@ public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value
                 kept.add(candidate);
             }
         }
-        if (how.takesFromTheSecondSet()) {
+        if (how.takesFromSecondSet()) {
             for (List<Value> candidate : theirs) {
-                if (how.keepsFromTheSecondSet(holds(ours, candidate))
+                if (how.keepsFromSecondSet(holds(ours, candidate))
                         && isNew(kept, candidate)) {
                     kept.add(candidate);
                 }

@@ -24,7 +24,7 @@ public class HsvToRgbNative extends ColourNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                recolourTheTuple((TupleValue) arguments.getFirst(), this::convertHsvToRgb);
+                recolourTuple((TupleValue) arguments.getFirst(), this::convertHsvToRgb);
     }
 
     private int[] convertHsvToRgb(int[] hsv) {

@@ -130,13 +130,13 @@ public final class DrawDialect {
                 case "polygon" -> paint(drawARunOfPoints(arguments, true));
                 case "curve" -> paint(drawACurve(arguments));
                 case "arc" -> paint(drawAnArc(arguments));
-                case "triangle" -> paintTheTriangle(arguments);
+                case "triangle" -> paintTriangle(arguments);
                 case "spline" -> paint(drawASplineThroughEveryPoint(arguments));
                 case "shape" -> paint(drawAHandWrittenPath(arguments));
-                case "image" -> showTheImage(arguments);
+                case "image" -> showImage(arguments);
                 case "text" -> writeText(arguments);
                 case "clip" -> clipTo(arguments);
-                case "transform" -> transformAboutACentre(arguments);
+                case "transform" -> transformAboutCentre(arguments);
                 case "invert-matrix" -> transform = transform.invert();
                 case "translate" -> moveBy(arguments);
                 case "scale" -> scaleBy(arguments);
@@ -155,8 +155,8 @@ public final class DrawDialect {
             if (path.isEmpty() || state.paintsNothing()) {
                 return;
             }
-            paintTheGapsBetweenTheDashes(path);
-            paintAGradientNoToolkitHas(path);
+            paintGapsBetweenDashes(path);
+            paintGradientNoToolkitHas(path);
             painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(),
                     path, findTransformOnSurface(), makeStateRendererGets()));
             paintAnyArrowheads(path);
@@ -197,7 +197,7 @@ public final class DrawDialect {
                     gradient.stops());
         }
 
-        private void paintAGradientNoToolkitHas(List<PathStep> path) {
+        private void paintGradientNoToolkitHas(List<PathStep> path) {
             Optional<Gradient> awkward = state.fillGradient()
                     .filter(gradient -> !gradient.shape().canBeDrawnByToolkit());
             if (awkward.isEmpty()) {
@@ -279,7 +279,7 @@ public final class DrawDialect {
             return corners;
         }
 
-        private void paintTheGapsBetweenTheDashes(List<PathStep> path) {
+        private void paintGapsBetweenDashes(List<PathStep> path) {
             if (state.dashes().isEmpty() || gapColour.isEmpty()
                     || state.strokeColour().isEmpty()) {
                 return;
@@ -373,7 +373,7 @@ public final class DrawDialect {
 
         private static final int THE_IMAGE_KEY_COLOUR = 1;
 
-        private void showTheImage(List<Value> arguments) {
+        private void showImage(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof ImageValue given)) {
                 return;
@@ -383,7 +383,7 @@ public final class DrawDialect {
                     .orElse(given);
             List<PairValue> corners = read.collectEveryPairIn(arguments);
             if (corners.size() >= 3) {
-                showTheImagePulledOntoItsCorners(pixels, corners);
+                showImagePulledOntoItsCorners(pixels, corners);
                 return;
             }
             PairValue at = corners.isEmpty() ? PairValue.of(0, 0) : corners.getFirst();
@@ -394,7 +394,7 @@ public final class DrawDialect {
             addPicture(pixels, at.x(), at.y(), size.x(), size.y());
         }
 
-        private void showTheImagePulledOntoItsCorners(
+        private void showImagePulledOntoItsCorners(
                 ImageValue pixels, List<PairValue> corners) {
 
             PairValue[] four = corners.size() >= 4
@@ -484,7 +484,7 @@ public final class DrawDialect {
                     right - left, bottom - top);
         }
 
-        private void transformAboutACentre(List<Value> arguments) {
+        private void transformAboutCentre(List<Value> arguments) {
             double angle = read.readTheNumberAt(arguments, 0).orElse(0.0);
             PairValue centre = read.readThePairAt(arguments, 1).orElse(PairValue.of(0, 0));
             double acrossScale = read.readTheNumberAt(arguments, 2).orElse(1.0);
@@ -654,7 +654,7 @@ public final class DrawDialect {
 
         private static final int THE_FIRST_TRIANGLE_COLOUR = 3;
 
-        private void paintTheTriangle(List<Value> arguments) {
+        private void paintTriangle(List<Value> arguments) {
             List<Colour> corners = readTheThreeCornerColours(arguments);
             if (corners.size() < 3) {
                 paint(drawATriangle(arguments));

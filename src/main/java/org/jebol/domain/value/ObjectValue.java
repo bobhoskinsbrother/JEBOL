@@ -53,7 +53,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         return switch (spec) {
             case BlockValue body -> maker.makeObjectFrom(this, body);
             case NoneValue nothing -> maker.makeObjectFrom(this, BlockValue.of(List.of()));
-            case ObjectValue other -> maker.mergeAnObject(this, other);
+            case ObjectValue other -> maker.mergeObject(this, other);
             default -> throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, TYPE, this);
         };
     }
@@ -66,7 +66,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
-        return new ObjectValue(context.withoutTheFieldsHoldingNothing());
+        return new ObjectValue(context.withoutFieldsHoldingNothing());
     }
 
     @Override

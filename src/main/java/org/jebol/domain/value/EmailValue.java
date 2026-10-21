@@ -72,13 +72,13 @@ public final class EmailValue extends AnyStringValue {
         return at < 0 ? NoneValue.none() : StringValue.of(whole.substring(at + 1));
     }
 
-    public void rewriteTheUserAs(String replacement) {
+    public void rewriteUserAs(String replacement) {
         String whole = text();
         int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
         replaceEverythingWith(replacement + (at < 0 ? "" : whole.substring(at)));
     }
 
-    public void rewriteTheHostAs(String replacement) {
+    public void rewriteHostAs(String replacement) {
         String whole = text();
         int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
         replaceEverythingWith(at < 0

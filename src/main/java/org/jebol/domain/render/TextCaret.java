@@ -20,7 +20,7 @@ public record TextCaret(
         return at.character();
     }
 
-    public boolean marksASelection() {
+    public boolean marksSelection() {
         return !selectionFrom.isNowhere() && !selectionTo.isNowhere() && !selectionFrom.equals(selectionTo);
     }
 }

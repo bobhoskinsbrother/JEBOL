@@ -22,7 +22,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
-        return new ObjectValue(context.withoutTheFieldsHoldingNothing());
+        return new ObjectValue(context.withoutFieldsHoldingNothing());
     }
 
     @Override

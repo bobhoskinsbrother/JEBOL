@@ -40,7 +40,7 @@ public class FilterNative extends PngFilterNative {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
             int width = readWidthIn(arguments.get(1));
             int filter = readFilterNamedBy(arguments.get(2));
-            requireTheLinesFit(width, data.length, arguments, refinements);
+            requireLinesFit(width, data.length, arguments, refinements);
             return BinaryValue.ofBytes(encodings.pngFilter(
                     data, width, filter, readBytesPerPixelIn(arguments, refinements)));
         };

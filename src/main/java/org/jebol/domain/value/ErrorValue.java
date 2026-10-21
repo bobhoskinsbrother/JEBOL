@@ -174,7 +174,7 @@ public record ErrorValue(
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
-        return new ObjectValue(fieldsAsContext().orElseThrow().withoutTheFieldsHoldingNothing());
+        return new ObjectValue(fieldsAsContext().orElseThrow().withoutFieldsHoldingNothing());
     }
 
     @Override
@@ -312,8 +312,8 @@ public record ErrorValue(
         }
         return switch (name) {
             case "code" ->
-                    Optional.of(IntegerValue.of(numberTheCode()));
-            case "type" -> Optional.of(WordValue.of(reportTheTypeWord()));
+                    Optional.of(IntegerValue.of(numberCode()));
+            case "type" -> Optional.of(WordValue.of(reportTypeWord()));
             case "id" -> Optional.of(WordValue.of(errorId));
             case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
             case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
@@ -324,7 +324,7 @@ public record ErrorValue(
         };
     }
 
-    private long numberTheCode() {
+    private long numberCode() {
         int fromCatalogue = ErrorCatalogue.findCodeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
                         Locale.ROOT),
@@ -345,7 +345,7 @@ public record ErrorValue(
         };
     }
 
-    private String reportTheTypeWord() {
+    private String reportTypeWord() {
         if (writtenFields.get("type") instanceof AnyWordValue written) {
             return written.spelling();
         }
@@ -366,14 +366,14 @@ public record ErrorValue(
      */
     public String formAsRebolDoes() {
         StringBuilder written = new StringBuilder("\n** ")
-                .append(reportTheTypeWord())
+                .append(reportTypeWord())
                 .append(" error: ")
                 .append(readCataloguesMessage())
                 .append('\n');
         readTheField("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
                 written.append("** Where: ").append(Molder.form(chain)).append('\n'));
         readTheField("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
-                written.append("** Near: ").append(showTheLocation(where)).append('\n'));
+                written.append("** Near: ").append(showLocation(where)).append('\n'));
         return written.toString();
     }
 
@@ -400,12 +400,12 @@ public record ErrorValue(
             if (!built.isEmpty() && built.charAt(built.length() - 1) != '\n') {
                 built.append(' ');
             }
-            built.append(nameTheFieldOrTheItem(item));
+            built.append(nameFieldOrItem(item));
         }
         return built.toString();
     }
 
-    private String nameTheFieldOrTheItem(Value item) {
+    private String nameFieldOrItem(Value item) {
         if (item instanceof AnyWordValue word) {
             Optional<Value> held = readTheField(word.canonical());
             if (held.isPresent()) {
@@ -415,7 +415,7 @@ public record ErrorValue(
         return Molder.form(item);
     }
 
-    private static String showTheLocation(Value where) {
+    private static String showLocation(Value where) {
         if (where instanceof StringValue text) {
             return text.text();
         }

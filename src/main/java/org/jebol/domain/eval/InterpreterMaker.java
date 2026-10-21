@@ -58,7 +58,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Value readASimpleValue(Value piece) {
+    public Value readSimpleValue(Value piece) {
         return evaluator.readSimpleValue(piece, context);
     }
 
@@ -88,8 +88,8 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
-        return mergeTheObjects(prototype, other);
+    public Value mergeObject(ObjectValue prototype, ObjectValue other) {
+        return mergeObjects(prototype, other);
     }
 
     private ObjectValue copyObject(ObjectValue prototype) {
@@ -101,7 +101,7 @@ public final class InterpreterMaker implements Maker {
         return built;
     }
 
-    private Value mergeTheObjects(ObjectValue prototype, ObjectValue other) {
+    private Value mergeObjects(ObjectValue prototype, ObjectValue other) {
         Context fields = Context.makeChildOf(context);
         prototype.context().slots()
                 .forEach(slot -> fields.register(slot.spelling(), slot.value()));
@@ -130,7 +130,7 @@ public final class InterpreterMaker implements Maker {
             throw prototype.refuseAsPrototypeFor(spec);
         }
         Optional<Value> newBody = parts.size() > 1 ? Optional.of(parts.get(1)) : Optional.empty();
-        if (newBody.isPresent() && !takesTheBody(prototype, newBody.get())) {
+        if (newBody.isPresent() && !takesBody(prototype, newBody.get())) {
             throw prototype.refuseAsPrototypeFor(spec);
         }
         return switch (prototype) {
@@ -142,7 +142,7 @@ public final class InterpreterMaker implements Maker {
                     .<AnyFunctionValue>map(given -> built.deriveWith(given, FunctionSpec.readTheParametersIn(given)))
                     .orElse(built);
             case OperatorValue operator -> newSpecification
-                    .<AnyFunctionValue>map(given -> respecifyTheOperator(operator, given))
+                    .<AnyFunctionValue>map(given -> respecifyOperator(operator, given))
                     .orElse(operator);
         };
     }
@@ -176,11 +176,11 @@ public final class InterpreterMaker implements Maker {
                 && handle.typeName().equals(DispatcherHandle.THE_KIND_A_DISPATCHER_IS);
     }
 
-    private boolean takesTheBody(AnyFunctionValue prototype, Value body) {
+    private boolean takesBody(AnyFunctionValue prototype, Value body) {
         return prototype instanceof DefinedFunctionValue && body instanceof AnyBlockValue;
     }
 
-    private OperatorValue respecifyTheOperator(OperatorValue operator, AnyBlockValue specification) {
+    private OperatorValue respecifyOperator(OperatorValue operator, AnyBlockValue specification) {
         return new OperatorValue(operator.operatorName(),
                 makeFunctionFrom(operator.underlying(), BlockValue.of(List.of(specification))));
     }

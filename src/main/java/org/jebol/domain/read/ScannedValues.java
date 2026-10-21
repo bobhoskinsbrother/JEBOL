@@ -472,7 +472,7 @@ final class ScannedValues {
                 return Optional.empty();
             }
             int named = 0;
-            while (named < 12 && !namesTheMonth(named, cp, size)) {
+            while (named < 12 && !namesMonth(named, cp, size)) {
                 named++;
             }
             month = named + 1;
@@ -577,7 +577,7 @@ final class ScannedValues {
         return Optional.of(makeDate(year, month, day, time, zone));
     }
 
-    private boolean namesTheMonth(int month, int from, int size) {
+    private boolean namesMonth(int month, int from, int size) {
         String name = MONTH_NAMES[month];
         for (int offset = 0; offset < size; offset++) {
             int wanted = offset < name.length() ? Character.toLowerCase(name.charAt(offset)) : 0;

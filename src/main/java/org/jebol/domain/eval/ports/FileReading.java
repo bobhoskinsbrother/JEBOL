@@ -59,7 +59,7 @@ final class FileReading {
         if (path.endsWith("/") || files.isDirectory(path)) {
             return asFiles(files.listFileNames(path));
         }
-        byte[] chosen = takeTheBytesAskedFor(files.readBytes(path));
+        byte[] chosen = takeBytesAskedFor(files.readBytes(path));
         if (answersLines || answersText) {
             Optional<String> text = new TextBehindItsMark().decode(chosen);
             if (text.isPresent()) {
@@ -83,7 +83,7 @@ final class FileReading {
                 .toList());
     }
 
-    private byte[] takeTheBytesAskedFor(byte[] whole) {
+    private byte[] takeBytesAskedFor(byte[] whole) {
         int from = (int) Math.min(position.map(this::measureTheMagnitudeOf).orElse(0L), whole.length);
         if (bound.isEmpty()) {
             return Arrays.copyOfRange(whole, from, whole.length);

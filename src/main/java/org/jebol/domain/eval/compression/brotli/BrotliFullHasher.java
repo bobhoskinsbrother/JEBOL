@@ -47,7 +47,7 @@ final class BrotliFullHasher implements BrotliHasher {
         return hashesFiveBytesOfEight ? 8 : 4;
     }
 
-    private int hashTheSlotFor(byte[] data, int at) {
+    private int hashSlotFor(byte[] data, int at) {
         if (hashesFiveBytesOfEight) {
             long eightBytes = 0;
             for (int which = 0; which < 8; which++) {
@@ -69,7 +69,7 @@ final class BrotliFullHasher implements BrotliHasher {
         if (theWholeInputAtOnce
                 && inputSize <= bucketCount >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
-                howManySeen[hashTheSlotFor(data, at)] = 0;
+                howManySeen[hashSlotFor(data, at)] = 0;
             }
         } else {
             Arrays.fill(howManySeen, (char) 0);
@@ -78,7 +78,7 @@ final class BrotliFullHasher implements BrotliHasher {
 
     @Override
     public void remember(byte[] data, int mask, int at) {
-        int slot = hashTheSlotFor(data, at & mask);
+        int slot = hashSlotFor(data, at & mask);
         int within = howManySeen[slot] & blockMask;
         positions[within + (slot << blockBits)] = at;
         howManySeen[slot]++;
@@ -127,7 +127,7 @@ final class BrotliFullHasher implements BrotliHasher {
         long scoreToBeat = best.score;
         long bestScore = best.score;
         int bestLength = (int) best.length;
-        int slot = hashTheSlotFor(data, here);
+        int slot = hashSlotFor(data, here);
         int bucketAt = slot << blockBits;
         best.length = 0;
         best.lengthCodeDelta = 0;
@@ -150,7 +150,7 @@ final class BrotliFullHasher implements BrotliHasher {
                 long score = BrotliMatch.scoreUsingLastDistance(length);
                 if (bestScore < score) {
                     if (which != 0) {
-                        score -= BrotliMatch.penaliseARecentDistance(which);
+                        score -= BrotliMatch.penaliseRecentDistance(which);
                     }
                     if (bestScore < score) {
                         bestScore = score;

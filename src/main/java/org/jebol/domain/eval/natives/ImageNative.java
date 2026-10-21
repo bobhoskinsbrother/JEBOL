@@ -41,10 +41,10 @@ public class ImageNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("load")) {
-                return loadTheImage(arguments, evaluator, refinements);
+                return loadImage(arguments, evaluator, refinements);
             }
             if (refinements.contains("save")) {
-                return saveTheImage(arguments, evaluator, refinements);
+                return saveImage(arguments, evaluator, refinements);
             }
             return UnsetValue.unset();
         };
@@ -64,8 +64,8 @@ public class ImageNative extends DefaultNative {
         return type;
     }
 
-    private Value loadTheImage(List<Value> arguments, Evaluator evaluator,
-                               Set<String> refinements) {
+    private Value loadImage(List<Value> arguments, Evaluator evaluator,
+                            Set<String> refinements) {
 
         String type = readTheCodecName(arguments, evaluator, refinements);
         Value source = readTheArgumentOf("load", 0, arguments, refinements)
@@ -107,8 +107,8 @@ public class ImageNative extends DefaultNative {
         return image;
     }
 
-    private Value saveTheImage(List<Value> arguments, Evaluator evaluator,
-                               Set<String> refinements) {
+    private Value saveImage(List<Value> arguments, Evaluator evaluator,
+                            Set<String> refinements) {
 
         String type = Optional.of(readTheCodecName(arguments, evaluator, refinements))
                 .filter(named -> !named.isEmpty())

@@ -192,7 +192,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         if (!(field instanceof NoneValue)) {
             granted.require(HostService.MIDI);
         }
-        return new TheDevicesTheHostLists(evaluator.ports().midiDevices()).answer(field, evaluator);
+        return new DevicesHostLists(evaluator.ports().midiDevices()).answer(field, evaluator);
     }
 
     private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {
@@ -220,15 +220,15 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
-        evaluator.queueOnTheSystemPort(new EventValue(EventCatalogue.findTheTypeIndexOf(happened).orElseThrow(),
+        evaluator.queueOnSystemPort(new EventValue(EventCatalogue.findTheTypeIndexOf(happened).orElseThrow(),
                 Set.of(), EventValue.Model.PORT, 0, port));
     }
 
-    private static final class TheDevicesTheHostLists extends QueriedFields {
+    private static final class DevicesHostLists extends QueriedFields {
 
         private final MidiDevices devices;
 
-        TheDevicesTheHostLists(MidiDevices devices) {
+        DevicesHostLists(MidiDevices devices) {
             this.devices = devices;
         }
 

@@ -72,7 +72,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
                 if (given instanceof UnsetValue || given instanceof SetWordValue) {
                     throw Raised.of(EvaluationFailure.NEED_VALUE, field);
                 }
-                Value written = maker.readASimpleValue(given);
+                Value written = maker.readSimpleValue(given);
                 if (!GobPath.accepts(gob.storage(), field.canonical(), written)) {
                     throw Raised.of(EvaluationFailure.BAD_FIELD_SET, field, written.datatype());
                 }
@@ -96,7 +96,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         throw Raised.cannotUse(this, "reverse/part");
     }
 

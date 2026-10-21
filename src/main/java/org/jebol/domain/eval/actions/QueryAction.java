@@ -116,11 +116,11 @@ public class QueryAction extends PortAction {
         if (path.isEmpty()) {
             return NoneValue.none();
         }
-        if (ports.namesADirectory(path, evaluator)) {
-            ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
+        if (ports.namesDirectory(path, evaluator)) {
+            ports.requireFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
         }
         FilePort files = evaluator.ports().files();
-        return ports.runThroughTheFileSystem(() -> files.describe(path)
+        return ports.runThroughFileSystem(() -> files.describe(path)
                 .<Value>map(about -> new TheFieldsOfAFile(about,
                                 files.locationFor(path))
                         .answer(field, evaluator))

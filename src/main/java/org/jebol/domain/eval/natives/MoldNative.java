@@ -33,7 +33,7 @@ public class MoldNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Function<Value, String> how = flattenWhenAsked(refinements,
-                    writeInTheSystemBase(evaluator, moldAsAsked(arguments.getFirst(), refinements)));
+                    writeInSystemBase(evaluator, moldAsAsked(arguments.getFirst(), refinements)));
             return readTheArgumentOf("part", 0, arguments, refinements)
                     .map(limit -> StringValue.of(Molder.moldWithin(arguments.getFirst(),
                             countCharactersWithin(((IntegerValue) limit).magnitude()), how)))
@@ -48,8 +48,8 @@ public class MoldNative extends DefaultNative {
         return refinements.contains("all") ? Molder::moldAll : Molder::mold;
     }
 
-    private Function<Value, String> writeInTheSystemBase(Evaluator evaluator,
-                                                         Function<Value, String> written) {
+    private Function<Value, String> writeInSystemBase(Evaluator evaluator,
+                                                      Function<Value, String> written) {
         return value -> Molder.writeBinariesInBase(readBinaryBaseNamedBy(evaluator),
                 () -> written.apply(value));
     }

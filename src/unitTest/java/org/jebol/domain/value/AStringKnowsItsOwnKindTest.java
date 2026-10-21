@@ -331,7 +331,7 @@ class AStringKnowsItsOwnKindTest {
         @DisplayName("rewriting the user leaves the host alone")
         void rewriteTheUser() {
             EmailValue address = EmailValue.of("bob@x");
-            address.rewriteTheUserAs("ann");
+            address.rewriteUserAs("ann");
 
             assertThat(address.text()).isEqualTo("ann@x");
         }
@@ -340,7 +340,7 @@ class AStringKnowsItsOwnKindTest {
         @DisplayName("rewriting the host leaves the user alone")
         void rewriteTheHost() {
             EmailValue address = EmailValue.of("bob@x");
-            address.rewriteTheHostAs("y");
+            address.rewriteHostAs("y");
 
             assertThat(address.text()).isEqualTo("bob@y");
         }
@@ -349,7 +349,7 @@ class AStringKnowsItsOwnKindTest {
         @DisplayName("rewriting a host where there was none adds the at sign")
         void addAHost() {
             EmailValue address = EmailValue.of("bob");
-            address.rewriteTheHostAs("y");
+            address.rewriteHostAs("y");
 
             assertThat(address.text()).isEqualTo("bob@y");
         }
@@ -358,7 +358,7 @@ class AStringKnowsItsOwnKindTest {
         @DisplayName("rewriting the user of an email with no host replaces the whole")
         void rewriteAUserWithNoHost() {
             EmailValue address = EmailValue.of("bob");
-            address.rewriteTheUserAs("ann");
+            address.rewriteUserAs("ann");
 
             assertThat(address.text()).isEqualTo("ann");
         }

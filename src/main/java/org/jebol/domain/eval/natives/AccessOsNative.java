@@ -63,7 +63,7 @@ public class AccessOsNative extends DefaultNative {
             WhoTheProcessRunsAs asked = Optional.ofNullable(THE_IDENTITY_FIELDS.get(field.canonical()))
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, field));
             return setTo.isPresent()
-                    ? refuseToChangeWhoTheProcessRunsAs(field, setTo.get())
+                    ? refuseToChangeWhoProcessRunsAs(field, setTo.get())
                     : askWhoTheProcessRunsAs(field, asked, evaluator);
         };
     }
@@ -75,7 +75,7 @@ public class AccessOsNative extends DefaultNative {
         return IntegerValue.of(answered);
     }
 
-    private Value refuseToChangeWhoTheProcessRunsAs(AnyWordValue field, Value given) {
+    private Value refuseToChangeWhoProcessRunsAs(AnyWordValue field, Value given) {
         if (!(given instanceof IntegerValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }

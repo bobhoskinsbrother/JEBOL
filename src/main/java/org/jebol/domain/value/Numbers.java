@@ -36,7 +36,7 @@ final class Numbers {
             return Double.isNaN(ours) && Double.isNaN(theirs) && how.stepsAllowed() > 0;
         }
         if (one instanceof AnyDecimalValue || other instanceof AnyDecimalValue) {
-            return withinTheAllowedSteps(ours, theirs, how.stepsAllowed());
+            return withinAllowedSteps(ours, theirs, how.stepsAllowed());
         }
         return ours == theirs;
     }
@@ -58,7 +58,7 @@ final class Numbers {
         };
     }
 
-    private static boolean withinTheAllowedSteps(
+    private static boolean withinAllowedSteps(
             double first, double second, long stepsAllowed) {
 
         long steps = placeInRunningOrder(first) - placeInRunningOrder(second);

@@ -37,7 +37,7 @@ public final class ImageOperations {
         }
         int wide = storage.wide();
         int high = storage.high();
-        int spread = limitToHalfTheShorterSide(radius, wide, high);
+        int spread = limitToHalfShorterSide(radius, wide, high);
         byte[] picture = readTheChannelsOf(storage, wide, high);
         byte[] working = new byte[picture.length];
         for (int boxWidth : findBoxWidthsMatching(spread)) {
@@ -46,7 +46,7 @@ public final class ImageOperations {
         writeChannelsBack(storage, picture, wide, high);
     }
 
-    private static int limitToHalfTheShorterSide(int radius, int wide, int high) {
+    private static int limitToHalfShorterSide(int radius, int wide, int high) {
         return Math.min(radius, Math.min(wide / 2, high / 2));
     }
 

@@ -24,7 +24,7 @@ public class ClearAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case NoneValue nothing -> nothing;
             case PortValue file when file.isAFile() ->
-                    findFileBehind(file, evaluator).truncateAtThePosition();
+                    findFileBehind(file, evaluator).truncateAtPosition();
             case PortValue queue when queue.findTheEventQueue().isPresent() ->
                     queue.withItsQueueEmptied();
             case Value subject when Actions.of(subject).isPresent() ->

@@ -65,7 +65,7 @@ public class WaitNative extends PortWakingNative {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
             if (isAnEventPort(asked)) {
-                return waitOnTheScreen((PortValue) asked, evaluator);
+                return waitOnScreen((PortValue) asked, evaluator);
             }
             List<Value> waitedOn = asked instanceof AnyBlockValue block
                     ? evaluator.evaluateEachOrRaise(block, context)
@@ -73,14 +73,14 @@ public class WaitNative extends PortWakingNative {
             Optional<PortValue> eventPort = findTheEventPortAmong(waitedOn);
             if (eventPort.isPresent()) {
                 return findHowLongToWaitAmong(waitedOn)
-                        .map(milliseconds -> waitOnTheScreenFor(eventPort.get(), milliseconds, evaluator))
-                        .orElseGet(() -> waitOnTheScreen(eventPort.get(), evaluator));
+                        .map(milliseconds -> waitOnScreenFor(eventPort.get(), milliseconds, evaluator))
+                        .orElseGet(() -> waitOnScreen(eventPort.get(), evaluator));
             }
-            return waitForTheFirstToWakeWithin(waitedOn, findHowLongToWaitAmong(waitedOn), evaluator);
+            return waitForFirstToWakeWithin(waitedOn, findHowLongToWaitAmong(waitedOn), evaluator);
         };
     }
 
-    private Value waitForTheFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
+    private Value waitForFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
         long left = milliseconds.map(asked -> Math.max(0, asked)).orElse(0L);
         while (true) {
             evaluator.deliverWhatWasPosted();
@@ -119,7 +119,7 @@ public class WaitNative extends PortWakingNative {
         while (true) {
             Value said = evaluator.applyFunction(queue.readFieldValue("awake"), List.of(queue, ports));
             if (said instanceof LogicValue(boolean truth) && truth) {
-                return takeTheFirstWokenAndEmptyTheWakeList(waitedOn, queue);
+                return takeFirstWokenAndEmptyWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
                 findTheWakeListOf(queue).ifPresent(this::empty);
@@ -128,7 +128,7 @@ public class WaitNative extends PortWakingNative {
         }
     }
 
-    private Value takeTheFirstWokenAndEmptyTheWakeList(List<Value> waitedOn, PortValue queue) {
+    private Value takeFirstWokenAndEmptyWakeList(List<Value> waitedOn, PortValue queue) {
         List<Value> woken = findTheWakeListOf(queue).map(AnyBlockValue::remaining).orElse(List.of());
         Value answer = waitedOn.stream()
                 .filter(one -> one instanceof PortValue && woken.contains(one))
@@ -150,7 +150,7 @@ public class WaitNative extends PortWakingNative {
         }
     }
 
-    private Value waitOnTheScreen(PortValue port, Evaluator evaluator) {
+    private Value waitOnScreen(PortValue port, Evaluator evaluator) {
         while (doesScreenStillHaveSomethingToSay(evaluator)) {
             if (doesQueuedEventWake(port, evaluator)) {
                 return NoneValue.none();
@@ -185,7 +185,7 @@ public class WaitNative extends PortWakingNative {
                 .findFirst();
     }
 
-    private Value waitOnTheScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
+    private Value waitOnScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
         long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_A_MILLISECOND;
         while (true) {
             if (doesQueuedEventWake(port, evaluator)) {
@@ -236,17 +236,17 @@ public class WaitNative extends PortWakingNative {
     private boolean sleepWithoutBeingInterrupted(long milliseconds, Evaluator evaluator) {
         long remaining = milliseconds;
         while (remaining > 0) {
-            stopIfTheRunHasBeenStopped(evaluator);
-            if (!letTheHostPassTime(evaluator, Math.min(PAUSE_SLICE_MILLISECONDS, remaining))) {
+            stopIfRunHasBeenStopped(evaluator);
+            if (!letHostPassTime(evaluator, Math.min(PAUSE_SLICE_MILLISECONDS, remaining))) {
                 return false;
             }
             remaining -= PAUSE_SLICE_MILLISECONDS;
         }
-        stopIfTheRunHasBeenStopped(evaluator);
+        stopIfRunHasBeenStopped(evaluator);
         return true;
     }
 
-    private boolean letTheHostPassTime(Evaluator evaluator, long milliseconds) {
+    private boolean letHostPassTime(Evaluator evaluator, long milliseconds) {
         try {
             return evaluator.ports().pause().pauseFor(milliseconds);
         } catch (FilePort.Denied refused) {
@@ -254,7 +254,7 @@ public class WaitNative extends PortWakingNative {
         }
     }
 
-    private void stopIfTheRunHasBeenStopped(Evaluator evaluator) {
+    private void stopIfRunHasBeenStopped(Evaluator evaluator) {
         evaluator.reasonToStop().ifPresent(reason -> {
             throw new Stopped(reason);
         });

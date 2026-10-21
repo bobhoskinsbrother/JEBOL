@@ -65,6 +65,6 @@ class ReaderNeverThrowsTest {
         assertThat(reread.succeeded())
                 .as("mold produced %s, which will not read", Molder.mold(value))
                 .isTrue();
-        return reread.values().orElseThrow().pickTheFirst();
+        return reread.values().orElseThrow().pickFirst();
     }
 }

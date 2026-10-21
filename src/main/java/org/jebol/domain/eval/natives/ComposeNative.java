@@ -73,7 +73,7 @@ public class ComposeNative extends DefaultNative {
             }
             reading++;
         }
-        return BlockValue.wrapTheStorage(built);
+        return BlockValue.wrapStorage(built);
     }
 
     private Value composeAnItem(Value item, Evaluator evaluator, Context context,

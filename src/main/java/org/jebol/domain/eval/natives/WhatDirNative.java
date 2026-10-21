@@ -28,7 +28,7 @@ public class WhatDirNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WORKING_DIRECTORY);
-            return runThroughTheFileSystem(() ->
+            return runThroughFileSystem(() ->
                     FileValue.of(evaluator.ports().files().workingDirectory()));
         };
     }

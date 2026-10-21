@@ -83,23 +83,23 @@ public final class ValueHash {
     }
 
     private int numberTheTypeOf(Value value) {
-        return value.datatype().numberTheCGivesIt();
+        return value.datatype().numberCGivesIt();
     }
 
     private int ofText(AnyStringValue text) {
         byte[] heldAsUtf8 = text.text().getBytes(StandardCharsets.UTF_8);
         int hash = 0;
         for (byte each : heldAsUtf8) {
-            hash = mixABlock(hash, UnicodeCases.TABLES.toLower(each & 0xFF));
+            hash = mixBlock(hash, UnicodeCases.TABLES.toLower(each & 0xFF));
         }
         return mixFinally(hash ^ heldAsUtf8.length);
     }
 
     private int ofBlock(AnyBlockValue block) {
-        int hash = mixABlock(0, numberTheTypeOf(block));
+        int hash = mixBlock(0, numberTheTypeOf(block));
         int length = 0;
         for (Value item : block.remaining()) {
-            hash = mixABlock(hash, hash(item));
+            hash = mixBlock(hash, hash(item));
             length++;
         }
         return mixFinally(hash ^ length);
@@ -159,7 +159,7 @@ public final class ValueHash {
         int hash = 0;
         int whole = bytes.length / TUPLE_BYTES_IN_A_WORD * TUPLE_BYTES_IN_A_WORD;
         for (int at = 0; at < whole; at += TUPLE_BYTES_IN_A_WORD) {
-            hash = mixABlock(hash, (bytes[at] & 0xFF) | (bytes[at + 1] & 0xFF) << 8
+            hash = mixBlock(hash, (bytes[at] & 0xFF) | (bytes[at + 1] & 0xFF) << 8
                     | (bytes[at + 2] & 0xFF) << 16 | (bytes[at + 3] & 0xFF) << 24);
         }
         int tail = 0;
@@ -175,7 +175,7 @@ public final class ValueHash {
         return mixFinally(hash ^ bytes.length);
     }
 
-    private int mixABlock(int hash, int key) {
+    private int mixBlock(int hash, int key) {
         int mixed = Integer.rotateLeft(key * MURMUR_C1, 15) * MURMUR_C2;
         return Integer.rotateLeft(hash ^ mixed, 13) * 5 + 0xe6546b64;
     }

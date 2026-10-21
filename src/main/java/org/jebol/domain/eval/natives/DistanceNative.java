@@ -30,7 +30,7 @@ public class DistanceNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                ((PairValue) arguments.get(0)).measureTheDistanceFrom(
+                ((PairValue) arguments.get(0)).measureDistanceFrom(
                         (PairValue) arguments.get(1),
                         refinements.contains("taxicab"));
     }

@@ -173,16 +173,16 @@ final class SourceScanner {
         return octet != 0 && octet != CR && octet != LF;
     }
 
-    private int shiftToAFlag(int special) {
+    private int shiftToFlag(int special) {
         return 1 << special;
     }
 
     private boolean hasFlag(int flags, int special) {
-        return (flags & shiftToAFlag(special)) != 0;
+        return (flags & shiftToFlag(special)) != 0;
     }
 
     private boolean hasOnlyFlag(int flags, int special) {
-        return flags == shiftToAFlag(special);
+        return flags == shiftToFlag(special);
     }
 
     private int skipToChar(int from, int until, int wanted) {
@@ -211,12 +211,12 @@ final class SourceScanner {
                 }
                 case CLASS_SPECIAL -> {
                     if (cp != begin) {
-                        flags |= shiftToAFlag(lex.valueOf(at(cp)));
+                        flags |= shiftToFlag(lex.valueOf(at(cp)));
                     }
                     cp++;
                 }
                 case CLASS_WORD -> {
-                    flags |= shiftToAFlag(SPECIAL_WORD);
+                    flags |= shiftToFlag(SPECIAL_WORD);
                     while (lex.isAtLeastWord(at(cp))) {
                         cp++;
                     }
@@ -250,13 +250,13 @@ final class SourceScanner {
                 }
                 case CLASS_SPECIAL -> {
                     if (cp != begin) {
-                        flags |= shiftToAFlag(lex.valueOf(at(cp)));
+                        flags |= shiftToFlag(lex.valueOf(at(cp)));
                     }
                     cp++;
                     remaining--;
                 }
                 case CLASS_WORD -> {
-                    flags |= shiftToAFlag(SPECIAL_WORD);
+                    flags |= shiftToFlag(SPECIAL_WORD);
                     while (lex.isAtLeastWord(at(cp)) && remaining > 0) {
                         cp++;
                         remaining--;
@@ -426,7 +426,7 @@ final class SourceScanner {
                 return tickToken(cp, flags);
             }
             case SPECIAL_COMMA, SPECIAL_PERIOD -> {
-                int marked = flags | shiftToAFlag(lex.valueOf(at(cp)));
+                int marked = flags | shiftToFlag(lex.valueOf(at(cp)));
                 if (lex.isNumber(at(cp + 1))) {
                     return scanNumber(cp, marked);
                 }
@@ -845,8 +845,8 @@ final class SourceScanner {
                 return type;
             }
             cp = skipToChar(cp, end, ':');
-            if (at(cp + 1) != '/' && lex.lookUpTheEntry(at(cp + 1)) < SPECIAL) {
-                if ((flags & ~shiftToAFlag(SPECIAL_COLON) & WORD_FLAGS) != 0) {
+            if (at(cp + 1) != '/' && lex.lookUpEntry(at(cp + 1)) < SPECIAL) {
+                if ((flags & ~shiftToFlag(SPECIAL_COLON) & WORD_FLAGS) != 0) {
                     return -TOKEN_WORD;
                 }
                 return TOKEN_SET;
@@ -1037,7 +1037,7 @@ final class SourceScanner {
         int cp = start;
         long accumulated = 0;
         int lexical;
-        while ((lexical = lex.lookUpTheEntry(at(cp))) > WORD) {
+        while ((lexical = lex.lookUpEntry(at(cp))) > WORD) {
             int digit = lexical & VALUE_MASK;
             if (digit == 0 && lexical < NUMBER) {
                 break;
@@ -1053,7 +1053,7 @@ final class SourceScanner {
             return accumulated > Integer.MAX_VALUE ? INVALID_CHAR : (int) accumulated;
         }
         for (int named = 0; named < ESCAPE_NAMES.length; named++) {
-            int matched = matchTheBytes(start, ESCAPE_NAMES[named]);
+            int matched = matchBytes(start, ESCAPE_NAMES[named]);
             if (matched != NOT_FOUND && at(matched) == ')') {
                 position[0] = matched + 1;
                 return ESCAPE_CODES[named];
@@ -1062,7 +1062,7 @@ final class SourceScanner {
         return INVALID_CHAR;
     }
 
-    private int matchTheBytes(int from, String lowerCase) {
+    private int matchBytes(int from, String lowerCase) {
         for (int offset = 0; offset < lowerCase.length(); offset++) {
             if (Character.toLowerCase(at(from + offset)) != lowerCase.charAt(offset)) {
                 return NOT_FOUND;
@@ -1363,7 +1363,7 @@ final class SourceScanner {
         while ((token = scanToken()) != TOKEN_EOF) {
             int startedAt = begin;
             try {
-                if (takeTheToken(token, block) == AfterAToken.END_THE_BLOCK) {
+                if (takeToken(token, block) == AfterAToken.END_THE_BLOCK) {
                     return block.scanned();
                 }
             } catch (ScanFailure failure) {
@@ -1385,7 +1385,7 @@ final class SourceScanner {
         return failure.asAFailure().error().orElseThrow();
     }
 
-    private AfterAToken takeTheToken(int scannedToken, BlockInProgress block) {
+    private AfterAToken takeToken(int scannedToken, BlockInProgress block) {
         int token = scannedToken;
         int modeChar = block.modeChar;
         int bp = begin;
@@ -1727,7 +1727,7 @@ final class SourceScanner {
         int count = digits.length % 2 == 1 ? 1 : 0;
         int accumulated = 0;
         for (byte each : digits) {
-            int lexical = lex.lookUpTheEntry(each);
+            int lexical = lex.lookUpEntry(each);
             if (lexical > WORD) {
                 int value = lexical & VALUE_MASK;
                 if (value == 0 && lexical < NUMBER) {
@@ -1755,7 +1755,7 @@ final class SourceScanner {
         }
         int accumulated = 0;
         for (byte each : digits) {
-            int lexical = lex.lookUpTheEntry(each);
+            int lexical = lex.lookUpEntry(each);
             if (lexical >= NUMBER) {
                 if (each == '0') {
                     accumulated *= 2;

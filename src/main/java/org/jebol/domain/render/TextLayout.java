@@ -27,7 +27,7 @@ public record TextLayout(
         return shadowAcross != 0 || shadowDown != 0;
     }
 
-    public LinePlacement placeTheLine(Placement box, double lineWide, double ascent, double descent) {
+    public LinePlacement placeLine(Placement box, double lineWide, double ascent, double descent) {
         return new LinePlacement(
                 findWhereALineStarts(box, lineWide),
                 findWhereTheStackStarts(box, ascent + descent) + ascent);
@@ -35,7 +35,7 @@ public record TextLayout(
 
     public double findWhereALineStarts(Placement box, double lineWide) {
         double roomAcross = box.wide() - originAcross - marginAcross;
-        return box.across() + originAcross + shareTheSpareRoomBefore(roomAcross - lineWide);
+        return box.across() + originAcross + shareSpareRoomBefore(roomAcross - lineWide);
     }
 
     public double findWhereTheStackStarts(Placement box, double stackHigh) {
@@ -43,7 +43,7 @@ public record TextLayout(
         return box.down() + originDown + measureSpaceAboveLine(roomDown, stackHigh);
     }
 
-    private double shareTheSpareRoomBefore(double spareRoom) {
+    private double shareSpareRoomBefore(double spareRoom) {
         return switch (align) {
             case LEFT -> 0;
             case CENTRE -> spareRoom / 2;

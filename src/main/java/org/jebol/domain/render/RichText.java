@@ -51,8 +51,8 @@ final class RichText {
                     places.add(block.index() + offset);
                 }
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
-                case AnyWordValue command -> obeyTheWord(command);
-                case ObjectValue fields -> takeTheObject(fields);
+                case AnyWordValue command -> obeyWord(command);
+                case ObjectValue fields -> takeObject(fields);
                 case IntegerValue(long magnitude) -> size = magnitude;
                 default -> {
                 }
@@ -63,7 +63,7 @@ final class RichText {
                 theCaretObject.map(fields -> readCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
     }
 
-    private void obeyTheWord(AnyWordValue command) {
+    private void obeyWord(AnyWordValue command) {
         boolean turningItOn = !(command instanceof RefinementValue);
         theNextObject = WhatTheNextObjectIs.A_FONT;
         switch (command.canonical()) {
@@ -76,11 +76,11 @@ final class RichText {
         }
     }
 
-    private void takeTheObject(ObjectValue fields) {
+    private void takeObject(ObjectValue fields) {
         switch (theNextObject) {
-            case A_PARA -> takeTheParaIn(fields);
+            case A_PARA -> takeParaIn(fields);
             case A_CARET -> theCaretObject = Optional.of(fields);
-            case A_FONT -> takeTheFontIn(fields);
+            case A_FONT -> takeFontIn(fields);
         }
         theNextObject = WhatTheNextObjectIs.A_FONT;
     }
@@ -112,12 +112,12 @@ final class RichText {
                 : TextLines.RunAndCharacter.NOWHERE;
     }
 
-    private void takeTheFontIn(ObjectValue fields) {
+    private void takeFontIn(ObjectValue fields) {
         readField(fields, "size").flatMap(this::readASizeIn).ifPresent(asked -> size = asked);
         readField(fields, "color").filter(TupleValue.class::isInstance)
                 .map(TupleValue.class::cast)
                 .ifPresent(parts -> colour = Colour.ofTuple(parts));
-        readField(fields, "style").ifPresent(this::takeTheStyle);
+        readField(fields, "style").ifPresent(this::takeStyle);
         PairValue shadow = readField(fields, "shadow").flatMap(this::readTheShadowsOffsetIn)
                 .orElse(PairValue.of(0, 0));
         layout = layout.withShadow(roundToWholePixels(shadow.x()), roundToWholePixels(shadow.y()));
@@ -132,7 +132,7 @@ final class RichText {
         };
     }
 
-    private void takeTheParaIn(ObjectValue fields) {
+    private void takeParaIn(ObjectValue fields) {
         readField(fields, "origin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
                 .ifPresent(origin -> layout = layout.withOrigin(roundToWholePixels(origin.x()), roundToWholePixels(origin.y())));
         readField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
@@ -162,7 +162,7 @@ final class RichText {
         };
     }
 
-    private void takeTheStyle(Value style) {
+    private void takeStyle(Value style) {
         List<Value> named = style instanceof AnyBlockValue several ? several.remaining() : List.of(style);
         bold = named.stream().anyMatch(word -> spells(word, "bold"));
         italic = named.stream().anyMatch(word -> spells(word, "italic"));

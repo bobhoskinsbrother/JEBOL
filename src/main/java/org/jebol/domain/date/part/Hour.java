@@ -18,6 +18,6 @@ final class Hour implements WritableDateField {
 
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
-        return date.atTime(date.clock().withTheHour(given.asWholeNumber()));
+        return date.atTime(date.clock().withHour(given.asWholeNumber()));
     }
 }

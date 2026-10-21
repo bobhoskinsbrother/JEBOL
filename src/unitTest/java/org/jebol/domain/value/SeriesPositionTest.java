@@ -46,7 +46,7 @@ class SeriesPositionTest {
         void endAtTheLengthForTheLastElement() {
             AnyBlockValue last = makeThreeItems().atIndex(3);
             assertThat(last.atTail()).isFalse();
-            assertThat(last.pickTheFirst()).isEqualTo(IntegerValue.of(3));
+            assertThat(last.pickFirst()).isEqualTo(IntegerValue.of(3));
         }
 
         @Test
@@ -68,7 +68,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("reading at the tail fails, because it holds nothing")
         void failToReadAtTheTail() {
-            assertThatThrownBy(() -> makeThreeItems().tail().pickTheFirst())
+            assertThatThrownBy(() -> makeThreeItems().tail().pickFirst())
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("tail");
         }
@@ -133,7 +133,7 @@ class SeriesPositionTest {
 
             atHead.storage().set(2, StringValue.of("changed"));
 
-            assertThat(atSecond.pickTheFirst()).isEqualTo(StringValue.of("changed"));
+            assertThat(atSecond.pickFirst()).isEqualTo(StringValue.of("changed"));
         }
 
         @Test
@@ -195,7 +195,7 @@ class SeriesPositionTest {
         void keepTheSecondCharacterWhole() {
             AnyStringValue withEmoji = StringValue.of("a😀b");
 
-            assertThat(withEmoji.atIndex(2).pickTheFirst().codepoint()).isEqualTo(0x1F600);
+            assertThat(withEmoji.atIndex(2).pickFirst().codepoint()).isEqualTo(0x1F600);
         }
 
         @Test

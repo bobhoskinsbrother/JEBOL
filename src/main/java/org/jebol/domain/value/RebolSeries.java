@@ -15,12 +15,12 @@ public sealed interface RebolSeries extends Value
 
     Value readItemAt(int positionFromTheHead);
 
-    RebolSeries reverseTheFront(int howMany);
+    RebolSeries reverseFront(int howMany);
 
     Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds);
 
     default RebolSeries reversedFromHere() {
-        return reverseTheFront(lengthFromHere());
+        return reverseFront(lengthFromHere());
     }
 
     default RebolSeries swapFirstItemWith(RebolSeries there) {

@@ -30,7 +30,7 @@ public class TintNative extends ColourNative {
             int[] mixture = readThreeParts((TupleValue) arguments.get(1));
             double amount = Comparison.asDouble(arguments.get(2));
             return recolourEveryColour(arguments.getFirst(),
-                    colour -> recolourTheTuple(colour, parts -> tint(parts, mixture, amount)),
+                    colour -> recolourTuple(colour, parts -> tint(parts, mixture, amount)),
                     parts -> tint(parts, mixture, amount));
         };
     }

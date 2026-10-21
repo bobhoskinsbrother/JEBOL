@@ -124,12 +124,12 @@ public final class Layout {
         switch (item) {
             case AnyStringValue text -> face.setCaption(text.text());
             case PairValue size -> {
-                face.setTheStyle("width", Molder.moldHalf(size.x()) + "px");
-                face.setTheStyle("height", Molder.moldHalf(size.y()) + "px");
+                face.setStyle("width", Molder.moldHalf(size.x()) + "px");
+                face.setStyle("height", Molder.moldHalf(size.y()) + "px");
             }
-            case TupleValue colour -> face.setTheStyle("background-color", asRgb(colour));
+            case TupleValue colour -> face.setStyle("background-color", asRgb(colour));
             case AnyWordValue word -> findTheColourNamed(word.canonical())
-                    .ifPresent(rgb -> face.setTheStyle("background-color", rgb));
+                    .ifPresent(rgb -> face.setStyle("background-color", rgb));
             case IntegerValue ignored -> {
             }
             case CharacterValue character -> face.setCaption(character.toString());

@@ -44,7 +44,7 @@ public class ForEachNative extends LoopingNative {
 
         List<AnyWordValue> names = loopNamesIn(target);
         List<AnyWordValue> taking = keepTheNamesThatTakeAValue(names);
-        MapActions.refuseMoreNamesThanAPairHas(series, taking);
+        MapActions.refuseMoreNamesThanPairHas(series, taking);
         Supplier<List<Value>> itemsAsTheyStandNow = () -> takeTheKeysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
@@ -56,7 +56,7 @@ public class ForEachNative extends LoopingNative {
             int at = 0;
             List<Value> items = itemsAsTheyStandNow.get();
             while (at < items.size()) {
-                at = setLoopNamesFillingWithNonePastTheEnd(locals, names, items, at, series);
+                at = setLoopNamesFillingWithNonePastEnd(locals, names, items, at, series);
                 last = runOneRoundCatchingContinue(evaluator, bound, locals);
                 items = itemsAsTheyStandNow.get();
             }

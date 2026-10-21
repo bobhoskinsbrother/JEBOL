@@ -27,7 +27,7 @@ public final class TimeActions {
             return takeTheRestOfTheNanoseconds(right, operation);
         }
         if (operation.scalesRatherThanShifts()) {
-            return scaleByAPlainNumber(right, operation);
+            return scaleByPlainNumber(right, operation);
         }
         return addInWholeNanosecondsTo(right, operation);
     }
@@ -83,7 +83,7 @@ public final class TimeActions {
         return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
     }
 
-    private Value scaleByAPlainNumber(Value right, ArithmeticOperation operation) {
+    private Value scaleByPlainNumber(Value right, ArithmeticOperation operation) {
         double by = Comparison.asDouble(right);
         if (operation.divides()) {
             operation.requireNonZeroDivisor(by);

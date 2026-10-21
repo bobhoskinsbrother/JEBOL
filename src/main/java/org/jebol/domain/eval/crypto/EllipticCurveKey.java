@@ -130,7 +130,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
 
         BigInteger privateNumber = curve.drawPrivateNumber(RANDOMLY);
         return new EllipticCurveKey(curve, privateNumber,
-                curve.multiplyTheGenerator(privateNumber), curveName);
+                curve.multiplyGenerator(privateNumber), curveName);
     }
 
     private static Optional<EllipticCurveKey> makeOnACurveWithTwoCoordinates(
@@ -167,17 +167,17 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return ((ECPublicKey) pair.getPublic()).getParams();
     }
 
-    public byte[] publishThePoint() {
+    public byte[] publishPoint() {
         if (doesArithmeticInThisBuild()) {
             return writeTheTwoCoordinatesOf(publicPoint.x(), publicPoint.y());
         }
         return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
                 ? writeLittleEndianAsRfc7748(
                         ((XECPublicKey) pair.getPublic()).getU())
-                : writeBothCoordinatesAfterALeadByte();
+                : writeBothCoordinatesAfterLeadByte();
     }
 
-    private byte[] writeBothCoordinatesAfterALeadByte() {
+    private byte[] writeBothCoordinatesAfterLeadByte() {
         ECPoint point = ((ECPublicKey) pair.getPublic()).getW();
         return writeTheTwoCoordinatesOf(point.getAffineX(), point.getAffineY());
     }

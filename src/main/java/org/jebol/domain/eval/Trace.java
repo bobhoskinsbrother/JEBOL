@@ -33,7 +33,7 @@ public final class Trace {
         return level > 0;
     }
 
-    public void setTheLevel(int wanted, boolean functionsOnly) {
+    public void setLevel(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
         this.depthWhenTraceBegan = findZeroIndentationCountsFrom();
@@ -53,7 +53,7 @@ public final class Trace {
         }
     }
 
-    public void showTheLastAndStopTracing(int lines) {
+    public void showLastAndStopTracing(int lines) {
         level = 0;
         callsOnly = false;
         if (output == null) {
@@ -101,7 +101,7 @@ public final class Trace {
         emit(written.toString());
     }
 
-    void traceTheAnswer(String name, Value produced) {
+    void traceAnswer(String name, Value produced) {
         int depth = indentFor(ONE_FURTHER_OUT);
         if (depth < 0) {
             return;

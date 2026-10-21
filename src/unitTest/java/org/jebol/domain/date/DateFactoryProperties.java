@@ -68,7 +68,7 @@ class DateFactoryProperties {
     void everyWholeSecondInTheSupportedYearsComesBackAsItself(
             @ForAll @LongRange(min = EARLIEST_WHOLE_SECOND,
                     max = LATEST_WHOLE_SECOND) long seconds) {
-        assertThat(atWholeSeconds(seconds).wholeSecondsSinceTheEpoch())
+        assertThat(atWholeSeconds(seconds).wholeSecondsSinceEpoch())
                 .isEqualTo(seconds);
     }
 }

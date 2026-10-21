@@ -21,7 +21,7 @@ public class TailAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    findFileBehind(port, evaluator).movedToTheEnd();
+                    findFileBehind(port, evaluator).movedToEnd();
             case RebolSeries series -> series.tail();
             case Value anythingElse -> refuseDatatype(anythingElse);
         };

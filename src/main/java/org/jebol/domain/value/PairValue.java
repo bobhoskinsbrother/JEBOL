@@ -11,10 +11,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public Value randomise(RandomDraw draw) {
-        return PairValue.of(randomiseAHalf(x, draw), randomiseAHalf(y, draw));
+        return PairValue.of(randomiseHalf(x, draw), randomiseHalf(y, draw));
     }
 
-    private double randomiseAHalf(double half, RandomDraw draw) {
+    private double randomiseHalf(double half, RandomDraw draw) {
         long bound = (long) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, half));
         return bound == 0 ? 0 : draw.upTo(bound);
     }
@@ -61,7 +61,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 y + (reachedY - y) * fraction);
     }
 
-    public Value measureTheDistanceFrom(PairValue other, boolean alongTheStreets) {
+    public Value measureDistanceFrom(PairValue other, boolean alongTheStreets) {
         double across = x - other.x;
         double down = y - other.y;
         return DecimalValue.of(alongTheStreets

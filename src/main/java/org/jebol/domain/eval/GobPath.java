@@ -90,7 +90,7 @@ public final class GobPath {
                 if (!(written instanceof IntegerValue(long magnitude))) {
                     yield false;
                 }
-                storage.setTheAlpha(magnitude);
+                storage.setAlpha(magnitude);
                 yield true;
             }
             case "image" -> writeImage(storage, written);
@@ -105,7 +105,7 @@ public final class GobPath {
                 if (!(written instanceof GobValue owner)) {
                     yield false;
                 }
-                storage.setTheOwner(owner.storage());
+                storage.setOwner(owner.storage());
                 yield true;
             }
             default -> false;
@@ -128,7 +128,7 @@ public final class GobPath {
 
     private static boolean writeImage(GobStorage storage, Value written) {
         if (written instanceof ImageValue image) {
-            storage.setTheContent(GobStorage.Content.IMAGE, image);
+            storage.setContent(GobStorage.Content.IMAGE, image);
             storage.size(PairValue.of(image.storage().wide(), image.storage().high()));
             return true;
         }
@@ -138,7 +138,7 @@ public final class GobPath {
     private static boolean writeOneBlockContent(
             GobStorage storage, GobStorage.Content kind, Value written) {
         if (written instanceof BlockValue block) {
-            storage.setTheContent(kind, block);
+            storage.setContent(kind, block);
             return true;
         }
         return empty(storage, written);
@@ -146,11 +146,11 @@ public final class GobPath {
 
     private static boolean writeText(GobStorage storage, Value written) {
         if (written instanceof BlockValue block) {
-            storage.setTheContent(GobStorage.Content.TEXT, block);
+            storage.setContent(GobStorage.Content.TEXT, block);
             return true;
         }
         if (written instanceof StringValue text) {
-            storage.setTheContent(GobStorage.Content.STRING, text);
+            storage.setContent(GobStorage.Content.STRING, text);
             return true;
         }
         return empty(storage, written);
@@ -159,7 +159,7 @@ public final class GobPath {
     private static boolean writeColour(GobStorage storage, Value written) {
         if (written instanceof TupleValue colour) {
             int[] parts = colour.segments();
-            storage.setTheContent(GobStorage.Content.COLOUR, TupleValue.of(
+            storage.setContent(GobStorage.Content.COLOUR, TupleValue.of(
                     partOr(parts, 0), partOr(parts, 1), partOr(parts, 2),
                     parts.length > 3 ? parts[3] : OPAQUE_WHERE_NO_FOURTH_PART));
             return true;
@@ -180,7 +180,7 @@ public final class GobPath {
 
     private static boolean empty(GobStorage storage, Value written) {
         if (written instanceof NoneValue) {
-            storage.setTheContent(GobStorage.Content.NONE, NoneValue.none());
+            storage.setContent(GobStorage.Content.NONE, NoneValue.none());
             return true;
         }
         return false;
@@ -229,20 +229,20 @@ public final class GobPath {
         if (kind == GobStorage.Held.NONE) {
             return empty(storage, written);
         }
-        storage.setTheData(kind, written);
+        storage.setData(kind, written);
         return true;
     }
 
     private static boolean writeFlags(GobStorage storage, Value written) {
         if (written instanceof AnyWordValue aLoneWordAddsToWhatIsThere) {
-            raiseUnlessTheWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
+            raiseUnlessWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
             return true;
         }
         if (written instanceof AnyBlockValue aBlockStartsFromNothing) {
             storage.lowerEveryFlag();
             for (Value item : aBlockStartsFromNothing.remaining()) {
                 if (item instanceof AnyWordValue word) {
-                    raiseUnlessTheWordIsNoFlag(storage, word);
+                    raiseUnlessWordIsNoFlag(storage, word);
                 }
             }
             return true;
@@ -250,7 +250,7 @@ public final class GobPath {
         return acceptAndIgnoreAnythingElse();
     }
 
-    private static void raiseUnlessTheWordIsNoFlag(
+    private static void raiseUnlessWordIsNoFlag(
             GobStorage storage, AnyWordValue word) {
         GobStorage.Flag flag = GobStorage.Flag.findFlagNamed(word.canonical());
         if (flag != null) {

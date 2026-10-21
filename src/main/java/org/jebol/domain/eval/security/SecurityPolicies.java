@@ -90,14 +90,14 @@ public final class SecurityPolicies {
             return false;
         }
         for (int at = 0; at < named.length; at++) {
-            if (!isTheSameCharacter(named[at], asked[at], foldCase)) {
+            if (!isSameCharacter(named[at], asked[at], foldCase)) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean isTheSameCharacter(int named, int asked, boolean foldCase) {
+    private boolean isSameCharacter(int named, int asked, boolean foldCase) {
         return foldCase
                 ? Character.toLowerCase(named) == Character.toLowerCase(asked)
                 : named == asked;

@@ -33,17 +33,17 @@ public class DoCodecNative extends DefaultNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> runTheCodec(
+        return (arguments, evaluator, context, refinements) -> runCodec(
                 (HandleValue) arguments.get(0), (AnyWordValue) arguments.get(1), arguments.get(2));
     }
 
-    private Value runTheCodec(HandleValue handle, AnyWordValue action, Value data) {
+    private Value runCodec(HandleValue handle, AnyWordValue action, Value data) {
         if (!handle.typeName().equals(A_CODEC)) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
         }
         Codecs.Action asked = readTheActionAskedBy(action);
-        refuseDataTheActionCannotTake(asked, data);
+        refuseDataActionCannotTake(asked, data);
         Codecs.Answer answered = codecs.run(((AnyWordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
             throw Raised.of(EvaluationFailure.BAD_MEDIA,
@@ -61,7 +61,7 @@ public class DoCodecNative extends DefaultNative {
         };
     }
 
-    private void refuseDataTheActionCannotTake(Codecs.Action asked, Value data) {
+    private void refuseDataActionCannotTake(Codecs.Action asked, Value data) {
         if (asked == Codecs.Action.ENCODE && !(data instanceof ImageValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     "encoding takes an image, not a " + data.datatype().literalSpelling());

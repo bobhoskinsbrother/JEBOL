@@ -22,7 +22,7 @@ public abstract class GobMappingNative extends DefaultNative {
             takenX += reached.storage().offset().x();
             takenY += reached.storage().offset().y();
         }
-        return pairTheGobWithThePoint(reached, PairValue.of(point.x() - takenX, point.y() - takenY));
+        return pairGobWithPoint(reached, PairValue.of(point.x() - takenX, point.y() - takenY));
     }
 
     private Optional<GobValue> findTheTopmostChildHolding(
@@ -46,7 +46,7 @@ public abstract class GobMappingNative extends DefaultNative {
                 && point.y() < top + child.storage().size().y();
     }
 
-    protected Value pairTheGobWithThePoint(GobValue reached, PairValue point) {
+    protected Value pairGobWithPoint(GobValue reached, PairValue point) {
         return BlockValue.of(List.of(reached, point));
     }
 }

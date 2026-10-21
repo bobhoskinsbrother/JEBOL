@@ -82,9 +82,9 @@ public interface ParseWalk {
 
     void removeBetween(int from, int howMany);
 
-    void putItemsIntoTheBlockAt(int where, List<Value> putting);
+    void putItemsIntoBlockAt(int where, List<Value> putting);
 
-    int putValueIntoTheTextAt(int where, Value added);
+    int putValueIntoTextAt(int where, Value added);
 
     boolean hasNoCollectionOpen();
 

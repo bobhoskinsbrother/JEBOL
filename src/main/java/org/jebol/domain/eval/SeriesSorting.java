@@ -41,7 +41,7 @@ public final class SeriesSorting {
         this.unstably = unstably;
     }
 
-    public VectorValue sortTheFront(VectorValue vector, int howMany) {
+    public VectorValue sortFront(VectorValue vector, int howMany) {
         int sorting = Math.max(0, howMany);
         long[] front = new long[sorting];
         for (int at = 0; at < sorting; at++) {
@@ -77,7 +77,7 @@ public final class SeriesSorting {
             records = mergeSortedTakingFromTheLeftUnlessOutOfOrder(records, ordering);
         }
         if (series instanceof AnyBlockValue block) {
-            putTheRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
+            putRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
             return series;
         }
         List<Value> ordered = records.stream().flatMap(List::stream).toList();
@@ -93,8 +93,8 @@ public final class SeriesSorting {
         return series;
     }
 
-    private void putTheRecordsBackWithTheirMarks(AnyBlockValue block, List<List<Value>> records,
-                                                 Map<List<Value>, Integer> whereEachRecordBegan, int step) {
+    private void putRecordsBackWithTheirMarks(AnyBlockValue block, List<List<Value>> records,
+                                              Map<List<Value>, Integer> whereEachRecordBegan, int step) {
         List<Boolean> marksBefore = new ArrayList<>(records.size() * step);
         for (int at = 0; at < records.size() * step; at++) {
             marksBefore.add(block.storage().breaksLineAt(block.index() + at));

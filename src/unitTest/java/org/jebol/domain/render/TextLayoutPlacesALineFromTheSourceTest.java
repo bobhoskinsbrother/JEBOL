@@ -37,7 +37,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
     @DisplayName("across, the line sits in the box less the origin and the margin, at the left, centre or right")
     void followsTheAlignmentAcross(TextAlignment align, double lineWide, double across) {
         assertThat(layOut(align, TextVerticalAlignment.TOP)
-                .placeTheLine(aButton, lineWide, ASCENT, DESCENT).across())
+                .placeLine(aButton, lineWide, ASCENT, DESCENT).across())
                 .isEqualTo(across);
     }
 
@@ -50,7 +50,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
     @DisplayName("down, the line's top, middle or bottom meets the box's, and the baseline is that plus the ascent")
     void followsTheVerticalAlignmentDown(TextVerticalAlignment valign, double baseline) {
         assertThat(layOut(TextAlignment.LEFT, valign)
-                .placeTheLine(aButton, 40, ASCENT, DESCENT).baseline())
+                .placeLine(aButton, 40, ASCENT, DESCENT).baseline())
                 .isEqualTo(baseline);
     }
 
@@ -58,7 +58,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
     @DisplayName("a line taller than the box is centred on it, overhanging both edges alike")
     void overhangsATallLineEvenly() {
         double baseline = layOut(TextAlignment.LEFT, TextVerticalAlignment.MIDDLE)
-                .placeTheLine(aButton, 40, 30, 16).baseline();
+                .placeLine(aButton, 40, 30, 16).baseline();
 
         assertThat(baseline - 30).as("the line's top").isEqualTo(17);
         assertThat(baseline + 16).as("the line's bottom").isEqualTo(63);
@@ -70,7 +70,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
         TextLayout radio = new TextLayout(18, 0, 2, 2,
                 TextAlignment.LEFT, TextVerticalAlignment.MIDDLE, 0, 0);
 
-        TextLayout.LinePlacement placed = radio.placeTheLine(aButton, 40, ASCENT, DESCENT);
+        TextLayout.LinePlacement placed = radio.placeLine(aButton, 40, ASCENT, DESCENT);
 
         assertThat(placed.across()).isEqualTo(28);
         assertThat(placed.baseline()).isEqualTo(20 + (38 - 14) / 2.0 + ASCENT);
@@ -82,7 +82,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
         TextLayout centred = new TextLayout(0, 0, 0, 0,
                 TextAlignment.CENTRE, TextVerticalAlignment.MIDDLE, 0, 0);
 
-        TextLayout.LinePlacement placed = centred.placeTheLine(aButton, 40, ASCENT, DESCENT);
+        TextLayout.LinePlacement placed = centred.placeLine(aButton, 40, ASCENT, DESCENT);
 
         assertThat(placed.across()).isEqualTo(40);
         assertThat(placed.baseline()).isEqualTo(20 + (40 - 14) / 2.0 + ASCENT);
@@ -93,7 +93,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
     void placesInABoxWithNoRoom() {
         Placement nothing = new Placement(10, 20, 0, 0, ClipRectangle.coverWholeSurface(400, 400), Placement.OPAQUE);
 
-        TextLayout.LinePlacement placed = TextLayout.STANDARD.placeTheLine(nothing, 40, ASCENT, DESCENT);
+        TextLayout.LinePlacement placed = TextLayout.STANDARD.placeLine(nothing, 40, ASCENT, DESCENT);
 
         assertThat(placed.across()).isEqualTo(12);
         assertThat(placed.baseline()).isEqualTo(32);

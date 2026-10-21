@@ -34,7 +34,7 @@ public class ChangeDirNative extends HostNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WORKING_DIRECTORY);
             String asked = ((AnyStringValue) arguments.getFirst()).text();
-            return runThroughTheFileSystem(() -> {
+            return runThroughFileSystem(() -> {
                 evaluator.ports().files().changeDirectory(asked);
                 sayWhereTheInterpreterIsStanding(evaluator);
                 return FileValue.of(evaluator.ports().files().workingDirectory());

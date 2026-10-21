@@ -59,7 +59,7 @@ public class EvokeNative extends DefaultNative {
 
     private int obeyAnsweringHowManyValuesItTook(Value chant, Evaluator evaluator) {
         if (chant instanceof AnyWordValue word) {
-            return obeyAWord(word, evaluator);
+            return obeyWord(word, evaluator);
         }
         if (chant instanceof IntegerValue(long magnitude)
                 && (magnitude < THE_FIRST_NUMBERED_CHECK || magnitude > THE_LAST_NUMBERED_CHECK)) {
@@ -68,7 +68,7 @@ public class EvokeNative extends DefaultNative {
         return 0;
     }
 
-    private int obeyAWord(AnyWordValue word, Evaluator evaluator) {
+    private int obeyWord(AnyWordValue word, Evaluator evaluator) {
         String asked = word.canonical();
         if (DEBUG_ONLY_CHANTS.contains(asked)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);

@@ -29,12 +29,12 @@ public class DsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            printTheFrameStack(evaluator);
+            printFrameStack(evaluator);
             return UnsetValue.unset();
         };
     }
 
-    private void printTheFrameStack(Evaluator evaluator) {
+    private void printFrameStack(Evaluator evaluator) {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
         int slotsInUse = (open.size() + 1) * StackNative.FRAME_VALUE_UNITS;
         evaluator.findOutput().writeLine(String.format(FRAME_LINE,
@@ -55,11 +55,11 @@ public class DsNative extends DefaultNative {
                 call.function().datatype().literalSpelling()));
         for (String slot : slots) {
             evaluator.findOutput().writeLine(String.format(SLOT_LINE, slot,
-                    moldWithinTheLimit(call.locals().findSlotFor(Context.canonicalise(slot)).value())));
+                    moldWithinLimit(call.locals().findSlotFor(Context.canonicalise(slot)).value())));
         }
     }
 
-    private String moldWithinTheLimit(Value value) {
+    private String moldWithinLimit(Value value) {
         String written = Molder.mold(value);
         return written.length() <= SLOT_MOLD_LIMIT ? written : written.substring(0, SLOT_MOLD_LIMIT);
     }

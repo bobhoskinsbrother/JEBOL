@@ -40,7 +40,7 @@ public final class DateArithmetic {
         int sign = operation.signWhenMoving();
         return span instanceof IntegerValue
                 ? moveByDays(sign * (long) readTheQuantityOf(span))
-                : moveByTheClock(sign * measureTheClockShiftOf(span));
+                : moveByClock(sign * measureTheClockShiftOf(span));
     }
 
     private void refuseSpanDateCannotMoveBy(Value span, ArithmeticOperation operation) {
@@ -59,7 +59,7 @@ public final class DateArithmetic {
         try {
             LocalDate shifted = LocalDate.ofEpochDay(
                     Math.addExact(moment.dayNumber(), days));
-            requireASupportedYear(shifted);
+            requireSupportedYear(shifted);
             return new DateValue(shifted.getYear(), shifted.getMonthValue(),
                     shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
         } catch (ArithmeticException | DateTimeException outsideTheSupportedYears) {
@@ -67,13 +67,13 @@ public final class DateArithmetic {
         }
     }
 
-    private DateValue moveByTheClock(long nanoseconds) {
+    private DateValue moveByClock(long nanoseconds) {
         try {
             long shifted = Math.addExact(
                     moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L), nanoseconds);
             LocalDate day = LocalDate.ofEpochDay(Math.addExact(moment.dayNumber(),
                     Math.floorDiv(shifted, TimeValue.NANOSECONDS_PER_DAY)));
-            requireASupportedYear(day);
+            requireSupportedYear(day);
             return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
                     Optional.of(TimeValue.ofNanoseconds(
                             Math.floorMod(shifted, TimeValue.NANOSECONDS_PER_DAY))),
@@ -83,7 +83,7 @@ public final class DateArithmetic {
         }
     }
 
-    private static void requireASupportedYear(LocalDate day) {
+    private static void requireSupportedYear(LocalDate day) {
         if (day.getYear() < DateValue.EARLIEST_YEAR
                 || day.getYear() > DateValue.LATEST_YEAR) {
             throw typeLimit();

@@ -20,7 +20,7 @@ public final class MoneyCoercion {
         };
     }
 
-    public int compareTheOrder(Value left, Value right) {
+    public int compareOrder(Value left, Value right) {
         Deci ours = asDeci(left);
         Deci theirs = asDeci(right);
         if (ours.isEqualTo(theirs)) {

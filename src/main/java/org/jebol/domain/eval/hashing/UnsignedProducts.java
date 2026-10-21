@@ -5,7 +5,7 @@ public final class UnsignedProducts {
     private UnsignedProducts() {
     }
 
-    public static long multiplyForTheHighHalf(long left, long right) {
+    public static long multiplyForHighHalf(long left, long right) {
         long leftLow = left & 0xFFFF_FFFFL;
         long leftHigh = left >>> 32;
         long rightLow = right & 0xFFFF_FFFFL;

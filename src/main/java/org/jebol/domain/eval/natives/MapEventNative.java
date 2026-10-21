@@ -26,10 +26,10 @@ public class MapEventNative extends GobMappingNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                mapTheEvent((EventValue) arguments.getFirst());
+                mapEvent((EventValue) arguments.getFirst());
     }
 
-    private Value mapTheEvent(EventValue event) {
+    private Value mapEvent(EventValue event) {
         if (!(event.attached() instanceof GobValue gob) || !event.has(EventValue.Flag.HAS_XY)) {
             return event;
         }

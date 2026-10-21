@@ -110,14 +110,14 @@ final class LzmaEncoder {
         byte[] written = new byte[5];
         written[0] = (byte) ((settings.positionBits * 5 + settings.literalPositionBits) * 9
                 + settings.literalContextBits);
-        int size = roundTheDictionarySize(settings.dictionarySize);
+        int size = roundDictionarySize(settings.dictionarySize);
         for (int each = 0; each < 4; each++) {
             written[1 + each] = (byte) (size >>> (8 * each));
         }
         return written;
     }
 
-    private static int roundTheDictionarySize(int dictionarySize) {
+    private static int roundDictionarySize(int dictionarySize) {
         if (Integer.compareUnsigned(dictionarySize, 1 << 22) >= 0) {
             int mask = (1 << 20) - 1;
             return Integer.compareUnsigned(dictionarySize, 0xFFFFFFFF - mask) < 0
@@ -219,14 +219,14 @@ final class LzmaEncoder {
         this.positionMask = (1 << settings.positionBits) - 1;
         this.literalPositionMask = (0x100 << settings.literalPositionBits)
                 - (0x100 >>> settings.literalContextBits);
-        this.distanceTableSize = sizeTheDistanceTableFor(settings.dictionarySize);
+        this.distanceTableSize = sizeDistanceTableFor(settings.dictionarySize);
         this.literalProbabilities = new short[0x300
                 << (settings.literalContextBits + settings.literalPositionBits)];
         this.finder = new LzmaMatchFinder(source, settings.dictionarySize,
                 MATCH_LEN_MAX, settings.binaryTree, settings.cutValue);
     }
 
-    private static int sizeTheDistanceTableFor(int dictionarySize) {
+    private static int sizeDistanceTableFor(int dictionarySize) {
         int power = END_POSITION_MODEL_INDEX / 2;
         while (power < 32
                 && Integer.compareUnsigned(dictionarySize, 1 << power) > 0) {
@@ -285,7 +285,7 @@ final class LzmaEncoder {
 
         if (finder.availableBytes() != 0) {
             while (true) {
-                int length = takeTheNextStep(at);
+                int length = takeNextStep(at);
                 int distance = chosenDistance;
                 int positionState = at & positionMask;
                 if (distance == MARK_LITERAL) {
@@ -314,7 +314,7 @@ final class LzmaEncoder {
         writer.flush();
     }
 
-    private int takeTheNextStep(int at) {
+    private int takeNextStep(int at) {
         if (!settings.pricing) {
             return stepGreedily();
         }
@@ -631,7 +631,7 @@ final class LzmaEncoder {
                 + priceZeroIn(isRepeatG0, forState);
     }
 
-    private int priceNamingARepeat(int which, int forState, int positionState) {
+    private int priceNamingRepeat(int which, int forState, int positionState) {
         if (which == 0) {
             return priceZeroIn(isRepeatG0, forState)
                     + priceOneIn(isRepeat0Long,
@@ -727,7 +727,7 @@ final class LzmaEncoder {
         choiceExtra[at] = 0;
     }
 
-    private int walkTheCheapestPathBack(int from) {
+    private int walkCheapestPathBack(int from) {
         int at = from;
         int writeAt = from + 1;
         choiceEnd = writeAt;
@@ -868,7 +868,7 @@ final class LzmaEncoder {
                 continue;
             }
             int price = repeatMatchPrice
-                    + priceNamingARepeat(which, state, positionState);
+                    + priceNamingRepeat(which, state, positionState);
             for (int length = repeatLength; length >= 2; length--) {
                 int total = price
                         + repeatLengthPrices.prices[positionState][length - 2];
@@ -919,14 +919,14 @@ final class LzmaEncoder {
         int at = 0;
         while (true) {
             if (++at == last) {
-                return walkTheCheapestPathBack(at);
+                return walkCheapestPathBack(at);
             }
             int newLength = readMatchDistances();
             int freshPairs = freshPairCount;
             if (newLength >= settings.numFastBytes) {
                 numPairs = freshPairs;
                 longestMatchLen = newLength;
-                return walkTheCheapestPathBack(at);
+                return walkCheapestPathBack(at);
             }
 
             int previous = at - choiceLength[at];
@@ -1078,7 +1078,7 @@ final class LzmaEncoder {
                     choicePrice[++last] = INFINITY_PRICE;
                 }
                 int price = repeatMatchPrice
-                        + priceNamingARepeat(which, stateHere, positionState);
+                        + priceNamingRepeat(which, stateHere, positionState);
                 for (int span = length; span >= 2; span--) {
                     int total = price
                             + repeatLengthPrices.prices[positionState][span - 2];

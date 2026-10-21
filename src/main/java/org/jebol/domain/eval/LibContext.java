@@ -33,7 +33,7 @@ public final class LibContext {
         this.localFileSeparator = localFileSeparator;
         registerConstants();
         registerDatatypesAndTypesets();
-        registerTheWordsFunctionKindsAreMadeBy();
+        registerWordsFunctionKindsAreMadeBy();
         registerActions();
         registerNatives();
         registerDatatypePredicates();
@@ -77,7 +77,7 @@ public final class LibContext {
         }
     }
 
-    private void registerTheWordsFunctionKindsAreMadeBy() {
+    private void registerWordsFunctionKindsAreMadeBy() {
         lib.register("native", NoneValue.none());
         lib.register("action", NoneValue.none());
     }

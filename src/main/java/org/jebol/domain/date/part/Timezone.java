@@ -12,7 +12,7 @@ final class Timezone implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return date.zoneAsATime();
+        return date.zoneAsTime();
     }
 
     @Override

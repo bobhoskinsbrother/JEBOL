@@ -29,7 +29,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         return Catalogue.DATATYPES.findThePositionOf(this);
     }
 
-    public int numberTheCGivesIt() {
+    public int numberCGivesIt() {
         return position() - 1;
     }
 

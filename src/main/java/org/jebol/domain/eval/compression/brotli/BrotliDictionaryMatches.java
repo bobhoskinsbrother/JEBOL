@@ -52,8 +52,8 @@ final class BrotliDictionaryMatches {
         return agreeing;
     }
 
-    private static boolean matchesTheWord(byte[] data, int at, int wordLength,
-                                          int wordTransform, int wordIndex, int mostThatCouldMatch) {
+    private static boolean matchesWord(byte[] data, int at, int wordLength,
+                                       int wordTransform, int wordIndex, int mostThatCouldMatch) {
 
         if (wordLength > mostThatCouldMatch) {
             return false;
@@ -293,7 +293,7 @@ final class BrotliDictionaryMatches {
 
             boolean isAllCaps =
                 wordTransform != UPPERCASE_FIRST;
-            if (!matchesTheWord(data, at, wordLength, wordTransform, wordIndex, maxLength)) {
+            if (!matchesWord(data, at, wordLength, wordTransform, wordIndex, maxLength)) {
               continue;
             }
 
@@ -350,7 +350,7 @@ final class BrotliDictionaryMatches {
           end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
           wordLength = l;
           if (wordTransform == 0) {
-            if (!matchesTheWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
+            if (!matchesWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
               continue;
             }
 
@@ -387,7 +387,7 @@ final class BrotliDictionaryMatches {
 
             boolean isAllCaps =
                 wordTransform != UPPERCASE_FIRST;
-            if (!matchesTheWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
+            if (!matchesWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
               continue;
             }
 
@@ -439,7 +439,7 @@ final class BrotliDictionaryMatches {
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;
             if (wordTransform == 0 &&
-                matchesTheWord(data, at + 2, wordLength, wordTransform, wordIndex, maxLength - 2)) {
+                matchesWord(data, at + 2, wordLength, wordTransform, wordIndex, maxLength - 2)) {
               if ((data[at] & 0xFF) == 0xC2) {
                 addMatch(matches, id + 102 * n, l + 2, l);
                 hasFoundMatch = true;
@@ -471,7 +471,7 @@ final class BrotliDictionaryMatches {
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;
             if (wordTransform == 0 &&
-                matchesTheWord(data, at + 5, wordLength, wordTransform, wordIndex, maxLength - 5)) {
+                matchesWord(data, at + 5, wordLength, wordTransform, wordIndex, maxLength - 5)) {
               addMatch(matches, id + (data[at] == ' ' ? 41 : 72) * n, l + 5, l);
               hasFoundMatch = true;
               if (l + 5 < maxLength) {

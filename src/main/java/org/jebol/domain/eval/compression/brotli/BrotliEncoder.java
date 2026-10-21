@@ -161,7 +161,7 @@ final class BrotliEncoder {
                 writer.jumpToByteBoundary();
                 return;
             }
-            prepareTableRoundingAnEvenWidthUpBecauseOnlyOddOnesWork(size);
+            prepareTableRoundingEvenWidthUpBecauseOnlyOddOnesWork(size);
             compress(at, size);
             if (writer.at() - openedAt > 31 + ((long) size << 3)) {
                 storeUncompressed(at, at + size, openedAt);
@@ -173,7 +173,7 @@ final class BrotliEncoder {
             }
         }
 
-        private void prepareTableRoundingAnEvenWidthUpBecauseOnlyOddOnesWork(
+        private void prepareTableRoundingEvenWidthUpBecauseOnlyOddOnesWork(
                 int size) {
             int wide = 256;
             while (wide < MAX_TABLE_SIZE && wide < size) {
@@ -325,7 +325,7 @@ final class BrotliEncoder {
                 if (at >= limit) {
                     return Match.RAN_OUT;
                 }
-                candidate = rehashAroundTheCopy(at);
+                candidate = rehashAroundCopy(at);
 
                 while (isMatch(at, candidate)) {
                     base = at;
@@ -343,14 +343,14 @@ final class BrotliEncoder {
                     if (at >= limit) {
                         return Match.RAN_OUT;
                     }
-                    candidate = rehashAroundTheCopy(at);
+                    candidate = rehashAroundCopy(at);
                 }
                 at++;
                 nextHash = hashAt(at);
             }
         }
 
-        private int rehashAroundTheCopy(int at) {
+        private int rehashAroundCopy(int at) {
             long window = loadEight(at - 3);
             table[hashOfShifted(window, 0)] = at - 3;
             table[hashOfShifted(window, 1)] = at - 2;

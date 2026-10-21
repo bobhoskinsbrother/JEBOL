@@ -86,7 +86,7 @@ public final class RsaKey {
         return e.multiply(d).mod(smallestPeriod).equals(one);
     }
 
-    private static String nameTheCipher(
+    private static String nameCipher(
             boolean optimalPadding) {
         return optimalPadding
                 ? "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
@@ -95,19 +95,19 @@ public final class RsaKey {
 
     public byte[] encipher(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
-                nameTheCipher(optimalPadding));
+                nameCipher(optimalPadding));
         cipher.init(Cipher.ENCRYPT_MODE, publicHalf);
         return cipher.doFinal(data);
     }
 
     public byte[] decipher(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
-                nameTheCipher(optimalPadding));
+                nameCipher(optimalPadding));
         cipher.init(Cipher.DECRYPT_MODE, privateHalf);
         return cipher.doFinal(data);
     }
 
-    private static String pickTheDigestOrSha256(String asked) {
+    private static String pickDigestOrSha256(String asked) {
         return switch (asked) {
             case "md5" -> "MD5";
             case "sha1" -> "SHA-1";
@@ -120,7 +120,7 @@ public final class RsaKey {
 
     private static Signature makeASignatureFor(String digest, boolean probabilistic)
             throws java.security.GeneralSecurityException {
-        String algorithm = pickTheDigestOrSha256(digest);
+        String algorithm = pickDigestOrSha256(digest);
         if (!probabilistic) {
             return Signature.getInstance(algorithm.replace("-", "") + "withRSA");
         }

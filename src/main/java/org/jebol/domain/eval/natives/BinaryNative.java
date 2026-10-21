@@ -141,7 +141,7 @@ public class BinaryNative extends DefaultNative {
         Bincode.Cursor cursor = new Bincode.Cursor(
                 listTheOctetsOfTheBuffer(writing.head()), writing.index() - 1);
         Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
-                () -> Instant.now().getEpochSecond(), this::nameTheValueRead);
+                () -> Instant.now().getEpochSecond(), this::nameValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().register("buffer", written.atIndex(findCursorNamed(held, "buffer").index()));
@@ -164,15 +164,15 @@ public class BinaryNative extends DefaultNative {
             codes.add(count);
         }
         List<Value> read = Bincode.read(cursor, new Bincode.Script(codes, lookedUp),
-                this::nameTheValueRead);
+                this::nameValueRead);
         held.context().register("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
-            shortenFromTheFront(held, cursor);
+            shortenFromFront(held, cursor);
         } else {
             held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         }
         return into.map(target -> layInto(target, read))
-                .orElseGet(() -> shapeLikeTheAsking(theBlockItself, read));
+                .orElseGet(() -> shapeLikeAsking(theBlockItself, read));
     }
 
     private Value readTheseManyBytes(ObjectValue held, BinaryValue reading,
@@ -185,12 +185,12 @@ public class BinaryNative extends DefaultNative {
         List<Value> read = Bincode.read(cursor,
                 new Bincode.Script(List.of(WordValue.of("bytes"), howMany),
                         UnaryOperator.identity()),
-                this::nameTheValueRead);
+                this::nameValueRead);
         held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         return read.getFirst();
     }
 
-    private void shortenFromTheFront(ObjectValue held, Bincode.Cursor cursor) {
+    private void shortenFromFront(ObjectValue held, Bincode.Cursor cursor) {
         int writingWas = findCursorNamed(held, "buffer-write").index();
         BinaryValue shortened = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
@@ -206,7 +206,7 @@ public class BinaryNative extends DefaultNative {
                 : 0;
     }
 
-    private void nameTheValueRead(AnyWordValue word, Value read) {
+    private void nameValueRead(AnyWordValue word, Value read) {
         if (!word.isBound() || !word.binding().contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
@@ -229,7 +229,7 @@ public class BinaryNative extends DefaultNative {
         return asked instanceof AnyBlockValue block ? block.remaining() : List.of(asked);
     }
 
-    private Value shapeLikeTheAsking(Value asked, List<Value> values) {
+    private Value shapeLikeAsking(Value asked, List<Value> values) {
         if (asked instanceof AnyBlockValue) {
             return BlockValue.of(values);
         }

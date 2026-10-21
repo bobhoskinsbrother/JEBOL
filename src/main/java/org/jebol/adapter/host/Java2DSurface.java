@@ -47,7 +47,7 @@ public final class Java2DSurface implements Surface {
     public static void paintTheContentsOfLeavingItsTitleToTheTitleBar(
             Graphics2D onto, GobValue window, ObjectValue drawDialect,
             TextMeasurement measure, Font face) {
-        PaintList.ofAWindow(window, drawDialect).executeOn(new Java2DSurface(onto, face), measure);
+        PaintList.ofWindow(window, drawDialect).executeOn(new Java2DSurface(onto, face), measure);
     }
 
     private final Graphics2D onto;

@@ -19,7 +19,7 @@ final class Insert extends DeclaredKeyword {
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         int valueAt = at + 1;
-        boolean wholeBlock = saysToPutTheBlockInWhole(rules, valueAt);
+        boolean wholeBlock = saysToPutBlockInWhole(rules, valueAt);
         if (wholeBlock) {
             valueAt++;
         }
@@ -27,7 +27,7 @@ final class Insert extends DeclaredKeyword {
         List<Value> putting = !wholeBlock && added instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(added);
-        walk.putItemsIntoTheBlockAt(walk.position(), putting);
+        walk.putItemsIntoBlockAt(walk.position(), putting);
         walk.moveTo(walk.position() + putting.size());
         return valueAt + 1 - at;
     }
@@ -38,12 +38,12 @@ final class Insert extends DeclaredKeyword {
         if (added instanceof ParenValue paren) {
             added = walk.evaluateParen(paren);
         }
-        int laidIn = walk.putValueIntoTheTextAt(walk.position(), added);
+        int laidIn = walk.putValueIntoTextAt(walk.position(), added);
         walk.moveTo(walk.position() + laidIn);
         return 2;
     }
 
-    private static boolean saysToPutTheBlockInWhole(List<Value> rules, int valueAt) {
+    private static boolean saysToPutBlockInWhole(List<Value> rules, int valueAt) {
         return rules.get(valueAt) instanceof WordValue modifier
                 && modifier.canonical().equals(WHOLE)
                 && valueAt + 1 < rules.size();

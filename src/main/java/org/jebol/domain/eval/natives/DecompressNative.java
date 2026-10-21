@@ -78,7 +78,7 @@ public class DecompressNative extends CompressionNative {
             if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
                 throw Raised.of(EvaluationFailure.BAD_PRESS, arguments.get(1));
             }
-            return BinaryValue.ofBytes(ofTheSizeAsked(
+            return BinaryValue.ofBytes(ofSizeAsked(
                     decompressOrRefuse(compressed, method, wanted), method, wanted));
         };
     }
@@ -100,7 +100,7 @@ public class DecompressNative extends CompressionNative {
         }
     }
 
-    private byte[] ofTheSizeAsked(byte[] whole, String method, int wanted) {
+    private byte[] ofSizeAsked(byte[] whole, String method, int wanted) {
         if (wanted == AS_MUCH_AS_IT_HOLDS || encodings.cutsShortToSizeAsked(method)
                 || whole.length == wanted) {
             return whole;

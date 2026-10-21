@@ -154,7 +154,7 @@ public final class EventPath {
             EventValue event, Value value) {
 
         EventValue theModelAndTypeChangeBeforeTheValueIsLookedAt =
-                withTheModelAndTypeSetFirst(event);
+                withModelAndTypeSetFirst(event);
         if (value instanceof CharacterValue(int codepoint)) {
             return java.util.Optional.of(
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
@@ -172,7 +172,7 @@ public final class EventPath {
         return java.util.Optional.empty();
     }
 
-    private static EventValue withTheModelAndTypeSetFirst(EventValue event) {
+    private static EventValue withModelAndTypeSetFirst(EventValue event) {
         EventValue withTheModelSet = event.withModel(EventValue.Model.GUI);
         return withTheModelSet.typeIndex() == 0
                 ? withTheModelSet.withType(EventCatalogue.KEY)

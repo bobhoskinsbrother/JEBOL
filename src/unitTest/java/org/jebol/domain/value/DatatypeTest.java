@@ -90,8 +90,8 @@ class DatatypeTest {
         @Test
         @DisplayName("numbers the entries as Rebol's C does, end! at nought")
         void usesTheNumberTheCGives() {
-            assertThat(EndValue.TYPE.numberTheCGivesIt()).isZero();
-            assertThat(IntegerValue.TYPE.numberTheCGivesIt()).isEqualTo(4);
+            assertThat(EndValue.TYPE.numberCGivesIt()).isZero();
+            assertThat(IntegerValue.TYPE.numberCGivesIt()).isEqualTo(4);
         }
 
         @Test

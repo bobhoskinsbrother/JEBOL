@@ -51,7 +51,7 @@ public final class MapActions implements Actions {
         pairs.requireChangeable();
         refuseWhatIsNotAWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
-        return takeTheWanted(pickTheWantedPairsOf((AnyBlockValue) asked.given(), asked));
+        return takeWanted(pickTheWantedPairsOf((AnyBlockValue) asked.given(), asked));
     }
 
     public MapValue combineWith(Value other, SetOperation how, boolean mindingCase) {
@@ -63,10 +63,10 @@ public final class MapActions implements Actions {
                 kept.put(key, pairs.select(key, mindingCase), mindingCase);
             }
         }
-        if (how.takesFromTheSecondSet()) {
+        if (how.takesFromSecondSet()) {
             for (Value key : theirs.keys()) {
                 boolean inOurs = pairs.holds(key, mindingCase);
-                if (how.keepsFromTheSecondSet(inOurs)
+                if (how.keepsFromSecondSet(inOurs)
                         && !kept.holds(key, mindingCase)) {
                     kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }
@@ -91,7 +91,7 @@ public final class MapActions implements Actions {
         return whole.subList(from, from + count);
     }
 
-    public Value takeTheWanted(List<Value> wanted) {
+    public Value takeWanted(List<Value> wanted) {
         for (int at = 0; at + 1 < wanted.size(); at += 2) {
             pairs.put(wanted.get(at), wanted.get(at + 1));
         }
@@ -146,7 +146,7 @@ public final class MapActions implements Actions {
         return MapValue.of(built);
     }
 
-    public static void refuseMoreNamesThanAPairHas(Value series, List<AnyWordValue> names) {
+    public static void refuseMoreNamesThanPairHas(Value series, List<AnyWordValue> names) {
         if (names.size() > 2
                 && (series instanceof MapValue || series instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,

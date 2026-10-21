@@ -44,7 +44,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     }
 
     /** The same, clipped to a surface of a stated size. */
-    public static PaintList onASurface(GobValue root, int wide, int high) {
+    public static PaintList onSurface(GobValue root, int wide, int high) {
         return within(root, ClipRectangle.coverWholeSurface(wide, high), 0, null);
     }
 
@@ -64,7 +64,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     }
 
     /** One window and its contents, with its own title left out. */
-    public static PaintList ofAWindow(GobValue window, ObjectValue drawDialect) {
+    public static PaintList ofWindow(GobValue window, ObjectValue drawDialect) {
         int wide = roundToWhole(window.storage().size().x());
         int high = roundToWhole(window.storage().size().y());
         return within(window, ClipRectangle.coverWholeSurface(wide, high), 1, drawDialect);
@@ -153,7 +153,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         if (own.isEmpty()) {
             return;
         }
-        int opacity = multiplyTheOpacity(inheritedOpacity, gob.alpha());
+        int opacity = multiplyOpacity(inheritedOpacity, gob.alpha());
         Placement where = new Placement(across, down, wide, high, own, opacity);
 
         if (gob.contentKind() == GobStorage.Content.DRAW) {
@@ -195,7 +195,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         return new DrawDialect().readTheInstructionsFor(block, drawDialect, where, wide, high);
     }
 
-    private static int multiplyTheOpacity(int inherited, int own) {
+    private static int multiplyOpacity(int inherited, int own) {
         return Math.round(inherited * Math.clamp(own, 0, Placement.OPAQUE)
                 / (float) Placement.OPAQUE);
     }
@@ -220,7 +220,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
         Placement showing = new Placement(
                 where.across(), where.down(), where.wide(), where.high(), where.clip(),
-                multiplyTheOpacity(where.opacity(), Colour.readTheOpacityOfTuple(parts)));
+                multiplyOpacity(where.opacity(), Colour.readTheOpacityOfTuple(parts)));
         return Optional.of(
                 new PaintInstruction.Fill(showing, Colour.ofTuple(parts).solid()));
     }

@@ -50,7 +50,7 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
         assertThat(caret.isShown()).isTrue();
         assertThat(caret.run()).isZero();
         assertThat(caret.character()).isEqualTo(2);
-        assertThat(caret.marksASelection()).isFalse();
+        assertThat(caret.marksSelection()).isFalse();
     }
 
     @Test
@@ -67,7 +67,7 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
                 start: reduce [at labelled/text 5 at text 2]
                 end: reduce [at labelled/text 5 at text 4]""").caret();
 
-        assertThat(caret.marksASelection()).isTrue();
+        assertThat(caret.marksSelection()).isTrue();
         assertThat(caret.selectionFrom()).isEqualTo(new TextLines.RunAndCharacter(0, 1));
         assertThat(caret.selectionTo()).isEqualTo(new TextLines.RunAndCharacter(0, 3));
     }
@@ -78,7 +78,7 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
         assertThat(writeTheLineFor("""
                 caret: reduce [at labelled/text 5 at text 2]
                 start: reduce [at labelled/text 5 at text 2]
-                end: reduce [at labelled/text 5 at text 2]""").caret().marksASelection()).isFalse();
+                end: reduce [at labelled/text 5 at text 2]""").caret().marksSelection()).isFalse();
     }
 
     @Test

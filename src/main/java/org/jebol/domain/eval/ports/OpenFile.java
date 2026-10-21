@@ -44,7 +44,7 @@ public final class OpenFile {
         return moveTo(seekable.position() + steps);
     }
 
-    public Value movedToTheEnd() {
+    public Value movedToEnd() {
         return moveTo(measureWholeSize());
     }
 
@@ -57,7 +57,7 @@ public final class OpenFile {
     public Value measureLengthLeft() {
         refuseClosedPosition();
         granted.require(HostService.FILES);
-        return answerAcrossHost(() -> seekable.measureTheLengthLeft(files));
+        return answerAcrossHost(() -> seekable.measureLengthLeft(files));
     }
 
     public Value write(Value data, Optional<Value> seek, Optional<Value> part,
@@ -86,7 +86,7 @@ public final class OpenFile {
         return write(data, Optional.empty(), Optional.empty(), true);
     }
 
-    public Value truncateAtThePosition() {
+    public Value truncateAtPosition() {
         refuseClosedPosition();
         refuseWritingWhenOpenedOnlyToRead(EvaluationFailure.WRITE_ERROR);
         granted.require(HostService.FILES);
@@ -100,19 +100,19 @@ public final class OpenFile {
     }
 
     private void refuseWritingWhenOpenedOnlyToRead(EvaluationFailure failure) {
-        if (!seekable.mayWriteThrough()) {
+        if (!seekable.canWriteThrough()) {
             throw Raised.of(failure, FileValue.of(seekable.path()));
         }
     }
 
     private long wholeSizeEvenWhenClosed() {
-        return answerAcrossHost(() -> seekable.measureTheWholeSize(files))
+        return answerAcrossHost(() -> seekable.measureWholeSize(files))
                 instanceof IntegerValue(long magnitude) ? magnitude : 0;
     }
 
     private long measureWholeSize() {
         granted.require(HostService.FILES);
-        return ((IntegerValue) answerAcrossHost(() -> seekable.measureTheWholeSize(files))).magnitude();
+        return ((IntegerValue) answerAcrossHost(() -> seekable.measureWholeSize(files))).magnitude();
     }
 
     private void refuseClosedPosition() {

@@ -49,19 +49,19 @@ public final class SeekableFilePort {
     }
 
     public void moveTo(long position) {
-        rememberOnThePort(Math.max(0, position), mayWriteThrough());
+        rememberOnPort(Math.max(0, position), canWriteThrough());
     }
 
-    public boolean mayWriteThrough() {
+    public boolean canWriteThrough() {
         return !(port.readFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
     public void openAt(long position, boolean mayWrite) {
-        rememberOnThePort(position, mayWrite);
+        rememberOnPort(position, mayWrite);
     }
 
-    private void rememberOnThePort(long position, boolean mayWrite) {
+    private void rememberOnPort(long position, boolean mayWrite) {
         port.setField(THE_POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.of(
                 List.of(IntegerValue.of(position), LogicValue.of(mayWrite))));
     }
@@ -113,14 +113,14 @@ public final class SeekableFilePort {
         moveTo(at + contents.length);
     }
 
-    public Value measureTheLengthLeft(FilePort files) {
+    public Value measureLengthLeft(FilePort files) {
         if (namesARunOfNamesRatherThanBytes()) {
             return IntegerValue.of(files.listFileNames(path()).size());
         }
         return IntegerValue.of(Math.max(0, measureSizeIn(files) - position()));
     }
 
-    public Value measureTheWholeSize(FilePort files) {
+    public Value measureWholeSize(FilePort files) {
         return IntegerValue.of(measureSizeIn(files));
     }
 

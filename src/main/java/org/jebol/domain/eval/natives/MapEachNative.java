@@ -38,7 +38,7 @@ public class MapEachNative extends LoopingNative {
             List<Value> gathered = new ArrayList<>();
             int at = 0;
             while (at < items.size()) {
-                at = setLoopNamesFillingWithNonePastTheEnd(
+                at = setLoopNamesFillingWithNonePastEnd(
                         locals, names, items, at, arguments.get(1));
                 Value made = evaluator.evaluateOrRaise(bound, locals);
                 if (!(made instanceof UnsetValue)) {

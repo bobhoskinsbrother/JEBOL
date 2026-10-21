@@ -22,15 +22,15 @@ public abstract class WindowNative extends HostNative {
         super(granted);
     }
 
-    protected Value runThroughTheWindows(Supplier<Value> operation) {
+    protected Value runThroughWindows(Supplier<Value> operation) {
         try {
             return operation.get();
         } catch (WindowPort.Denied denied) {
-            throw refuseForTheHost(denied.errorId(), denied.getMessage());
+            throw refuseForHost(denied.errorId(), denied.getMessage());
         }
     }
 
-    protected Raised refuseForTheHost(String errorId, String because) {
+    protected Raised refuseForHost(String errorId, String because) {
         String reason = because + ", which is "
                 + ServiceRefusal.NOT_PRESENT.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));

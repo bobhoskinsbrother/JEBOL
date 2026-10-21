@@ -66,7 +66,7 @@ public record Asked(
         return new Asked(
                 subject,
                 given,
-                times.<Value>map(given::repeatInABlock).orElse(given),
+                times.<Value>map(given::repeatInBlock).orElse(given),
                 limit,
                 measureHowMuchOf(given, limit),
                 countTheOctetsOf(given, limit),

@@ -72,7 +72,7 @@ final class SingleCommand implements Command {
         if (findDeclaredType(type).isEmpty()) {
             throw new IllegalArgumentException(extension.name() + " declares no handle type called " + type);
         }
-        return HandleValue.wrapAContext(type, handlesMade.incrementAndGet(), JavaObjectValue.of(held));
+        return HandleValue.wrapContext(type, handlesMade.incrementAndGet(), JavaObjectValue.of(held));
     }
 
     @Override

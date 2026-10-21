@@ -232,7 +232,7 @@ final class BrotliTwoPassEncoder {
                             nextEmit = emitRemainder(nextEmit, end);
                             return;
                         }
-                        candidate = baseAt + rehashAfterACopy(at, baseAt);
+                        candidate = baseAt + rehashAfterCopy(at, baseAt);
                     }
                     at++;
                     nextHash = hashAt(at);
@@ -267,7 +267,7 @@ final class BrotliTwoPassEncoder {
             return candidate;
         }
 
-        private int rehashAfterACopy(int at, int baseAt) {
+        private int rehashAfterCopy(int at, int baseAt) {
             if (minMatch != 4) {
                 return rehashSixBytes(at, baseAt);
             }

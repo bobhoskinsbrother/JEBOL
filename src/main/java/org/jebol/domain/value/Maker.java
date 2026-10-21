@@ -7,7 +7,7 @@ public interface Maker {
 
     Value makeObjectFrom(ObjectValue prototype, BlockValue body);
 
-    Value mergeAnObject(ObjectValue prototype, ObjectValue other);
+    Value mergeObject(ObjectValue prototype, ObjectValue other);
 
     Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec);
 
@@ -21,7 +21,7 @@ public interface Maker {
 
     Value applySystemFunction(String name, Value argument);
 
-    Value readASimpleValue(Value piece);
+    Value readSimpleValue(Value piece);
 
     ErrorValue speakHere(ErrorValue error);
 

@@ -104,7 +104,7 @@ public final class ImageStorage extends ProtectableStorage {
         return high;
     }
 
-    private void resetHeightOnlyAfterSomethingChangedThePixelCount() {
+    private void resetHeightOnlyAfterSomethingChangedPixelCount() {
         high = wide == 0 ? 0 : length / wide;
     }
 
@@ -124,7 +124,7 @@ public final class ImageStorage extends ProtectableStorage {
         int to = (oneBasedIndex - 1) * BYTES_A_PIXEL;
         System.arraycopy(pixels, from, pixels, to, length * BYTES_A_PIXEL - from);
         length -= dropped;
-        resetHeightOnlyAfterSomethingChangedThePixelCount();
+        resetHeightOnlyAfterSomethingChangedPixelCount();
     }
 
     /** Drops everything from a position on, which is what CLEAR does to an image. */
@@ -132,7 +132,7 @@ public final class ImageStorage extends ProtectableStorage {
         refuseIfProtected();
         if (oneBasedIndex <= length) {
             length = oneBasedIndex - 1;
-            resetHeightOnlyAfterSomethingChangedThePixelCount();
+            resetHeightOnlyAfterSomethingChangedPixelCount();
         }
     }
 
@@ -151,7 +151,7 @@ public final class ImageStorage extends ProtectableStorage {
         pixels[at + 2] = (byte) blue;
         pixels[at + 3] = (byte) alpha;
         length++;
-        resetHeightOnlyAfterSomethingChangedThePixelCount();
+        resetHeightOnlyAfterSomethingChangedPixelCount();
     }
 
     /**

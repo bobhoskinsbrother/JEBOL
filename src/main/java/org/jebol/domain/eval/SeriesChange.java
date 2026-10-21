@@ -34,14 +34,14 @@ public final class SeriesChange {
                     refinements.contains("only"), part.orElseGet(NoneValue::none));
         }
         if (part.isPresent() && subject instanceof RebolSeries stranded) {
-            return replaceAcrossThePart(stranded, part.get());
+            return replaceAcrossPart(stranded, part.get());
         }
         if (subject instanceof GobValue gob) {
             refuseWhatAGobOrAStructDoesNotServe();
             GobPath.pokeWhichInsertsRatherThanReplaces(gob, gob.index(), replacement);
             return gob.atIndex(gob.index() + 1);
         }
-        Value replacing = dup.<Value>map(replacement::repeatInABlock).orElse(replacement);
+        Value replacing = dup.<Value>map(replacement::repeatInBlock).orElse(replacement);
         return switch (subject) {
             case BinaryValue bytes -> overwrite(bytes, replacing);
             case AnyStringValue text -> overwrite((AnyStringValue) text.clampToTail(), replacing);
@@ -51,7 +51,7 @@ public final class SeriesChange {
         };
     }
 
-    private Value replaceAcrossThePart(RebolSeries stranded, Value limit) {
+    private Value replaceAcrossPart(RebolSeries stranded, Value limit) {
         Value copiedReplacement = replacement.copy(replacement instanceof AnyBlockValue);
         long taking = stranded.countUpTo(limit);
         RebolSeries series = stranded.clampToTail();

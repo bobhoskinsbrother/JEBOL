@@ -170,8 +170,8 @@ public sealed interface Value permits
                 Molder.mold(this) + " is not a count of repetitions");
     }
 
-    default AnyBlockValue repeatInABlock(Value times) {
-        return BlockValue.of(List.of(this)).repeatInABlock(times);
+    default AnyBlockValue repeatInBlock(Value times) {
+        return BlockValue.of(List.of(this)).repeatInBlock(times);
     }
 
     default Value randomise(RandomDraw draw) {

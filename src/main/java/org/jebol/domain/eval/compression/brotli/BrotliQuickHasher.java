@@ -48,7 +48,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         return 8;
     }
 
-    private int hashTheSlotFor(byte[] data, int at) {
+    private int hashSlotFor(byte[] data, int at) {
         long eightBytes = 0;
         for (int which = 0; which < 8; which++) {
             eightBytes |= (long) (data[at + which] & 0xFF) << (which * 8);
@@ -64,7 +64,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         if (theWholeInputAtOnce
                 && inputSize <= (1 << bucketBits) >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
-                int slot = hashTheSlotFor(data, at);
+                int slot = hashSlotFor(data, at);
                 if (sweep == 1) {
                     buckets[slot] = 0;
                 } else {
@@ -80,7 +80,7 @@ final class BrotliQuickHasher implements BrotliHasher {
 
     @Override
     public void remember(byte[] data, int mask, int at) {
-        int slot = hashTheSlotFor(data, at & mask);
+        int slot = hashSlotFor(data, at & mask);
         if (sweep == 1) {
             buckets[slot] = at;
         } else {
@@ -112,7 +112,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         int lengthBefore = (int) best.length;
         int here = at & mask;
         int compareCharacter = data[here + lengthBefore] & 0xFF;
-        int slot = hashTheSlotFor(data, here);
+        int slot = hashSlotFor(data, here);
         int bestLength = lengthBefore;
         long bestScore = best.score;
         best.lengthCodeDelta = 0;

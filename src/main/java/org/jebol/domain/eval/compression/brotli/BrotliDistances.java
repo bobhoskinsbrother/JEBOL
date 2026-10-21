@@ -8,12 +8,12 @@ record BrotliDistances(int directCodes, int postfixBits) {
 
     static final BrotliDistances PLAINEST = new BrotliDistances(0, 0);
 
-    static int sizeTheAlphabetFor(int directCodes, int postfixBits) {
+    static int sizeAlphabetFor(int directCodes, int postfixBits) {
         return BrotliCommand.DISTANCE_SHORT_CODES + directCodes
                 + (MOST_BITS_A_DISTANCE_MAY_NEED << (postfixBits + 1));
     }
 
     int alphabetSize() {
-        return sizeTheAlphabetFor(directCodes, postfixBits);
+        return sizeAlphabetFor(directCodes, postfixBits);
     }
 }

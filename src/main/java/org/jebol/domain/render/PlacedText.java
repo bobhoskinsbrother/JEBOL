@@ -71,7 +71,7 @@ public record PlacedText(
     private static List<PlacedPatch> findTheSelectionIn(
             TextCaret caret, TextLines lines, TextLayout layout, Placement where) {
 
-        if (!caret.marksASelection()) {
+        if (!caret.marksSelection()) {
             return List.of();
         }
         TextLines.CaretPlace from = lines.findWhereTheCaretIs(

@@ -42,7 +42,7 @@ public class ProtectNative extends ProtectingNative {
                 hideEachWordIn(names);
                 return target;
             }
-            if (refinements.contains("hide") && !namesAField(target, refinements)) {
+            if (refinements.contains("hide") && !namesField(target, refinements)) {
                 throw Raised.of(EvaluationFailure.BAD_REFINES, "protect/hide needs a word");
             }
             changeProtection(target, PROTECTED, refinements);
@@ -50,7 +50,7 @@ public class ProtectNative extends ProtectingNative {
         };
     }
 
-    private boolean namesAField(Value target, Set<String> refinements) {
+    private boolean namesField(Value target, Set<String> refinements) {
         return target instanceof AnyPathValue
                 && !refinements.contains("values");
     }

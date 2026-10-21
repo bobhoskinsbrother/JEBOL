@@ -44,7 +44,7 @@ public class UnfilterNative extends PngFilterNative {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
             int width = readWidthIn(arguments.get(1));
             boolean filterGiven = refinements.contains("as");
-            requireTheLinesFit(filterGiven ? width : width + THE_BYTE_NAMING_THE_FILTER,
+            requireLinesFit(filterGiven ? width : width + THE_BYTE_NAMING_THE_FILTER,
                     data.length, arguments, refinements);
             int filter = readTheArgumentOf("as", 0, arguments, refinements)
                     .map(this::readFilterNamedBy)

@@ -69,7 +69,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         for (int at = 0; at < howMany / 2; at++) {
             int[] near = readPixelAt(at + 1);
             int[] far = readPixelAt(howMany - at);
@@ -199,8 +199,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 throw refuseAsMalconstructed(specification);
             }
             ImageValue made = ImageValue.of(
-                    limitTheSide(x, specification),
-                    limitTheSide(y, specification));
+                    limitSide(x, specification),
+                    limitSide(y, specification));
             int at = 1;
             if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
                 fillColoursFrom(made, colours);
@@ -229,7 +229,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return made;
         }
 
-        private int limitTheSide(double given, AnyBlockValue specification) {
+        private int limitSide(double given, AnyBlockValue specification) {
             if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
                 throw refuseAsMalconstructed(specification);
             }
@@ -407,17 +407,17 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     private int findThePositionOfThePixel(Value wanted, boolean onlyWhereItStands,
                                           boolean colourOnly) {
         if (onlyWhereItStands) {
-            return matchesThePixel(index, wanted, colourOnly) ? index : 0;
+            return matchesPixel(index, wanted, colourOnly) ? index : 0;
         }
         for (int at = index; at <= storage.length(); at++) {
-            if (matchesThePixel(at, wanted, colourOnly)) {
+            if (matchesPixel(at, wanted, colourOnly)) {
                 return at;
             }
         }
         return 0;
     }
 
-    private boolean matchesThePixel(int oneBasedPixel, Value wanted, boolean colourOnly) {
+    private boolean matchesPixel(int oneBasedPixel, Value wanted, boolean colourOnly) {
         if (oneBasedPixel < 1 || oneBasedPixel > storage.length()) {
             return false;
         }

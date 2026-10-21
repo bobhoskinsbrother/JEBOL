@@ -392,7 +392,7 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("and a surface bigger than the root does not widen what it may paint")
         void alargerSurfaceDoesNotWidenTheRoot() {
-            assertThat(PaintList.onASurface(
+            assertThat(PaintList.onSurface(
                     makeAGobFrom("make gob! [size: 20x20 color: 1.1.1]"), 500, 500)
                     .instructions().getFirst().where().clip())
                     .isEqualTo(new ClipRectangle(0, 0, 20, 20));
@@ -401,7 +401,7 @@ class PaintListFromTheSourceTest {
         @Test
         @DisplayName("while a surface smaller than the root narrows it")
         void asmallerSurfaceNarrowsTheRoot() {
-            assertThat(PaintList.onASurface(
+            assertThat(PaintList.onSurface(
                     makeAGobFrom("make gob! [size: 200x200 color: 1.1.1]"), 50, 40)
                     .instructions().getFirst().where().clip())
                     .isEqualTo(new ClipRectangle(0, 0, 50, 40));

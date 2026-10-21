@@ -131,12 +131,12 @@ final class Qoi {
         written.addWholeNumber(high);
         written.add(CHANNELS);
         written.add(SRGB);
-        layTheChunksIn(written, wide * high, pixels);
+        layChunksIn(written, wide * high, pixels);
         written.add(END_MARKER);
         return written.taken();
     }
 
-    private static void layTheChunksIn(Written written, int howMany, byte[] pixels) {
+    private static void layChunksIn(Written written, int howMany, byte[] pixels) {
         Colour[] seen = new Colour[TABLE_SIZE];
         java.util.Arrays.fill(seen, new Colour(0, 0, 0, 0));
         Colour before = Colour.TO_BEGIN_WITH;
@@ -180,11 +180,11 @@ final class Qoi {
             written.add(here.alpha());
             return;
         }
-        int firstStep = wrapAsASignedByte(
+        int firstStep = wrapAsSignedByte(
                 here.first() - before.first());
-        int middleStep = wrapAsASignedByte(
+        int middleStep = wrapAsSignedByte(
                 here.second() - before.second());
-        int thirdStep = wrapAsASignedByte(
+        int thirdStep = wrapAsSignedByte(
                 here.third() - before.third());
         if (fitsInTwoBits(firstStep) && fitsInTwoBits(middleStep)
                 && fitsInTwoBits(thirdStep)) {
@@ -192,9 +192,9 @@ final class Qoi {
                     | (middleStep + 2) << 2 | (thirdStep + 2));
             return;
         }
-        int firstApart = wrapAsASignedByte(
+        int firstApart = wrapAsSignedByte(
                 firstStep - middleStep);
-        int thirdApart = wrapAsASignedByte(
+        int thirdApart = wrapAsSignedByte(
                 thirdStep - middleStep);
         if (middleStep > -33 && middleStep < 32
                 && firstApart > -9 && firstApart < 8
@@ -209,7 +209,7 @@ final class Qoi {
         written.add(here.third());
     }
 
-    private static int wrapAsASignedByte(int step) {
+    private static int wrapAsSignedByte(int step) {
         int wrapped = step & 0xFF;
         return wrapped > 127 ? wrapped - 256 : wrapped;
     }

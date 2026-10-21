@@ -13,12 +13,12 @@ final class Union implements SetOperation {
     }
 
     @Override
-    public boolean takesFromTheSecondSet() {
+    public boolean takesFromSecondSet() {
         return true;
     }
 
     @Override
-    public boolean keepsFromTheSecondSet(boolean inOurs) {
+    public boolean keepsFromSecondSet(boolean inOurs) {
         return true;
     }
 

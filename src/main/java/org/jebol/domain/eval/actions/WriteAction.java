@@ -52,8 +52,8 @@ public class WriteAction extends PortAction {
             if (destination instanceof PortValue port) {
                 return ports.writeTo(port, data, evaluator, asked);
             }
-            if (ports.routesToAScheme(destination)) {
-                return ports.writeTo(ports.openAPortFor(destination, evaluator, context),
+            if (ports.routesToScheme(destination)) {
+                return ports.writeTo(ports.openPortFor(destination, evaluator, context),
                         data, evaluator, asked);
             }
             return ports.writeFile(destination, data, evaluator, asked);

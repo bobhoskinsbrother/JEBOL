@@ -12,14 +12,14 @@ final class Zone implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return date.zoneAsATime();
+        return date.zoneAsTime();
     }
 
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
         return given.isNothing()
-                ? date.withTheZoneDropped()
+                ? date.withZoneDropped()
                 : date.atMidnightIfItHasNoClock()
-                        .withTheSameClockIn(given.asAZoneOffsetInMinutes());
+                        .withSameClockIn(given.asAZoneOffsetInMinutes());
     }
 }

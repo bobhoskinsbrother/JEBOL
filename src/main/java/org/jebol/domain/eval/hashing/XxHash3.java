@@ -60,10 +60,10 @@ public final class XxHash3 extends XxHashFamily {
             return ofAtMostSixteen(message);
         }
         if (length <= 128) {
-            return ofSeventeenToAHundredAndTwentyEight(message);
+            return ofSeventeenToHundredAndTwentyEight(message);
         }
         if (length <= LONGEST_MIDSIZE) {
-            return ofAHundredAndTwentyNineToTwoHundredAndForty(message);
+            return ofHundredAndTwentyNineToTwoHundredAndForty(message);
         }
         return finaliseAsSixtyFour(accumulateOver(message), message.length);
     }
@@ -108,7 +108,7 @@ public final class XxHash3 extends XxHashFamily {
                 octets.readLittleEndianLongAt(message, at + 8) ^ octets.readLittleEndianLongAt(SECRET, secretAt + 8));
     }
 
-    private long ofSeventeenToAHundredAndTwentyEight(byte[] message) {
+    private long ofSeventeenToHundredAndTwentyEight(byte[] message) {
         int length = message.length;
         long running = length * P64_1;
         if (length > 32) {
@@ -128,7 +128,7 @@ public final class XxHash3 extends XxHashFamily {
         return avalanche(running);
     }
 
-    private long ofAHundredAndTwentyNineToTwoHundredAndForty(byte[] message) {
+    private long ofHundredAndTwentyNineToTwoHundredAndForty(byte[] message) {
         int length = message.length;
         int rounds = length / 16;
         long running = length * P64_1;
@@ -212,10 +212,10 @@ public final class XxHash3 extends XxHashFamily {
             return ofAtMostSixteenAsTwoHalves(message);
         }
         if (length <= 128) {
-            return ofSeventeenToAHundredAndTwentyEightAsTwoHalves(message);
+            return ofSeventeenToHundredAndTwentyEightAsTwoHalves(message);
         }
         if (length <= LONGEST_MIDSIZE) {
-            return ofAHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(message);
+            return ofHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(message);
         }
         long[] accumulators = accumulateOver(message);
         return new long[] {
@@ -257,7 +257,7 @@ public final class XxHash3 extends XxHashFamily {
         long flip = octets.readLittleEndianLongAt(SECRET, 16) ^ octets.readLittleEndianLongAt(SECRET, 24);
         long keyed = (low + (high << 32)) ^ flip;
         long productLow = keyed * (P64_1 + ((long) length << 2));
-        long productHigh = UnsignedProducts.multiplyForTheHighHalf(keyed, P64_1 + ((long) length << 2));
+        long productHigh = UnsignedProducts.multiplyForHighHalf(keyed, P64_1 + ((long) length << 2));
 
         productHigh += productLow << 1;
         productLow ^= productHigh >>> 3;
@@ -275,7 +275,7 @@ public final class XxHash3 extends XxHashFamily {
         long high = octets.readLittleEndianLongAt(message, length - 8);
         long mixed = low ^ high ^ flipLow;
         long productLow = mixed * P64_1;
-        long productHigh = UnsignedProducts.multiplyForTheHighHalf(mixed, P64_1);
+        long productHigh = UnsignedProducts.multiplyForHighHalf(mixed, P64_1);
 
         productLow += (long) (length - 1) << 54;
         high ^= flipHigh;
@@ -283,7 +283,7 @@ public final class XxHash3 extends XxHashFamily {
         productLow ^= Long.reverseBytes(productHigh);
 
         long lowOfProduct = productLow * P64_2;
-        long highOfProduct = UnsignedProducts.multiplyForTheHighHalf(productLow, P64_2)
+        long highOfProduct = UnsignedProducts.multiplyForHighHalf(productLow, P64_2)
                 + productHigh * P64_2;
         return new long[] {avalanche(lowOfProduct), avalanche(highOfProduct)};
     }
@@ -306,7 +306,7 @@ public final class XxHash3 extends XxHashFamily {
         return new long[] {low, high};
     }
 
-    private long[] ofSeventeenToAHundredAndTwentyEightAsTwoHalves(byte[] message) {
+    private long[] ofSeventeenToHundredAndTwentyEightAsTwoHalves(byte[] message) {
         int length = message.length;
         long[] accumulators = {length * P64_1, 0};
         if (length > 32) {
@@ -322,7 +322,7 @@ public final class XxHash3 extends XxHashFamily {
         return takeBothHalvesFrom(accumulators, length);
     }
 
-    private long[] ofAHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(
+    private long[] ofHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(
             byte[] message) {
 
         int length = message.length;
@@ -342,7 +342,7 @@ public final class XxHash3 extends XxHashFamily {
     }
 
     private long foldTheProductOf(long left, long right) {
-        return left * right ^ UnsignedProducts.multiplyForTheHighHalf(left, right);
+        return left * right ^ UnsignedProducts.multiplyForHighHalf(left, right);
     }
 
     private long avalanche(long hash) {

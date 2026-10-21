@@ -15,8 +15,8 @@ public abstract class CipherNative extends DefaultNative {
     public static final String DHM_HANDLE_TYPE = "dhm";
     public static final String ECDH_HANDLE_TYPE = "ecdh";
 
-    protected Value wrapInAHandle(String type, Object key, Evaluator evaluator) {
-        return HandleValue.wrapAContext(type, evaluator.nextCipherIdentity(), JavaObjectValue.of(key));
+    protected Value wrapInHandle(String type, Object key, Evaluator evaluator) {
+        return HandleValue.wrapContext(type, evaluator.nextCipherIdentity(), JavaObjectValue.of(key));
     }
 
     protected <K> Optional<K> readKeyHeldBy(Value given, String type, Class<K> kind) {

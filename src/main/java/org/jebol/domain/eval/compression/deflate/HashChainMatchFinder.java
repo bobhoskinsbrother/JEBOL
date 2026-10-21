@@ -63,7 +63,7 @@ final class HashChainMatchFinder extends MatchFinder {
             hash4Table[nextHash4] = (short) position;
             nextTable[position] = (short) node4;
             int nextSequence = load32(input, next + 1);
-            nextHash3 = hash(takeTheLowThreeBytes(nextSequence), HASH3_ORDER);
+            nextHash3 = hash(takeLowThreeBytes(nextSequence), HASH3_ORDER);
             nextHash4 = hash(nextSequence, HASH4_ORDER);
             int match;
             if (bestLength < FOUR_BYTES) {
@@ -73,7 +73,7 @@ final class HashChainMatchFinder extends MatchFinder {
                 int sequence4 = load32(input, next);
                 if (bestLength < 3) {
                     match = base + node3;
-                    if (load24(input, match) == takeTheLowThreeBytes(sequence4)) {
+                    if (load24(input, match) == takeLowThreeBytes(sequence4)) {
                         bestLength = 3;
                         bestMatch = match;
                     }
@@ -151,7 +151,7 @@ final class HashChainMatchFinder extends MatchFinder {
             nextTable[position] = hash4Table[hash4];
             hash4Table[hash4] = (short) position;
             int nextSequence = load32(input, ++at);
-            hash3 = hash(takeTheLowThreeBytes(nextSequence), HASH3_ORDER);
+            hash3 = hash(takeLowThreeBytes(nextSequence), HASH3_ORDER);
             hash4 = hash(nextSequence, HASH4_ORDER);
             position++;
         } while (--remaining != 0);

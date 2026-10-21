@@ -155,7 +155,7 @@ public final class Delect {
                 Value item = input.storage().at(ahead);
                 if (item instanceof AnyWordValue word
                         && (word instanceof WordValue || word instanceof LitWordValue)
-                        && startsTheNextCommandRatherThanBeingAKeyword(word)) {
+                        && startsNextCommandRatherThanBeingKeyword(word)) {
                     break;
                 }
                 ahead++;
@@ -163,7 +163,7 @@ public final class Delect {
             return ahead - at;
         }
 
-        private boolean startsTheNextCommandRatherThanBeingAKeyword(AnyWordValue word) {
+        private boolean startsNextCommandRatherThanBeingKeyword(AnyWordValue word) {
             return findTheIndexOfCommand(word) > 1;
         }
 
@@ -209,7 +209,7 @@ public final class Delect {
             }
             placing.writeInto(output.storage());
             if (readEverything) {
-                padTo(pickTheLonger(placing.countOfPlainSlots(), howMany) + 1);
+                padTo(pickLonger(placing.countOfPlainSlots(), howMany) + 1);
             }
             return readEverything;
         }
@@ -220,7 +220,7 @@ public final class Delect {
             }
         }
 
-        private static int pickTheLonger(int slotsDeclared, int argumentsWritten) {
+        private static int pickLonger(int slotsDeclared, int argumentsWritten) {
             return Math.max(slotsDeclared, argumentsWritten);
         }
 
@@ -255,7 +255,7 @@ public final class Delect {
         }
 
         private Optional<Value> evaluate(AnyBlockValue block) {
-            if (thereIsNoEvaluatorBecauseAGobIsBeingFlattened()) {
+            if (thereIsNoEvaluatorBecauseGobIsBeingFlattened()) {
                 return Optional.empty();
             }
             try {
@@ -266,7 +266,7 @@ public final class Delect {
             }
         }
 
-        private boolean thereIsNoEvaluatorBecauseAGobIsBeingFlattened() {
+        private boolean thereIsNoEvaluatorBecauseGobIsBeingFlattened() {
             return evaluator == null;
         }
 
@@ -363,14 +363,14 @@ public final class Delect {
                 if (isFull(which) || !slot.accepts(argument)) {
                     continue;
                 }
-                placed.get(which).add(placeTheValueFor(slot, argument));
+                placed.get(which).add(placeValueFor(slot, argument));
                 advancePast(which, slot);
                 return true;
             }
             return false;
         }
 
-        private static Value placeTheValueFor(Slot slot, Value argument) {
+        private static Value placeValueFor(Slot slot, Value argument) {
             return switch (slot) {
                 case Slot.Plain plain -> convertFor(plain.types(), argument);
                 case Slot.Repeating repeating -> convertFor(repeating.types(), argument);

@@ -13,7 +13,7 @@ public final class BlockValue extends AnyBlockValue {
         }
 
         @Override
-        boolean listsATypesetsMembers() {
+        boolean listsTypesetsMembers() {
             return true;
         }
     };
@@ -30,7 +30,7 @@ public final class BlockValue extends AnyBlockValue {
         return new BlockValue(new BlockStorage(items), 1);
     }
 
-    public static BlockValue wrapTheStorage(BlockStorage storage) {
+    public static BlockValue wrapStorage(BlockStorage storage) {
         return new BlockValue(storage, 1);
     }
 
@@ -66,7 +66,7 @@ public final class BlockValue extends AnyBlockValue {
     }
 
     @Override
-    public BlockValue repeatInABlock(Value times) {
+    public BlockValue repeatInBlock(Value times) {
         long count = times.asCountOfRepetitions();
         BlockStorage repeated = new BlockStorage();
         for (long round = 0; round < count; round++) {

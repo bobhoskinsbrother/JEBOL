@@ -27,7 +27,7 @@ final class Keep extends DeclaredKeyword {
             walk.keep(walk.evaluateParen(paren));
             return 2;
         }
-        if (saysOneAtATime(kept)) {
+        if (saysOneAtTime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
         if (isWord(kept, THE_WHOLE_SLICE)) {
@@ -44,7 +44,7 @@ final class Keep extends DeclaredKeyword {
             walk.keep(walk.evaluateParen(paren));
             return 2;
         }
-        if (saysOneAtATime(kept)) {
+        if (saysOneAtTime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
         boolean wholeSlice = isWord(kept, THE_WHOLE_SLICE);
@@ -116,7 +116,7 @@ final class Keep extends DeclaredKeyword {
         }
     }
 
-    private static boolean saysOneAtATime(Value kept) {
+    private static boolean saysOneAtTime(Value kept) {
         return isWord(kept, ONE_AT_A_TIME);
     }
 

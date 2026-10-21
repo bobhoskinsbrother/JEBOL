@@ -32,7 +32,7 @@ public class ListEnvNative extends EnvironmentNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.ENVIRONMENT);
-            return runThroughTheFileSystem(() -> {
+            return runThroughFileSystem(() -> {
                 List<Value> pairs = new ArrayList<>();
                 evaluator.ports().environment().readAll().entrySet().stream()
                         .sorted(Map.Entry.comparingByKey())

@@ -51,7 +51,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             return true;
         }
 
-        boolean listsATypesetsMembers() {
+        boolean listsTypesetsMembers() {
             return false;
         }
 
@@ -102,7 +102,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 return wrap(built, 1);
             }
             if (from instanceof MapValue pairs) {
-                return as(pairs.layThePairsOnLines());
+                return as(pairs.layPairsOnLines());
             }
             if (from.isAnyObject()) {
                 return as(from.fieldsAsContext().orElseThrow().setWordsAndValuesOnLines());
@@ -115,7 +115,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                     return wrap(List.of());
                 }
             } else if (wrapsWhatItConverts()) {
-                return from instanceof TypesetValue kinds && listsATypesetsMembers()
+                return from instanceof TypesetValue kinds && listsTypesetsMembers()
                         ? BlockValue.of(Catalogue.DATATYPES.selectWhere(kinds::holds).stream()
                                 .<Value>map(datatype -> datatype).toList())
                         : wrap(List.of(from));
@@ -228,7 +228,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         List<Value> items = new ArrayList<>(howMany);
         List<Boolean> breaks = new ArrayList<>(howMany);
         for (int at = 0; at < howMany; at++) {
@@ -259,15 +259,15 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         storage.set(positionFromTheHead, item);
     }
 
-    public void putEachPairOnALine() {
-        startALineEvery(2);
+    public void putEachPairOnLine() {
+        startLineEvery(2);
     }
 
-    public void putEachItemOnALine() {
-        startALineEvery(1);
+    public void putEachItemOnLine() {
+        startLineEvery(1);
     }
 
-    private void startALineEvery(int stride) {
+    private void startLineEvery(int stride) {
         for (int at = 1; at <= storageLength(); at += stride) {
             storage.setLineBreakAt(at, true);
         }
@@ -355,7 +355,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         return new PathValue(storage, index);
     }
 
-    public Value pickTheFirst() {
+    public Value pickFirst() {
         if (atTail()) {
             throw new IllegalStateException("nothing to read at the tail");
         }

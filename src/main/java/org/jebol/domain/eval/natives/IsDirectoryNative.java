@@ -45,7 +45,7 @@ public class IsDirectoryNative extends HostNative {
             }
             if (refinements.contains("check")
                     && target instanceof FileValue
-                    && liesOnTheDiskAsADirectory(evaluator, address.text())) {
+                    && liesOnDiskAsDirectory(evaluator, address.text())) {
                 return LogicValue.of(true);
             }
             return LogicValue.of(endsWayDirectoryIsWritten(address.text()));
@@ -57,8 +57,8 @@ public class IsDirectoryNative extends HostNative {
         return last == '/' || last == '\\';
     }
 
-    private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
+    private boolean liesOnDiskAsDirectory(Evaluator evaluator, String path) {
         granted.require(HostService.FILES);
-        return runThroughTheFileSystem(() -> LogicValue.of(evaluator.ports().files().isDirectory(path))).isTruthy();
+        return runThroughFileSystem(() -> LogicValue.of(evaluator.ports().files().isDirectory(path))).isTruthy();
     }
 }

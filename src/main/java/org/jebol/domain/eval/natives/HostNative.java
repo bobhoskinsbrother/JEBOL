@@ -16,7 +16,7 @@ public abstract class HostNative extends DefaultNative {
         this.granted = granted;
     }
 
-    protected Value runThroughTheFileSystem(Supplier<Value> operation) {
+    protected Value runThroughFileSystem(Supplier<Value> operation) {
         return fileSystem.answerOrRaise(operation);
     }
 }

@@ -103,7 +103,7 @@ public final class DeciReading {
         }
         int exponent = readExponent();
         exponent += shifted;
-        if (SIGNIFICANDS.roundsTheTruncationUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
+        if (SIGNIFICANDS.roundsTruncationUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
             if (significand.compareTo(THE_LARGEST_SIGNIFICAND) < 0) {
                 significand = significand.add(BigInteger.ONE);
             } else {
@@ -113,7 +113,7 @@ public final class DeciReading {
                 significand = SIGNIFICANDS.roundUpWhenTheTruncationSays(oneOff);
             }
         }
-        Scaled scaled = SIGNIFICANDS.multiplyByTenToThe(significand, 0, exponent, truncation);
+        Scaled scaled = SIGNIFICANDS.multiplyByTenTo(significand, 0, exponent, truncation);
         return new Deci(scaled.significand(), scaled.exponent(), negative);
     }
 

@@ -30,6 +30,6 @@ public final class StringValue extends AnyStringValue {
 
     @Override
     public String mold() {
-        return Molder.moldTheText(text());
+        return Molder.moldText(text());
     }
 }

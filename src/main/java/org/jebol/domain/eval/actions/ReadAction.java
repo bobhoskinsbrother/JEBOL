@@ -55,8 +55,8 @@ public class ReadAction extends PortAction {
                                 : ports.readFrom(port, evaluator, arguments, asked));
             }
             Optional<String> behindTheUrl = ports.findTheFileNamedByAUrl(source, evaluator, context);
-            if (behindTheUrl.isEmpty() && ports.routesToAScheme(source)) {
-                return ports.readFrom(ports.openAPortFor(source, evaluator, context),
+            if (behindTheUrl.isEmpty() && ports.routesToScheme(source)) {
+                return ports.readFrom(ports.openPortFor(source, evaluator, context),
                         evaluator, arguments, asked);
             }
             return ports.readFile(

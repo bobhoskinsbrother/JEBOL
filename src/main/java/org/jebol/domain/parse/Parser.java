@@ -129,7 +129,7 @@ public final class Parser implements ParseWalk {
         if (at + 1 >= rules.size()) {
             return Optional.of(answerForKeywordAlone(keyword));
         }
-        return keyword.ownsTheRuleAfterIt() && at + keyword.slotsBeforeTheRuleSpan() >= rules.size() ? Optional.of(NO_MATCH) : Optional.empty();
+        return keyword.ownsRuleAfterIt() && at + keyword.slotsBeforeRuleSpan() >= rules.size() ? Optional.of(NO_MATCH) : Optional.empty();
     }
 
     private int answerForKeywordAlone(ParseKeyword keyword) {
@@ -159,8 +159,8 @@ public final class Parser implements ParseWalk {
     }
 
     private int countSlotsTakenBy(ParseKeyword keyword, List<Value> rules, int at) {
-        int fixed = keyword.slotsBeforeTheRuleSpan();
-        return keyword.ownsTheRuleAfterIt() ? fixed + ruleSpan(rules, at + fixed) : fixed;
+        int fixed = keyword.slotsBeforeRuleSpan();
+        return keyword.ownsRuleAfterIt() ? fixed + ruleSpan(rules, at + fixed) : fixed;
     }
 
     Integer countIn(List<Value> rules, int at) {
@@ -354,7 +354,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public void putItemsIntoTheBlockAt(int where, List<Value> putting) {
+    public void putItemsIntoBlockAt(int where, List<Value> putting) {
         for (int added = putting.size(); added > 0; added--) {
             input.add(where, putting.get(added - 1));
             if (source != null) {
@@ -364,7 +364,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public int putValueIntoTheTextAt(int where, Value added) {
+    public int putValueIntoTextAt(int where, Value added) {
         int[] units = chooseUnitsToLayIn(added);
         for (int step = 0; step < units.length; step++) {
             insertIntoSource(source.index() + where + step, units[step]);
@@ -418,7 +418,7 @@ public final class Parser implements ParseWalk {
     @Override
     public java.util.Optional<Value> readWhatMatchedBetween(int from, int to) {
         if (!walkingABlock) {
-            return to > from ? java.util.Optional.of(takeOneOrASliceFrom(from)) : java.util.Optional.empty();
+            return to > from ? java.util.Optional.of(takeOneOrSliceFrom(from)) : java.util.Optional.empty();
         }
         List<Value> matched = input.subList(from, to);
         if (matched.isEmpty()) {
@@ -479,12 +479,12 @@ public final class Parser implements ParseWalk {
 
     @Override
     public int matchOne(List<Value> rules, int at) {
-        return walkingABlock ? matchOneOverABlock(rules, at) : matchOneOverAString(rules, at);
+        return walkingABlock ? matchOneOverBlock(rules, at) : matchOneOverString(rules, at);
     }
 
     @Override
     public boolean matchValue(Value rule) {
-        return walkingABlock ? matchValueOverABlock(rule) : matchValueOverAString(rule);
+        return walkingABlock ? matchValueOverBlock(rule) : matchValueOverString(rule);
     }
 
     private int applyKeywordThatHasWhatItNeeds(ParseKeyword keyword, List<Value> rules, int at) {
@@ -532,7 +532,7 @@ public final class Parser implements ParseWalk {
         return 1;
     }
 
-    int matchOneOverABlock(List<Value> rules, int at) {
+    int matchOneOverBlock(List<Value> rules, int at) {
         Value rule = rules.get(at);
 
         if (rule instanceof IntegerValue) {
@@ -560,13 +560,13 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof PathValue path) {
             Value resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
-            return matchValueOverABlock(resolved) ? 1 : NO_MATCH;
+            return matchValueOverBlock(resolved) ? 1 : NO_MATCH;
         }
         if (rule instanceof GetPathValue path) {
             ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context));
             return NO_MATCH;
         }
-        return matchValueOverABlock(rule) ? 1 : NO_MATCH;
+        return matchValueOverBlock(rule) ? 1 : NO_MATCH;
     }
 
     private int matchCountedRule(List<Value> rules, int at) {
@@ -586,7 +586,7 @@ public final class Parser implements ParseWalk {
         int matched = 0;
         while (matched < most) {
             int before = position;
-            if (matchOneOverABlock(rules, at + countItems) == NO_MATCH) {
+            if (matchOneOverBlock(rules, at + countItems) == NO_MATCH) {
                 position = before;
                 break;
             }
@@ -674,7 +674,7 @@ public final class Parser implements ParseWalk {
         return rules.get(at + 1);
     }
 
-    boolean matchValueOverABlock(Value rule) {
+    boolean matchValueOverBlock(Value rule) {
         return switch (rule) {
             case ParenValue nested -> {
                 evaluator.evaluateOrRaise(nested.asBlock(), context);
@@ -814,7 +814,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    int matchOneOverAString(List<Value> rules, int at) {
+    int matchOneOverString(List<Value> rules, int at) {
         Value rule = rules.get(at);
         if (rule instanceof SetWordValue mark) {
             assignOverString(mark, source.atIndex(source.index() + position));
@@ -852,12 +852,12 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof PathValue path) {
             Value resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
-            return matchValueOverAString(resolved) ? 1 : -1;
+            return matchValueOverString(resolved) ? 1 : -1;
         }
         if (rule instanceof GetPathValue path) {
             return switchTheInputToWhatThisNames(path);
         }
-        return matchValueOverAString(rule) ? 1 : -1;
+        return matchValueOverString(rule) ? 1 : -1;
     }
 
 
@@ -875,7 +875,7 @@ public final class Parser implements ParseWalk {
         return holder.contains(word.canonical()) ? holder.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
-    private int repeatACount(List<Value> rules, int ruleAt, int least, int most, int countWidth) {
+    private int repeatCount(List<Value> rules, int ruleAt, int least, int most, int countWidth) {
 
         if (ruleAt >= rules.size()) {
             throw Raised.of(EvaluationFailure.PARSE_END, rules.get(ruleAt - countWidth));
@@ -884,7 +884,7 @@ public final class Parser implements ParseWalk {
         int matched = 0;
         while (matched < most) {
             int before = position;
-            if (matchOneOverAString(rules, ruleAt) == NO_MATCH) {
+            if (matchOneOverString(rules, ruleAt) == NO_MATCH) {
                 position = before;
                 break;
             }
@@ -907,7 +907,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    Value takeOneOrASliceFrom(int before) {
+    Value takeOneOrSliceFrom(int before) {
         if (position - before != 1) {
             return textSliceBetween(before, position);
         }
@@ -988,7 +988,7 @@ public final class Parser implements ParseWalk {
         int least = countIn(rules, at);
         Integer second = countIn(rules, at + 1);
         int ruleAt = second == null ? at + 1 : at + 2;
-        return repeatACount(rules, ruleAt, least, second == null ? least : second, ruleAt - at);
+        return repeatCount(rules, ruleAt, least, second == null ? least : second, ruleAt - at);
     }
 
     boolean endOfInput() {
@@ -1012,7 +1012,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    boolean matchValueOverAString(Value rule) {
+    boolean matchValueOverString(Value rule) {
         if (rule instanceof NoneValue) {
             return true;
         }

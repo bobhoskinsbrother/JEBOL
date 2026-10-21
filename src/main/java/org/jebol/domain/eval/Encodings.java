@@ -508,7 +508,7 @@ public final class Encodings {
 
     private static final int MURMUR_COMBINING_MULTIPLIER = 0x1b873593;
 
-    private int mixABlockInto(int running, int block) {
+    private int mixBlockInto(int running, int block) {
         int mixed = Integer.rotateLeft(block * MURMUR_MIXING_MULTIPLIER, 15)
                 * MURMUR_COMBINING_MULTIPLIER;
         return Integer.rotateLeft(running ^ mixed, 13) * 5 + 0xe6546b64;
@@ -531,7 +531,7 @@ public final class Encodings {
         int hash = 0;
         int wholeWords = octets.length / 4;
         for (int word = 0; word < wholeWords; word++) {
-            hash = mixABlockInto(hash, readLittleEndianWordAt(octets, word * 4));
+            hash = mixBlockInto(hash, readLittleEndianWordAt(octets, word * 4));
         }
         int over = octets.length & 3;
         if (over > 0) {
@@ -548,7 +548,7 @@ public final class Encodings {
     public int hashCaseFolded(byte[] utf8) {
         int hash = 0;
         for (byte each : utf8) {
-            hash = mixABlockInto(hash, Character.toLowerCase(each & 0xFF));
+            hash = mixBlockInto(hash, Character.toLowerCase(each & 0xFF));
         }
         return avalanche(hash ^ utf8.length);
     }
@@ -733,10 +733,10 @@ public final class Encodings {
             from += 2 + extra;
         }
         if ((flags & 0x08) != 0) {
-            from = skipPastTheNextZero(octets, from);
+            from = skipPastNextZero(octets, from);
         }
         if ((flags & 0x10) != 0) {
-            from = skipPastTheNextZero(octets, from);
+            from = skipPastNextZero(octets, from);
         }
         if ((flags & 0x02) != 0) {
             from += 2;
@@ -748,7 +748,7 @@ public final class Encodings {
         return inflate(Arrays.copyOfRange(octets, from, from + length), true);
     }
 
-    private int skipPastTheNextZero(byte[] octets, int from) {
+    private int skipPastNextZero(byte[] octets, int from) {
         int at = from;
         while (at < octets.length && octets[at] != 0) {
             at++;

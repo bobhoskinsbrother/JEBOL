@@ -3,9 +3,9 @@ package org.jebol.domain.parse.keyword;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-final class TheDialectsWords {
+final class DialectsWords {
 
-    private TheDialectsWords() {
+    private DialectsWords() {
     }
 
     static Map<String, ParseKeyword> indexBySpelling() {

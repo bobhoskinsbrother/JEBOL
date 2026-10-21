@@ -24,10 +24,10 @@ public final class VectorStorage extends ProtectableStorage {
         this.kind = kind;
         this.elements = new long[Math.max(INITIAL_CAPACITY, howMany)];
         this.length = howMany;
-        this.reserved = SeriesMemory.reserve(this, bytesInTheBuffer());
+        this.reserved = SeriesMemory.reserve(this, bytesInBuffer());
     }
 
-    private long bytesInTheBuffer() {
+    private long bytesInBuffer() {
         return (long) elements.length * Long.BYTES;
     }
 
@@ -98,7 +98,7 @@ public final class VectorStorage extends ProtectableStorage {
         if (length == elements.length) {
             elements = Arrays.copyOf(elements,
                     Math.max(INITIAL_CAPACITY, elements.length * 2));
-            reserved.growTo(bytesInTheBuffer());
+            reserved.growTo(bytesInBuffer());
         }
     }
 

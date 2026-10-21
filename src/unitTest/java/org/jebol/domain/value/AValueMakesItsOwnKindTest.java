@@ -32,7 +32,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
+        public Value mergeObject(ObjectValue prototype, ObjectValue other) {
             asked.add("object merged");
             return whatAPrototypeMade;
         }
@@ -74,7 +74,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value readASimpleValue(Value piece) {
+        public Value readSimpleValue(Value piece) {
             return piece;
         }
 

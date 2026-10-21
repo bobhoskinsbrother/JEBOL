@@ -8,7 +8,7 @@ public class MinimumNative extends MinOrMaxNative {
     }
 
     @Override
-    protected boolean wantsTheLarger() {
+    protected boolean wantsLarger() {
         return false;
     }
 }

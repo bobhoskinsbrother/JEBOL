@@ -101,7 +101,7 @@ public final class Context {
     }
 
     public boolean contains(String canonicalName) {
-        if (unbound || lacksALentFrame()) {
+        if (unbound || lacksLentFrame()) {
             return false;
         }
         if (supersededBy != null) {
@@ -150,7 +150,7 @@ public final class Context {
     }
 
     public boolean holds(String canonicalName) {
-        ContextSlot slot = unbound || lacksALentFrame() ? null : slotsByCanonicalName.get(canonicalName);
+        ContextSlot slot = unbound || lacksLentFrame() ? null : slotsByCanonicalName.get(canonicalName);
         return slot != null && !slot.isHidden();
     }
 
@@ -192,7 +192,7 @@ public final class Context {
     }
 
     public ContextSlot findSlotOrNone(String canonicalName) {
-        if (unbound || lacksALentFrame()) {
+        if (unbound || lacksLentFrame()) {
             return null;
         }
         if (supersededBy != null) {
@@ -264,7 +264,7 @@ public final class Context {
         return held;
     }
 
-    public Context withoutTheFieldsHoldingNothing() {
+    public Context withoutFieldsHoldingNothing() {
         Context kept = Context.root();
         for (ContextSlot slot : slots()) {
             boolean holdsNothing = slot.value() instanceof NoneValue
@@ -304,7 +304,7 @@ public final class Context {
 
     public AnyBlockValue setWordsAndValuesOnLines() {
         AnyBlockValue block = BlockValue.of(setWordsAndValues());
-        block.putEachPairOnALine();
+        block.putEachPairOnLine();
         return block;
     }
 
@@ -357,7 +357,7 @@ public final class Context {
         return frame;
     }
 
-    private boolean lacksALentFrame() {
+    private boolean lacksLentFrame() {
         return onlyThroughACallThatIsRunning && supersededBy == null;
     }
 

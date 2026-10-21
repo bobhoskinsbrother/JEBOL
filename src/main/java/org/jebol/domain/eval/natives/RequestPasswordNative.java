@@ -30,7 +30,7 @@ public class RequestPasswordNative extends WindowNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            return runThroughTheWindows(() -> evaluator.ports().windows().askForPassword()
+            return runThroughWindows(() -> evaluator.ports().windows().askForPassword()
                     .<Value>map(StringValue::of)
                     .orElseGet(NoneValue::none));
         };

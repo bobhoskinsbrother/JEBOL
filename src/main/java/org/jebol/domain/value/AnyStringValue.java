@@ -160,7 +160,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         return rewriteFromHere(whole -> new StringBuilder(whole.substring(0, howMany)).reverse()
                 + whole.substring(howMany));
     }
@@ -186,10 +186,10 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     public AnyStringValue withOneLineFeedPerEnding() {
-        return rewriteFromHere(this::standardiseTheLineEndings);
+        return rewriteFromHere(this::standardiseLineEndings);
     }
 
-    private String standardiseTheLineEndings(String text) {
+    private String standardiseLineEndings(String text) {
         StringBuilder standardised = new StringBuilder(text.length());
         int at = 0;
         while (at < text.length()) {
@@ -223,7 +223,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return lines;
     }
 
-    public AnyStringValue rewriteTheFront(int howMany, UnaryOperator<String> change) {
+    public AnyStringValue rewriteFront(int howMany, UnaryOperator<String> change) {
         return rewriteFromHere(whole -> {
             int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
             int split = whole.offsetByCodePoints(0, taking);
@@ -234,11 +234,11 @@ public abstract sealed class AnyStringValue implements RebolSeries
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseContradictions();
-        return rewriteFromHere(text -> trimTheText(text, trimming));
+        return rewriteFromHere(text -> trimText(text, trimming));
     }
 
-    private String trimTheText(String text, Trimming trimming) {
-        if (trimming.ofTheGivenCharacters()) {
+    private String trimText(String text, Trimming trimming) {
+        if (trimming.ofGivenCharacters()) {
             StringBuilder kept = new StringBuilder();
             text.codePoints()
                     .filter(letter -> !trimming.unwantedCodePoints().contains(letter))
@@ -251,11 +251,11 @@ public abstract sealed class AnyStringValue implements RebolSeries
         if (trimming.intoOneLine()) {
             return text.strip().replaceAll("\\s+", " ");
         }
-        String indented = trimming.ofTheCommonIndent() ? withoutCommonIndent(text) : text;
+        String indented = trimming.ofCommonIndent() ? withoutCommonIndent(text) : text;
         if (trimming.atOneEndOnly()) {
             return trimming.fromHead() ? indented.stripLeading() : indented.stripTrailing();
         }
-        return trimming.ofTheCommonIndent() || trimming.atBothNamedEnds()
+        return trimming.ofCommonIndent() || trimming.atBothNamedEnds()
                 ? indented.strip()
                 : trimEachLine(indented);
     }
@@ -368,7 +368,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return storage.textFrom(index);
     }
 
-    public CharacterValue pickTheFirst() {
+    public CharacterValue pickFirst() {
         if (atTail()) {
             throw new IllegalStateException("nothing to read at the tail");
         }
@@ -402,7 +402,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     String constructed() {
-        return "#(" + datatype().literalSpelling() + " " + Molder.moldTheText(head().text())
+        return "#(" + datatype().literalSpelling() + " " + Molder.moldText(head().text())
                 + (index > 1 ? " " + index : "") + ")";
     }
 

@@ -36,14 +36,14 @@ public final class PolicyEnforcement {
         PolicyLevel level = new SecurityPolicies(readField(state.get(), "policies"), fileNamesFoldCase())
                 .findLevelFor(kind, access, subject);
         switch (level) {
-            case ALLOW -> letTheAccessGoAhead();
+            case ALLOW -> letAccessGoAhead();
             case ASK -> refuseUnlessConfirmed(state.get(), kind, access, subject);
             case THROW -> throw refuseAsViolation(kind, subject);
             case QUIT -> throw new QuitRequested(IntegerValue.of(WHAT_A_QUIT_POLICY_LEAVES_WITH));
         }
     }
 
-    private void letTheAccessGoAhead() {
+    private void letAccessGoAhead() {
     }
 
     private Optional<Context> findTheSystemState() {

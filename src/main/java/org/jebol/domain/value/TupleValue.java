@@ -149,7 +149,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         return Math.max(segments.length, MINIMUM_SHOWN_SEGMENTS);
     }
 
-    public TupleValue reverseTheFront(int howMany) {
+    public TupleValue reverseFront(int howMany) {
         if (howMany < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
         }
@@ -200,7 +200,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             case AnyDecimalValue quantity -> (long) quantity.quantity();
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
-        int[] octets = padTheOctetsToTwelve();
+        int[] octets = padOctetsToTwelve();
         octets[position - 1] = (int) Math.max(0, Math.min(TupleDatatype.THE_LARGEST_OCTET, amount));
         int kept = position > shownCount() ? position : segmentCount();
         return TupleValue.of(Arrays.copyOf(octets, kept));
@@ -214,7 +214,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     /** The octets a comparison sees: what was written, then zeros. */
-    public int[] padTheOctetsToTwelve() {
+    public int[] padOctetsToTwelve() {
         int[] all = new int[MAXIMUM_SEGMENTS];
         System.arraycopy(segments, 0, all, 0, segments.length);
         return all;
@@ -359,12 +359,12 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     @Override
     public boolean equals(Object other) {
         return other instanceof TupleValue tuple
-                && Arrays.equals(padTheOctetsToTwelve(), tuple.padTheOctetsToTwelve());
+                && Arrays.equals(padOctetsToTwelve(), tuple.padOctetsToTwelve());
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(padTheOctetsToTwelve());
+        return Arrays.hashCode(padOctetsToTwelve());
     }
 
     @Override

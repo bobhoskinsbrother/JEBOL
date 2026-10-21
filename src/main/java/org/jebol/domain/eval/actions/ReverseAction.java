@@ -33,8 +33,8 @@ public class ReverseAction extends DefaultNative implements ActionValue {
             Optional<Value> limit = readTheArgumentOf("part", 0, arguments, refinements);
             return switch (arguments.getFirst()) {
                 case RebolSeries series when refinements.contains("part") ->
-                        series.reverseTheFront(measureTheFrontOf(series, limit));
-                case TupleValue tuple -> tuple.reverseTheFront((int) Arithmetic.asMagnitude(
+                        series.reverseFront(measureTheFrontOf(series, limit));
+                case TupleValue tuple -> tuple.reverseFront((int) Arithmetic.asMagnitude(
                         limit.orElseGet(() -> IntegerValue.of(tuple.segmentCount()))));
                 case PairValue pair -> pair.reversed();
                 case RebolSeries series -> series.reversedFromHere();

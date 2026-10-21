@@ -27,7 +27,7 @@ public class SplitLinesNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue lines = BlockValue.of(linesOf((AnyStringValue) arguments.getFirst()));
-            lines.putEachItemOnALine();
+            lines.putEachItemOnLine();
             return lines;
         };
     }
@@ -42,7 +42,7 @@ public class SplitLinesNative extends DefaultNative {
             at++;
             if (endsLine(letter)) {
                 lines.add(lineBetween(text, start, at - 1));
-                at = skipALineFeedFollowing(text, letter, at);
+                at = skipLineFeedFollowing(text, letter, at);
                 start = at;
             }
         }
@@ -56,7 +56,7 @@ public class SplitLinesNative extends DefaultNative {
         return letter == LINE_FEED || letter == CARRIAGE_RETURN;
     }
 
-    private int skipALineFeedFollowing(AnyStringValue text, int ending, int at) {
+    private int skipLineFeedFollowing(AnyStringValue text, int ending, int at) {
         boolean aLineFeedFollows = at < text.storageLength() && readCodePointAfter(text, at) == LINE_FEED;
         return ending == CARRIAGE_RETURN && aLineFeedFollows ? at + 1 : at;
     }

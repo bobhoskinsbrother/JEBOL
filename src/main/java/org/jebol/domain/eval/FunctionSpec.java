@@ -37,7 +37,7 @@ final class FunctionSpec {
             refuseDuplicateNamingItAsItWasWritten(word, alreadyNamed);
             if (word instanceof RefinementValue) {
                 currentRefinement = word.canonical();
-                parameters.add(Parameter.ofARefinement(word.spelling()));
+                parameters.add(Parameter.ofRefinement(word.spelling()));
                 continue;
             }
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {

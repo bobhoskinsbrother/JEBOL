@@ -106,7 +106,7 @@ public class ConstructNative extends DefaultNative {
         List<Value> fields = new ArrayList<>();
         String[] lines = header.split("\n", -1);
         for (int at = 0; at < lines.length; at++) {
-            String line = withoutACarriageReturn(lines[at]);
+            String line = withoutCarriageReturn(lines[at]);
             int colon = findColonAfterName(line);
             if (colon < 0) {
                 continue;
@@ -114,7 +114,7 @@ public class ConstructNative extends DefaultNative {
             StringBuilder value = new StringBuilder(line.substring(colon + 1).stripLeading());
             while (at + 1 < lines.length && startsWithSpaceOrTab(lines[at + 1])) {
                 at++;
-                value.append(' ').append(withoutACarriageReturn(lines[at]).stripLeading());
+                value.append(' ').append(withoutCarriageReturn(lines[at]).stripLeading());
             }
             fields.add(SetWordValue.of(line.substring(0, colon).strip()));
             fields.add(StringValue.of(value.toString()));
@@ -122,7 +122,7 @@ public class ConstructNative extends DefaultNative {
         return fields;
     }
 
-    private String withoutACarriageReturn(String line) {
+    private String withoutCarriageReturn(String line) {
         return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
     }
 

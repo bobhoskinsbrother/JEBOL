@@ -13,9 +13,9 @@ public interface SetOperation {
 
     boolean keepsFromFirstSet(boolean inTheirs);
 
-    boolean takesFromTheSecondSet();
+    boolean takesFromSecondSet();
 
-    boolean keepsFromTheSecondSet(boolean inOurs);
+    boolean keepsFromSecondSet(boolean inOurs);
 
     int combineBits(int mine, int yours);
 

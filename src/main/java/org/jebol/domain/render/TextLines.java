@@ -156,7 +156,7 @@ public final class TextLines {
 
         private static final int STANDS_FOR_AN_EMPTY_PIECE = -1;
 
-        boolean standsForAnEmptyPiece() {
+        boolean standsForEmptyPiece() {
             return codePoint == STANDS_FOR_AN_EMPTY_PIECE;
         }
 
@@ -261,7 +261,7 @@ public final class TextLines {
         while (start < letters.size()) {
             int end = start + 1;
             while (end < letters.size() && letters.get(end).run() == letters.get(start).run()
-                    && !letters.get(start).standsForAnEmptyPiece() && !letters.get(end).standsForAnEmptyPiece()) {
+                    && !letters.get(start).standsForEmptyPiece() && !letters.get(end).standsForEmptyPiece()) {
                 end++;
             }
             pieces.add(makeAPieceOfTheLetters(letters.subList(start, end)));

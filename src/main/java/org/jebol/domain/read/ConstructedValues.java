@@ -55,7 +55,7 @@ final class ConstructedValues {
                 return simple.get();
             }
         }
-        if (namesAVector(leading, contents.size())) {
+        if (namesVector(leading, contents.size())) {
             return VectorSpec.readConstruction(contents).orElseThrow(CannotConstruct::new);
         }
         Value resolved = findDatatypeNamed(leading);
@@ -76,7 +76,7 @@ final class ConstructedValues {
         }
     }
 
-    private boolean namesAVector(AnyWordValue leading, int howManyParts) {
+    private boolean namesVector(AnyWordValue leading, int howManyParts) {
         if ("vector!".equals(leading.canonical())) {
             return howManyParts > 1;
         }

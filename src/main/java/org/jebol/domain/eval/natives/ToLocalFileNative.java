@@ -48,7 +48,7 @@ public class ToLocalFileNative extends HostNative {
             String from = "";
             if (resolvingDots && !path.startsWith("/")) {
                 granted.require(HostService.WORKING_DIRECTORY);
-                from = ((AnyStringValue) runThroughTheFileSystem(() ->
+                from = ((AnyStringValue) runThroughFileSystem(() ->
                         StringValue.of(evaluator.ports().files().workingDirectory()))).text();
             }
             return StringValue.of(writeTheLocalPathOf(from + path, resolvingDots, localSeparator.separator()));

@@ -131,7 +131,7 @@ public final class Molder {
                         + standsWithinNeverPastTheEndForABlockOrAPath(series) + ")";
             }
             if (value instanceof TagValue tag && tag.storageLength() == 0) {
-                return "#(tag! " + moldTheText("") + ")";
+                return "#(tag! " + moldText("") + ")";
             }
             return render(value, true);
         });
@@ -160,7 +160,7 @@ public final class Molder {
 
     private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
-            case AnyStringValue text -> moldTheText(text.head().text());
+            case AnyStringValue text -> moldText(text.head().text());
             case AnyBlockValue block -> "[" + block.head().remaining().stream()
                     .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
             default -> mold(series.head());
@@ -268,7 +268,7 @@ public final class Molder {
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
-                    + moldTheBytes(bitset.octets()) + ")";
+                    + moldBytes(bitset.octets()) + ")";
             case ObjectValue object -> renderObject(object, ObjectValue.TYPE, forReading);
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), PortValue.TYPE, forReading);
@@ -392,11 +392,11 @@ public final class Molder {
 
     private static String pointAsWanted(String rendered, boolean minimal) {
         return minimal
-                ? trimTrailingZero(withThePointADecimalNeverLoses(rendered))
-                : withThePointADecimalNeverLoses(rendered);
+                ? trimTrailingZero(withPointDecimalNeverLoses(rendered))
+                : withPointDecimalNeverLoses(rendered);
     }
 
-    private static String withThePointADecimalNeverLoses(String rendered) {
+    private static String withPointDecimalNeverLoses(String rendered) {
         return rendered.indexOf('.') >= 0 ? rendered : rendered + ".0";
     }
 
@@ -481,7 +481,7 @@ public final class Molder {
 
     private static final int LONGEST_QUOTED = 50;
 
-    static String moldTheText(String text) {
+    static String moldText(String text) {
         String deciding = asFarAsLimitLooks(text);
         long newlines = deciding.chars().filter(each -> each == '\n').count();
         boolean quoted = deciding.indexOf('"') < 0
@@ -574,7 +574,7 @@ public final class Molder {
         for (int offset = 0; offset < octets.length; offset++) {
             octets[offset] = (byte) binary.storage().at(binary.index() + offset);
         }
-        return forReading ? moldTheBytes(octets) : writeTheHexOf(octets);
+        return forReading ? moldBytes(octets) : writeTheHexOf(octets);
     }
 
     private static int countBytesLimitAllows(int bytes) {
@@ -596,7 +596,7 @@ public final class Molder {
         }
     }
 
-    private static String moldTheBytes(byte[] whole) {
+    private static String moldBytes(byte[] whole) {
         byte[] octets = Arrays.copyOf(whole,
                 countBytesLimitAllows(whole.length));
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
@@ -893,7 +893,7 @@ public final class Molder {
         try {
             return forReading
                     ? openFor(naming) + "["
-                            + moldTheFields(listTheFieldsOutsideSelf(object).collect(
+                            + moldFields(listTheFieldsOutsideSelf(object).collect(
                                     Collectors.toMap(ContextSlot::spelling,
                                             ContextSlot::value,
                                             (older, newer) -> newer,
@@ -922,7 +922,7 @@ public final class Molder {
         for (String name : ErrorValue.FIELDS) {
             fields.put(name, error.readTheField(name).orElseGet(NoneValue::none));
         }
-        return openFor(ErrorValue.TYPE) + "[" + moldTheFields(fields) + "]"
+        return openFor(ErrorValue.TYPE) + "[" + moldFields(fields) + "]"
                 + closedAfterTypeName();
     }
 
@@ -933,7 +933,7 @@ public final class Molder {
                 .collect(Collectors.joining(" "));
     }
 
-    private static String moldTheFields(Map<String, Value> fields) {
+    private static String moldFields(Map<String, Value> fields) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
         String written = stepOneLevelIn(() -> {
             StringBuilder out = new StringBuilder();

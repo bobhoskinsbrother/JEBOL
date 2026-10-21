@@ -207,7 +207,7 @@ public final class BitsetValue implements Value {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return BitsetValue.of(withoutTheTrailingZeros(
+        return BitsetValue.of(withoutTrailingZeros(
                 combineOctetByOctet(takeSomeBitsFrom(right), operation)));
     }
 
@@ -237,7 +237,7 @@ public final class BitsetValue implements Value {
         return both;
     }
 
-    private byte[] withoutTheTrailingZeros(byte[] combined) {
+    private byte[] withoutTrailingZeros(byte[] combined) {
         int kept = combined.length;
         while (kept > 0 && combined[kept - 1] == 0) {
             kept--;

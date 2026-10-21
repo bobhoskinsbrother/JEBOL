@@ -107,7 +107,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                     readTheHeadersOf(answer),
                     readTheBodyOf(answer, asked)));
         }
-        requireAnAnswerRatherThanAnErrorPage(answer, evaluator);
+        requireAnswerRatherThanErrorPage(answer, evaluator);
         return readTheBodyOf(answer, asked);
     }
 
@@ -129,7 +129,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         }
     }
 
-    private void requireAnAnswerRatherThanAnErrorPage(HttpPort.Answer answer, Evaluator evaluator) {
+    private void requireAnswerRatherThanErrorPage(HttpPort.Answer answer, Evaluator evaluator) {
         if (answer.status() < 400 && answer.status() != 300) {
             return;
         }

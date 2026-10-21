@@ -68,14 +68,14 @@ public abstract class LoopingNative extends DefaultNative {
                 .toList();
     }
 
-    protected int setLoopNamesFillingWithNonePastTheEnd(
+    protected int setLoopNamesFillingWithNonePastEnd(
             Context locals, List<AnyWordValue> names, List<Value> items,
             int at, Value walked) {
 
         int reached = at;
         for (AnyWordValue name : names) {
             if (name instanceof SetWordValue) {
-                locals.register(name.spelling(), markThePositionWithin(walked, reached));
+                locals.register(name.spelling(), markPositionWithin(walked, reached));
                 continue;
             }
             locals.register(name.spelling(),
@@ -85,7 +85,7 @@ public abstract class LoopingNative extends DefaultNative {
         return reached == at ? at + 1 : reached;
     }
 
-    private Value markThePositionWithin(Value walked, int reached) {
+    private Value markPositionWithin(Value walked, int reached) {
         if (!(walked instanceof RebolSeries series)) {
             return walked;
         }

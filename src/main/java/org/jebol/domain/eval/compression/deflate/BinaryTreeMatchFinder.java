@@ -62,7 +62,7 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         int nextSequence = load32(input, next + 1);
         int bucket3 = nextHash3 * HASH3_WAYS;
         int hash4 = nextHash4;
-        nextHash3 = hash(takeTheLowThreeBytes(nextSequence), HASH3_ORDER);
+        nextHash3 = hash(takeLowThreeBytes(nextSequence), HASH3_ORDER);
         nextHash4 = hash(nextSequence, HASH4_ORDER);
         int node = hash3Table[bucket3];
         hash3Table[bucket3] = (short) position;

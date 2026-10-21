@@ -43,7 +43,7 @@ public class Rc4Native extends CipherNative {
                                 .orElseThrow());
             }
             if (refinements.contains("key")) {
-                return wrapInAHandle(RC4_HANDLE_TYPE,
+                return wrapInHandle(RC4_HANDLE_TYPE,
                         StreamCipher.keyWith(
                                 ((BinaryValue) arguments.getFirst()).octetsFromHere()),
                         evaluator);

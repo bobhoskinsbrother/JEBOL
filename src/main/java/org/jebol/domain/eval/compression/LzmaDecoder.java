@@ -193,7 +193,7 @@ final class LzmaDecoder {
         return (howManyDone & positionMask) << POSITION_BITS_MAX;
     }
 
-    private void noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance() {
+    private void noteWhetherDictionaryRatherThanAnswerNowBoundsDistance() {
         if (checkedDictionarySize == 0
                 && Integer.compareUnsigned(processed, dictionarySize) >= 0) {
             checkedDictionarySize = dictionarySize;
@@ -201,7 +201,7 @@ final class LzmaDecoder {
     }
 
     private void decodeOneSymbol() {
-        noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance();
+        noteWhetherDictionaryRatherThanAnswerNowBoundsDistance();
         int positionState = findPositionStateFor(processed);
         if (decodeBit(isMatch, positionState + state) == 0) {
             decodeLiteral();

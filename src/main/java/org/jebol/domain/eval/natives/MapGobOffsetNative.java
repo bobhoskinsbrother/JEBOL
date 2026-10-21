@@ -48,6 +48,6 @@ public class MapGobOffsetNative extends GobMappingNative {
             addedY += reached.storage().offset().y();
             reached = new GobValue(reached.storage().parent(), 1);
         }
-        return pairTheGobWithThePoint(reached, PairValue.of(addedX, addedY));
+        return pairGobWithPoint(reached, PairValue.of(addedX, addedY));
     }
 }

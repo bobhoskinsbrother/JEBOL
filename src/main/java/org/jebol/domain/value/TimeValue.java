@@ -123,13 +123,13 @@ public record TimeValue(long nanoseconds) implements Value {
         return nanoseconds % NANOSECONDS_PER_HOUR / NANOSECONDS_PER_MINUTE;
     }
 
-    public TimeValue withTheHour(long hours) {
+    public TimeValue withHour(long hours) {
         return ofNanoseconds(nanoseconds
                 - hoursCountedWithTheirSign() * NANOSECONDS_PER_HOUR
                 + hours * NANOSECONDS_PER_HOUR);
     }
 
-    public TimeValue withTheMinute(long minutes) {
+    public TimeValue withMinute(long minutes) {
         return ofNanoseconds(nanoseconds
                 - minutesCountedWithTheirSign() * NANOSECONDS_PER_MINUTE
                 + minutes * NANOSECONDS_PER_MINUTE);
@@ -272,7 +272,7 @@ public record TimeValue(long nanoseconds) implements Value {
 
         private Value scanTimeFrom(StringValue given) {
             ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findOneTime());
-            if (!scanning.readsATime()) {
+            if (!scanning.readsTime()) {
                 throw refuse(given);
             }
             return ofNanoseconds(scanning.readNanoseconds());

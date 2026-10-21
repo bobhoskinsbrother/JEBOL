@@ -86,7 +86,7 @@ public record EventValue(
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return EventPath.make(spec, maker::readASimpleValue);
+        return EventPath.make(spec, maker::readSimpleValue);
     }
 
     @Override
@@ -98,7 +98,7 @@ public record EventValue(
 
         @Override
         public Value makeFrom(Value spec, Maker maker) {
-            return EventPath.make(spec, maker::readASimpleValue);
+            return EventPath.make(spec, maker::readSimpleValue);
         }
 
         @Override

@@ -64,12 +64,12 @@ public record HandleValue(
      * that is the key material. So the payload goes behind the handle and the
      * only thing published is which type it is.
      */
-    public static HandleValue wrapAContext(String typeName, int identity, Value payload) {
+    public static HandleValue wrapContext(String typeName, int identity, Value payload) {
         return new HandleValue(typeName, Kind.CONTEXT, identity, payload);
     }
 
     /** A handle wrapping something callable, named by type. */
-    public static HandleValue wrapAFunction(String typeName, int identity, Value payload) {
+    public static HandleValue wrapFunction(String typeName, int identity, Value payload) {
         return new HandleValue(typeName, Kind.FUNCTION, identity, payload);
     }
 

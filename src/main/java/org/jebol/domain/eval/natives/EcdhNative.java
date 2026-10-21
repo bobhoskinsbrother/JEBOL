@@ -57,7 +57,7 @@ public class EcdhNative extends CipherNative {
                 return WordValue.of(key.get().curveName());
             }
             if (refinements.contains("public")) {
-                return BinaryValue.ofBytes(key.get().publishThePoint());
+                return BinaryValue.ofBytes(key.get().publishPoint());
             }
             if (refinements.contains("secret")) {
                 return agreeSecretBetween(key.get(), ((BinaryValue) readTheArgumentOf(
@@ -80,7 +80,7 @@ public class EcdhNative extends CipherNative {
             return standing.get().startAgainOn(curveName) ? given : NoneValue.none();
         }
         return EllipticCurveKey.onCurve(curveName)
-                .map(key -> wrapInAHandle(ECDH_HANDLE_TYPE, key, evaluator))
+                .map(key -> wrapInHandle(ECDH_HANDLE_TYPE, key, evaluator))
                 .orElseGet(NoneValue::none);
     }
 

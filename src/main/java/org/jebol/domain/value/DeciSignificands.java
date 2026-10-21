@@ -56,12 +56,12 @@ final class DeciSignificands {
                 compared > 0 || truncationSoFar != EXACT ? MORE_THAN_HALF : EXACTLY_HALF);
     }
 
-    boolean roundsTheTruncationUp(int truncation, BigInteger kept) {
+    boolean roundsTruncationUp(int truncation, BigInteger kept) {
         return truncation == MORE_THAN_HALF || (truncation == EXACTLY_HALF && kept.testBit(0));
     }
 
     BigInteger roundUpWhenTheTruncationSays(Shifted shifted) {
-        return roundsTheTruncationUp(shifted.truncation(), shifted.value())
+        return roundsTruncationUp(shifted.truncation(), shifted.value())
                 ? shifted.value().add(BigInteger.ONE)
                 : shifted.value();
     }
@@ -94,7 +94,7 @@ final class DeciSignificands {
         return limit.compareTo(value) <= 0 ? digits - 25 : digits - 26;
     }
 
-    Scaled multiplyByTenToThe(BigInteger significand, int exponent, int power, int truncation) {
+    Scaled multiplyByTenTo(BigInteger significand, int exponent, int power, int truncation) {
         if (significand.signum() == 0) {
             return new Scaled(BigInteger.ZERO, 0);
         }
@@ -129,7 +129,7 @@ final class DeciSignificands {
             return new Deci(BigInteger.ZERO, 0, signed);
         }
         BigDecimal stripped = new BigDecimal(Double.toString(Math.abs(quantity))).stripTrailingZeros();
-        Scaled scaled = multiplyByTenToThe(stripped.unscaledValue(), 0, -stripped.scale(), EXACT);
+        Scaled scaled = multiplyByTenTo(stripped.unscaledValue(), 0, -stripped.scale(), EXACT);
         return new Deci(scaled.significand(), scaled.exponent(), signed);
     }
 }

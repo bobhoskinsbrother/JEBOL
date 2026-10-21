@@ -20,7 +20,7 @@ public final class Remainder implements ArithmeticOperation {
 
     @Override
     public Deci onAmounts(Deci left, Deci right) {
-        return left.takeTheRemainderAfterDividingBy(right);
+        return left.takeRemainderAfterDividingBy(right);
     }
 
     @Override

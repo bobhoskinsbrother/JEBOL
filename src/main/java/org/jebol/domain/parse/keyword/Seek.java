@@ -29,7 +29,7 @@ final class Seek extends DeclaredKeyword {
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         Value wanted = rules.get(at + 1);
-        if (namesTheTail(wanted)) {
+        if (namesTail(wanted)) {
             walk.moveTo(walk.inputLength());
             return 2;
         }
@@ -52,12 +52,12 @@ final class Seek extends DeclaredKeyword {
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
         Value wanted = rules.get(at + 1);
-        if (namesTheTail(wanted)) {
+        if (namesTail(wanted)) {
             walk.moveTo(walk.inputLength());
             return 2;
         }
         if (wanted instanceof IntegerValue where) {
-            return moveToThePlaceItNames(walk, where);
+            return moveToPlaceItNames(walk, where);
         }
         refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
         Value looked = walk.readWhatTheWordHolds(wanted);
@@ -66,11 +66,11 @@ final class Seek extends DeclaredKeyword {
                 : findFirstPlaceTextAppears(walk, looked);
     }
 
-    private static boolean namesTheTail(Value wanted) {
+    private static boolean namesTail(Value wanted) {
         return wanted instanceof AnyWordValue word && word.canonical().equals("end");
     }
 
-    private int moveToThePlaceItNames(ParseWalk walk, IntegerValue where) {
+    private int moveToPlaceItNames(ParseWalk walk, IntegerValue where) {
         long asked = where.magnitude() - (past ? 0 : 1);
         if (asked < 0 || asked > walk.inputLength()) {
             return ParseWalk.NO_MATCH;

@@ -62,8 +62,8 @@ public abstract class PngFilterNative extends EncodingNative {
         return readTheArgumentOf("skip", 0, arguments, refinements);
     }
 
-    protected void requireTheLinesFit(int lineLength, int length, List<Value> arguments,
-            Set<String> refinements) {
+    protected void requireLinesFit(int lineLength, int length, List<Value> arguments,
+                                   Set<String> refinements) {
 
         if (lineLength <= 1 || lineLength > length) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(1));

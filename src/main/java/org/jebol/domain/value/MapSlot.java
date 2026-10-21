@@ -9,6 +9,6 @@ record MapSlot(MapValue map, Value key, Value held) implements Slot {
 
     @Override
     public void setValue(Value replacement) {
-        map.putUnlessTheKeyIsNone(key, replacement);
+        map.putUnlessKeyIsNone(key, replacement);
     }
 }

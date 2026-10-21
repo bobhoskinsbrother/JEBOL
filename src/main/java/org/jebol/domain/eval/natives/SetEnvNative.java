@@ -40,7 +40,7 @@ public class SetEnvNative extends EnvironmentNative {
             evaluator.policies().require(PolicyClass.ENVR, PolicyAccess.WRITE, Optional.of(arguments.getFirst()));
             Value given = arguments.get(1);
             String variable = readVariableNamedBy(arguments.getFirst());
-            return runThroughTheFileSystem(() -> {
+            return runThroughFileSystem(() -> {
                 if (given instanceof AnyStringValue held) {
                     evaluator.ports().environment().assign(variable, held.text());
                 } else {

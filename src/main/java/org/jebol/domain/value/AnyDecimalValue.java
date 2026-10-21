@@ -140,12 +140,12 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
                         .findOneNumberIn(MOST_FRACTION_CHARACTERS));
             }
             if (from instanceof AnyBlockValue parts) {
-                return OptionalDouble.of(multiplyTheMantissaByTenTo(parts));
+                return OptionalDouble.of(multiplyMantissaByTenTo(parts));
             }
             return OptionalDouble.empty();
         }
 
-        private double multiplyTheMantissaByTenTo(AnyBlockValue parts) {
+        private double multiplyMantissaByTenTo(AnyBlockValue parts) {
             List<Value> both = parts.remaining();
             if (both.size() != 2) {
                 throw refuse(parts);

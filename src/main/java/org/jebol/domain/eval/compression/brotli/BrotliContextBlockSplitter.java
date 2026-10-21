@@ -125,7 +125,7 @@ final class BrotliContextBlockSplitter {
             startNewType(onItsOwn);
         } else if (costOfMerging[1]
                 < costOfMerging[0] - SECOND_LAST_MUST_BEAT_LAST_BY) {
-            giveTheBatchToTheTypeBeforeLast(mergedEntropy);
+            giveBatchToTypeBeforeLast(mergedEntropy);
         } else {
             foldBatchIntoLastType(mergedEntropy);
         }
@@ -149,7 +149,7 @@ final class BrotliContextBlockSplitter {
         targetBlockSize = smallestBlock;
     }
 
-    private void giveTheBatchToTheTypeBeforeLast(double[] mergedEntropy) {
+    private void giveBatchToTypeBeforeLast(double[] mergedEntropy) {
         split.setLength(howManyBlocks, blockSize);
         split.setType(howManyBlocks, split.readTypeAt(howManyBlocks - 2));
         int swapped = lastHistogram[0];

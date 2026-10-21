@@ -29,8 +29,8 @@ final class ChecksumPort {
         byte[] soFar();
     }
 
-    void startEvenOnAnAlreadyOpenPort(PortValue port, String method) {
-        port.setField("extra", HandleValue.wrapAContext(HANDLE_TYPE,
+    void startEvenOnAlreadyOpenPort(PortValue port, String method) {
+        port.setField("extra", HandleValue.wrapContext(HANDLE_TYPE,
                 System.identityHashCode(port.context()),
                 JavaObjectValue.of(sumNamed(method))));
         port.setField("data", NoneValue.none());

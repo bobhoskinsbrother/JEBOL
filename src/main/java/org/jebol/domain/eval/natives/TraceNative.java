@@ -35,11 +35,11 @@ public class TraceNative extends DefaultNative {
             Trace tracing = evaluator.tracing();
             tracing.writeTo(evaluator.findOutput());
             if (refinements.contains("back") && mode instanceof IntegerValue(long lines)) {
-                tracing.showTheLastAndStopTracing((int) lines);
+                tracing.showLastAndStopTracing((int) lines);
                 return UnsetValue.unset();
             }
             tracing.keepRatherThanPrint(refinements.contains("back") && mode.isTruthy());
-            tracing.setTheLevel(readLevelAskedFor(mode), refinements.contains("function"));
+            tracing.setLevel(readLevelAskedFor(mode), refinements.contains("function"));
             return UnsetValue.unset();
         };
     }

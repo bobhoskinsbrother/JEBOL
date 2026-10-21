@@ -74,14 +74,14 @@ final class Change extends DeclaredKeyword {
     private static int putTheBlockIn(ParseWalk walk, List<Value> rules, int at,
             int replacementSlot, int begin, int howMany) {
 
-        boolean wholeBlock = saysToPutTheBlockInWhole(rules, replacementSlot);
+        boolean wholeBlock = saysToPutBlockInWhole(rules, replacementSlot);
         int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
         Value replacement = walk.chooseValueToInsert(rules.get(lastRuleAt));
         List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(replacement);
         walk.removeBetween(begin, howMany);
-        walk.putItemsIntoTheBlockAt(begin, putting);
+        walk.putItemsIntoBlockAt(begin, putting);
         walk.moveTo(begin + putting.size());
         return lastRuleAt + 1 - at;
     }
@@ -90,12 +90,12 @@ final class Change extends DeclaredKeyword {
             ParseWalk walk, Value replacement, int begin, int howMany) {
 
         walk.removeBetween(begin, howMany);
-        int laidIn = walk.putValueIntoTheTextAt(
+        int laidIn = walk.putValueIntoTextAt(
                 begin, walk.replacementFor(replacement));
         walk.moveTo(begin + laidIn);
     }
 
-    private static boolean saysToPutTheBlockInWhole(List<Value> rules, int slot) {
+    private static boolean saysToPutBlockInWhole(List<Value> rules, int slot) {
         return rules.get(slot) instanceof WordValue modifier
                 && modifier.canonical().equals(WHOLE)
                 && slot + 1 < rules.size();

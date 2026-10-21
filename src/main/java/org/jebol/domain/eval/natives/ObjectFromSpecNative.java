@@ -9,11 +9,11 @@ import java.util.Set;
 
 public abstract class ObjectFromSpecNative extends DefaultNative {
 
-    protected abstract String nameTheSpec();
+    protected abstract String nameSpec();
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.of(nameTheSpec(), Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of(nameSpec(), Set.of(BlockValue.TYPE)));
     }
 
     @Override

@@ -187,7 +187,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
                 case AnyStringValue text -> readWholeNumberFromText(text);
                 case CharacterValue character -> IntegerValue.of(character.codepoint());
                 case BinaryValue bytes -> IntegerValue.of(bytes.readTheBitsOfTheLastEightOctets());
-                case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
+                case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceEpoch());
                 case AnyDecimalValue number -> makeWholeNumberWithinRange(number.quantity());
                 case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
                 case TimeValue clock ->
@@ -226,11 +226,11 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             try {
                 return IntegerValue.of(Long.parseLong(withoutSeparators));
             } catch (NumberFormatException notAWholeNumber) {
-                return truncateADecimal(withoutSeparators, text);
+                return truncateDecimal(withoutSeparators, text);
             }
         }
 
-        private Value truncateADecimal(String candidate, AnyStringValue original) {
+        private Value truncateDecimal(String candidate, AnyStringValue original) {
             if (candidate.indexOf('.') < 0) {
                 throw refuse(original);
             }

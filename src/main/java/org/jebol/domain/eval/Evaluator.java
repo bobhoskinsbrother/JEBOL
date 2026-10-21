@@ -315,7 +315,7 @@ public final class Evaluator {
         List<Value> results = new ArrayList<>();
         AnyBlockValue at = block;
         while (!at.atTail()) {
-            Value here = at.pickTheFirst();
+            Value here = at.pickFirst();
             if (here instanceof SetWordValue || here instanceof SetPathValue) {
                 results.add(here);
                 at = at.atIndex(at.index() + 1);
@@ -419,20 +419,20 @@ public final class Evaluator {
         return postbox;
     }
 
-    public int numberTheNextExtension() {
+    public int numberNextExtension() {
         return ++extensionsNumbered;
     }
 
     public void deliverWhatWasPosted() {
         postbox.deliverEachEvent(posted -> EventCatalogue.findTheTypeIndexOf(posted.eventType())
-                .ifPresent(type -> queueOnTheSystemPort(
+                .ifPresent(type -> queueOnSystemPort(
                         new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port()))));
         postbox.deliverEachCallback(callback -> EventCatalogue.findTheTypeIndexOf(THE_EVENT_A_CALLBACK_IS)
-                .ifPresent(type -> queueOnTheSystemPort(new EventValue(type, Set.of(),
+                .ifPresent(type -> queueOnSystemPort(new EventValue(type, Set.of(),
                         EventValue.Model.CALLBACK, 0, JavaObjectValue.of(callback)))));
     }
 
-    public void queueOnTheSystemPort(EventValue event) {
+    public void queueOnSystemPort(EventValue event) {
         if (findHostPort("system") instanceof PortValue queue) {
             queue.findTheEventQueue().ifPresent(onIt -> onIt.storage().insertAt(onIt.storage().length() + 1, event));
         }
@@ -537,7 +537,7 @@ public final class Evaluator {
             }
             return true;
         });
-        return BlockValue.wrapTheStorage(built);
+        return BlockValue.wrapStorage(built);
     }
 
     private static boolean isTheItemAsWritten(
@@ -671,12 +671,12 @@ public final class Evaluator {
             if (frame.stopped || frame.atEnd()) {
                 if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
                     PendingCall gathering = frame.pendingCalls.peek();
-                    if (gathering.takesTheNextValueAsWritten()) {
+                    if (gathering.takesNextValueAsWritten()) {
                         deliver(frame, UnsetValue.unset(), frames);
                         continue;
                     }
                     throw Raised.of(EvaluationFailure.NO_ARG,
-                            WordValue.of(gathering.nameInAnArgumentError()),
+                            WordValue.of(gathering.nameInArgumentError()),
                             gathering.describeArgumentStillWanted());
                 }
                 Value finished = frame.lastResult;
@@ -881,7 +881,7 @@ public final class Evaluator {
         waiting.findTheParameterBeingFilled()
                 .filter(parameter -> isSwitchedOnFor(waiting, parameter))
                 .ifPresent(parameter -> refuseUnlessAccepted(
-                        parameter, arriving, waiting.nameInAnArgumentError()));
+                        parameter, arriving, waiting.nameInArgumentError()));
     }
 
     private boolean isSwitchedOnFor(PendingCall waiting, Parameter parameter) {
@@ -1029,7 +1029,7 @@ public final class Evaluator {
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
-            Value given = call.takeTheOnlyArgument();
+            Value given = call.takeOnlyArgument();
             if (call.slot() != null && given instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
                         SetWordValue.of(call.slot().spelling()));
@@ -1056,9 +1056,9 @@ public final class Evaluator {
                     trace.call(built.nativeName(), built, ordered);
                 }
                 Value produced = runNative(built, ordered, frame.context,
-                        EVERY_ARGUMENT_IS_CHECKED, call.nameInAnArgumentError(), call::enter);
+                        EVERY_ARGUMENT_IS_CHECKED, call.nameInArgumentError(), call::enter);
                 if (trace.isOn()) {
-                    trace.traceTheAnswer(built.nativeName(), produced);
+                    trace.traceAnswer(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
                         && produced instanceof AnyFunctionValue
@@ -1069,7 +1069,7 @@ public final class Evaluator {
             }
             case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
                     operator, ordered, frame.context,
-                    call.nameInAnArgumentError(), call::enter));
+                    call.nameInArgumentError(), call::enter));
             case DefinedFunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
@@ -1144,7 +1144,7 @@ public final class Evaluator {
             List<Value> arguments) {
         List<String> refinements = call.refinements();
         checkArgumentTypes(function.parameters(),
-                refinements::contains, arguments, call.nameInAnArgumentError());
+                refinements::contains, arguments, call.nameInArgumentError());
         call.enter();
         Context locals = function.makeFreshCallFrame();
 
@@ -1335,13 +1335,13 @@ public final class Evaluator {
         Slot place = select(allButLast, path, frame.context).slot();
         refusePathIntoSomethingWithNoParts(path, place.value(), segments.size() - 2);
         try {
-            writeThroughTheLastSegment(frame, path, place, written);
+            writeThroughLastSegment(frame, path, place, written);
         } catch (Raised refused) {
             throw refuseAt(refused, path, segments.getLast());
         }
     }
 
-    private void writeThroughTheLastSegment(
+    private void writeThroughLastSegment(
             Frame frame, AnyBlockValue path, Slot place, Value written) {
 
         List<Value> segments = path.remaining();
@@ -1601,10 +1601,10 @@ public final class Evaluator {
     }
 
     private Value makeSelectorFor(Value segment, Context context) {
-        return withAnyFractionTruncated(resolveTheSegment(segment, context));
+        return withAnyFractionTruncated(resolveSegment(segment, context));
     }
 
-    private Value resolveTheSegment(Value segment, Context context) {
+    private Value resolveSegment(Value segment, Context context) {
         if (segment instanceof GetWordValue word) {
             return resolve(word.isBound() ? word : word.bindTo(context)).value();
         }
@@ -1705,7 +1705,7 @@ public final class Evaluator {
             };
         }
         if (target instanceof BitsetValue members) {
-            return pickFromABitsetForAPath(members, selector);
+            return pickFromBitsetForPath(members, selector);
         }
         if (target instanceof CharacterValue(int codepoint)
                 && selector instanceof AnyWordValue asked) {
@@ -1726,7 +1726,7 @@ public final class Evaluator {
                         + " from " + target.datatype().literalSpelling());
     }
 
-    private Value pickFromABitsetForAPath(BitsetValue members, Value selector) {
+    private Value pickFromBitsetForPath(BitsetValue members, Value selector) {
         return new BitsetActions(members).pickForPath(selector);
     }
 
@@ -1849,9 +1849,9 @@ public final class Evaluator {
     private static void writeEmailPart(EmailValue address, AnyWordValue half, Value written) {
         String replacement = Molder.form(written);
         if (half.canonical().equals("host")) {
-            address.rewriteTheHostAs(replacement);
+            address.rewriteHostAs(replacement);
         } else {
-            address.rewriteTheUserAs(replacement);
+            address.rewriteUserAs(replacement);
         }
     }
 

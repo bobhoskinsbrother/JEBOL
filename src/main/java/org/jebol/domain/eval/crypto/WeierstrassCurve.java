@@ -103,7 +103,7 @@ final class WeierstrassCurve {
         return running;
     }
 
-    Point multiplyTheGenerator(BigInteger by) {
+    Point multiplyGenerator(BigInteger by) {
         return multiply(generator, by);
     }
 
@@ -121,7 +121,7 @@ final class WeierstrassCurve {
         BigInteger digest = takeTheLeftmostBitsOf(hash);
         while (true) {
             BigInteger chosen = drawPrivateNumber(randomly);
-            Point marker = multiplyTheGenerator(chosen);
+            Point marker = multiplyGenerator(chosen);
             BigInteger first = marker.x().mod(order);
             if (first.signum() == 0) {
                 continue;
@@ -145,7 +145,7 @@ final class WeierstrassCurve {
         BigInteger digest = takeTheLeftmostBitsOf(hash);
         BigInteger inverse = second.modInverse(order);
         Point marker = addPoints(
-                multiplyTheGenerator(digest.multiply(inverse).mod(order)),
+                multiplyGenerator(digest.multiply(inverse).mod(order)),
                 multiply(publicPoint, first.multiply(inverse).mod(order)));
         return !marker.isInfinity() && marker.x().mod(order).equals(first);
     }

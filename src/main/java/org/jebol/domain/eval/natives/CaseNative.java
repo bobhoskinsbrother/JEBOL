@@ -33,7 +33,7 @@ public class CaseNative extends DefaultNative {
                 Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
                 AnyBlockValue afterCondition = at.atIndex(condition.nextIndex());
                 if (!condition.value().isTruthy()) {
-                    at = skipPastTheBranch(afterCondition);
+                    at = skipPastBranch(afterCondition);
                     continue;
                 }
                 if (afterCondition.atTail()) {
@@ -52,7 +52,7 @@ public class CaseNative extends DefaultNative {
         };
     }
 
-    private AnyBlockValue skipPastTheBranch(AnyBlockValue afterCondition) {
+    private AnyBlockValue skipPastBranch(AnyBlockValue afterCondition) {
         return afterCondition.atTail()
                 ? afterCondition
                 : afterCondition.atIndex(afterCondition.index() + 1);

@@ -20,7 +20,7 @@ public abstract class ColourNative extends DefaultNative {
                 parts.length > 2 ? parts[2] : 0};
     }
 
-    protected Value recolourTheTuple(TupleValue colour, UnaryOperator<int[]> formula) {
+    protected Value recolourTuple(TupleValue colour, UnaryOperator<int[]> formula) {
         int[] made = colour.segments().clone();
         int[] recoloured = formula.apply(readThreeParts(colour));
         System.arraycopy(recoloured, 0, made, 0, Math.min(made.length, recoloured.length));

@@ -310,7 +310,7 @@ public final class Comparison {
             return Long.compare(magnitude1, magnitude);
         }
         if (MONEY.meetsMoney(left, right)) {
-            return MONEY.compareTheOrder(left, right);
+            return MONEY.compareOrder(left, right);
         }
         if (isNumeric(left) && isNumeric(right)) {
             double first = asDouble(left);

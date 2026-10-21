@@ -28,7 +28,7 @@ public class RgbToHsvNative extends ColourNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                recolourTheTuple((TupleValue) arguments.getFirst(), this::convertRgbToHsv);
+                recolourTuple((TupleValue) arguments.getFirst(), this::convertRgbToHsv);
     }
 
     private int[] convertRgbToHsv(int[] rgb) {
@@ -50,10 +50,10 @@ public class RgbToHsvNative extends ColourNative {
         } else {
             hue = BLUE_STARTS_AT + A_SIXTH_OF_THE_WHEEL * (red - green) / spread;
         }
-        return new int[] {wrapANegativeHueRatherThanClamping(hue), saturation, largest};
+        return new int[] {wrapNegativeHueRatherThanClamping(hue), saturation, largest};
     }
 
-    private int wrapANegativeHueRatherThanClamping(double hue) {
+    private int wrapNegativeHueRatherThanClamping(double hue) {
         return (int) hue & 0xFF;
     }
 }

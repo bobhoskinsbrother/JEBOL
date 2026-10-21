@@ -46,7 +46,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
+    public Value mergeObject(ObjectValue prototype, ObjectValue other) {
         throw Raised.cannotUseAction(other, "make");
     }
 
@@ -81,7 +81,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value readASimpleValue(Value piece) {
+    public Value readSimpleValue(Value piece) {
         return piece;
     }
 

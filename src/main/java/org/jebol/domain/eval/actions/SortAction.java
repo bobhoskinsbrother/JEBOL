@@ -44,7 +44,7 @@ public class SortAction extends DefaultNative implements ActionValue {
                     refinements.contains("unstable") || series instanceof BinaryValue);
             if (series instanceof VectorValue vector) {
                 refuseRecordsInVector(refinements);
-                return sorting.sortTheFront(vector, countHowManyOf(vector, partCount));
+                return sorting.sortFront(vector, countHowManyOf(vector, partCount));
             }
             int howMany = Math.max(0, countHowManyOf(series, partCount));
             if (howMany <= 1) {

@@ -24,16 +24,16 @@ final class ScanningATime {
         this.text = text;
     }
 
-    boolean readsATime() {
+    boolean readsTime() {
         readAnyLeadingSign();
         if (hasSignAfterSign()) {
             return false;
         }
         firstNumber = readWholeNumberFromHere();
-        if (firstNumber > MOST_HOURS_A_TIME_HOLDS || !stepOverAColon()) {
+        if (firstNumber > MOST_HOURS_A_TIME_HOLDS || !stepOverColon()) {
             return false;
         }
-        if (!readsTheSecondNumber()) {
+        if (!readsSecondNumber()) {
             return false;
         }
         if (!readsAnyThirdNumber()) {
@@ -86,13 +86,13 @@ final class ScanningATime {
         return here() == '-' || here() == '+';
     }
 
-    private boolean stepOverAColon() {
+    private boolean stepOverColon() {
         boolean there = here() == ':';
         at++;
         return there;
     }
 
-    private boolean readsTheSecondNumber() {
+    private boolean readsSecondNumber() {
         int began = at;
         secondNumber = readWholeNumberFromHere();
         return secondNumber >= 0 && at != began;

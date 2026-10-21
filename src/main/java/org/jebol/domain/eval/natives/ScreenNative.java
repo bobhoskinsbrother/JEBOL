@@ -11,7 +11,7 @@ public abstract class ScreenNative extends WindowNative {
         super(granted);
     }
 
-    protected void runThroughTheScreen(Runnable operation) {
+    protected void runThroughScreen(Runnable operation) {
         askThroughScreen(() -> {
             operation.run();
             return null;
@@ -22,7 +22,7 @@ public abstract class ScreenNative extends WindowNative {
         try {
             return asking.get();
         } catch (ScreenPort.Denied denied) {
-            throw refuseForTheHost(denied.errorId(), denied.getMessage());
+            throw refuseForHost(denied.errorId(), denied.getMessage());
         }
     }
 }

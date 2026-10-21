@@ -68,7 +68,7 @@ public class ChecksumNative extends EncodingNative {
         Optional<Value> spec = readTheArgumentOf("with", 0, arguments, refinements);
         if (encodings.canDigest(asked)) {
             return BinaryValue.ofBytes(spec
-                    .map(key -> digestWithAKey(octets, asked, key))
+                    .map(key -> digestWithKey(octets, asked, key))
                     .orElseGet(() -> encodings.digestOf(octets, asked)));
         }
         if (Encodings.CYCLIC.contains(asked)) {
@@ -84,7 +84,7 @@ public class ChecksumNative extends EncodingNative {
         throw Raised.of(EvaluationFailure.INVALID_ARG, method);
     }
 
-    private byte[] digestWithAKey(byte[] octets, String method, Value key) {
+    private byte[] digestWithKey(byte[] octets, String method, Value key) {
         if (key instanceof IntegerValue) {
             throw Raised.of(EvaluationFailure.BAD_REFINE, key);
         }
@@ -103,7 +103,7 @@ public class ChecksumNative extends EncodingNative {
     private int hashOf(Value value) {
         return value instanceof BinaryValue bytes
                 ? encodings.hashWithMurmur(bytes.octetsFromHere())
-                : encodings.hashCaseFolded(value.asOctets()) ^ value.datatype().numberTheCGivesIt();
+                : encodings.hashCaseFolded(value.asOctets()) ^ value.datatype().numberCGivesIt();
     }
 
     private Value sumTheContentsOfThatFile(

@@ -64,9 +64,9 @@ public final class MapValue implements Value, PathTarget {
                 kept.put(key, select(key, mindingCase), mindingCase);
             }
         }
-        if (how.takesFromTheSecondSet()) {
+        if (how.takesFromSecondSet()) {
             for (Value key : theirs.keys()) {
-                if (how.keepsFromTheSecondSet(holds(key, mindingCase))
+                if (how.keepsFromSecondSet(holds(key, mindingCase))
                         && !kept.holds(key, mindingCase)) {
                     kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }
@@ -87,12 +87,12 @@ public final class MapValue implements Value, PathTarget {
         Map<Value, Value> built = new LinkedHashMap<>();
         for (int at = 0; at < pairs.size(); at += 2) {
             built.put(copyAndLockText(
-                    storeAnyWordAsASetWord(pairs.get(at))), pairs.get(at + 1));
+                    storeAnyWordAsSetWord(pairs.get(at))), pairs.get(at + 1));
         }
         return new MapValue(built);
     }
 
-    private static Value storeAnyWordAsASetWord(Value written) {
+    private static Value storeAnyWordAsSetWord(Value written) {
         return written instanceof AnyWordValue word && !(word instanceof SetWordValue)
                 ? word.asSetWord()
                 : written;
@@ -115,7 +115,7 @@ public final class MapValue implements Value, PathTarget {
 
     private Value findFirstStoredKeyMatching(
             Value asked, boolean mindingCase) {
-        Value wanted = storeAnyWordAsASetWord(asked);
+        Value wanted = storeAnyWordAsSetWord(asked);
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
@@ -165,10 +165,10 @@ public final class MapValue implements Value, PathTarget {
         if (isProtected()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
-        putUnlessTheKeyIsNone(selector, written);
+        putUnlessKeyIsNone(selector, written);
     }
 
-    void putUnlessTheKeyIsNone(Value key, Value written) {
+    void putUnlessKeyIsNone(Value key, Value written) {
         if (key instanceof NoneValue) {
             return;
         }
@@ -183,7 +183,7 @@ public final class MapValue implements Value, PathTarget {
     public void putWhetherProtectedOrNot(Value key, Value value, boolean mindingCase) {
         Value existing = findFirstStoredKeyMatching(key, mindingCase);
         if (existing instanceof NoneValue) {
-            Value added = copyAndLockText(storeAnyWordAsASetWord(key));
+            Value added = copyAndLockText(storeAnyWordAsSetWord(key));
             entries.put(added, value);
             keysAlikeApartFromCase.add(added);
         } else {
@@ -199,7 +199,7 @@ public final class MapValue implements Value, PathTarget {
 
     public void remove(Value key) {
         refuseChangeIfProtected();
-        Value stored = storeAnyWordAsASetWord(key);
+        Value stored = storeAnyWordAsSetWord(key);
         if (entries.containsKey(stored)) {
             entries.remove(stored);
             keysAlikeApartFromCase.remove(stored);
@@ -228,9 +228,9 @@ public final class MapValue implements Value, PathTarget {
         return List.copyOf(flat);
     }
 
-    public AnyBlockValue layThePairsOnLines() {
+    public AnyBlockValue layPairsOnLines() {
         AnyBlockValue block = BlockValue.of(flatten());
-        block.putEachPairOnALine();
+        block.putEachPairOnLine();
         return block;
     }
 
@@ -239,7 +239,7 @@ public final class MapValue implements Value, PathTarget {
         return switch (field.canonical()) {
             case "words" -> BlockValue.of(keys());
             case "values" -> BlockValue.of(values());
-            case "body" -> layThePairsOnLines();
+            case "body" -> layPairsOnLines();
             default -> NoneValue.none();
         };
     }

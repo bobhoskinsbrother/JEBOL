@@ -20,7 +20,7 @@ public record Trimming(Set<String> asked, Set<Integer> unwantedCodePoints) {
         return asked.contains("all");
     }
 
-    public boolean ofTheGivenCharacters() {
+    public boolean ofGivenCharacters() {
         return asked.contains("with");
     }
 
@@ -28,7 +28,7 @@ public record Trimming(Set<String> asked, Set<Integer> unwantedCodePoints) {
         return asked.contains("lines");
     }
 
-    public boolean ofTheCommonIndent() {
+    public boolean ofCommonIndent() {
         return asked.contains("auto");
     }
 
@@ -38,14 +38,14 @@ public record Trimming(Set<String> asked, Set<Integer> unwantedCodePoints) {
 
     public void refuseContradictions() {
         boolean atAnEnd = asked.contains("head") || asked.contains("tail");
-        if (atAnEnd && (everywhere() || ofTheGivenCharacters())) {
+        if (atAnEnd && (everywhere() || ofGivenCharacters())) {
             throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }
 
     public void refuseWhatOnlyTextServes() {
         refuseContradictions();
-        if (ofTheGivenCharacters() || ofTheCommonIndent() || intoOneLine()) {
+        if (ofGivenCharacters() || ofCommonIndent() || intoOneLine()) {
             throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }

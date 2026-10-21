@@ -111,7 +111,7 @@ final class BrotliDecoder {
         }
 
         private byte[] run() {
-            readWindowBitsRefusingALargeWindowAsRebolDoes();
+            readWindowBitsRefusingLargeWindowAsRebolDoes();
             maxBackwardDistance = (1 << windowBits) - WINDOW_GAP;
             while (readOneMetaBlockAnsweringWhetherAnotherFollows()) {
                 if (enoughHasBeenMade()) {
@@ -125,7 +125,7 @@ final class BrotliDecoder {
             return limit != NO_LIMIT && outAt >= limit;
         }
 
-        private void readWindowBitsRefusingALargeWindowAsRebolDoes() {
+        private void readWindowBitsRefusingLargeWindowAsRebolDoes() {
             if (bits.take(1) == 0) {
                 windowBits = 16;
                 return;
@@ -158,7 +158,7 @@ final class BrotliDecoder {
             }
             int nibbles = bits.take(2) + 4;
             if (nibbles == 7) {
-                skipMetadataReadingItsLengthBeforeJumpingToAByteBoundary();
+                skipMetadataReadingItsLengthBeforeJumpingToByteBoundary();
                 return !isLast;
             }
             int remaining = 0;
@@ -183,7 +183,7 @@ final class BrotliDecoder {
             return !isLast;
         }
 
-        private void skipMetadataReadingItsLengthBeforeJumpingToAByteBoundary() {
+        private void skipMetadataReadingItsLengthBeforeJumpingToByteBoundary() {
             if (bits.take(1) != 0) {
                 throw new IllegalArgumentException(
                         "Brotli metadata sets a reserved bit");

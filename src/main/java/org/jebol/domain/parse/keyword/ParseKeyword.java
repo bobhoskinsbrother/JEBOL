@@ -11,9 +11,9 @@ public interface ParseKeyword {
 
     String spelling();
 
-    int slotsBeforeTheRule();
+    int slotsBeforeRule();
 
-    boolean ownsTheRuleAfterIt();
+    boolean ownsRuleAfterIt();
 
     WhenNothingFollowsIt describeWhenNothingFollows();
 
@@ -21,15 +21,15 @@ public interface ParseKeyword {
 
     int applyToString(ParseWalk walk, List<Value> rules, int at);
 
-    default int slotsBeforeTheRuleSpan() {
-        return 1 + slotsBeforeTheRule();
+    default int slotsBeforeRuleSpan() {
+        return 1 + slotsBeforeRule();
     }
 
     default boolean needsSomethingAfterIt() {
-        return ownsTheRuleAfterIt() || slotsBeforeTheRule() > 0;
+        return ownsRuleAfterIt() || slotsBeforeRule() > 0;
     }
 
-    Map<String, ParseKeyword> BY_SPELLING = TheDialectsWords.indexBySpelling();
+    Map<String, ParseKeyword> BY_SPELLING = DialectsWords.indexBySpelling();
 
     static Optional<ParseKeyword> findTheKeywordNamed(String canonical) {
         return Optional.ofNullable(BY_SPELLING.get(canonical));

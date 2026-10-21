@@ -16,7 +16,7 @@ final class MatchCache {
         offsets[at] = (char) offset;
     }
 
-    void moveToTheStart(int from, int count) {
+    void moveToStart(int from, int count) {
         System.arraycopy(lengths, from, lengths, 0, count);
         System.arraycopy(offsets, from, offsets, 0, count);
     }

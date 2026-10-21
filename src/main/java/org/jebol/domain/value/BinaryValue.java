@@ -72,7 +72,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         int[] front = new int[howMany];
         for (int at = 0; at < howMany; at++) {
             front[at] = storage.at(index + howMany - 1 - at);
@@ -358,7 +358,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         byte[] bytes = octetsFromHere();
         int marked = findByteOrderMark();
         if (marked != 0) {
-            return textBehindTheMark(bytes, marked);
+            return textBehindMark(bytes, marked);
         }
         CharsetDecoder strictly = StandardCharsets.UTF_8.newDecoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
@@ -416,7 +416,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return written + 4;
     }
 
-    private String textBehindTheMark(byte[] bytes, int marked) {
+    private String textBehindMark(byte[] bytes, int marked) {
         Charset theMarkAnnounces = switch (marked) {
             case 8 -> StandardCharsets.UTF_8;
             case 16 -> StandardCharsets.UTF_16BE;

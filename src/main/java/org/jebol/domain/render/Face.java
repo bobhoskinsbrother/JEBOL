@@ -32,7 +32,7 @@ public final class Face {
         this.caption = text;
     }
 
-    void setTheStyle(String property, String value) {
+    void setStyle(String property, String value) {
         styles.put(property, value);
     }
 

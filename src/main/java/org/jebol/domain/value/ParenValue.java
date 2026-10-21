@@ -12,7 +12,7 @@ public final class ParenValue extends AnyBlockValue {
         }
 
         @Override
-        boolean listsATypesetsMembers() {
+        boolean listsTypesetsMembers() {
             return true;
         }
     };

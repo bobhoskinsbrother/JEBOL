@@ -13,14 +13,14 @@ public record LibraryFile(LibraryFileHeader header, AnyBlockValue body) {
     private static final int WHERE_THE_BODY_STARTS_BELOW_A_HEADER = 3;
 
     public static LibraryFile readFrom(AnyBlockValue transcoded) {
-        return startsWithARebolHeader(transcoded)
+        return startsWithRebolHeader(transcoded)
                 ? new LibraryFile(
                         LibraryFileHeader.readFrom(transcoded.remaining().get(1)),
                         transcoded.atIndex(WHERE_THE_BODY_STARTS_BELOW_A_HEADER))
                 : new LibraryFile(LibraryFileHeader.none(), transcoded);
     }
 
-    private static boolean startsWithARebolHeader(AnyBlockValue transcoded) {
+    private static boolean startsWithRebolHeader(AnyBlockValue transcoded) {
         List<Value> items = transcoded.remaining();
         return items.size() >= 2
                 && items.get(0) instanceof WordValue opening

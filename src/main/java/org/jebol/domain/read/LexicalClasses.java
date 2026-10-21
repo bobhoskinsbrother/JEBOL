@@ -135,56 +135,56 @@ final class LexicalClasses {
         map[0xFF] = CONTROL;
     }
 
-    int lookUpTheEntry(int octet) {
+    int lookUpEntry(int octet) {
         return map[octet & 0xFF];
     }
 
     int classify(int octet) {
-        return lookUpTheEntry(octet) >> SHIFT;
+        return lookUpEntry(octet) >> SHIFT;
     }
 
     int valueOf(int octet) {
-        return lookUpTheEntry(octet) & VALUE_MASK;
+        return lookUpEntry(octet) & VALUE_MASK;
     }
 
     boolean isSpace(int octet) {
-        return lookUpTheEntry(octet) == 0;
+        return lookUpEntry(octet) == 0;
     }
 
     boolean isAnySpace(int octet) {
-        return lookUpTheEntry(octet) <= DELIMIT_RETURN;
+        return lookUpEntry(octet) <= DELIMIT_RETURN;
     }
 
     boolean isDelimit(int octet) {
-        return (lookUpTheEntry(octet) & CLASS_MASK) == DELIMIT;
+        return (lookUpEntry(octet) & CLASS_MASK) == DELIMIT;
     }
 
     boolean isSpecial(int octet) {
-        return (lookUpTheEntry(octet) & CLASS_MASK) == SPECIAL;
+        return (lookUpEntry(octet) & CLASS_MASK) == SPECIAL;
     }
 
     boolean isWord(int octet) {
-        return (lookUpTheEntry(octet) & CLASS_MASK) == WORD;
+        return (lookUpEntry(octet) & CLASS_MASK) == WORD;
     }
 
     boolean isNumber(int octet) {
-        return (lookUpTheEntry(octet) & CLASS_MASK) == NUMBER;
+        return (lookUpEntry(octet) & CLASS_MASK) == NUMBER;
     }
 
     boolean isAtLeastSpecial(int octet) {
-        return lookUpTheEntry(octet) >= SPECIAL;
+        return lookUpEntry(octet) >= SPECIAL;
     }
 
     boolean isAtLeastWord(int octet) {
-        return lookUpTheEntry(octet) >= WORD;
+        return lookUpEntry(octet) >= WORD;
     }
 
     boolean isAtLeastNumber(int octet) {
-        return lookUpTheEntry(octet) >= NUMBER;
+        return lookUpEntry(octet) >= NUMBER;
     }
 
     boolean isHexDigit(int octet) {
-        int lexical = lookUpTheEntry(octet);
+        int lexical = lookUpEntry(octet);
         return lexical >= WORD && ((lexical & VALUE_MASK) != 0 || lexical >= NUMBER);
     }
 }

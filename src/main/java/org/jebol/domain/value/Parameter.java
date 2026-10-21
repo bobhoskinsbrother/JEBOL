@@ -78,7 +78,7 @@ public record Parameter(
         return new Parameter(name, ParameterKind.HARD_QUOTED, Set.of(), Optional.empty());
     }
 
-    public static Parameter ofARefinement(String name) {
+    public static Parameter ofRefinement(String name) {
         return new Parameter(name, ParameterKind.REFINEMENT, Set.of(), Optional.empty());
     }
 

@@ -54,8 +54,8 @@ final class GouraudMesh {
         double middleDown = (atThe[0][1] + atThe[1][1] + atThe[2][1]) / 3;
         List<PathStep> path = new ArrayList<>();
         for (int corner = 0; corner < atThe.length; corner++) {
-            double alongFirst = spreadFromTheMiddle(atThe[corner][0], middleAcross);
-            double alongSecond = spreadFromTheMiddle(atThe[corner][1], middleDown);
+            double alongFirst = spreadFromMiddle(atThe[corner][0], middleAcross);
+            double alongSecond = spreadFromMiddle(atThe[corner][1], middleDown);
             double[] point = pointAt(first, second, third, alongFirst, alongSecond);
             path.add(corner == 0
                     ? new PathStep.MoveTo(point[0], point[1])
@@ -63,10 +63,10 @@ final class GouraudMesh {
         }
         path.add(new PathStep.Close());
         return new Piece(List.copyOf(path),
-                mixTheColourAt(first, second, third, middleAcross, middleDown));
+                mixColourAt(first, second, third, middleAcross, middleDown));
     }
 
-    private static double spreadFromTheMiddle(double corner, double middle) {
+    private static double spreadFromMiddle(double corner, double middle) {
         return corner + (corner - middle) * SPREAD_TO_HIDE_THE_SEAMS;
     }
 
@@ -84,7 +84,7 @@ final class GouraudMesh {
                         + third.down() * towardsThird};
     }
 
-    private static Colour mixTheColourAt(
+    private static Colour mixColourAt(
             Corner first, Corner second, Corner third,
             double alongSecond, double alongThird) {
 

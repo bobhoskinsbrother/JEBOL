@@ -95,13 +95,13 @@ public abstract sealed class AnyWordValue implements Value
         }
 
         private String spellTheWordOfACharacter(CharacterValue letter) {
-            if (!spellsAWordAlone(letter.codepoint())) {
+            if (!spellsWordAlone(letter.codepoint())) {
                 throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
             }
             return new String(Character.toChars(letter.codepoint()));
         }
 
-        private boolean spellsAWordAlone(int codepoint) {
+        private boolean spellsWordAlone(int codepoint) {
             return codepoint >= THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER
                     || Character.isLetter(codepoint)
                     || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
@@ -180,7 +180,7 @@ public abstract sealed class AnyWordValue implements Value
 
     public boolean isSameAs(AnyWordValue other) {
         return equals(other)
-                && (other.binding == binding || shareAFunctionsFrames(other));
+                && (other.binding == binding || shareFunctionsFrames(other));
     }
 
     @Override
@@ -200,7 +200,7 @@ public abstract sealed class AnyWordValue implements Value
         return mold();
     }
 
-    private boolean shareAFunctionsFrames(AnyWordValue other) {
+    private boolean shareFunctionsFrames(AnyWordValue other) {
         Value ours = binding.functionOwningThisFrame();
         return ours != null && ours == other.binding.functionOwningThisFrame();
     }

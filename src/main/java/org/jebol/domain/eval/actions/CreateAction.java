@@ -48,8 +48,8 @@ public class CreateAction extends PortAction {
         }
         granted.require(HostService.FILES);
         String path = ports.readThePathOf(port);
-        ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
-        return ports.runThroughTheFileSystem(() -> {
+        ports.requireFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
+        return ports.runThroughFileSystem(() -> {
             if (path.endsWith("/")) {
                 evaluator.ports().files().makeDirectory(path, NOT_ITS_PARENTS);
             } else {

@@ -13,12 +13,12 @@ final class Exclude implements SetOperation {
     }
 
     @Override
-    public boolean takesFromTheSecondSet() {
+    public boolean takesFromSecondSet() {
         return false;
     }
 
     @Override
-    public boolean keepsFromTheSecondSet(boolean inOurs) {
+    public boolean keepsFromSecondSet(boolean inOurs) {
         return false;
     }
 

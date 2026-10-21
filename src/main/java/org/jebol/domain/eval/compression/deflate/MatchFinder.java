@@ -21,7 +21,7 @@ abstract class MatchFinder {
         return load32(input, at) & LOW_THREE_BYTES;
     }
 
-    int takeTheLowThreeBytes(int sequence) {
+    int takeLowThreeBytes(int sequence) {
         return sequence & LOW_THREE_BYTES;
     }
 

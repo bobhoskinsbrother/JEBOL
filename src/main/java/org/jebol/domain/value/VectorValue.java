@@ -112,7 +112,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public RebolSeries reverseTheFront(int howMany) {
+    public RebolSeries reverseFront(int howMany) {
         for (int at = 0; at < howMany / 2; at++) {
             int near = index + at;
             int far = index + howMany - 1 - at;
@@ -165,7 +165,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
                 case DecimalValue number -> ofSize(spec, (long) number.quantity());
                 case BinaryValue bytes -> VectorSpec.ofOctets(bytes);
                 case VectorValue already -> already.copyOfTheFirst(already.lengthFromHere());
-                case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::readASimpleValue)
+                case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::readSimpleValue)
                         .<Value>map(made -> made)
                         .orElseThrow(() -> refuse(spec));
                 default -> throw refuse(spec);

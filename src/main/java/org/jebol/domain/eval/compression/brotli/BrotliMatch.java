@@ -29,7 +29,7 @@ final class BrotliMatch {
         return WORTH_PER_LITERAL_BYTE * copyLength + FLOOR_KEEPING_EVERY_SCORE_POSITIVE + 15;
     }
 
-    static long penaliseARecentDistance(int shortCode) {
+    static long penaliseRecentDistance(int shortCode) {
         return 39 + ((0x1CA10 >> (shortCode & 0xE)) & 0xE);
     }
 }

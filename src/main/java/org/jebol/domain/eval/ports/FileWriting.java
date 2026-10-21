@@ -63,7 +63,7 @@ final class FileWriting {
 
     private byte[] encodeBytesToWrite() {
         if (data instanceof BinaryValue binary) {
-            return withTheLineFeedByteLinesAsks(boundOctets(binary.octetsFromHere()));
+            return withLineFeedByteLinesAsks(boundOctets(binary.octetsFromHere()));
         }
         if (data instanceof CharacterValue(int codepoint)) {
             return encodeAsUtf8(new String(Character.toChars(codepoint)));
@@ -71,7 +71,7 @@ final class FileWriting {
         if (data instanceof AnyBlockValue block && oneValuePerLine) {
             return encodeAsUtf8(formEachValueOnItsOwnLine(block));
         }
-        return encodeAsUtf8(withTheLineFeedLinesAsks(boundText(asTextToWrite())));
+        return encodeAsUtf8(withLineFeedLinesAsks(boundText(asTextToWrite())));
     }
 
     private String asTextToWrite() {
@@ -86,11 +86,11 @@ final class FileWriting {
                 .collect(Collectors.joining());
     }
 
-    private String withTheLineFeedLinesAsks(String text) {
+    private String withLineFeedLinesAsks(String text) {
         return oneValuePerLine ? text + "\n" : text;
     }
 
-    private byte[] withTheLineFeedByteLinesAsks(byte[] octets) {
+    private byte[] withLineFeedByteLinesAsks(byte[] octets) {
         if (!oneValuePerLine) {
             return octets;
         }

@@ -45,7 +45,7 @@ public class RsaInitNative extends CipherNative {
                             readOctetsAt(arguments, 2), readOctetsAt(arguments, 3),
                             readOctetsAt(arguments, 4))
                     : RsaKey.makeAPublicKeyFrom(modulus, publicExponent);
-            return built.map(key -> wrapInAHandle(RSA_HANDLE_TYPE, key, evaluator))
+            return built.map(key -> wrapInHandle(RSA_HANDLE_TYPE, key, evaluator))
                     .orElseGet(NoneValue::none);
         };
     }

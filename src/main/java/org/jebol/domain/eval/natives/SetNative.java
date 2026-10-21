@@ -44,7 +44,7 @@ public class SetNative extends DefaultNative {
                     yield supplied;
                 }
                 case AnyPathValue path ->
-                        writeThroughAPath(path, supplied);
+                        writeThroughPath(path, supplied);
                 case ObjectValue into when supplied instanceof ObjectValue from
                         && !refinements.contains("only") -> {
                     refuseEachUnassignable(listTheWordsOf(into));
@@ -111,7 +111,7 @@ public class SetNative extends DefaultNative {
         }
     }
 
-    private Value writeThroughAPath(AnyBlockValue path, Value supplied) {
+    private Value writeThroughPath(AnyBlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
         if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
             return refuseDatatype(path);

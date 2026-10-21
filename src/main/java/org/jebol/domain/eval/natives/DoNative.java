@@ -38,7 +38,7 @@ public class DoNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("args") && arguments.size() > 1) {
-                recordTheScriptArguments(
+                recordScriptArguments(
                         evaluator, arguments.get(WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE));
             }
             if (refinements.contains("next") && arguments.size() > 1
@@ -84,7 +84,7 @@ public class DoNative extends DefaultNative {
             case BlockValue block -> evaluator.evaluateOrRaise(block, context);
             case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
             case AnyStringValue address when address.isALocation() ->
-                    runAsAScript(address, evaluator);
+                    runAsScript(address, evaluator);
             case AnyStringValue text -> evaluateSource(text.text(), evaluator);
             case BinaryValue bytes -> doAsScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
@@ -94,9 +94,9 @@ public class DoNative extends DefaultNative {
             case LitPathValue quoted -> quoted.asPath();
             case PathValue path -> evaluator.readTheValueOfPathIn(path, context);
             case SetWordValue assigning ->
-                    raiseHalfAnExpression(assigning);
+                    raiseHalfExpression(assigning);
             case SetPathValue assigning ->
-                    raiseHalfAnExpression(assigning);
+                    raiseHalfExpression(assigning);
             case TaskValue task -> handToHost(task, evaluator);
             default -> value;
         };
@@ -152,7 +152,7 @@ public class DoNative extends DefaultNative {
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }
 
-    private Value runAsAScript(AnyStringValue address, Evaluator evaluator) {
+    private Value runAsScript(AnyStringValue address, Evaluator evaluator) {
         Value doStar = evaluator.systemContext().findSystemFunctionNamed("do*");
         return evaluator.applyFunction(doStar, List.of(address));
     }
@@ -167,12 +167,12 @@ public class DoNative extends DefaultNative {
         return Binder.bindAndDefine(read.values().orElseThrow(), context);
     }
 
-    private Value raiseHalfAnExpression(Value assigning) {
+    private Value raiseHalfExpression(Value assigning) {
         throw Raised.of(EvaluationFailure.INVALID_ARG,
                 Molder.mold(assigning) + " assigns, and there is nothing here to assign");
     }
 
-    private void recordTheScriptArguments(Evaluator evaluator, Value given) {
+    private void recordScriptArguments(Evaluator evaluator, Value given) {
         if (evaluator.systemContext().readValueAt("system", "script")
                 instanceof ObjectValue(Context script)) {
             script.register("args", given);

@@ -144,7 +144,7 @@ class BrowserScreenFromTheSourceTest {
             GobValue window = (GobValue) interpreter.run(describing).value();
 
             assertThat(viewer.readTheLastPainted())
-                    .isEqualTo(PaintList.ofAWindow(window, null)
+                    .isEqualTo(PaintList.ofWindow(window, null)
                             .calls(TheCarriedFont.measurement()));
         }
 

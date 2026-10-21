@@ -146,7 +146,7 @@ final class LzmaMatchFinder {
             distances[written - 2] = longest;
             if (longest == lenLimit) {
                 if (binaryTree) {
-                    skipDownTheTree(chainHead);
+                    skipDownTree(chainHead);
                 } else {
                     son[cyclicBufferPosition] = chainHead;
                 }
@@ -189,7 +189,7 @@ final class LzmaMatchFinder {
             hash[WHERE_THE_THREE_BYTE_HASH_STARTS + threeByteSlot] = position;
             hash[WHERE_THE_FOUR_BYTE_HASH_STARTS + fourByteSlot] = position;
             if (binaryTree) {
-                skipDownTheTree(chainHead);
+                skipDownTree(chainHead);
             } else {
                 son[cyclicBufferPosition] = chainHead;
             }
@@ -292,7 +292,7 @@ final class LzmaMatchFinder {
         }
     }
 
-    private void skipDownTheTree(int chainHead) {
+    private void skipDownTree(int chainHead) {
         int candidate = chainHead;
         int greaterSide = (cyclicBufferPosition << 1) + 1;
         int lesserSide = cyclicBufferPosition << 1;

@@ -107,7 +107,7 @@ public final class GobStorage {
         return alpha;
     }
 
-    public void setTheAlpha(long given) {
+    public void setAlpha(long given) {
         this.alpha = (int) Math.max(0, Math.min(OPAQUE, given));
     }
 
@@ -126,7 +126,7 @@ public final class GobStorage {
      * <p>One slot and one tag: {@code CLR_GOB_OPAQUE(gob); SET_GOB_TYPE(gob,
      * ...); GOB_CONTENT(gob) = ...} on every one of the five field names.
      */
-    public void setTheContent(Content kind, Value given) {
+    public void setContent(Content kind, Value given) {
         this.contentKind = kind;
         this.content = given;
     }
@@ -140,7 +140,7 @@ public final class GobStorage {
         return dataKind == Held.NONE ? NoneValue.none() : data;
     }
 
-    public void setTheData(Held kind, Value given) {
+    public void setData(Held kind, Value given) {
         this.dataKind = kind;
         this.data = given;
     }
@@ -176,7 +176,7 @@ public final class GobStorage {
         return owner;
     }
 
-    public void setTheOwner(GobStorage given) {
+    public void setOwner(GobStorage given) {
         this.owner = given;
     }
 
@@ -280,7 +280,7 @@ public final class GobStorage {
             spec.add(SetWordValue.of("alpha"));
             spec.add(IntegerValue.of(OPAQUE - alpha));
         }
-        String contentField = moldTheContentName();
+        String contentField = moldContentName();
         if (!contentField.isEmpty()) {
             spec.add(SetWordValue.of(contentField));
             spec.add(content);
@@ -288,7 +288,7 @@ public final class GobStorage {
         return spec;
     }
 
-    private String moldTheContentName() {
+    private String moldContentName() {
         return switch (contentKind) {
             case COLOUR -> "color";
             case IMAGE -> "image";

@@ -57,7 +57,7 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    private static void writeNumberNoLargerThanAByte(int number, BrotliBits into) {
+    private static void writeNumberNoLargerThanByte(int number, BrotliBits into) {
         if (number == 0) {
             into.write(1, 0);
             return;
@@ -162,7 +162,7 @@ final class BrotliMetaBlockWriter {
     private static void writeContextMap(int[] contextMap, int howManyHistograms,
             BrotliCodes.Tree tree, BrotliBits into) {
 
-        writeNumberNoLargerThanAByte(howManyHistograms - 1, into);
+        writeNumberNoLargerThanByte(howManyHistograms - 1, into);
         if (howManyHistograms == 1) {
             return;
         }
@@ -268,7 +268,7 @@ final class BrotliMetaBlockWriter {
     private static void writeTrivialContextMap(int howManyTypes, int contextBits,
             BrotliCodes.Tree tree, BrotliBits into) {
 
-        writeNumberNoLargerThanAByte(howManyTypes - 1, into);
+        writeNumberNoLargerThanByte(howManyTypes - 1, into);
         if (howManyTypes <= 1) {
             return;
         }
@@ -343,7 +343,7 @@ final class BrotliMetaBlockWriter {
                 lengthHistogram[codeBlockLength(split.readLengthAt(block))]++;
             }
 
-            writeNumberNoLargerThanAByte(howManyTypes - 1, into);
+            writeNumberNoLargerThanByte(howManyTypes - 1, into);
             if (howManyTypes <= 1) {
                 return;
             }
@@ -384,7 +384,7 @@ final class BrotliMetaBlockWriter {
             }
         }
 
-        private int startTheNextBlockIfThisOneRanOut(BrotliBits into) {
+        private int startNextBlockIfThisOneRanOut(BrotliBits into) {
             if (leftInTheBlock != 0) {
                 return -1;
             }
@@ -397,7 +397,7 @@ final class BrotliMetaBlockWriter {
         }
 
         void write(int symbol, BrotliBits into) {
-            int newType = startTheNextBlockIfThisOneRanOut(into);
+            int newType = startNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
                 whereTheCurrentBlockTypesCodeStarts = newType * alphabetLength;
             }
@@ -409,7 +409,7 @@ final class BrotliMetaBlockWriter {
         void writeInContext(int symbol, int context, int[] contextMap,
                 int contextBits, BrotliBits into) {
 
-            int newType = startTheNextBlockIfThisOneRanOut(into);
+            int newType = startNextBlockIfThisOneRanOut(into);
             if (newType >= 0) {
                 whereTheCurrentBlockTypesCodeStarts = newType << contextBits;
             }

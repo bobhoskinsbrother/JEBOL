@@ -72,7 +72,7 @@ public final class SystemObject {
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
             String codec = Codecs.REGISTERED.get(at);
-            codecs.register(codec, HandleValue.wrapAFunction("codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
+            codecs.register(codec, HandleValue.wrapFunction("codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
         }
         return new ObjectValue(codecs);
     }

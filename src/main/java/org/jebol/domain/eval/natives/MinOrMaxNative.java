@@ -11,7 +11,7 @@ import java.util.List;
 
 public abstract class MinOrMaxNative extends DefaultNative {
 
-    protected abstract boolean wantsTheLarger();
+    protected abstract boolean wantsLarger();
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -32,10 +32,10 @@ public abstract class MinOrMaxNative extends DefaultNative {
         }
         boolean theFirstIsAtLeastTheSecond =
                 Comparison.holds(left, right, Comparison.Strictness.GREATER_OR_EQUAL);
-        return theFirstIsAtLeastTheSecond == wantsTheLarger() ? left : right;
+        return theFirstIsAtLeastTheSecond == wantsLarger() ? left : right;
     }
 
     private double chooseHalfWanted(double ours, double theirs) {
-        return wantsTheLarger() ? Math.max(ours, theirs) : Math.min(ours, theirs);
+        return wantsLarger() ? Math.max(ours, theirs) : Math.min(ours, theirs);
     }
 }

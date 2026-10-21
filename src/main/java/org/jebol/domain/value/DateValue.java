@@ -156,7 +156,7 @@ public record DateValue(
                 + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
 
-    public long wholeSecondsSinceTheEpoch() {
+    public long wholeSecondsSinceEpoch() {
         return Math.round(countSecondsSinceEpoch());
     }
 
@@ -199,32 +199,32 @@ public record DateValue(
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
         return ((long) year << WHERE_THE_YEAR_IS_PACKED)
                 + ((long) asLocalDate().getDayOfYear() << WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED)
-                + nanosecondsOnTheClock();
+                + nanosecondsOnClock();
     }
 
     public TimeValue clock() {
         return timeOfDay.orElseGet(() -> TimeValue.ofNanoseconds(0));
     }
 
-    public long nanosecondsOnTheClock() {
+    public long nanosecondsOnClock() {
         return timeOfDay.map(TimeValue::nanoseconds).orElse(0L);
     }
 
     public long nanosecondsInUniversalTime() {
-        return nanosecondsOnTheClock()
+        return nanosecondsOnClock()
                 - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
     }
 
     public int hourOfTheDay() {
-        return (int) (nanosecondsOnTheClock() / NANOSECONDS_A_SECOND / 3600);
+        return (int) (nanosecondsOnClock() / NANOSECONDS_A_SECOND / 3600);
     }
 
     public int minuteOfTheHour() {
-        return (int) (nanosecondsOnTheClock() / NANOSECONDS_A_SECOND / 60 % 60);
+        return (int) (nanosecondsOnClock() / NANOSECONDS_A_SECOND / 60 % 60);
     }
 
     public Value readTheSecondOfTheMinute() {
-        long onTheClock = nanosecondsOnTheClock();
+        long onTheClock = nanosecondsOnClock();
         long whole = onTheClock / NANOSECONDS_A_SECOND % 60;
         long fraction = onTheClock % NANOSECONDS_A_SECOND;
         return fraction == 0
@@ -232,7 +232,7 @@ public record DateValue(
                 : DecimalValue.of(whole + (double) fraction / NANOSECONDS_A_SECOND);
     }
 
-    public TimeValue zoneAsATime() {
+    public TimeValue zoneAsTime() {
         return TimeValue.ofNanoseconds(
                 zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE);
     }
@@ -253,7 +253,7 @@ public record DateValue(
                 given.getDayOfMonth(), timeOfDay, zoneMinutes);
     }
 
-    public DateValue onTheDay(int wantedYear, int wantedMonth, int wantedDay) {
+    public DateValue onDay(int wantedYear, int wantedMonth, int wantedDay) {
         return onDay(java.time.LocalDate.of(wantedYear, 1, 1)
                 .plusMonths(wantedMonth - 1L)
                 .plusDays(wantedDay - 1L));
@@ -272,21 +272,21 @@ public record DateValue(
         return DateValue.of(year, month, day);
     }
 
-    public DateValue withTheZoneDropped() {
+    public DateValue withZoneDropped() {
         return new DateValue(year, month, day, Optional.of(clock()), Optional.empty());
     }
 
-    public DateValue withTheZoneForgotten() {
+    public DateValue withZoneForgotten() {
         return new DateValue(year, month, day, timeOfDay, Optional.empty());
     }
 
-    public DateValue withTheSameClockIn(int offsetMinutes) {
+    public DateValue withSameClockIn(int offsetMinutes) {
         return new DateValue(year, month, day,
                 Optional.of(clock()), Optional.of(offsetMinutes));
     }
 
     public DateValue atSameInstantIn(int offsetMinutes) {
-        DateValue standing = withTheSameClockIn(zoneMinutes.orElse(0));
+        DateValue standing = withSameClockIn(zoneMinutes.orElse(0));
         long sinceMidnight = standing.clock().nanoseconds()
                 + (offsetMinutes - standing.zoneMinutes.orElse(0)) * NANOSECONDS_A_MINUTE;
         java.time.LocalDate landed = standing.asLocalDate()
