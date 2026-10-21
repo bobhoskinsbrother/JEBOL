@@ -139,7 +139,7 @@ public class BinaryNative extends DefaultNative {
 
         BinaryValue writing = findCursorNamed(held, "buffer-write");
         Bincode.Cursor cursor = new Bincode.Cursor(
-                listTheOctetsOfTheBuffer(writing.head()), writing.index() - 1);
+                bufferOctets(writing.head()), writing.index() - 1);
         Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
                 () -> Instant.now().getEpochSecond(), this::nameValueRead);
         BinaryValue written = BinaryValue.of(
@@ -153,7 +153,7 @@ public class BinaryNative extends DefaultNative {
 
         BinaryValue reading = findCursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
-                listTheOctetsOfTheBuffer(reading.head()), reading.index() - 1,
+                bufferOctets(reading.head()), reading.index() - 1,
                 countBitsAlreadyTakenIn(held));
         Value theBlockItself = lookedUp.apply(asked);
         if (theBlockItself instanceof IntegerValue howMany) {
@@ -217,7 +217,7 @@ public class BinaryNative extends DefaultNative {
         slot.setValue(read);
     }
 
-    private List<Integer> listTheOctetsOfTheBuffer(BinaryValue buffer) {
+    private List<Integer> bufferOctets(BinaryValue buffer) {
         List<Integer> octets = new ArrayList<>();
         for (byte octet : buffer.octetsFromHere()) {
             octets.add(octet & 0xFF);

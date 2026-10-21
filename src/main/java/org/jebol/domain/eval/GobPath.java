@@ -51,7 +51,7 @@ public final class GobPath {
             case "pane" -> BlockValue.of(storage.pane());
             case "parent" -> findTheParentOf(storage);
             case "data" -> storage.data();
-            case "flags" -> listTheFlagsOf(storage);
+            case "flags" -> raisedFlagWords(storage);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, asked.spelling());
         };
     }
@@ -62,7 +62,7 @@ public final class GobPath {
                 : new GobValue(storage.parent(), 1);
     }
 
-    private static Value listTheFlagsOf(GobStorage storage) {
+    private static Value raisedFlagWords(GobStorage storage) {
         List<Value> words = new ArrayList<>();
         for (GobStorage.Flag flag : storage.listTheRaisedFlags()) {
             words.add(WordValue.of(flag.spelling()));

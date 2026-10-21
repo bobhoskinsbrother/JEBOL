@@ -100,7 +100,7 @@ public abstract class GobScreen implements ScreenPort {
                 closeWindowFor(standing);
             }
         }
-        for (GobValue child : listTheChildrenOfTheRoot()) {
+        for (GobValue child : rootPaneChildren()) {
             openOrRepaint(child);
         }
     }
@@ -122,12 +122,12 @@ public abstract class GobScreen implements ScreenPort {
             return Optional.empty();
         }
         GobStorage inTheRootsPane = outermost;
-        return listTheChildrenOfTheRoot().stream()
+        return rootPaneChildren().stream()
                 .filter(child -> child.storage() == inTheRootsPane)
                 .findFirst();
     }
 
-    protected List<GobValue> listTheChildrenOfTheRoot() {
+    protected List<GobValue> rootPaneChildren() {
         List<GobValue> children = new ArrayList<>();
         for (Value child : root.storage().pane()) {
             if (child instanceof GobValue held) {
@@ -138,6 +138,6 @@ public abstract class GobScreen implements ScreenPort {
     }
 
     protected boolean isInRootsPane(GobValue gob) {
-        return listTheChildrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
+        return rootPaneChildren().stream().anyMatch(gob::sharesStorageWith);
     }
 }

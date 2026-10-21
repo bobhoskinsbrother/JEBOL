@@ -76,7 +76,7 @@ public final class Divide implements ArithmeticOperation {
     }
 
     @Override
-    public boolean keepsTheSignOfTheDividend() {
+    public boolean keepsDividendSign() {
         return false;
     }
 

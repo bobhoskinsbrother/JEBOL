@@ -13,7 +13,7 @@ final class Hour implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return IntegerValue.of(date.hourOfTheDay());
+        return IntegerValue.of(date.hourOnClock());
     }
 
     @Override

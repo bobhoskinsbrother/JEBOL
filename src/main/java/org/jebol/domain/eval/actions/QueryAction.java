@@ -89,7 +89,7 @@ public class QueryAction extends PortAction {
                 case PortValue console when console.schemeName().equals("console") ->
                         new TheMeasurementsOfTheConsole().answer(field, evaluator);
                 default -> field instanceof NoneValue
-                        ? listTheNamesThatPortMayBeAskedFor(target, evaluator, context)
+                        ? portFieldNames(target, evaluator, context)
                         : askFileOrRoutedPort(target, field, evaluator, context);
             };
         };
@@ -127,7 +127,7 @@ public class QueryAction extends PortAction {
                 .orElseGet(NoneValue::none));
     }
 
-    private Value listTheNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
+    private Value portFieldNames(Value target, Evaluator evaluator, Context context) {
         PortValue port = ports.makePortFor(target, evaluator, context);
         return listTheNamesItsJavaActorGives(port, evaluator)
                 .orElseGet(() -> listNamesInSchemesInfo(port));

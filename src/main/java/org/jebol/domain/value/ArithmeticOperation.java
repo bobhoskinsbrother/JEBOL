@@ -23,7 +23,7 @@ public interface ArithmeticOperation extends ValueOperation {
 
     boolean divides();
 
-    boolean keepsTheSignOfTheDividend();
+    boolean keepsDividendSign();
 
     default boolean scalesRatherThanShifts() {
         return multiplies() || divides();

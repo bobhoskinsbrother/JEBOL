@@ -132,7 +132,7 @@ public class ConstructNative extends DefaultNative {
             return -1;
         }
         int at = 0;
-        while (at < name.length() && isPartOfAName(name.charAt(at))) {
+        while (at < name.length() && isPartOfName(name.charAt(at))) {
             at++;
         }
         return at < name.length() && name.charAt(at) == ':'
@@ -140,7 +140,7 @@ public class ConstructNative extends DefaultNative {
                 : -1;
     }
 
-    private boolean isPartOfAName(char letter) {
+    private boolean isPartOfName(char letter) {
         return Character.isLetterOrDigit(letter)
                 || letter == '.' || letter == '-' || letter == '_';
     }

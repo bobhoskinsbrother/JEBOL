@@ -314,7 +314,7 @@ public final class Ports {
                 return StringValue.of(network.hostName());
             }
             if (WRITTEN_AS_ADDRESS.matcher(host).matches()) {
-                return lookUpTheNameAtAnAddressOfFourParts(host, network);
+                return hostNameForIpv4(host, network);
             }
             return network.resolveTheFirstIpv4Address(host)
                     .<Value>map(this::asTuple)
@@ -322,7 +322,7 @@ public final class Ports {
         });
     }
 
-    private Value lookUpTheNameAtAnAddressOfFourParts(String address, NetworkPort network) {
+    private Value hostNameForIpv4(String address, NetworkPort network) {
         if (address.split("\\.").length != IPV4_PARTS) {
             return NoneValue.none();
         }

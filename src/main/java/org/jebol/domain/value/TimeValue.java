@@ -186,8 +186,8 @@ public record TimeValue(long nanoseconds) implements Value {
                 case StringValue written -> scanTimeFrom(written);
                 case BlockValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
                 case ParenValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
-                case IntegerValue number -> makeADurationOfSeconds(number, number.magnitude());
-                case DecimalValue number -> makeADurationOfSeconds(number, number.quantity());
+                case IntegerValue number -> durationFromSeconds(number, number.magnitude());
+                case DecimalValue number -> durationFromSeconds(number, number.quantity());
                 default -> throw refuse(from);
             };
         }
@@ -222,11 +222,11 @@ public record TimeValue(long nanoseconds) implements Value {
             return ofNanoseconds(negative ? -total : total);
         }
 
-        private Value makeADurationOfSeconds(Value value, double seconds) {
+        private Value durationFromSeconds(Value value, double seconds) {
             if (seconds < -MOST_SECONDS_DURATION_HOLDS || seconds > MOST_SECONDS_DURATION_HOLDS) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
             }
-            return ofNanoseconds(TimeActions.countTheWholeNanosecondsOf(value));
+            return ofNanoseconds(TimeActions.wholeNanoseconds(value));
         }
 
         private Value makeATimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {

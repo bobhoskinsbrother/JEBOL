@@ -65,7 +65,7 @@ final class Qoi {
     }
 
     private static byte[] readPixelsIn(byte[] bytes, int howMany) {
-        byte[] pixels = fillWhatAShortStreamLeaves(howMany);
+        byte[] pixels = opaqueWhitePixels(howMany);
         Colour[] seen = new Colour[TABLE_SIZE];
         java.util.Arrays.fill(seen, new Colour(0, 0, 0, 0));
         Colour here = Colour.TO_BEGIN_WITH;
@@ -117,7 +117,7 @@ final class Qoi {
                 | (bytes[at + 2] & 0xFF) << 8 | (bytes[at + 3] & 0xFF);
     }
 
-    private static byte[] fillWhatAShortStreamLeaves(int howMany) {
+    private static byte[] opaqueWhitePixels(int howMany) {
         byte[] opaqueWhite = new byte[howMany * CHANNELS];
         java.util.Arrays.fill(opaqueWhite, (byte) 0xFF);
         return opaqueWhite;

@@ -88,14 +88,14 @@ public final class EventCatalogue {
 
     /** The blocks {@code system/catalog} publishes, built from the lists above. */
     public static AnyBlockValue typesBlock() {
-        return makeABlockOfWords(TYPES);
+        return wordsAsBlock(TYPES);
     }
 
     public static AnyBlockValue keysBlock() {
-        return makeABlockOfWords(KEYS);
+        return wordsAsBlock(KEYS);
     }
 
-    private static AnyBlockValue makeABlockOfWords(List<String> words) {
+    private static AnyBlockValue wordsAsBlock(List<String> words) {
         return BlockValue.of(words.stream().<Value>map(WordValue::of).toList());
     }
 }

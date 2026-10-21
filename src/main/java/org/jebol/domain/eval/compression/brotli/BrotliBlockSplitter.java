@@ -60,7 +60,7 @@ final class BrotliBlockSplitter {
         if (howManyBlocks == 0) {
             startFirstBlock();
         } else if (blockSize > 0) {
-            decideWhatToDoWithTheBatch();
+            assignBatch();
         }
         if (isFinal) {
             howManyHistogramsAreUsed = split.countTypes();
@@ -83,7 +83,7 @@ final class BrotliBlockSplitter {
         blockSize = 0;
     }
 
-    private void decideWhatToDoWithTheBatch() {
+    private void assignBatch() {
         double onItsOwn = BrotliCodes.measureBitsEntropy(
                 histograms[currentHistogram].counts(), alphabetSize);
         double[] mergedEntropy = new double[2];

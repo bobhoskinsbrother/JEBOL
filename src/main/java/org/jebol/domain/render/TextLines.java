@@ -248,7 +248,7 @@ public final class TextLines {
         while (printed > 0 && letters.get(printed - 1).isASpace()) {
             printed--;
         }
-        return makeALineOf(gatherIntoPieces(letters), measureTheWidthOfThePieces(gatherIntoPieces(letters.subList(0, printed))));
+        return makeLine(gatherIntoPieces(letters), measureTheWidthOfThePieces(gatherIntoPieces(letters.subList(0, printed))));
     }
 
     private double measureTheWidthOfThePieces(List<Piece> pieces) {
@@ -310,10 +310,10 @@ public final class TextLines {
     }
 
     private Line makeALineOf(List<Piece> pieces) {
-        return makeALineOf(pieces, measureTheWidthOfThePieces(pieces));
+        return makeLine(pieces, measureTheWidthOfThePieces(pieces));
     }
 
-    private Line makeALineOf(List<Piece> pieces, double wide) {
+    private Line makeLine(List<Piece> pieces, double wide) {
         double ascent = 0;
         double descent = 0;
         for (Piece piece : pieces) {

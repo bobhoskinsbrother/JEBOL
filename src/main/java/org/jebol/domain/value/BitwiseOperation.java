@@ -27,7 +27,7 @@ public interface BitwiseOperation extends ValueOperation {
     }
 
     @Override
-    default boolean keepsTheSignOfTheDividend() {
+    default boolean keepsDividendSign() {
         return false;
     }
 

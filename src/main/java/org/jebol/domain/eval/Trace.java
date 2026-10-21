@@ -81,7 +81,7 @@ public final class Trace {
                 .append(": ")
                 .append(mold(value));
         if (value instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
-            written.append(describeWhatTheWordHolds(word, context));
+            written.append(describeHeldValue(word, context));
         }
         emit(written.toString());
     }
@@ -129,7 +129,7 @@ public final class Trace {
         this.depthNow = depth;
     }
 
-    private String describeWhatTheWordHolds(AnyWordValue word, Context context) {
+    private String describeHeldValue(AnyWordValue word, Context context) {
         if (!word.isBound() && !context.contains(word.canonical())) {
             return "";
         }

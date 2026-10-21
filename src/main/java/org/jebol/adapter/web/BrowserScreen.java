@@ -185,7 +185,7 @@ public final class BrowserScreen extends GobScreen {
         if (root == null) {
             return List.of();
         }
-        return listTheChildrenOfTheRoot().stream().filter(this::hasWindow).toList();
+        return rootPaneChildren().stream().filter(this::hasWindow).toList();
     }
 
 

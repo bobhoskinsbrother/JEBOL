@@ -63,7 +63,7 @@ public final class Add implements ArithmeticOperation {
     }
 
     @Override
-    public boolean keepsTheSignOfTheDividend() {
+    public boolean keepsDividendSign() {
         return false;
     }
 

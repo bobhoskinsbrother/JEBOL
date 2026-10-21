@@ -71,7 +71,7 @@ public final class Multiply implements ArithmeticOperation {
     }
 
     @Override
-    public boolean keepsTheSignOfTheDividend() {
+    public boolean keepsDividendSign() {
         return false;
     }
 

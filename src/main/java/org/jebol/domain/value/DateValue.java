@@ -215,7 +215,7 @@ public record DateValue(
                 - zoneMinutes.orElse(0) * NANOSECONDS_MINUTE;
     }
 
-    public int hourOfTheDay() {
+    public int hourOnClock() {
         return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 3600);
     }
 

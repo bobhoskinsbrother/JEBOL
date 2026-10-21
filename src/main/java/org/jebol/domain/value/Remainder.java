@@ -66,7 +66,7 @@ public final class Remainder implements ArithmeticOperation {
     }
 
     @Override
-    public boolean keepsTheSignOfTheDividend() {
+    public boolean keepsDividendSign() {
         return true;
     }
 

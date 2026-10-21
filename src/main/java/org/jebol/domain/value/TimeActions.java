@@ -23,7 +23,7 @@ public final class TimeActions {
         if (!(right instanceof IntegerValue) && !(right instanceof AnyDecimalValue)) {
             throw refuseAsNotRelatedToTime(operation);
         }
-        if (operation.keepsTheSignOfTheDividend()) {
+        if (operation.keepsDividendSign()) {
             return takeTheRestOfTheNanoseconds(right, operation);
         }
         if (operation.scalesRatherThanShifts()) {
@@ -40,7 +40,7 @@ public final class TimeActions {
         }
         if (operation.canSubtractOneFromOther()) {
             return TimeValue.ofNanoseconds(withinWhatADurationHolds(
-                    countTheWholeNanosecondsOf(left) - span.nanoseconds()));
+                    wholeNanoseconds(left) - span.nanoseconds()));
         }
         return combineWith(left, operation);
     }
@@ -94,7 +94,7 @@ public final class TimeActions {
 
     private Value addInWholeNanosecondsTo(Value right, ArithmeticOperation operation) {
         long ours = span.nanoseconds();
-        long theirs = countTheWholeNanosecondsOf(right);
+        long theirs = wholeNanoseconds(right);
         return TimeValue.ofNanoseconds(
                 withinWhatADurationHolds(combineTheNanoseconds(ours, theirs, operation)));
     }
@@ -109,7 +109,7 @@ public final class TimeActions {
             return ours + theirs;
         }
         operation.requireNonZeroDivisor(theirs);
-        return operation.keepsTheSignOfTheDividend()
+        return operation.keepsDividendSign()
                 ? ours % theirs
                 : Math.floorMod(ours, theirs);
     }
@@ -120,7 +120,7 @@ public final class TimeActions {
                 TimeValue.TYPE);
     }
 
-    public static long countTheWholeNanosecondsOf(Value value) {
+    public static long wholeNanoseconds(Value value) {
         if (value instanceof TimeValue(long nanoseconds)) {
             return nanoseconds;
         }

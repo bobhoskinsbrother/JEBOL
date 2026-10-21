@@ -240,8 +240,8 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         @Override
         protected Optional<Value> findFieldNamed(String asked) {
             return switch (asked) {
-                case DEVICES_IN -> Optional.of(listTheNamesOf(devices.inputs()));
-                case DEVICES_OUT -> Optional.of(listTheNamesOf(devices.outputs()));
+                case DEVICES_IN -> Optional.of(namesAsBlock(devices.inputs()));
+                case DEVICES_OUT -> Optional.of(namesAsBlock(devices.outputs()));
                 default -> Optional.empty();
             };
         }
@@ -256,7 +256,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             throw cannotUse(asked, PortValue.TYPE);
         }
 
-        private Value listTheNamesOf(List<String> listed) {
+        private Value namesAsBlock(List<String> listed) {
             return BlockValue.of(listed.stream().<Value>map(StringValue::of).toList());
         }
     }

@@ -62,8 +62,8 @@ public final class SeriesSearch {
     }
 
     private boolean seeksEmptyRun() {
-        if (looksForARunOfValues()) {
-            return listTheRunOfValues().isEmpty();
+        if (searchesForValueRun()) {
+            return needleRun().isEmpty();
         }
         boolean aSeriesOfCharactersOrBytes = series instanceof AnyStringValue || series instanceof BinaryValue;
         boolean aRunOfCharactersOrBytes = wanted instanceof AnyStringValue || wanted instanceof BinaryValue;
@@ -71,13 +71,13 @@ public final class SeriesSearch {
                 && ((RebolSeries) wanted).lengthFromHere() == 0;
     }
 
-    private boolean looksForARunOfValues() {
+    private boolean searchesForValueRun() {
         return !refinements.contains("only")
                 && (wanted instanceof BlockValue
                         || series instanceof AnyBlockValue && wanted instanceof AnyBlockValue);
     }
 
-    private List<Value> listTheRunOfValues() {
+    private List<Value> needleRun() {
         return ((AnyBlockValue) wanted).remaining();
     }
 
@@ -103,10 +103,10 @@ public final class SeriesSearch {
         }
         if (series instanceof BinaryValue
                 && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
-            return listTheBytesThatSpell().size();
+            return needleOctets().size();
         }
-        if (series instanceof AnyBlockValue && looksForARunOfValues()) {
-            return listTheRunOfValues().size();
+        if (series instanceof AnyBlockValue && searchesForValueRun()) {
+            return needleRun().size();
         }
         return series instanceof AnyStringValue && !refinements.contains("only")
                 ? countCharactersIn(Molder.form(wanted))
@@ -147,8 +147,8 @@ public final class SeriesSearch {
             return 1;
         }
         if (series instanceof AnyBlockValue) {
-            return looksForARunOfValues()
-                    ? listTheRunOfValues().size()
+            return searchesForValueRun()
+                    ? needleRun().size()
                     : 1;
         }
         if (wanted instanceof BitsetValue) {
@@ -157,7 +157,7 @@ public final class SeriesSearch {
         if (wanted instanceof CharacterValue && !(series instanceof BinaryValue)) {
             return 1;
         }
-        return listTheItemsOfNeedle().size();
+        return needleItems().size();
     }
 
     private boolean matchesHere(List<Value> items, int at, int end) {
@@ -171,8 +171,8 @@ public final class SeriesSearch {
                     ? items.get(at).datatype() == represents
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }
-        if (looksForARunOfValues()) {
-            return runMatchesAt(items, at, listTheRunOfValues(), refinements.contains("same"));
+        if (searchesForValueRun()) {
+            return runMatchesAt(items, at, needleRun(), refinements.contains("same"));
         }
         if (refinements.contains("same")
                 && !(series instanceof AnyStringValue)
@@ -196,7 +196,7 @@ public final class SeriesSearch {
             return items.get(at) instanceof CharacterValue(int codepoint)
                     && members.holds(codepoint);
         }
-        List<Value> run = listTheItemsOfNeedle();
+        List<Value> run = needleItems();
         if (at + run.size() > items.size()) {
             return false;
         }
@@ -209,7 +209,7 @@ public final class SeriesSearch {
         return true;
     }
 
-    private List<Value> listTheBytesThatSpell() {
+    private List<Value> needleOctets() {
         if (wanted instanceof CharacterValue(int codepoint) && codepoint <= 0xFF) {
             return List.of(IntegerValue.of(codepoint));
         }
@@ -223,13 +223,13 @@ public final class SeriesSearch {
         return octets;
     }
 
-    private List<Value> listTheItemsOfNeedle() {
+    private List<Value> needleItems() {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
             return bytes.listTheItems();
         }
         if (series instanceof BinaryValue
                 && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
-            return listTheBytesThatSpell();
+            return needleOctets();
         }
         if (wanted instanceof CharacterValue letter) {
             return List.of(letter);
@@ -261,8 +261,8 @@ public final class SeriesSearch {
     }
 
     private boolean hasSameRunAt(List<Value> items, int at) {
-        List<Value> run = looksForARunOfValues()
-                ? listTheRunOfValues()
+        List<Value> run = searchesForValueRun()
+                ? needleRun()
                 : List.of(wanted);
         return runMatchesAt(items, at, run, true);
     }
@@ -291,8 +291,8 @@ public final class SeriesSearch {
             return items.get(at) instanceof CharacterValue(int codepoint)
                     && members.holds(codepoint);
         }
-        if (looksForARunOfValues()) {
-            return runMatchesAt(items, at, listTheRunOfValues(), refinements.contains("same"));
+        if (searchesForValueRun()) {
+            return runMatchesAt(items, at, needleRun(), refinements.contains("same"));
         }
         if (wanted instanceof AnyStringValue needle && !refinements.contains("only")) {
             return matchesTextRunIgnoringCaseAt(items, at, needle);

@@ -10,7 +10,7 @@ public interface ValueOperation {
 
     boolean divides();
 
-    boolean keepsTheSignOfTheDividend();
+    boolean keepsDividendSign();
 
     boolean needsNonZeroDivisor();
 

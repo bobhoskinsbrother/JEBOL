@@ -117,10 +117,10 @@ final class NearOptimalParser extends DeflateParser {
         int nodesNeeded = Math.min(MAX_BLOCK_LENGTH + 1, inputLength + MAX_MATCH_LENGTH + 1);
         nodeCosts = new int[nodesNeeded];
         nodeItems = new int[nodesNeeded];
-        fillTheOffsetSlotOfEveryOffset();
+        fillOffsetSlots();
     }
 
-    private void fillTheOffsetSlotOfEveryOffset() {
+    private void fillOffsetSlots() {
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
             int first = OFFSET_SLOT_BASE[slot];
             Arrays.fill(offsetSlotOfEveryOffset, first, first + (1 << EXTRA_OFFSET_BITS[slot]), slot);

@@ -102,7 +102,7 @@ public final class VectorMath {
     private static void refuseDivisionByZero(VectorKind kind, ValueOperation operation,
             long truncatedDivisor) {
 
-        boolean guarded = operation.keepsTheSignOfTheDividend()
+        boolean guarded = operation.keepsDividendSign()
                 || (operation.divides() && !kind.measures());
         if (guarded && truncatedDivisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");

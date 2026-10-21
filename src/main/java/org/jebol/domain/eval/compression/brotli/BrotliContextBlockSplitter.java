@@ -68,7 +68,7 @@ final class BrotliContextBlockSplitter {
         if (howManyBlocks == 0) {
             startFirstBlock();
         } else if (blockSize > 0) {
-            decideWhatToDoWithTheBatch();
+            assignBatch();
         }
         if (isFinal) {
             howManyHistogramsAreUsed = split.countTypes() * howManyContexts;
@@ -100,7 +100,7 @@ final class BrotliContextBlockSplitter {
         }
     }
 
-    private void decideWhatToDoWithTheBatch() {
+    private void assignBatch() {
         double[] onItsOwn = new double[howManyContexts];
         double[] mergedEntropy = new double[2 * howManyContexts];
         double[] costOfMerging = new double[2];
