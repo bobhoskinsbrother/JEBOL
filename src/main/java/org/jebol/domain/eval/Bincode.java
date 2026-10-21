@@ -395,13 +395,13 @@ public final class Bincode {
 
     private static void refuseNumberTooWide(String code, long value) {
         String base = readTheBaseOf(code);
-        long ceiling = findTheMostThatFitsIn(base);
-        if (value > ceiling || value < findTheLeastThatFitsIn(base, ceiling)) {
+        long ceiling = largestValueFor(base);
+        if (value > ceiling || value < smallestValueFor(base, ceiling)) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(value));
         }
     }
 
-    private static long findTheMostThatFitsIn(String base) {
+    private static long largestValueFor(String base) {
         return switch (base) {
             case "ui8" -> 0xFFL;
             case "ui16" -> 0xFFFFL;
@@ -415,7 +415,7 @@ public final class Bincode {
         };
     }
 
-    private static long findTheLeastThatFitsIn(String base, long ceiling) {
+    private static long smallestValueFor(String base, long ceiling) {
         return base.startsWith("si") || base.equals("ui32")
                 ? -ceiling
                 : Long.MIN_VALUE;

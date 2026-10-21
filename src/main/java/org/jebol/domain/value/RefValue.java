@@ -12,7 +12,7 @@ public final class RefValue extends AnyStringValue {
 
     private static final String LEXER_DELIMITERS = "()[]{}\"/;";
 
-    private static final char OPENS_AN_EMAIL_INSTEAD = '@';
+    private static final char OPENS_EMAIL_INSTEAD = '@';
 
     RefValue(StringStorage storage, int index) {
         super(storage, index);
@@ -41,7 +41,7 @@ public final class RefValue extends AnyStringValue {
 
     private boolean canBeReadBack() {
         return text().codePoints().noneMatch(codepoint ->
-                codepoint == OPENS_AN_EMAIL_INSTEAD
+                codepoint == OPENS_EMAIL_INSTEAD
                         || !Character.isLetterOrDigit(codepoint)
                                 && (codepoint < 21
                                         || Character.isWhitespace(codepoint)

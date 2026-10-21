@@ -23,10 +23,10 @@ public class IsZeroNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                LogicValue.of(isTheZeroOfItsDatatype(arguments.getFirst()));
+                LogicValue.of(isZeroForType(arguments.getFirst()));
     }
 
-    private boolean isTheZeroOfItsDatatype(Value value) {
+    private boolean isZeroForType(Value value) {
         return switch (value) {
             case BitsetValue members -> new BitsetActions(members).isEmptySet();
             case PairValue(double x, double y) -> x == 0 && y == 0;

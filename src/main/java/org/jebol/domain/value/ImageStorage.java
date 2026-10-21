@@ -35,7 +35,7 @@ public final class ImageStorage extends ProtectableStorage {
     public static final int LONGEST_SIDE = 0xFFFF;
 
     /** How many bytes one pixel takes. {@code sizeof(u32)}. */
-    public static final int BYTES_A_PIXEL = 4;
+    public static final int BYTES_PIXEL = 4;
 
     private static final byte FRESH_MEANING_WHITE_AND_OPAQUE = (byte) 0xFF;
 
@@ -59,7 +59,7 @@ public final class ImageStorage extends ProtectableStorage {
      * without an alpha binary.
      */
     public static ImageStorage of(int width, int height) {
-        byte[] pixels = new byte[width * height * BYTES_A_PIXEL];
+        byte[] pixels = new byte[width * height * BYTES_PIXEL];
         java.util.Arrays.fill(pixels, FRESH_MEANING_WHITE_AND_OPAQUE);
         return new ImageStorage(pixels, width, height, width * height);
     }
@@ -67,7 +67,7 @@ public final class ImageStorage extends ProtectableStorage {
     /** The same pixels in a buffer of their own, for COPY and MAKE of an image. */
     public ImageStorage copy() {
         return new ImageStorage(
-                java.util.Arrays.copyOf(pixels, length * BYTES_A_PIXEL),
+                java.util.Arrays.copyOf(pixels, length * BYTES_PIXEL),
                 wide, high, length);
     }
 
@@ -120,9 +120,9 @@ public final class ImageStorage extends ProtectableStorage {
         if (dropped <= 0) {
             return;
         }
-        int from = (oneBasedIndex - 1 + dropped) * BYTES_A_PIXEL;
-        int to = (oneBasedIndex - 1) * BYTES_A_PIXEL;
-        System.arraycopy(pixels, from, pixels, to, length * BYTES_A_PIXEL - from);
+        int from = (oneBasedIndex - 1 + dropped) * BYTES_PIXEL;
+        int to = (oneBasedIndex - 1) * BYTES_PIXEL;
+        System.arraycopy(pixels, from, pixels, to, length * BYTES_PIXEL - from);
         length -= dropped;
         resetHeightOnlyAfterSomethingChangedPixelCount();
     }
@@ -139,13 +139,13 @@ public final class ImageStorage extends ProtectableStorage {
     /** Puts a pixel in at a position, growing the buffer when it has to. */
     public void insertAt(int oneBasedIndex, int red, int green, int blue, int alpha) {
         refuseIfProtected();
-        int needed = (length + 1) * BYTES_A_PIXEL;
+        int needed = (length + 1) * BYTES_PIXEL;
         if (needed > pixels.length) {
             pixels = java.util.Arrays.copyOf(pixels, Math.max(needed, pixels.length * 2));
         }
-        int at = (oneBasedIndex - 1) * BYTES_A_PIXEL;
-        System.arraycopy(pixels, at, pixels, at + BYTES_A_PIXEL,
-                length * BYTES_A_PIXEL - at);
+        int at = (oneBasedIndex - 1) * BYTES_PIXEL;
+        System.arraycopy(pixels, at, pixels, at + BYTES_PIXEL,
+                length * BYTES_PIXEL - at);
         pixels[at] = (byte) red;
         pixels[at + 1] = (byte) green;
         pixels[at + 2] = (byte) blue;
@@ -161,17 +161,17 @@ public final class ImageStorage extends ProtectableStorage {
      * {@code img/1/2: 100} case writes in: {@code case 2: bp[C_G] = ...}.
      */
     public int readChannelAt(int pixel, int channel) {
-        return pixels[(pixel - 1) * BYTES_A_PIXEL + channel - 1] & 0xFF;
+        return pixels[(pixel - 1) * BYTES_PIXEL + channel - 1] & 0xFF;
     }
 
     public void setChannelAt(int pixel, int channel, int octet) {
         refuseIfProtected();
-        pixels[(pixel - 1) * BYTES_A_PIXEL + channel - 1] = (byte) octet;
+        pixels[(pixel - 1) * BYTES_PIXEL + channel - 1] = (byte) octet;
     }
 
     /** A pixel as red, green, blue, alpha. */
     public int[] readPixelAt(int pixel) {
-        int at = (pixel - 1) * BYTES_A_PIXEL;
+        int at = (pixel - 1) * BYTES_PIXEL;
         return new int[] {
                 pixels[at] & 0xFF, pixels[at + 1] & 0xFF,
                 pixels[at + 2] & 0xFF, pixels[at + 3] & 0xFF};
@@ -180,7 +180,7 @@ public final class ImageStorage extends ProtectableStorage {
     /** Writes red, green and blue, leaving the alpha this pixel already had. */
     public void setColourAt(int pixel, int red, int green, int blue) {
         refuseIfProtected();
-        int at = (pixel - 1) * BYTES_A_PIXEL;
+        int at = (pixel - 1) * BYTES_PIXEL;
         pixels[at] = (byte) red;
         pixels[at + 1] = (byte) green;
         pixels[at + 2] = (byte) blue;

@@ -9,25 +9,25 @@ import static org.jebol.domain.value.DeciSignificands.EXACT;
 import static org.jebol.domain.value.DeciSignificands.EXACTLY_HALF;
 import static org.jebol.domain.value.DeciSignificands.LESS_THAN_HALF;
 import static org.jebol.domain.value.DeciSignificands.MORE_THAN_HALF;
-import static org.jebol.domain.value.DeciSignificands.THE_LARGEST_EXPONENT;
-import static org.jebol.domain.value.DeciSignificands.THE_SMALLEST_EXPONENT;
+import static org.jebol.domain.value.DeciSignificands.LARGEST_EXPONENT;
+import static org.jebol.domain.value.DeciSignificands.SMALLEST_EXPONENT;
 
 public record Deci(BigInteger significand, int exponent, boolean negative) {
 
     private static final DeciSignificands SIGNIFICANDS = new DeciSignificands();
 
-    private static final BigInteger THE_LARGEST_SIGNIFICAND =
+    private static final BigInteger LARGEST_SIGNIFICAND =
             BigInteger.TEN.pow(26).subtract(BigInteger.ONE);
 
-    private static final BigInteger THE_SMALLEST_LONG_AS_A_SIGNIFICAND = BigInteger.ONE.shiftLeft(63);
+    private static final BigInteger SMALLEST_LONG_AS_SIGNIFICAND = BigInteger.ONE.shiftLeft(63);
 
-    private static final int BELOW_THIS_A_WHOLE_NUMBER_IS_NOUGHT = -26;
+    private static final int BELOW_THIS_WHOLE_NUMBER_IS_NOUGHT = -26;
 
-    private static final int FROM_THIS_A_WHOLE_NUMBER_OVERFLOWS = 20;
+    private static final int FROM_THIS_WHOLE_NUMBER_OVERFLOWS = 20;
 
-    private static final int PAST_THIS_A_POINT_IS_WRITTEN_AS_AN_EXPONENT = -6;
+    private static final int PAST_THIS_POINT_IS_WRITTEN_AS_EXPONENT = -6;
 
-    private static final int DIGITS_A_DIVISION_AIMS_FOR_TIMES_TWO = 51;
+    private static final int DIGITS_DIVISION_AIMS_FOR_TIMES_TWO = 51;
 
     public static final Deci ZERO = new Deci(BigInteger.ZERO, 0, false);
 
@@ -149,7 +149,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         int truncation = made.leftTruncation() + made.rightTruncation();
         int raised = made.exponent();
         for (int pass = 0; pass < 2 && needsAnotherDigitOff(sum, truncation); pass++) {
-            if (raised == THE_LARGEST_EXPONENT) {
+            if (raised == LARGEST_EXPONENT) {
                 throw Raised.of(EvaluationFailure.OVERFLOW);
             }
             raised++;
@@ -162,7 +162,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     private boolean needsAnotherDigitOff(BigInteger sum, int truncation) {
-        int compared = sum.compareTo(THE_LARGEST_SIGNIFICAND);
+        int compared = sum.compareTo(LARGEST_SIGNIFICAND);
         return compared > 0 || (compared == 0 && SIGNIFICANDS.roundsTruncationUp(truncation, sum));
     }
 
@@ -195,7 +195,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         if (shift > 0) {
             Shifted shifted = SIGNIFICANDS.shiftRight(product, shift, EXACT);
             truncation = shifted.truncation();
-            product = raised >= THE_SMALLEST_EXPONENT
+            product = raised >= SMALLEST_EXPONENT
                     ? SIGNIFICANDS.roundUpWhenTheTruncationSays(shifted)
                     : shifted.value();
         }
@@ -215,9 +215,9 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         if (isZero()) {
             return new Deci(BigInteger.ZERO, 0, signed);
         }
-        int shift = (int) Math.ceil(DIGITS_A_DIVISION_AIMS_FOR_TIMES_TWO / 2.0
-                + Math.log10(SIGNIFICANDS.asTheCDoubleOf(other.significand, 3))
-                - Math.log10(SIGNIFICANDS.asTheCDoubleOf(significand, 3)));
+        int shift = (int) Math.ceil(DIGITS_DIVISION_AIMS_FOR_TIMES_TWO / 2.0
+                + Math.log10(SIGNIFICANDS.asDoubleFromWords(other.significand, 3))
+                - Math.log10(SIGNIFICANDS.asDoubleFromWords(significand, 3)));
         BigInteger widened = significand.multiply(BigInteger.TEN.pow(Math.max(shift, 0)));
         int lowered = exponent - other.exponent - shift;
         BigInteger[] quotientAndRemainder = widened.divideAndRemainder(other.significand);
@@ -225,7 +225,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
                 SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]),
                 truncateDivision(quotientAndRemainder[1], other.significand));
         lowered += SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]);
-        BigInteger quotient = lowered >= THE_SMALLEST_EXPONENT
+        BigInteger quotient = lowered >= SMALLEST_EXPONENT
                 ? SIGNIFICANDS.roundUpWhenTheTruncationSays(normalised)
                 : normalised.value();
         return scaleBy(quotient, lowered, normalised.truncation(), signed);
@@ -267,23 +267,23 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     }
 
     public long toLong() {
-        if (isZero() || exponent < BELOW_THIS_A_WHOLE_NUMBER_IS_NOUGHT) {
+        if (isZero() || exponent < BELOW_THIS_WHOLE_NUMBER_IS_NOUGHT) {
             return 0;
         }
-        if (exponent >= FROM_THIS_A_WHOLE_NUMBER_OVERFLOWS) {
+        if (exponent >= FROM_THIS_WHOLE_NUMBER_OVERFLOWS) {
             throw Raised.of(EvaluationFailure.OVERFLOW);
         }
         BigInteger whole = significand;
         if (exponent > 0) {
-            if (BigInteger.TEN.pow(FROM_THIS_A_WHOLE_NUMBER_OVERFLOWS - exponent).compareTo(whole) <= 0) {
+            if (BigInteger.TEN.pow(FROM_THIS_WHOLE_NUMBER_OVERFLOWS - exponent).compareTo(whole) <= 0) {
                 throw Raised.of(EvaluationFailure.OVERFLOW);
             }
             whole = whole.multiply(BigInteger.TEN.pow(exponent));
         } else if (exponent < 0) {
             whole = SIGNIFICANDS.shiftRight(whole, -exponent, EXACT).value();
         }
-        if (whole.compareTo(THE_SMALLEST_LONG_AS_A_SIGNIFICAND) > 0
-                || (!negative && whole.equals(THE_SMALLEST_LONG_AS_A_SIGNIFICAND))) {
+        if (whole.compareTo(SMALLEST_LONG_AS_SIGNIFICAND) > 0
+                || (!negative && whole.equals(SMALLEST_LONG_AS_SIGNIFICAND))) {
             throw Raised.of(EvaluationFailure.OVERFLOW);
         }
         return negative ? whole.negate().longValue() : whole.longValue();
@@ -314,7 +314,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         if (point > 0) {
             return text.append(digits, 0, point).append('.').append(digits, point, count).toString();
         }
-        if (point >= PAST_THIS_A_POINT_IS_WRITTEN_AS_AN_EXPONENT) {
+        if (point >= PAST_THIS_POINT_IS_WRITTEN_AS_EXPONENT) {
             return text.append("0.").append("0".repeat(-point)).append(digits).toString();
         }
         text.append(digits.charAt(0));

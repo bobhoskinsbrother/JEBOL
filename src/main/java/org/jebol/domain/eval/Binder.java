@@ -45,7 +45,7 @@ public final class Binder {
                 yield block.wrap(items);
             }
             case AnyStringValue text -> text.wrap(text.text());
-            case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());
+            case BinaryValue bytes -> bytes.copyFirst(bytes.lengthFromHere());
             case MapValue map -> {
                 MapValue cloned = map.copy();
                 for (Value key : cloned.keys()) {
@@ -97,10 +97,10 @@ public final class Binder {
     public static AnyBlockValue bindWhatTheTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
-        return bindWhatTheTargetHoldsItself(block, target, ALL_WAY_DOWN);
+        return bindWordsTargetHolds(block, target, ALL_WAY_DOWN);
     }
 
-    public static AnyBlockValue bindWhatTheTargetHoldsItself(
+    public static AnyBlockValue bindWordsTargetHolds(
             AnyBlockValue block, Context target, boolean deeply) {
 
         for (int at = 0; at < block.lengthFromHere(); at++) {
@@ -124,13 +124,13 @@ public final class Binder {
     public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
             AnyBlockValue block, Context target) {
 
-        return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_WAY_DOWN);
+        return bindWordsTargetHoldsInCopy(block, target, ALL_WAY_DOWN);
     }
 
-    public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
+    public static AnyBlockValue bindWordsTargetHoldsInCopy(
             AnyBlockValue block, Context target, boolean deeply) {
 
-        return bindWhatTheTargetHoldsItself(copyDeeply(block), target, deeply);
+        return bindWordsTargetHolds(copyDeeply(block), target, deeply);
     }
 
     private static AnyBlockValue copyDeeply(AnyBlockValue block) {
@@ -241,7 +241,7 @@ public final class Binder {
         return switch (value) {
             case AnyWordValue word when names.contains(word.canonical()) ->
                     word.bindTo(context.contains(word.canonical())
-                            ? context.findTheHolderOf(word.canonical())
+                            ? context.contextHolding(word.canonical())
                             : context);
             case AnyWordValue word -> word;
             case AnyBlockValue nested -> bindOnly(nested, context, names);
@@ -258,7 +258,7 @@ public final class Binder {
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
             case AnyWordValue word -> context.contains(word.canonical())
-                    ? word.bindTo(context.findTheHolderOf(word.canonical()))
+                    ? word.bindTo(context.contextHolding(word.canonical()))
                     : word;
             case AnyBlockValue block -> bind(block, context);
             case MapValue map -> {

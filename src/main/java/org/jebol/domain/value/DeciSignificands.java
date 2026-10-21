@@ -5,17 +5,17 @@ import java.math.BigInteger;
 
 final class DeciSignificands {
 
-    private static final BigInteger TWO_TO_THE_32 = BigInteger.ONE.shiftLeft(32);
+    private static final BigInteger TWO_TO_32 = BigInteger.ONE.shiftLeft(32);
 
-    private static final double TWO_TO_THE_32_AS_A_DOUBLE = 4294967296.0;
+    private static final double TWO_TO_32_AS_DOUBLE = 4294967296.0;
 
-    private static final BigInteger TEN_TO_THE_26 = BigInteger.TEN.pow(26);
+    private static final BigInteger TEN_TO_26 = BigInteger.TEN.pow(26);
 
     private static final BigInteger FIVE = BigInteger.valueOf(5);
 
-    static final int THE_SMALLEST_EXPONENT = -128;
+    static final int SMALLEST_EXPONENT = -128;
 
-    static final int THE_LARGEST_EXPONENT = 127;
+    static final int LARGEST_EXPONENT = 127;
 
     static final int EXACT = 0;
 
@@ -25,9 +25,9 @@ final class DeciSignificands {
 
     static final int MORE_THAN_HALF = 3;
 
-    private static final int AN_EXPONENT_PAST_ANY_REACH = 281;
+    private static final int EXPONENT_PAST_ANY_REACH = 281;
 
-    private static final int WHERE_AN_UNREACHABLE_EXPONENT_IS_PUT = -282;
+    private static final int WHERE_UNREACHABLE_EXPONENT_IS_PUT = -282;
 
     private static final int BELOW_THIS_NOTHING_IS_LEFT = -154;
 
@@ -66,25 +66,25 @@ final class DeciSignificands {
                 : shifted.value();
     }
 
-    double asTheCDoubleOf(BigInteger value, int words) {
+    double asDoubleFromWords(BigInteger value, int words) {
         double built = 0;
         for (int word = words - 1; word >= 0; word--) {
-            built = built * TWO_TO_THE_32_AS_A_DOUBLE
-                    + value.shiftRight(32 * word).mod(TWO_TO_THE_32).doubleValue();
+            built = built * TWO_TO_32_AS_DOUBLE
+                    + value.shiftRight(32 * word).mod(TWO_TO_32).doubleValue();
         }
         return built;
     }
 
     int measureMaxShiftLeft(BigInteger value) {
-        int digits = (int) (Math.log10(asTheCDoubleOf(value, 3)) + 0.5);
+        int digits = (int) (Math.log10(asDoubleFromWords(value, 3)) + 0.5);
         return BigInteger.TEN.pow(digits).compareTo(value) <= 0 ? 25 - digits : 26 - digits;
     }
 
     int measureMinShiftRight(BigInteger value) {
-        if (value.compareTo(TEN_TO_THE_26) < 0) {
+        if (value.compareTo(TEN_TO_26) < 0) {
             return 0;
         }
-        int digits = (int) (Math.log10(asTheCDoubleOf(value, 6)) + 0.5);
+        int digits = (int) (Math.log10(asDoubleFromWords(value, 6)) + 0.5);
         if (digits == 26) {
             return 1;
         }
@@ -98,27 +98,27 @@ final class DeciSignificands {
         if (significand.signum() == 0) {
             return new Scaled(BigInteger.ZERO, 0);
         }
-        if (power >= AN_EXPONENT_PAST_ANY_REACH) {
+        if (power >= EXPONENT_PAST_ANY_REACH) {
             throw Raised.of(EvaluationFailure.OVERFLOW);
         }
-        int raised = exponent + (power < -AN_EXPONENT_PAST_ANY_REACH
-                ? WHERE_AN_UNREACHABLE_EXPONENT_IS_PUT
+        int raised = exponent + (power < -EXPONENT_PAST_ANY_REACH
+                ? WHERE_UNREACHABLE_EXPONENT_IS_PUT
                 : power);
-        if (raised < THE_SMALLEST_EXPONENT) {
+        if (raised < SMALLEST_EXPONENT) {
             if (raised < BELOW_THIS_NOTHING_IS_LEFT) {
                 return new Scaled(BigInteger.ZERO, 0);
             }
             return new Scaled(roundUpWhenTheTruncationSays(
-                    shiftRight(significand, THE_SMALLEST_EXPONENT - raised, truncation)),
-                    THE_SMALLEST_EXPONENT);
+                    shiftRight(significand, SMALLEST_EXPONENT - raised, truncation)),
+                    SMALLEST_EXPONENT);
         }
-        if (raised > THE_LARGEST_EXPONENT) {
+        if (raised > LARGEST_EXPONENT) {
             if (raised >= AT_THIS_NOTHING_FITS
                     || BigInteger.TEN.pow(AT_THIS_NOTHING_FITS - raised).compareTo(significand) <= 0) {
                 throw Raised.of(EvaluationFailure.OVERFLOW);
             }
-            return new Scaled(significand.multiply(BigInteger.TEN.pow(raised - THE_LARGEST_EXPONENT)),
-                    THE_LARGEST_EXPONENT);
+            return new Scaled(significand.multiply(BigInteger.TEN.pow(raised - LARGEST_EXPONENT)),
+                    LARGEST_EXPONENT);
         }
         return new Scaled(significand, raised);
     }

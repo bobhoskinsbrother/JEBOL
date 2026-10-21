@@ -8,7 +8,7 @@ record WrittenText(String text) {
 
     private static final char ASCII_ENDS_AT = 127;
 
-    private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
+    private static final int LONGEST_TIME_STRING_MAY_SPELL = 30;
 
     String findOneNumberIn(int mostCharacters) {
         int start = findFirstNonSpace();
@@ -83,7 +83,7 @@ record WrittenText(String text) {
         if (to == from) {
             throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
-        if (to - from > LONGEST_TIME_A_STRING_MAY_SPELL) {
+        if (to - from > LONGEST_TIME_STRING_MAY_SPELL) {
             throw Raised.of(EvaluationFailure.TOO_LONG);
         }
         if (hasAnythingButSpacesAndTabsFrom(to)) {

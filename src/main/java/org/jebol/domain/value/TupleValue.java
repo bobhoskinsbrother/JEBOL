@@ -37,7 +37,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
 
     public static final int MAXIMUM_SEGMENTS = 12;
 
-    private static final int HEX_DIGITS_A_SEGMENT = 2;
+    private static final int HEX_DIGITS_SEGMENT = 2;
 
     @Override
     public String writeInHex(HexWidth width) {
@@ -48,7 +48,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         for (int padded = segments.length; padded < MINIMUM_SHOWN_SEGMENTS; padded++) {
             hex.append("00");
         }
-        return width.keepFromLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
+        return width.keepFromLeft(hex.toString(), HEX_DIGITS_SEGMENT * segments.length);
     }
 
     public TupleValue {
@@ -201,7 +201,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
         int[] octets = padOctetsToTwelve();
-        octets[position - 1] = (int) Math.max(0, Math.min(TupleDatatype.THE_LARGEST_OCTET, amount));
+        octets[position - 1] = (int) Math.max(0, Math.min(TupleDatatype.LARGEST_OCTET, amount));
         int kept = position > shownCount() ? position : segmentCount();
         return TupleValue.of(Arrays.copyOf(octets, kept));
     }
@@ -260,7 +260,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
 
     private static final class TupleDatatype extends ScalarDatatype {
 
-        private static final int THE_LARGEST_OCTET = 255;
+        private static final int LARGEST_OCTET = 255;
 
         TupleDatatype() {
             super("tuple");
@@ -298,7 +298,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
                         * (fractional.quantity() < 0 ? -1 : 1);
                 default -> throw refuse(whole);
             };
-            if (number < 0 || number > THE_LARGEST_OCTET) {
+            if (number < 0 || number > LARGEST_OCTET) {
                 throw refuse(whole);
             }
             return (int) number;
@@ -347,7 +347,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
                 } catch (NumberFormatException notANumber) {
                     throw refuse(original);
                 }
-                if (written < 0 || written > THE_LARGEST_OCTET) {
+                if (written < 0 || written > LARGEST_OCTET) {
                     throw refuse(original);
                 }
                 octets[at] = written;

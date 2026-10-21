@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 public final class EmailValue extends AnyStringValue {
 
-    private static final char SEPARATES_THE_USER_FROM_THE_HOST = '@';
+    private static final char SEPARATES_USER_FROM_HOST = '@';
 
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("email") {
 
@@ -33,7 +33,7 @@ public final class EmailValue extends AnyStringValue {
             String host = written.subList(1, written.size()).stream()
                     .map(Molder::form)
                     .collect(Collectors.joining("."));
-            return EmailValue.of(user + SEPARATES_THE_USER_FROM_THE_HOST + host);
+            return EmailValue.of(user + SEPARATES_USER_FROM_HOST + host);
         }
     };
 
@@ -57,32 +57,32 @@ public final class EmailValue extends AnyStringValue {
 
     @Override
     public String mold() {
-        return moldUnlessItFailsToReadBack(SEPARATES_THE_USER_FROM_THE_HOST);
+        return moldUnlessItFailsToReadBack(SEPARATES_USER_FROM_HOST);
     }
 
     public Value user() {
         String whole = head().text();
-        int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
+        int at = whole.indexOf(SEPARATES_USER_FROM_HOST);
         return StringValue.of(at < 0 ? whole : whole.substring(0, at));
     }
 
     public Value host() {
         String whole = head().text();
-        int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
+        int at = whole.indexOf(SEPARATES_USER_FROM_HOST);
         return at < 0 ? NoneValue.none() : StringValue.of(whole.substring(at + 1));
     }
 
     public void rewriteUserAs(String replacement) {
         String whole = text();
-        int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
+        int at = whole.indexOf(SEPARATES_USER_FROM_HOST);
         replaceEverythingWith(replacement + (at < 0 ? "" : whole.substring(at)));
     }
 
     public void rewriteHostAs(String replacement) {
         String whole = text();
-        int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
+        int at = whole.indexOf(SEPARATES_USER_FROM_HOST);
         replaceEverythingWith(at < 0
-                ? whole + SEPARATES_THE_USER_FROM_THE_HOST + replacement
+                ? whole + SEPARATES_USER_FROM_HOST + replacement
                 : whole.substring(0, at + 1) + replacement);
     }
 

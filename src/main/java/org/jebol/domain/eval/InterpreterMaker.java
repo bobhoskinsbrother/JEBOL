@@ -126,7 +126,7 @@ public final class InterpreterMaker implements Maker {
         Optional<AnyBlockValue> newSpecification = first instanceof AnyBlockValue given
                 ? Optional.of(given)
                 : Optional.empty();
-        if (newSpecification.isEmpty() && !isTheStarThatMeansKeepIt(first)) {
+        if (newSpecification.isEmpty() && !isWildcard(first)) {
             throw prototype.refuseAsPrototypeFor(spec);
         }
         Optional<Value> newBody = parts.size() > 1 ? Optional.of(parts.get(1)) : Optional.empty();
@@ -191,7 +191,7 @@ public final class InterpreterMaker implements Maker {
                 : BlockValue.of(List.of());
     }
 
-    private boolean isTheStarThatMeansKeepIt(Value first) {
+    private boolean isWildcard(Value first) {
         return first instanceof AnyWordValue star && star.canonical().equals("*");
     }
 

@@ -114,9 +114,14 @@ def suggestion_for(name):
         return "_".join(kept) + (" [review]" if needs_review else "")
     words = words_of(name)
     kept = [word for word in words if word not in ("A", "An", "The")]
-    if kept == words:
+    lowercase_article = len(words) > 1 and words[0] in ("a", "an", "the")
+    if kept == words and not lowercase_article:
         return None
-    tightened = "".join(kept)
+    if lowercase_article:
+        remainder = "".join(words[1:])
+        tightened = remainder[0].lower() + remainder[1:]
+    else:
+        tightened = "".join(kept)
     needs_review = "Of" in tightened or any(word in CLAUSE_WORDS for word in kept)
     return tightened + (" [review]" if needs_review else "")
 

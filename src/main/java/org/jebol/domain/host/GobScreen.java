@@ -66,7 +66,7 @@ public abstract class GobScreen implements ScreenPort {
             return;
         }
         if (gob.sharesStorageWith(root)) {
-            closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt();
+            synchroniseWindowsWithPane();
             return;
         }
         if (isInRootsPane(gob)) {
@@ -94,7 +94,7 @@ public abstract class GobScreen implements ScreenPort {
         return gobWithWindow().stream().anyMatch(gob::sharesStorageWith);
     }
 
-    private void closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt() {
+    private void synchroniseWindowsWithPane() {
         for (GobValue standing : List.copyOf(gobWithWindow())) {
             if (!isInRootsPane(standing)) {
                 closeWindowFor(standing);

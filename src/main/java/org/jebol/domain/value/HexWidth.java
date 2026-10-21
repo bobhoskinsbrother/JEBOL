@@ -4,7 +4,7 @@ import java.util.OptionalLong;
 
 public record HexWidth(OptionalLong asked) {
 
-    private static final int THE_WIDEST_A_NUMBER_IS_WRITTEN = 16;
+    private static final int WIDEST_NUMBER_IS_WRITTEN = 16;
 
     private static final long THE_WIDEST_THAT_CAN_BE_ASKED = 0xFFFFFFFFL;
 
@@ -19,7 +19,7 @@ public record HexWidth(OptionalLong asked) {
     String keepSixteenDigitsToRight(long number, int whenNoWidthIsAsked) {
         String hex = "%016X".formatted(number);
         int kept = asked.isPresent()
-                ? (int) Math.min(asked.getAsLong(), THE_WIDEST_A_NUMBER_IS_WRITTEN)
+                ? (int) Math.min(asked.getAsLong(), WIDEST_NUMBER_IS_WRITTEN)
                 : whenNoWidthIsAsked;
         return hex.substring(Math.max(0, hex.length() - kept));
     }

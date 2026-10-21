@@ -35,7 +35,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     public abstract static class AnyBlockDatatype extends PositionedSeriesDatatype {
 
-        private static final int BYTES_A_SLOT_TAKES = 32;
+        private static final int BYTES_SLOT_TAKES = 32;
 
         AnyBlockDatatype(String spelling) {
             super(spelling);
@@ -57,7 +57,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
         @Override
         protected int bytesItemTakes() {
-            return BYTES_A_SLOT_TAKES;
+            return BYTES_SLOT_TAKES;
         }
 
         @Override

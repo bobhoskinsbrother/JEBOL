@@ -25,7 +25,7 @@ public final class SymbolTable {
 
     public void useBootSymbols(String source) {
         for (String spelling : source.strip().split(ALL_THAT_SEPARATES_THE_SYMBOLS)) {
-            findTheCanonOf(spelling);
+            canonicalIndexFor(spelling);
         }
     }
 
@@ -33,7 +33,7 @@ public final class SymbolTable {
         countingWhatTheSessionReads = true;
     }
 
-    public int findTheCanonOf(String spelling) {
+    public int canonicalIndexFor(String spelling) {
         Integer known = indexBySpelling.get(spelling);
         if (known != null) {
             return canonByIndex.get(known);
@@ -53,7 +53,7 @@ public final class SymbolTable {
 
     private void internEveryWordIn(Value read) {
         switch (read) {
-            case AnyWordValue word -> findTheCanonOf(word.spelling());
+            case AnyWordValue word -> canonicalIndexFor(word.spelling());
             case AnyBlockValue block -> block.remaining().forEach(this::internEveryWordIn);
             case MapValue map -> map.listTheItems().forEach(this::internEveryWordIn);
             default -> addNoWord();

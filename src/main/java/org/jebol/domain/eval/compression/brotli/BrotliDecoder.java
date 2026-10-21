@@ -43,10 +43,10 @@ final class BrotliDecoder {
             {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 24};
     private static final int[] CELL_POSITION = {0, 1, 0, 1, 8, 9, 2, 16, 10, 17, 18};
 
-    private static final int[] INSERT_LENGTH_OFFSET = computeTheLengthOffsets(0, INSERT_LENGTH_EXTRA_BITS);
-    private static final int[] COPY_LENGTH_OFFSET = computeTheLengthOffsets(2, COPY_LENGTH_EXTRA_BITS);
+    private static final int[] INSERT_LENGTH_OFFSET = lengthOffsets(0, INSERT_LENGTH_EXTRA_BITS);
+    private static final int[] COPY_LENGTH_OFFSET = lengthOffsets(2, COPY_LENGTH_EXTRA_BITS);
 
-    private static int[] computeTheLengthOffsets(int first, int[] extraBits) {
+    private static int[] lengthOffsets(int first, int[] extraBits) {
         int[] offsets = new int[extraBits.length];
         offsets[0] = first;
         for (int each = 0; each + 1 < offsets.length; each++) {

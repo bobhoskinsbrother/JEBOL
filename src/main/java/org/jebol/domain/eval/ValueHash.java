@@ -62,7 +62,7 @@ public final class ValueHash {
 
     private int hash(Value value) {
         return switch (value) {
-            case AnyWordValue word -> symbols.findTheCanonOf(word.spelling());
+            case AnyWordValue word -> symbols.canonicalIndexFor(word.spelling());
             case AnyStringValue text -> ofText(text) ^ numberTheTypeOf(text);
             case BinaryValue bytes -> hashWithMurmur(bytes.octetsFromHere());
             case AnyBlockValue block -> ofBlock(block);
@@ -77,7 +77,7 @@ public final class ValueHash {
             case TupleValue tuple -> ofTuple(tuple.segments());
             case PairValue pair -> Float.floatToRawIntBits((float) pair.x())
                     ^ Float.floatToRawIntBits((float) pair.y());
-            case Datatype datatype -> computeTheCrcOfAWord(datatype.literalSpelling());
+            case Datatype datatype -> crcForWord(datatype.literalSpelling());
             default -> mixFinally(numberTheTypeOf(value));
         };
     }
@@ -188,7 +188,7 @@ public final class ValueHash {
         return mixed ^ (mixed >>> 16);
     }
 
-    private int computeTheCrcOfAWord(String spelling) {
+    private int crcForWord(String spelling) {
         byte[] bytes = spelling.getBytes(StandardCharsets.UTF_8);
         int hash = bytes.length + (UnicodeCases.TABLES.toLower(bytes[0] & 0xFF) & 0xFF);
         for (int character : spelling.codePoints().toArray()) {

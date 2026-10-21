@@ -78,7 +78,7 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
         TextRun written = writeForTheText(
                 "font (make object! [name: {Arial} size: _ color: _]) {x}").getFirst().runs().getFirst();
 
-        assertThat(written.size()).isEqualTo(PaintInstruction.Writing.THE_ORDINARY_SIZE);
+        assertThat(written.size()).isEqualTo(PaintInstruction.Writing.ORDINARY_SIZE);
         assertThat(written.colour()).isEqualTo(Colour.BLACK);
     }
 

@@ -75,7 +75,7 @@ final class BrotliRingBuffer {
                 Math.min(howMany, tailSize - writingAt));
     }
 
-    void clearWhatTheHashesWouldReadPastTheEnd() {
+    void clearSlackForHashing() {
         if (hasFinishedFirstLap()) {
             return;
         }

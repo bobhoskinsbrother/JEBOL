@@ -5,7 +5,7 @@ import java.util.List;
 
 public final class TextLines {
 
-    private static final int A_NEWLINE = '\n';
+    private static final int NEWLINE = '\n';
 
     public record RunAndCharacter(int run, int character) {
 
@@ -66,7 +66,7 @@ public final class TextLines {
     }
 
     public double findTheTopOfLine(int index, TextLayout layout, Placement box) {
-        double top = layout.findWhereTheStackStarts(box, tallness());
+        double top = layout.stackStartDown(box, tallness());
         for (int above = 0; above < index; above++) {
             top += lines.get(above).high();
         }
@@ -74,12 +74,12 @@ public final class TextLines {
     }
 
     public double startOfLine(int index, TextLayout layout, Placement box) {
-        return layout.findWhereALineStarts(box, lines.get(index).wide());
+        return layout.lineStartAcross(box, lines.get(index).wide());
     }
 
-    public CaretPlace findWhereTheCaretIs(int run, int character, TextLayout layout, Placement box) {
+    public CaretPlace caretPlace(int run, int character, TextLayout layout, Placement box) {
         if (lines.isEmpty()) {
-            return new CaretPlace(layout.findWhereALineStarts(box, 0), layout.findWhereTheStackStarts(box, 0), 0);
+            return new CaretPlace(layout.lineStartAcross(box, 0), layout.stackStartDown(box, 0), 0);
         }
         RunAndCharacter caret = holdWithinText(run, character);
         for (int index = lines.size() - 1; index >= 0; index--) {
@@ -154,10 +154,10 @@ public final class TextLines {
 
     private record Letter(int run, int character, int codePoint) {
 
-        private static final int STANDS_FOR_AN_EMPTY_PIECE = -1;
+        private static final int STANDS_FOR_EMPTY_PIECE = -1;
 
         boolean standsForEmptyPiece() {
-            return codePoint == STANDS_FOR_AN_EMPTY_PIECE;
+            return codePoint == STANDS_FOR_EMPTY_PIECE;
         }
 
         boolean isASpace() {
@@ -182,9 +182,9 @@ public final class TextLines {
         int lineStart = 0;
         int at = 0;
         while (at < letters.size()) {
-            int wordEnd = findTheEndOfTheWordFrom(letters, at);
+            int wordEnd = wordEndFrom(letters, at);
             if (fits(letters.subList(lineStart, wordEnd))) {
-                at = findTheEndOfTheSpacesFrom(letters, wordEnd);
+                at = spaceRunEndFrom(letters, wordEnd);
             } else if (at > lineStart) {
                 broken.add(makeALineOfTheLetters(letters.subList(lineStart, at)));
                 lineStart = at;
@@ -205,7 +205,7 @@ public final class TextLines {
         List<Letter> letters = new ArrayList<>();
         for (Piece piece : pieces) {
             if (piece.text().isEmpty()) {
-                letters.add(new Letter(piece.run(), piece.from(), Letter.STANDS_FOR_AN_EMPTY_PIECE));
+                letters.add(new Letter(piece.run(), piece.from(), Letter.STANDS_FOR_EMPTY_PIECE));
             }
             int[] characters = piece.text().codePoints().toArray();
             for (int index = 0; index < characters.length; index++) {
@@ -215,7 +215,7 @@ public final class TextLines {
         return letters;
     }
 
-    private int findTheEndOfTheWordFrom(List<Letter> letters, int from) {
+    private int wordEndFrom(List<Letter> letters, int from) {
         int end = from;
         while (end < letters.size() && !letters.get(end).isASpace()) {
             end++;
@@ -223,7 +223,7 @@ public final class TextLines {
         return end;
     }
 
-    private int findTheEndOfTheSpacesFrom(List<Letter> letters, int from) {
+    private int spaceRunEndFrom(List<Letter> letters, int from) {
         int end = from;
         while (end < letters.size() && letters.get(end).isASpace()) {
             end++;
@@ -274,7 +274,7 @@ public final class TextLines {
         Letter first = letters.getFirst();
         int[] characters = letters.stream()
                 .mapToInt(Letter::codePoint)
-                .filter(codePoint -> codePoint != Letter.STANDS_FOR_AN_EMPTY_PIECE)
+                .filter(codePoint -> codePoint != Letter.STANDS_FOR_EMPTY_PIECE)
                 .toArray();
         return makePiece(first.run(), first.character(), new String(characters, 0, characters.length),
                 runs.get(first.run()));
@@ -289,7 +289,7 @@ public final class TextLines {
             int from = 0;
             for (int at = 0; at <= characters.length; at++) {
                 boolean endsTheRun = at == characters.length;
-                if (endsTheRun || characters[at] == A_NEWLINE) {
+                if (endsTheRun || characters[at] == NEWLINE) {
                     current.add(makePiece(run, from, new String(characters, from, at - from), font));
                     if (!endsTheRun) {
                         laid.add(current);

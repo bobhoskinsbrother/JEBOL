@@ -23,7 +23,7 @@ public abstract class SteppingThroughNative extends LoopingNative {
         if (step < 0 && start.index() > start.storageLength()) {
             slot.setValue(start.atIndex(start.storageLength() + 1 + step));
         }
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = walkFrom(evaluator, slot, start.datatype(), step, body);
             slot.setValue(start);
             return last;

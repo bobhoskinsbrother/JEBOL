@@ -10,17 +10,17 @@ import static org.jebol.domain.value.DeciSignificands.EXACT;
 import static org.jebol.domain.value.DeciSignificands.EXACTLY_HALF;
 import static org.jebol.domain.value.DeciSignificands.LESS_THAN_HALF;
 import static org.jebol.domain.value.DeciSignificands.MORE_THAN_HALF;
-import static org.jebol.domain.value.DeciSignificands.THE_SMALLEST_EXPONENT;
+import static org.jebol.domain.value.DeciSignificands.SMALLEST_EXPONENT;
 
 public final class DeciReading {
 
     private static final DeciSignificands SIGNIFICANDS = new DeciSignificands();
 
-    private static final BigInteger TEN_TO_THE_25 = BigInteger.TEN.pow(25);
+    private static final BigInteger TEN_TO_25 = BigInteger.TEN.pow(25);
 
-    private static final BigInteger THE_LARGEST_SIGNIFICAND = BigInteger.TEN.pow(26).subtract(BigInteger.ONE);
+    private static final BigInteger LARGEST_SIGNIFICAND = BigInteger.TEN.pow(26).subtract(BigInteger.ONE);
 
-    private static final int THE_LARGEST_EXPONENT_WRITTEN = 200_000_000;
+    private static final int LARGEST_EXPONENT_WRITTEN = 200_000_000;
 
     private final String text;
 
@@ -68,7 +68,7 @@ public final class DeciReading {
             char here = readCharacterAt(at);
             if (isDigit(here)) {
                 int digit = here - '0';
-                if (significand.compareTo(TEN_TO_THE_25) < 0) {
+                if (significand.compareTo(TEN_TO_25) < 0) {
                     significand = significand.multiply(BigInteger.TEN).add(BigInteger.valueOf(digit));
                     if (pointSeen) {
                         shifted--;
@@ -103,8 +103,8 @@ public final class DeciReading {
         }
         int exponent = readExponent();
         exponent += shifted;
-        if (SIGNIFICANDS.roundsTruncationUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
-            if (significand.compareTo(THE_LARGEST_SIGNIFICAND) < 0) {
+        if (SIGNIFICANDS.roundsTruncationUp(truncation, significand) && exponent >= SMALLEST_EXPONENT) {
+            if (significand.compareTo(LARGEST_SIGNIFICAND) < 0) {
                 significand = significand.add(BigInteger.ONE);
             } else {
                 Shifted oneOff = SIGNIFICANDS.shiftRight(significand, 1, truncation);
@@ -132,11 +132,11 @@ public final class DeciReading {
         int exponent = 0;
         while (isDigit(readCharacterAt(at))) {
             exponent = exponent * 10 + (readCharacterAt(at) - '0');
-            if (exponent > THE_LARGEST_EXPONENT_WRITTEN) {
+            if (exponent > LARGEST_EXPONENT_WRITTEN) {
                 if (sign == 1) {
                     throw Raised.of(EvaluationFailure.OVERFLOW);
                 }
-                exponent = THE_LARGEST_EXPONENT_WRITTEN;
+                exponent = LARGEST_EXPONENT_WRITTEN;
             }
             at++;
         }

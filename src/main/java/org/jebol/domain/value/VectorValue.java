@@ -56,10 +56,10 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     @Override
     public Value copy(boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirst(lengthFromHere());
+        return copyFirst(lengthFromHere());
     }
 
-    public VectorValue copyOfTheFirst(int howMany) {
+    public VectorValue copyFirst(int howMany) {
         VectorStorage made = new VectorStorage(kind(), 0);
         for (int at = 0; at < howMany; at++) {
             made.append(storage.at(index + at));
@@ -108,7 +108,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     @Override
     public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirst(howMany);
+        return copyFirst(howMany);
     }
 
     @Override
@@ -152,7 +152,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     private static final class VectorDatatype extends SeriesDatatype {
 
-        private static final int BYTES_A_VECTORS_NUMBER_TAKES = 4;
+        private static final int BYTES_VECTORS_NUMBER_TAKES = 4;
 
         VectorDatatype() {
             super("vector");
@@ -164,7 +164,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
                 case IntegerValue(long magnitude) -> ofSize(spec, magnitude);
                 case DecimalValue number -> ofSize(spec, (long) number.quantity());
                 case BinaryValue bytes -> VectorSpec.ofOctets(bytes);
-                case VectorValue already -> already.copyOfTheFirst(already.lengthFromHere());
+                case VectorValue already -> already.copyFirst(already.lengthFromHere());
                 case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::readSimpleValue)
                         .<Value>map(made -> made)
                         .orElseThrow(() -> refuse(spec));
@@ -173,7 +173,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         }
 
         private Value ofSize(Value spec, long howMany) {
-            refuseMoreRoomThanFits(howMany, BYTES_A_VECTORS_NUMBER_TAKES);
+            refuseMoreRoomThanFits(howMany, BYTES_VECTORS_NUMBER_TAKES);
             if (howMany < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(spec));
             }

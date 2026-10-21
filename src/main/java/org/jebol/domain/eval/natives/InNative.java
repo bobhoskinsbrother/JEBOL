@@ -29,7 +29,7 @@ public class InNative extends DefaultNative {
                     && !(searched instanceof PathValue)) {
                 return findFirstHolderIn(searched, arguments.get(1), evaluator, context);
             }
-            Context frame = findTheContextOf(arguments.getFirst());
+            Context frame = contextFrom(arguments.getFirst());
             if (arguments.get(1) instanceof AnyBlockValue body) {
                 return Binder.bindInPlace(body, frame);
             }
@@ -38,7 +38,7 @@ public class InNative extends DefaultNative {
         };
     }
 
-    private Context findTheContextOf(Value value) {
+    private Context contextFrom(Value value) {
         return switch (value) {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();

@@ -51,20 +51,20 @@ public final class DefaultFontRenderer {
         String text = run.text();
         for (int at = 0; at < text.length(); ) {
             int character = text.codePointAt(at);
-            wide += advances[findTheGlyphOf(character)];
+            wide += advances[glyphFor(character)];
             at += Character.charCount(character);
         }
         return new TextExtent(wide * scale, ascender * scale, -descender * scale);
     }
 
-    private int findTheGlyphOf(int character) {
+    private int glyphFor(int character) {
         int glyph = characters.findGlyphFor(character);
         return glyph >= 0 && glyph < advances.length ? glyph : 0;
     }
 
     private static int[] advancesOf(Tables tables, int metrics, int glyphs) {
         int[] advances = new int[Math.max(1, glyphs)];
-        int at = tables.findTheOffset("hmtx");
+        int at = tables.tableStart("hmtx");
         int last = 0;
         for (int glyph = 0; glyph < advances.length; glyph++) {
             if (glyph < metrics) {
@@ -76,7 +76,7 @@ public final class DefaultFontRenderer {
     }
 
     private static String readTheFamilyOf(Tables tables) {
-        int at = tables.findTheOffset("name");
+        int at = tables.tableStart("name");
         int count = tables.readUint16(at, 2);
         int storage = at + tables.readUint16(at, 4);
         String found = "";
@@ -103,7 +103,7 @@ public final class DefaultFontRenderer {
         int findGlyphFor(int character);
 
         static ReadingOfCharacters readFrom(Tables tables) {
-            int at = tables.findTheOffset("cmap");
+            int at = tables.tableStart("cmap");
             int count = tables.readUint16(at, 2);
             for (int wanted : new int[] {12, 4}) {
                 for (int record = 0; record < count; record++) {
@@ -232,7 +232,7 @@ public final class DefaultFontRenderer {
             return new Tables(font, found);
         }
 
-        int findTheOffset(String tag) {
+        int tableStart(String tag) {
             int[] found = where.get(tag);
             if (found == null) {
                 throw new IllegalArgumentException("the font has no " + tag + " table");
@@ -241,11 +241,11 @@ public final class DefaultFontRenderer {
         }
 
         int readUint16(String tag, int at) {
-            return readUint16(findTheOffset(tag), at);
+            return readUint16(tableStart(tag), at);
         }
 
         int readInt16(String tag, int at) {
-            return readInt16(findTheOffset(tag), at);
+            return readInt16(tableStart(tag), at);
         }
 
         int readUint16(int base, int at) {

@@ -93,7 +93,7 @@ public final class ErrorCatalogue {
     }
 
     /** The code a category's first id takes. */
-    public static int findTheBaseCodeOf(String category) {
+    public static int baseCodeFor(String category) {
         return CODES.getOrDefault(asListedHereWithoutMindingCase(category), 0);
     }
 
@@ -116,11 +116,11 @@ public final class ErrorCatalogue {
      * The number R3 gives an error of this category and id, or the
      * category's base when the id is not one R3 knows.
      */
-    public static final int LOWEST_CODE_AN_ENTRY_HAS = 100;
+    public static final int LOWEST_CODE_ENTRY_HAS = 100;
 
     public static int findCodeFor(String category, String errorId) {
         int at = listTheIdsIn(category).indexOf(errorId);
-        return at < 0 ? findTheBaseCodeOf(category) : findTheBaseCodeOf(category) + at;
+        return at < 0 ? baseCodeFor(category) : baseCodeFor(category) + at;
     }
 
 }

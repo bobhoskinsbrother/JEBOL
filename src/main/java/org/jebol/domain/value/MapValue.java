@@ -299,7 +299,7 @@ public final class MapValue implements Value, PathTarget {
 
     private static final class MapDatatype extends Datatype {
 
-        private static final int BYTES_A_SLOT_TAKES = 32;
+        private static final int BYTES_SLOT_TAKES = 32;
 
         MapDatatype() {
             super("map");
@@ -326,7 +326,7 @@ public final class MapValue implements Value, PathTarget {
             if (asked < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
             }
-            refuseMoreRoomThanFits(asked, BYTES_A_SLOT_TAKES);
+            refuseMoreRoomThanFits(asked, BYTES_SLOT_TAKES);
             return MapValue.empty();
         }
 

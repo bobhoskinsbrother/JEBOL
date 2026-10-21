@@ -20,7 +20,7 @@ import java.util.List;
 public record TaskValue(Context context, AnyBlockValue body) implements Value, PathTargetWithFields {
 
     /** The five names a task's header always has, in the order it has them. */
-    public static final List<String> THE_FIELDS_A_TASK_HAS =
+    public static final List<String> FIELDS_TASK_HAS =
             List.of("title", "header", "parent", "path", "args");
 
     public TaskValue {
@@ -35,7 +35,7 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value, P
     /** A task whose header holds nothing, which is what an empty spec gives. */
     public static TaskValue run(AnyBlockValue body) {
         Context header = Context.root();
-        THE_FIELDS_A_TASK_HAS.forEach(name -> header.register(name, NoneValue.none()));
+        FIELDS_TASK_HAS.forEach(name -> header.register(name, NoneValue.none()));
         return new TaskValue(header, body);
     }
 

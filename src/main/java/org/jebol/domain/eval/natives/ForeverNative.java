@@ -22,7 +22,7 @@ public class ForeverNative extends LoopingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue body = (AnyBlockValue) arguments.getFirst();
-            return answerOfTheLoop(() -> {
+            return runLoop(() -> {
                 while (true) {
                     runOneRoundCatchingContinue(evaluator, body, context);
                 }

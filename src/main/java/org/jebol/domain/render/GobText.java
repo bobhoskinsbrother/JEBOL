@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public final class GobText {
 
-    private static final int A_PLAIN_STRINGS_PLACE = 1;
+    private static final int PLAIN_STRINGS_PLACE = 1;
 
     private final GobValue gob;
     private final RichText.Line line;
@@ -33,8 +33,8 @@ public final class GobText {
             case STRING -> written.storage().readContentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue plain
                     ? new RichText.Line(
                             List.of(new TextRun(plain.text(), Colour.BLACK,
-                                    PaintInstruction.Writing.THE_ORDINARY_SIZE, false, false)),
-                            List.of(A_PLAIN_STRINGS_PLACE), TextLayout.STANDARD, TextCaret.NONE)
+                                    PaintInstruction.Writing.ORDINARY_SIZE, false, false)),
+                            List.of(PLAIN_STRINGS_PLACE), TextLayout.STANDARD, TextCaret.NONE)
                     : writeNothing();
             default -> writeNothing();
         };

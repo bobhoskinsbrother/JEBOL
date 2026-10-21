@@ -99,10 +99,10 @@ final class LazyParser extends DeflateParser {
 
     private boolean isBetterBy(int nextLength, int nextOffset, int currentLength, int currentOffset, int gain) {
         return nextLength >= currentLength
-                && 4 * (nextLength - currentLength) + (findTheHighestBitOf(currentOffset) - findTheHighestBitOf(nextOffset)) > gain;
+                && 4 * (nextLength - currentLength) + (highestSetBit(currentOffset) - highestSetBit(nextOffset)) > gain;
     }
 
-    private int findTheHighestBitOf(int value) {
+    private int highestSetBit(int value) {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 }

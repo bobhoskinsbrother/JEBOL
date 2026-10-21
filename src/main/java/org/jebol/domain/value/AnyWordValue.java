@@ -46,7 +46,7 @@ public abstract sealed class AnyWordValue implements Value
 
         private static final String THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE = "!%&*+-./<=>?^`|~";
 
-        private static final int THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER = 128;
+        private static final int FIRST_CODE_POINT_SCANNER_TAKES_FOR_LETTER = 128;
 
         AnyWordDatatype(String spelling) {
             super(spelling);
@@ -102,7 +102,7 @@ public abstract sealed class AnyWordValue implements Value
         }
 
         private boolean spellsWordAlone(int codepoint) {
-            return codepoint >= THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER
+            return codepoint >= FIRST_CODE_POINT_SCANNER_TAKES_FOR_LETTER
                     || Character.isLetter(codepoint)
                     || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
         }

@@ -19,8 +19,8 @@ import java.util.function.UnaryOperator;
 public final class VectorSpec {
 
     private static final VectorKind WHEN_NOTHING_SAYS_OTHERWISE = VectorKind.INT32;
-    private static final VectorKind THE_WIDEST_WHOLE_NUMBER = VectorKind.INT64;
-    private static final VectorKind THE_WIDEST_DECIMAL = VectorKind.FLOAT64;
+    private static final VectorKind WIDEST_WHOLE_NUMBER = VectorKind.INT64;
+    private static final VectorKind WIDEST_DECIMAL = VectorKind.FLOAT64;
 
     private VectorSpec() {
     }
@@ -66,8 +66,8 @@ public final class VectorSpec {
         if (leading instanceof IntegerValue || leading instanceof AnyDecimalValue) {
             return fillLeavingZeros(
                     leading instanceof IntegerValue
-                    ? THE_WIDEST_WHOLE_NUMBER
-                    : THE_WIDEST_DECIMAL, parts.size(), BlockValue.of(parts), 1);
+                    ? WIDEST_WHOLE_NUMBER
+                    : WIDEST_DECIMAL, parts.size(), BlockValue.of(parts), 1);
         }
         if (!(leading instanceof AnyWordValue word)) {
             return Optional.empty();

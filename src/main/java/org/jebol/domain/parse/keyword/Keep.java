@@ -61,9 +61,7 @@ final class Keep extends DeclaredKeyword {
         return 1 + walk.ruleSpan(rules, at + 1);
     }
 
-    private static int keepWhatTheRuleMatched(
-            ParseWalk walk, List<Value> rules, int at) {
-
+    private static int keepWhatTheRuleMatched(ParseWalk walk, List<Value> rules, int at) {
         int before = walk.position();
         if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);

@@ -21,7 +21,7 @@ public final class Codecs {
 
         public enum Kind { ERROR, CHECK, BINARY, TEXT, IMAGE, SOUND, BLOCK, STRING }
 
-        static Answer checkWhoseErrorCodeIsTheInvertedResult(int error) {
+        static Answer checkAnswer(int error) {
             return new Answer(Kind.CHECK, LogicValue.of(error == 0), error);
         }
 
@@ -57,7 +57,7 @@ public final class Codecs {
 
     private Answer handleQoi(Action action, Value data) {
         return switch (action) {
-            case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(
+            case IDENTIFY -> Answer.checkAnswer(
                     Qoi.identifies(readTheBytesOf(data)) ? YES : NO);
             case DECODE -> decodeImageIn(readTheBytesOf(data));
             case ENCODE -> Answer.answerWithBinary(writeBytesBlueFirst((ImageValue) data));
@@ -106,7 +106,7 @@ public final class Codecs {
 
     private Answer text(Action action, Value data) {
         return switch (action) {
-            case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(YES);
+            case IDENTIFY -> Answer.checkAnswer(YES);
             case DECODE -> Answer.string(StringValue.of(
                     encodings.textBehindAnyMark(readTheBytesOf(data))));
             case ENCODE -> Answer.answerWithBinary(BinaryValue.of());
@@ -115,7 +115,7 @@ public final class Codecs {
 
     private Answer handleMarkup(Action action, Value data) {
         return switch (action) {
-            case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(NO);
+            case IDENTIFY -> Answer.checkAnswer(NO);
             case DECODE -> Answer.answerWithBlock(BlockValue.of(
                     parseTheMarkupOf(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
             case ENCODE -> Answer.answerNotAvailable();

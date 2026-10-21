@@ -69,7 +69,7 @@ final class BrotliLiteralCosts {
         return 1 | (NOT_CHARACTER << 8);
     }
 
-    private static int findWhereInACharacter(int previous, int here, int mostAllowed) {
+    private static int utf8PositionBucket(int previous, int here, int mostAllowed) {
         if (here < 128) {
             return 0;
         }
@@ -86,7 +86,7 @@ final class BrotliLiteralCosts {
         int previous = 0;
         for (int each = 0; each < length; each++) {
             int here = data[(from + each) & mask] & 0xFF;
-            counts[findWhereInACharacter(previous, here, 2)]++;
+            counts[utf8PositionBucket(previous, here, 2)]++;
             previous = here;
         }
         return counts[1] + counts[2] < 25 ? 0 : 1;
@@ -109,7 +109,7 @@ final class BrotliLiteralCosts {
             int here = data[(from + each) & mask] & 0xFF;
             histogram[256 * whichHistogram + here]++;
             inWindowOfEachKind[whichHistogram]++;
-            whichHistogram = findWhereInACharacter(previous, here, howManyHistograms);
+            whichHistogram = utf8PositionBucket(previous, here, howManyHistograms);
             previous = here;
         }
 
@@ -119,7 +119,7 @@ final class BrotliLiteralCosts {
                         ? 0 : data[(from + each - windowHalf - 1) & mask] & 0xFF;
                 int beforeThat = each < windowHalf + 2
                         ? 0 : data[(from + each - windowHalf - 2) & mask] & 0xFF;
-                int kind = findWhereInACharacter(beforeThat, leaving, howManyHistograms);
+                int kind = utf8PositionBucket(beforeThat, leaving, howManyHistograms);
                 histogram[256 * kind
                         + (data[(from + each - windowHalf) & mask] & 0xFF)]--;
                 inWindowOfEachKind[kind]--;
@@ -127,14 +127,14 @@ final class BrotliLiteralCosts {
             if (each + windowHalf < length) {
                 int arriving = data[(from + each + windowHalf - 1) & mask] & 0xFF;
                 int beforeThat = data[(from + each + windowHalf - 2) & mask] & 0xFF;
-                int kind = findWhereInACharacter(beforeThat, arriving, howManyHistograms);
+                int kind = utf8PositionBucket(beforeThat, arriving, howManyHistograms);
                 histogram[256 * kind
                         + (data[(from + each + windowHalf) & mask] & 0xFF)]++;
                 inWindowOfEachKind[kind]++;
             }
             int justBefore = each < 1 ? 0 : data[(from + each - 1) & mask] & 0xFF;
             int beforeThat = each < 2 ? 0 : data[(from + each - 2) & mask] & 0xFF;
-            int kind = findWhereInACharacter(beforeThat, justBefore, howManyHistograms);
+            int kind = utf8PositionBucket(beforeThat, justBefore, howManyHistograms);
             int here = data[(from + each) & mask] & 0xFF;
             long seen = histogram[256 * kind + here];
             if (seen == 0) {

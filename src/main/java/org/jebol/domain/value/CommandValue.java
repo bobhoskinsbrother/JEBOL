@@ -28,14 +28,14 @@ public final class CommandValue extends DefaultNative {
 
         private boolean opensWithSpec(AnyBlockValue definition) {
             List<Value> parts = definition.remaining();
-            return parts.size() >= THE_FEWEST_PARTS_A_FUNCTION_IS_MADE_FROM
+            return parts.size() >= FEWEST_PARTS_FUNCTION_IS_MADE_FROM
                     && parts.getFirst() instanceof AnyBlockValue;
         }
     };
 
-    private static final int THE_FEWEST_PARTS_A_FUNCTION_IS_MADE_FROM = 2;
+    private static final int FEWEST_PARTS_FUNCTION_IS_MADE_FROM = 2;
 
-    private static final int THE_MOST_WORDS_A_COMMAND_CARRIES = 15;
+    private static final int MOST_WORDS_COMMAND_CARRIES = 15;
 
     private final List<Parameter> declared;
 
@@ -77,7 +77,7 @@ public final class CommandValue extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (declared.size() > THE_MOST_WORDS_A_COMMAND_CARRIES) {
+            if (declared.size() > MOST_WORDS_COMMAND_CARRIES) {
                 throw Raised.of(EvaluationFailure.BAD_COMMAND);
             }
             return findTheDispatcher()

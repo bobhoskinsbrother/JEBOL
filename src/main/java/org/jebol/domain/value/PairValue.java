@@ -7,7 +7,7 @@ import java.util.function.ToLongFunction;
 
 public record PairValue(double x, double y) implements Value, PathTarget {
 
-    private static final int BITS_IN_A_HALF = 32;
+    private static final int BITS_IN_HALF = 32;
 
     @Override
     public Value randomise(RandomDraw draw) {
@@ -21,7 +21,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return (readTheBitsOfTheHalf(y) << BITS_IN_A_HALF) | readTheBitsOfTheHalf(x);
+        return (readTheBitsOfTheHalf(y) << BITS_IN_HALF) | readTheBitsOfTheHalf(x);
     }
 
     private long readTheBitsOfTheHalf(double half) {
@@ -91,8 +91,8 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     public Value combineBitwise(Value right, BitwiseOperation operation) {
         PairValue theirs = makePointFrom(right);
         return PairValue.of(
-                combineTheBitsOf(x, theirs.x, operation),
-                combineTheBitsOf(y, theirs.y, operation));
+                combineBits(x, theirs.x, operation),
+                combineBits(y, theirs.y, operation));
     }
 
     private PairValue makePointFrom(Value right) {
@@ -103,7 +103,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
         };
     }
 
-    private long combineTheBitsOf(double ours, double theirs, BitwiseOperation operation) {
+    private long combineBits(double ours, double theirs, BitwiseOperation operation) {
         return operation.onWholeElements(roundHalfUp(ours), roundHalfUp(theirs));
     }
 

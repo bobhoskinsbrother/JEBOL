@@ -29,7 +29,7 @@ public sealed interface PaintInstruction {
             implements PaintInstruction {
 
         /** The size a gob's own text is written at when nothing asks for one. */
-        public static final double THE_ORDINARY_SIZE = 12;
+        public static final double ORDINARY_SIZE = 12;
 
         public Writing {
             runs = List.copyOf(runs);
@@ -41,7 +41,7 @@ public sealed interface PaintInstruction {
 
         public static Writing writePlainly(Placement where, String text, Colour colour) {
             return new Writing(where,
-                    List.of(new TextRun(text, colour, THE_ORDINARY_SIZE, false, false)),
+                    List.of(new TextRun(text, colour, ORDINARY_SIZE, false, false)),
                     TextLayout.STANDARD);
         }
 

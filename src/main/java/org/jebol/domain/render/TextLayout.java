@@ -7,17 +7,17 @@ public record TextLayout(
         int shadowAcross, int shadowDown,
         boolean wraps) {
 
-    private static final int THE_STANDARD_INSET = 2;
-    private static final boolean THE_STANDARD_PARA_WRAPS = true;
+    private static final int STANDARD_INSET = 2;
+    private static final boolean STANDARD_PARA_WRAPS = true;
 
     public static final TextLayout STANDARD = new TextLayout(
-            THE_STANDARD_INSET, THE_STANDARD_INSET, THE_STANDARD_INSET, THE_STANDARD_INSET,
+            STANDARD_INSET, STANDARD_INSET, STANDARD_INSET, STANDARD_INSET,
             TextAlignment.LEFT, TextVerticalAlignment.TOP, 0, 0);
 
     public TextLayout(int originAcross, int originDown, int marginAcross, int marginDown,
             TextAlignment align, TextVerticalAlignment valign, int shadowAcross, int shadowDown) {
         this(originAcross, originDown, marginAcross, marginDown, align, valign, shadowAcross, shadowDown,
-                THE_STANDARD_PARA_WRAPS);
+                STANDARD_PARA_WRAPS);
     }
 
     public record LinePlacement(double across, double baseline) {
@@ -29,16 +29,16 @@ public record TextLayout(
 
     public LinePlacement placeLine(Placement box, double lineWide, double ascent, double descent) {
         return new LinePlacement(
-                findWhereALineStarts(box, lineWide),
-                findWhereTheStackStarts(box, ascent + descent) + ascent);
+                lineStartAcross(box, lineWide),
+                stackStartDown(box, ascent + descent) + ascent);
     }
 
-    public double findWhereALineStarts(Placement box, double lineWide) {
+    public double lineStartAcross(Placement box, double lineWide) {
         double roomAcross = box.wide() - originAcross - marginAcross;
         return box.across() + originAcross + shareSpareRoomBefore(roomAcross - lineWide);
     }
 
-    public double findWhereTheStackStarts(Placement box, double stackHigh) {
+    public double stackStartDown(Placement box, double stackHigh) {
         double roomDown = box.high() - originDown - marginDown;
         return box.down() + originDown + measureSpaceAboveLine(roomDown, stackHigh);
     }

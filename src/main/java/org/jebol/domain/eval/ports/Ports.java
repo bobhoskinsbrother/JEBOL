@@ -213,7 +213,7 @@ public final class Ports {
             case "bundled" -> readTheSourceOfABundledModule(port, evaluator);
             case "tcp" -> readBytesFromConnection(port, evaluator);
             case "udp" -> readOneDatagramInto(port, evaluator);
-            case "dns" -> answerWhatTheDnsUrlAsks(port, evaluator);
+            case "dns" -> resolveDnsQuery(port, evaluator);
             case "checksum" -> checksumPort.digestSoFarLeftInDataFieldAsWell(port);
             case "crypt" -> {
                 cryptPort.refuseWhenClosed(port);
@@ -305,7 +305,7 @@ public final class Ports {
         }
     }
 
-    private Value answerWhatTheDnsUrlAsks(PortValue port, Evaluator evaluator) {
+    private Value resolveDnsQuery(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
         String host = readHostNamedBy(port);
         NetworkPort network = evaluator.ports().network();

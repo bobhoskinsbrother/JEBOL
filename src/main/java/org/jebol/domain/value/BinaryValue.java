@@ -53,7 +53,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     @Override
     public Value copy(boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirst(lengthFromHere());
+        return copyFirst(lengthFromHere());
     }
 
     @Override
@@ -68,7 +68,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     @Override
     public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirst(howMany);
+        return copyFirst(howMany);
     }
 
     @Override
@@ -210,7 +210,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return bytes;
     }
 
-    public BinaryValue copyOfTheFirst(int howMany) {
+    public BinaryValue copyFirst(int howMany) {
         BinaryStorage copied = new BinaryStorage();
         for (int at = 0; at < howMany; at++) {
             copied.append(storage.at(index + at));
@@ -440,7 +440,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     private static final class BinaryDatatype extends PositionedSeriesDatatype {
 
-        private static final int THE_LARGEST_OCTET = 255;
+        private static final int LARGEST_OCTET = 255;
 
         BinaryDatatype() {
             super("binary");
@@ -467,7 +467,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                 case DecimalValue fractional -> BinaryValue.ofBytes(ByteBuffer.allocate(Long.BYTES)
                         .putLong(Double.doubleToRawLongBits(fractional.quantity())).array());
                 case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
-                case BlockValue block -> collectTheBytesOfEach(block);
+                case BlockValue block -> collectOctets(block);
                 case VectorValue vector -> BinaryValue.ofBytes(vector.readOctetsFromHere());
                 case StructValue struct -> BinaryValue.ofBytes(struct.octets());
                 case TupleValue segments -> BinaryValue.ofBytes(readTheOctetsOf(segments));
@@ -479,7 +479,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             };
         }
 
-        private Value collectTheBytesOfEach(AnyBlockValue block) {
+        private Value collectOctets(AnyBlockValue block) {
             List<Value> items = block.remaining();
             int[] octets = new int[items.size()];
             for (int at = 0; at < items.size(); at++) {
@@ -492,7 +492,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             if (!(item instanceof IntegerValue(long magnitude))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }
-            if (magnitude < 0 || magnitude > THE_LARGEST_OCTET) {
+            if (magnitude < 0 || magnitude > LARGEST_OCTET) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, item);
             }
             return (int) magnitude;

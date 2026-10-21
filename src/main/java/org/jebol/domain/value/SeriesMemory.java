@@ -76,7 +76,7 @@ public final class SeriesMemory {
      * out of heap.
      */
     public static Reservation reserve(Object buffer, long bytes) {
-        giveBackWhatTheCollectorTook();
+        removeCollectedReservations();
         Reservation started = new Reservation(buffer, bytes);
         OUTSTANDING.add(started);
         HELD.addAndGet(bytes);
@@ -85,11 +85,11 @@ public final class SeriesMemory {
 
     /** The bytes every live series buffer is holding between them. */
     public static long countBytesHeld() {
-        giveBackWhatTheCollectorTook();
+        removeCollectedReservations();
         return HELD.get();
     }
 
-    private static void giveBackWhatTheCollectorTook() {
+    private static void removeCollectedReservations() {
         Reservation gone;
         while ((gone = (Reservation) COLLECTED.poll()) != null) {
             OUTSTANDING.remove(gone);
@@ -119,18 +119,18 @@ public final class SeriesMemory {
      */
     public static long collectNow() {
         long before = countBytesHeld();
-        long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_A_COLLECTION * 1_000_000_000L;
+        long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_COLLECTION * 1_000_000_000L;
         long heldBeforeTheCycle = Long.MAX_VALUE;
         while (System.nanoTime() < giveUpAt && heldBeforeTheCycle != HELD.get()) {
             heldBeforeTheCycle = HELD.get();
             hasFinishedCollection();
-            giveBackWhatTheCollectorTook();
+            removeCollectedReservations();
         }
-        giveBackWhatTheCollectorTook();
+        removeCollectedReservations();
         return Math.max(0, before - HELD.get());
     }
 
-    private static final long SECONDS_TO_WAIT_FOR_A_COLLECTION = 2;
+    private static final long SECONDS_TO_WAIT_FOR_COLLECTION = 2;
 
     private static boolean hasFinishedCollection() {
         ReferenceQueue<Object> proof = new ReferenceQueue<>();

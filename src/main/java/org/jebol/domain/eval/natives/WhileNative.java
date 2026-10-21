@@ -26,7 +26,7 @@ public class WhileNative extends LoopingNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue condition = (AnyBlockValue) arguments.get(0);
             AnyBlockValue body = (AnyBlockValue) arguments.get(1);
-            return answerOfTheLoop(() -> {
+            return runLoop(() -> {
                 Value last = NoneValue.none();
                 while (isTrueForLoop(evaluator.evaluateOrRaise(
                         condition, evaluator.systemContext()))) {

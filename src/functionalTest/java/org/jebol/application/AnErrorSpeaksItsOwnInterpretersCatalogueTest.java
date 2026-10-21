@@ -112,7 +112,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
             String formed = Molder.form(
                     ErrorValue.of(ErrorCategory.MATH, "zero-divide", "attempt to divide by zero"));
 
-            assertThat(formed).contains(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+            assertThat(formed).contains(ErrorWording.NOTHING_IN_CATALOGUE);
         }
     }
 }

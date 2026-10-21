@@ -50,7 +50,7 @@ public final class Encodings {
         return octet < 128 && URI_COMPONENT_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    char findWhatASpaceStandsForUnder(char escape) {
+    char escapedSpaceFor(char escape) {
         return escape == '=' ? '_' : '+';
     }
 
@@ -62,10 +62,10 @@ public final class Encodings {
         for (byte each : octets) {
             int octet = each & 0xFF;
             if (spaceIsSpecial && octet == ' ') {
-                encoded.write(findWhatASpaceStandsForUnder(escape));
+                encoded.write(escapedSpaceFor(escape));
                 continue;
             }
-            if (spaceIsSpecial && octet == findWhatASpaceStandsForUnder(escape)) {
+            if (spaceIsSpecial && octet == escapedSpaceFor(escape)) {
                 escapeInto(encoded, escape, octet);
                 continue;
             }
@@ -87,7 +87,7 @@ public final class Encodings {
 
     public byte[] percentDecode(String text, char escape, boolean spaceIsSpecial) {
         Octets octets = new Octets();
-        char special = findWhatASpaceStandsForUnder(escape);
+        char special = escapedSpaceFor(escape);
         for (int at = 0; at < text.length(); at++) {
             char here = text.charAt(at);
             if (spaceIsSpecial && here == special) {

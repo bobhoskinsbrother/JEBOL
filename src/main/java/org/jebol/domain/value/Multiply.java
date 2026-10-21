@@ -2,7 +2,7 @@ package org.jebol.domain.value;
 
 public final class Multiply implements ArithmeticOperation {
 
-    private static final int THE_LARGEST_AN_OCTET_HOLDS = 255;
+    private static final int LARGEST_OCTET_HOLDS = 255;
 
     @Override
     public String spelling() {
@@ -34,8 +34,8 @@ public final class Multiply implements ArithmeticOperation {
         if (octet == 0) {
             return 0;
         }
-        if (against > THE_LARGEST_AN_OCTET_HOLDS) {
-            return THE_LARGEST_AN_OCTET_HOLDS;
+        if (against > LARGEST_OCTET_HOLDS) {
+            return LARGEST_OCTET_HOLDS;
         }
         return fractional ? (long) (octet * against) : octet * (long) against;
     }

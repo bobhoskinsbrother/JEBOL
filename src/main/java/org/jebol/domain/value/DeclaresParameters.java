@@ -18,14 +18,14 @@ public sealed interface DeclaresParameters extends AnyFunctionValue
         for (Parameter parameter : parameters()) {
             parameter.owningRefinement().ifPresent(owner -> {
                 if (refinementsDeclaredApart().contains(owner) && woven.add(owner)) {
-                    types.add(TypesetValue.of(Parameter.A_REFINEMENTS_SLOT));
+                    types.add(TypesetValue.of(Parameter.REFINEMENTS_SLOT));
                 }
             });
             types.add(parameter.makeTypeset());
         }
         for (String leftover : refinementsDeclaredApart()) {
             if (!woven.contains(leftover)) {
-                types.add(TypesetValue.of(Parameter.A_REFINEMENTS_SLOT));
+                types.add(TypesetValue.of(Parameter.REFINEMENTS_SLOT));
             }
         }
         return BlockValue.of(types);

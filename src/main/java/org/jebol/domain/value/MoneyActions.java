@@ -2,9 +2,9 @@ package org.jebol.domain.value;
 
 public final class MoneyActions {
 
-    private static final double SECONDS_IN_A_NANOSECOND = 1e-9;
+    private static final double SECONDS_IN_NANOSECOND = 1e-9;
 
-    private static final double SECONDS_IN_AN_HOUR = 3600.0;
+    private static final double SECONDS_IN_HOUR = 3600.0;
 
     private final MoneyValue amount;
 
@@ -30,7 +30,7 @@ public final class MoneyActions {
     public record HoursBilled(TimeValue time) {
 
         public Deci asDeci() {
-            return new Deci(time.nanoseconds() * SECONDS_IN_A_NANOSECOND / SECONDS_IN_AN_HOUR);
+            return new Deci(time.nanoseconds() * SECONDS_IN_NANOSECOND / SECONDS_IN_HOUR);
         }
     }
 

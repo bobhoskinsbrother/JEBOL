@@ -95,7 +95,7 @@ public record DateValue(
 
     private static final class DateDatatype extends ScalarDatatype {
 
-        private static final long MICROSECONDS_A_SECOND = 1_000_000L;
+        private static final long MICROSECONDS_SECOND = 1_000_000L;
 
         private static final int MOST_DATE_CHARACTERS = 45;
 
@@ -128,7 +128,7 @@ public record DateValue(
                 case IntegerValue seconds ->
                         DateFactory.fromWholeSeconds(seconds.magnitude());
                 case DecimalValue seconds -> DateFactory.fromTimestamp(
-                        (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
+                        (long) (seconds.quantity() * MICROSECONDS_SECOND));
                 case AnyBlockValue parts -> DateFactory.fromParts(parts.remaining());
                 case AnyStringValue written -> readDateFrom(written, maker);
                 default -> throw refuse(from);
@@ -152,8 +152,8 @@ public record DateValue(
 
     public double countSecondsSinceEpoch() {
         Moment instant = moment();
-        return (double) instant.dayNumber() * SECONDS_A_DAY
-                + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
+        return (double) instant.dayNumber() * SECONDS_DAY
+                + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_SECOND;
     }
 
     public long wholeSecondsSinceEpoch() {
@@ -168,7 +168,7 @@ public record DateValue(
         Moment here = moment();
         Moment there = other.moment();
         return TimeValue.ofNanoseconds(
-                (here.dayNumber() - there.dayNumber()) * NANOSECONDS_A_DAY
+                (here.dayNumber() - there.dayNumber()) * NANOSECONDS_DAY
                         + here.nanosecondsIntoTheDay() - there.nanosecondsIntoTheDay());
     }
 
@@ -176,16 +176,16 @@ public record DateValue(
         return java.time.LocalDate.of(year, month, day);
     }
 
-    private static final int MONTHS_A_YEAR = 12;
+    private static final int MONTHS_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
-    private static final int WHERE_THE_YEAR_IS_PACKED = 48;
+    private static final int WHERE_YEAR_IS_PACKED = 48;
     private static final int WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED = 32;
 
     @Override
     public Value randomise(RandomDraw draw) {
         java.time.LocalDate drawn = java.time.LocalDate
                 .of((int) draw.upTo(year), 1, 1)
-                .plusMonths(draw.upTo(MONTHS_A_YEAR))
+                .plusMonths(draw.upTo(MONTHS_YEAR))
                 .plusDays(draw.upTo(LONGEST_MONTH));
         return timeOfDay.isEmpty()
                 ? DateValue.of(drawn.getYear(), drawn.getMonthValue(), drawn.getDayOfMonth())
@@ -197,7 +197,7 @@ public record DateValue(
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return ((long) year << WHERE_THE_YEAR_IS_PACKED)
+        return ((long) year << WHERE_YEAR_IS_PACKED)
                 + ((long) asLocalDate().getDayOfYear() << WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED)
                 + nanosecondsOnClock();
     }
@@ -212,29 +212,29 @@ public record DateValue(
 
     public long nanosecondsInUniversalTime() {
         return nanosecondsOnClock()
-                - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
+                - zoneMinutes.orElse(0) * NANOSECONDS_MINUTE;
     }
 
     public int hourOfTheDay() {
-        return (int) (nanosecondsOnClock() / NANOSECONDS_A_SECOND / 3600);
+        return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 3600);
     }
 
     public int minuteOfTheHour() {
-        return (int) (nanosecondsOnClock() / NANOSECONDS_A_SECOND / 60 % 60);
+        return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 60 % 60);
     }
 
     public Value readTheSecondOfTheMinute() {
         long onTheClock = nanosecondsOnClock();
-        long whole = onTheClock / NANOSECONDS_A_SECOND % 60;
-        long fraction = onTheClock % NANOSECONDS_A_SECOND;
+        long whole = onTheClock / NANOSECONDS_SECOND % 60;
+        long fraction = onTheClock % NANOSECONDS_SECOND;
         return fraction == 0
                 ? IntegerValue.of(whole)
-                : DecimalValue.of(whole + (double) fraction / NANOSECONDS_A_SECOND);
+                : DecimalValue.of(whole + (double) fraction / NANOSECONDS_SECOND);
     }
 
     public TimeValue zoneAsTime() {
         return TimeValue.ofNanoseconds(
-                zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE);
+                zoneMinutes.orElse(0) * NANOSECONDS_MINUTE);
     }
 
     public DateValue atMidnightIfItHasNoClock() {
@@ -288,18 +288,18 @@ public record DateValue(
     public DateValue atSameInstantIn(int offsetMinutes) {
         DateValue standing = withSameClockIn(zoneMinutes.orElse(0));
         long sinceMidnight = standing.clock().nanoseconds()
-                + (offsetMinutes - standing.zoneMinutes.orElse(0)) * NANOSECONDS_A_MINUTE;
+                + (offsetMinutes - standing.zoneMinutes.orElse(0)) * NANOSECONDS_MINUTE;
         java.time.LocalDate landed = standing.asLocalDate()
-                .plusDays(Math.floorDiv(sinceMidnight, NANOSECONDS_A_DAY));
+                .plusDays(Math.floorDiv(sinceMidnight, NANOSECONDS_DAY));
         return new DateValue(landed.getYear(), landed.getMonthValue(),
                 landed.getDayOfMonth(),
                 Optional.of(TimeValue.ofNanoseconds(
-                        Math.floorMod(sinceMidnight, NANOSECONDS_A_DAY))),
+                        Math.floorMod(sinceMidnight, NANOSECONDS_DAY))),
                 Optional.of(offsetMinutes));
     }
 
-    private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
-    private static final long SECONDS_A_DAY = 24L * 60L * 60L;
+    private static final long NANOSECONDS_SECOND = 1_000_000_000L;
+    private static final long SECONDS_DAY = 24L * 60L * 60L;
 
     /**
      * Where a date sits on the line of instants: which day, and how far into
@@ -335,15 +335,15 @@ public record DateValue(
      */
     public Moment moment() {
         long sinceMidnight = timeOfDay.map(TimeValue::nanoseconds).orElse(0L)
-                - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
+                - zoneMinutes.orElse(0) * NANOSECONDS_MINUTE;
         return new Moment(
                 java.time.LocalDate.of(year, month, day).toEpochDay()
-                        + Math.floorDiv(sinceMidnight, NANOSECONDS_A_DAY),
-                Math.floorMod(sinceMidnight, NANOSECONDS_A_DAY));
+                        + Math.floorDiv(sinceMidnight, NANOSECONDS_DAY),
+                Math.floorMod(sinceMidnight, NANOSECONDS_DAY));
     }
 
-    private static final long NANOSECONDS_A_MINUTE = 60L * 1_000_000_000L;
-    private static final long NANOSECONDS_A_DAY = 24L * 60L * NANOSECONDS_A_MINUTE;
+    private static final long NANOSECONDS_MINUTE = 60L * 1_000_000_000L;
+    private static final long NANOSECONDS_DAY = 24L * 60L * NANOSECONDS_MINUTE;
 
     /**
      * The same instant with the offset resolved rather than remembered, which
@@ -422,10 +422,10 @@ public record DateValue(
 
     private String writeIsoClock() {
         long nanoseconds = timeOfDay.orElseThrow().nanoseconds();
-        long seconds = nanoseconds / A_SECOND;
+        long seconds = nanoseconds / SECOND;
         String written = "%02d:%02d:%02d".formatted(
                 seconds / 3600, seconds / 60 % 60, seconds % 60);
-        long fraction = nanoseconds % A_SECOND;
+        long fraction = nanoseconds % SECOND;
         if (fraction == 0) {
             return written;
         }
@@ -442,5 +442,5 @@ public record DateValue(
         return "%s%02d:%02d".formatted(minutes < 0 ? "-" : "+", size / 60, size % 60);
     }
 
-    private static final long A_SECOND = 1_000_000_000L;
+    private static final long SECOND = 1_000_000_000L;
 }

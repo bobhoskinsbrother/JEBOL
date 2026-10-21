@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public record ErrorWording(Context system) {
 
-    public static final String NOTHING_IN_THE_CATALOGUE =
+    public static final String NOTHING_IN_CATALOGUE =
             "(improperly formatted error)";
 
     public static ErrorWording none() {

@@ -82,7 +82,7 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
 
         assertThat(embedded.responseBasedOnOutcome(outcome))
                 .contains("** Access error: port action timed out")
-                .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                .doesNotContain(ErrorWording.NOTHING_IN_CATALOGUE);
     }
 
     @Test

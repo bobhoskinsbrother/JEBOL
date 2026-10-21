@@ -197,7 +197,7 @@ final class LzmaMatchFinder {
         }
     }
 
-    private int findTheChildOf(int distance) {
+    private int positionBackBy(int distance) {
         return cyclicBufferPosition - distance
                 + (distance > cyclicBufferPosition ? cyclicBufferSize : 0);
     }
@@ -216,7 +216,7 @@ final class LzmaMatchFinder {
                 return at;
             }
             int earlier = here - distance;
-            candidate = son[findTheChildOf(distance)];
+            candidate = son[positionBackBy(distance)];
             if (source[earlier + longest] == source[here + longest]
                     && source[earlier] == source[here]) {
                 int len = 0;
@@ -255,7 +255,7 @@ final class LzmaMatchFinder {
                 son[lesserSide] = EMPTY_HASH_VALUE;
                 return at;
             }
-            int pair = findTheChildOf(distance) << 1;
+            int pair = positionBackBy(distance) << 1;
             int earlier = here - distance;
             int len = Math.min(agreedLesser, agreedGreater);
             if (source[earlier + len] == source[here + len]) {
@@ -306,7 +306,7 @@ final class LzmaMatchFinder {
                 son[lesserSide] = EMPTY_HASH_VALUE;
                 return;
             }
-            int pair = findTheChildOf(distance) << 1;
+            int pair = positionBackBy(distance) << 1;
             int earlier = here - distance;
             int len = Math.min(agreedLesser, agreedGreater);
             if (source[earlier + len] == source[here + len]) {

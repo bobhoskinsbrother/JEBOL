@@ -18,7 +18,7 @@ public record LogicValue(boolean truth) implements Value {
         }
     };
 
-    private static final long THE_SEED_FALSE_GIVES = 1L;
+    private static final long SEED_FALSE_GIVES = 1L;
 
     @Override
     public Value randomise(RandomDraw draw) {
@@ -27,7 +27,7 @@ public record LogicValue(boolean truth) implements Value {
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return truth ? System.nanoTime() : THE_SEED_FALSE_GIVES;
+        return truth ? System.nanoTime() : SEED_FALSE_GIVES;
     }
 
     @Override

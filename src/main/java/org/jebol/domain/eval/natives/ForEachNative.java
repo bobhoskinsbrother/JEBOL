@@ -51,7 +51,7 @@ public class ForEachNative extends LoopingNative {
         names.forEach(name -> locals.register(name.spelling()));
         AnyBlockValue bound = Binder.bind(body, locals);
 
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             int at = 0;
             List<Value> items = itemsAsTheyStandNow.get();

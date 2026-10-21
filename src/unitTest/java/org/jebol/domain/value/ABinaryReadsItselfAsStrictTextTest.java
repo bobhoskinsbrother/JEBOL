@@ -85,19 +85,19 @@ class ABinaryReadsItselfAsStrictTextTest {
         @Test
         @DisplayName("it starts at the index and takes as many as asked")
         void startsAtTheIndex() {
-            assertThat(abc().atIndex(2).copyOfTheFirst(1)).isEqualTo(BinaryValue.of(LOWER_B));
+            assertThat(abc().atIndex(2).copyFirst(1)).isEqualTo(BinaryValue.of(LOWER_B));
         }
 
         @Test
         @DisplayName("none asked is an empty binary")
         void copiesNoneWhenNoneIsAsked() {
-            assertThat(abc().copyOfTheFirst(0).lengthFromHere()).isZero();
+            assertThat(abc().copyFirst(0).lengthFromHere()).isZero();
         }
 
         @Test
         @DisplayName("everything from here asked is all of it, at the head of its own storage")
         void copiesEverythingWhenAsked() {
-            BinaryValue copied = abc().atIndex(2).copyOfTheFirst(2);
+            BinaryValue copied = abc().atIndex(2).copyFirst(2);
 
             assertThat(copied).isEqualTo(BinaryValue.of(LOWER_B, LOWER_C));
             assertThat(copied.index()).isEqualTo(1);
@@ -107,7 +107,7 @@ class ABinaryReadsItselfAsStrictTextTest {
         @DisplayName("changing the copy leaves the original alone")
         void standsApartFromTheOriginal() {
             BinaryValue original = abc();
-            BinaryValue copied = original.copyOfTheFirst(3);
+            BinaryValue copied = original.copyFirst(3);
 
             copied.storage().append(LOWER_A);
 

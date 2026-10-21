@@ -14,7 +14,7 @@ public abstract class LoopingNative extends DefaultNative {
 
     protected static final Set<Datatype> BLOCK = Set.of(BlockValue.TYPE);
 
-    protected Value answerOfTheLoop(Supplier<Value> rounds) {
+    protected Value runLoop(Supplier<Value> rounds) {
         try {
             return rounds.get();
         } catch (LoopSignal stopped) {

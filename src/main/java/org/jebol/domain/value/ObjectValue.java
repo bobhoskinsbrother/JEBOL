@@ -168,7 +168,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
                 throw refuse(from);
             }
             if (raised.readTheField("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
-                    && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
+                    && magnitude < ErrorCatalogue.LOWEST_CODE_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, from);
             }
             Context fields = Context.makeChildOf(Context.root());

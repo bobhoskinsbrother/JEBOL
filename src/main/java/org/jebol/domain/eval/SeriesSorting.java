@@ -124,13 +124,13 @@ public final class SeriesSorting {
         }
         return wholeRecord
                 ? askComparatorOtherWayRound(asked,
-                        lendTheRecordOf(series, left), lendTheRecordOf(series, right))
+                        convertRecordToSeriesValue(series, left), convertRecordToSeriesValue(series, right))
                 : askComparatorOtherWayRound(asked,
-                        lendTheElementOf(series, left.getFirst()),
-                        lendTheElementOf(series, right.getFirst()));
+                        convertToCharacterValueOrReturnInput(series, left.getFirst()),
+                        convertToCharacterValueOrReturnInput(series, right.getFirst()));
     }
 
-    private Value lendTheRecordOf(RebolSeries series, List<Value> record) {
+    private Value convertRecordToSeriesValue(RebolSeries series, List<Value> record) {
         if (series instanceof BinaryValue) {
             int[] octets = new int[record.size()];
             for (int at = 0; at < record.size(); at++) {
@@ -150,7 +150,7 @@ public final class SeriesSorting {
         return lent;
     }
 
-    private Value lendTheElementOf(RebolSeries series, Value element) {
+    private Value convertToCharacterValueOrReturnInput(RebolSeries series, Value element) {
         return series instanceof BinaryValue && element instanceof IntegerValue(long magnitude)
                 ? CharacterValue.of((int) magnitude)
                 : element;

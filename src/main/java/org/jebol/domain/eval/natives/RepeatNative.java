@@ -62,7 +62,7 @@ public class RepeatNative extends LoopingNative {
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
         AnyBlockValue bound = Binder.bind(body, locals);
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             for (long pass = 0; pass < passes; pass++) {
                 locals.register(counter.spelling(), valueAt.apply(pass));
@@ -80,7 +80,7 @@ public class RepeatNative extends LoopingNative {
         AnyBlockValue bound = Binder.bind(body, locals);
         long across = (long) grid.x();
         long down = (long) grid.y();
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             for (long onDown = 1; onDown <= down; onDown++) {
                 for (long onAcross = 1; onAcross <= across; onAcross++) {

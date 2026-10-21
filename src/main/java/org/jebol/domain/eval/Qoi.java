@@ -28,7 +28,7 @@ final class Qoi {
 
         static final Colour TO_BEGIN_WITH = new Colour(0, 0, 0, 255);
 
-        int findWhereItSitsInTheTable() {
+        int tableSlot() {
             return (first * 3 + second * 5 + third * 7 + alpha * 11) % TABLE_SIZE;
         }
     }
@@ -101,7 +101,7 @@ final class Qoi {
                 } else if ((chunk & TAG_MASK) == OP_RUN) {
                     run = chunk & 0x3F;
                 }
-                seen[here.findWhereItSitsInTheTable()] = here;
+                seen[here.tableSlot()] = here;
             }
             int into = pixel * CHANNELS;
             pixels[into] = (byte) here.first();
@@ -158,7 +158,7 @@ final class Qoi {
                 written.add(OP_RUN | (run - 1));
                 run = 0;
             }
-            int where = here.findWhereItSitsInTheTable();
+            int where = here.tableSlot();
             if (seen[where].equals(here)) {
                 written.add(OP_INDEX | where);
             } else {

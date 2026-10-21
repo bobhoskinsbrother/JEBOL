@@ -42,7 +42,7 @@ public class BinaryNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             UnaryOperator<Value> lookedUp = item -> fetchIfItAsksToBe(item, evaluator, context);
-            ObjectValue held = findTheDialectContextOf(arguments.getFirst());
+            ObjectValue held = dialectContextFor(arguments.getFirst());
             readTheArgumentOf("init", 0, arguments, refinements)
                     .ifPresent(replacement -> restartWith(held, replacement));
             if (refinements.contains("write")) {
@@ -73,16 +73,16 @@ public class BinaryNative extends DefaultNative {
                 : item;
     }
 
-    private ObjectValue findTheDialectContextOf(Value given) {
+    private ObjectValue dialectContextFor(Value given) {
         if (given instanceof ObjectValue existing
                 && existing.context().contains("buffer")
                 && existing.context().findSlotFor("buffer").value() instanceof BinaryValue) {
             return existing;
         }
-        return findDialectContextFor(bufferOfTheDialectContext(given));
+        return findDialectContextFor(dialectBufferIn(given));
     }
 
-    private BinaryValue bufferOfTheDialectContext(Value given) {
+    private BinaryValue dialectBufferIn(Value given) {
         if (given instanceof BinaryValue bytes) {
             return bytes;
         }

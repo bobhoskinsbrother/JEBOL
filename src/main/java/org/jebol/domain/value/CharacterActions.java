@@ -8,7 +8,7 @@ public final class CharacterActions {
         this.letter = letter;
     }
 
-    private static final long PAST_THE_WIDEST_CODEPOINT_COUNT = 1L << 32;
+    private static final long PAST_WIDEST_CODEPOINT_COUNT = 1L << 32;
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
         long other = readTheCodepointOfferedBy(right);
@@ -22,7 +22,7 @@ public final class CharacterActions {
 
     private static long asUnsignedWord(long answered) {
         return answered < 0
-                ? answered + PAST_THE_WIDEST_CODEPOINT_COUNT
+                ? answered + PAST_WIDEST_CODEPOINT_COUNT
                 : answered;
     }
 

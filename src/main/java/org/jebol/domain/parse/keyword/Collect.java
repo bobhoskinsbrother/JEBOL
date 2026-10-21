@@ -19,7 +19,7 @@ final class Collect extends SameForABlockAndAString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        WhereItGoes goes = findWhereTheGatheringGoes(rules, at);
+        WhereItGoes goes = collectDestination(rules, at);
         if (goes.ruleAt() >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -52,7 +52,7 @@ final class Collect extends SameForABlockAndAString {
                                AnyWordValue appendedTo, int ruleAt) {
     }
 
-    private static WhereItGoes findWhereTheGatheringGoes(List<Value> rules, int at) {
+    private static WhereItGoes collectDestination(List<Value> rules, int at) {
         if (!(rules.get(at + 1) instanceof WordValue keyword)) {
             return new WhereItGoes(null, null, null, at + 1);
         }

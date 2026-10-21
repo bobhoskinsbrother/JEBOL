@@ -12,7 +12,7 @@ public final class CounterWithCbcMac {
 
     private final JoinedOctets joined = new JoinedOctets();
 
-    public boolean canIssueATagOf(int octets) {
+    public boolean isValidTagLength(int octets) {
         return octets >= 4 && octets <= BLOCK && octets % 2 == 0;
     }
 
@@ -23,7 +23,7 @@ public final class CounterWithCbcMac {
     public Sealed encipher(OneBlock cipher, byte[] vector, int tagOctets,
                            byte[] header, byte[] message) {
 
-        if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
+        if (tagOctets != 0 && !isValidTagLength(tagOctets)) {
             return NOTHING;
         }
         byte[] nonce = clampNonce(vector);
@@ -38,7 +38,7 @@ public final class CounterWithCbcMac {
     public Sealed decipher(OneBlock cipher, byte[] vector, int tagOctets,
                            byte[] header, byte[] sealedOctets) {
 
-        if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
+        if (tagOctets != 0 && !isValidTagLength(tagOctets)) {
             return NOTHING;
         }
         if (sealedOctets.length < tagOctets) {

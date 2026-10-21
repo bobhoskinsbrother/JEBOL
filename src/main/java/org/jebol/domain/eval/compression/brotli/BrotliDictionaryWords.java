@@ -81,7 +81,7 @@ final class BrotliDictionaryWords {
         }
     }
 
-    static int findTheFirstWordOfBucket(int bucket) {
+    static int firstWordInBucket(int bucket) {
         return unpack().bucketStarts()[bucket];
     }
 

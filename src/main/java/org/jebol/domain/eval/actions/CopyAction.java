@@ -57,7 +57,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
         if (!refinements.contains("part")) {
             return original.copy(deeply, kinds);
         }
-        if (hasNoOrderToTakeTheFirstSoManyOf(original)) {
+        if (isObjectErrorModuleOrPort(original)) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
                     "/part names the first so many of something with an order, and a "
                             + original.datatype().literalSpelling() + " has none");
@@ -97,7 +97,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
                         : Copying.NOTHING_INSIDE);
     }
 
-    private boolean hasNoOrderToTakeTheFirstSoManyOf(Value subject) {
+    private boolean isObjectErrorModuleOrPort(Value subject) {
         return subject instanceof ObjectValue || subject instanceof ErrorValue
                 || subject instanceof ModuleValue || subject instanceof PortValue;
     }

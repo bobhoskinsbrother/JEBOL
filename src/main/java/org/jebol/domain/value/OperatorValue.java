@@ -34,9 +34,9 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
 
     private static final class OperatorDatatype extends AnyFunctionDatatype {
 
-        private static final String AN_OPERATOR_NOBODY_HAS_NAMED = "?";
+        private static final String OPERATOR_NOBODY_HAS_NAMED = "?";
 
-        private static final int THE_ARGUMENTS_AN_OPERATOR_TAKES = 2;
+        private static final int ARGUMENTS_OPERATOR_TAKES = 2;
 
         OperatorDatatype() {
             super("op");
@@ -54,10 +54,10 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
                     : spec;
             if (!(offered instanceof AnyFunctionValue dispatching)
                     || countArgumentsBeforeAnyRefinement(dispatching)
-                            != THE_ARGUMENTS_AN_OPERATOR_TAKES) {
+                            != ARGUMENTS_OPERATOR_TAKES) {
                 throw refuse(spec);
             }
-            return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
+            return new OperatorValue(OPERATOR_NOBODY_HAS_NAMED, dispatching);
         }
 
         private Value makeFunctionFrom(AnyBlockValue parts, Maker maker) {

@@ -9,14 +9,14 @@ public final class ImageOperations {
 
     private static final int OPAQUE = 0xFF;
 
-    private static int countEveryPixelOfTheRectangle(ImageStorage storage) {
+    private static int pixelCount(ImageStorage storage) {
         return storage.wide() * storage.high();
     }
 
     public static void premultiply(ImageValue image) {
         ImageStorage storage = image.storage();
         for (int pixel = 1;
-                pixel <= countEveryPixelOfTheRectangle(storage);
+                pixel <= pixelCount(storage);
                 pixel++) {
             int[] rgba = storage.readPixelAt(pixel);
             int alpha = rgba[3];

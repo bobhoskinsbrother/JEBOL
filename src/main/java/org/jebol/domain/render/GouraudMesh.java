@@ -7,7 +7,7 @@ final class GouraudMesh {
 
     private static final int PIECES_ALONG_EACH_EDGE = 16;
 
-    private static final double SPREAD_TO_HIDE_THE_SEAMS = 0.5;
+    private static final double SPREAD_TO_HIDE_SEAMS = 0.5;
 
     private GouraudMesh() {
     }
@@ -67,7 +67,7 @@ final class GouraudMesh {
     }
 
     private static double spreadFromMiddle(double corner, double middle) {
-        return corner + (corner - middle) * SPREAD_TO_HIDE_THE_SEAMS;
+        return corner + (corner - middle) * SPREAD_TO_HIDE_SEAMS;
     }
 
     private static double[] pointAt(

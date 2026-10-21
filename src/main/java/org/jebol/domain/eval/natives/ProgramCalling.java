@@ -74,10 +74,10 @@ final class ProgramCalling {
                 chooseTheOutputKind(output), readTheFile(output, evaluator),
                 chooseTheOutputKind(errors), readTheFile(errors, evaluator),
                 listWhatTheChildInherits(evaluator),
-                findWhereTheChildStarts(evaluator));
+                childWorkingDirectory(evaluator));
     }
 
-    private Optional<String> findWhereTheChildStarts(Evaluator evaluator) {
+    private Optional<String> childWorkingDirectory(Evaluator evaluator) {
         try {
             return Optional.of(evaluator.ports().files().hostPath(evaluator.ports().files().workingDirectory()));
         } catch (FilePort.Denied noFilesystem) {

@@ -78,7 +78,7 @@ public class ForNative extends LoopingNative {
     private Value stepOverWholeNumbers(Evaluator evaluator, Context locals,
                                        AnyWordValue counter, long from, long to, long stepBy, AnyBlockValue body) {
 
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             long at = from;
             while (stepBy > 0 ? at <= to : at >= to) {
@@ -102,7 +102,7 @@ public class ForNative extends LoopingNative {
     private Value stepOverRealNumbers(Evaluator evaluator, Context locals,
                                       AnyWordValue counter, double from, double to, double stepBy, AnyBlockValue body) {
 
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
                 locals.register(counter.spelling(), DecimalValue.of(at));
@@ -118,7 +118,7 @@ public class ForNative extends LoopingNative {
         int tail = series.storageLength() + 1;
         int endIndex = Math.max(0, Math.min(endIndexOf(end), tail));
         long stepBy = (long) Arithmetic.asMagnitude(step);
-        return answerOfTheLoop(() -> {
+        return runLoop(() -> {
             Value last = NoneValue.none();
             int at = series.index();
             while (stepBy > 0 ? at <= endIndex : at >= endIndex) {

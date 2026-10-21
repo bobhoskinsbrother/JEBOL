@@ -17,7 +17,7 @@ final class ShapeSubDialect {
                 at++;
                 continue;
             }
-            int ends = findWhereTheNextStepStarts(written, at + 1);
+            int ends = nextCommandStart(written, at + 1);
             walk.obey(command.canonical(),
                     command instanceof LitWordValue,
                     written.subList(at + 1, ends));
@@ -26,7 +26,7 @@ final class ShapeSubDialect {
         return walk.path();
     }
 
-    private int findWhereTheNextStepStarts(List<Value> written, int from) {
+    private int nextCommandStart(List<Value> written, int from) {
         int ahead = from;
         while (ahead < written.size() && !(written.get(ahead) instanceof AnyWordValue)) {
             ahead++;

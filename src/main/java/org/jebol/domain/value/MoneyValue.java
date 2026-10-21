@@ -124,7 +124,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
     private static final long THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND = 3825205247L;
 
-    private static final long A_WORD = 0xFFFFFFFFL;
+    private static final long WORD = 0xFFFFFFFFL;
 
 
     /**
@@ -171,9 +171,9 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         significandBytes[0] = (byte) (twelve[1] & 0x7F);
         System.arraycopy(twelve, 2, significandBytes, 1, BINARY_WIDTH - 2);
         BigInteger significand = new BigInteger(1, significandBytes);
-        long highest = significand.shiftRight(64).longValue() & A_WORD;
-        long middle = significand.shiftRight(32).longValue() & A_WORD;
-        long lowest = significand.longValue() & A_WORD;
+        long highest = significand.shiftRight(64).longValue() & WORD;
+        long middle = significand.shiftRight(32).longValue() & WORD;
+        long lowest = significand.longValue() & WORD;
         boolean refusedByBinaryToDeci = highest >= THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND
                 && (middle >= THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND
                         ? lowest > THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND

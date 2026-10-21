@@ -28,14 +28,14 @@ public class FindScriptNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             BinaryValue script = (BinaryValue) arguments.getFirst();
-            OptionalInt header = findWhereTheHeaderStartsIn(script.asText());
+            OptionalInt header = headerStartIn(script.asText());
             return header.isPresent()
                     ? script.atIndex(script.index() + header.getAsInt())
                     : NoneValue.none();
         };
     }
 
-    private OptionalInt findWhereTheHeaderStartsIn(String text) {
+    private OptionalInt headerStartIn(String text) {
         String lowered = text.toLowerCase(Locale.ROOT);
         for (int at = lowered.indexOf(HEADER_WORD); at >= 0;
                 at = lowered.indexOf(HEADER_WORD, at + 1)) {

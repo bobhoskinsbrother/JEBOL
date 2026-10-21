@@ -305,9 +305,31 @@ around it.
 longer shape: `confineAnyInterpreterThisOneStarts` is `constrainInterpreter`,
 `writeWhatConsolePrints` is `responseBasedOnOutcome`.
 
+**And `of` belongs to the static constructor, and almost nowhere else.**
+`IntegerValue.of(...)` and `List.of(...)` keep it, because it is the idiom
+and it builds the object - sparingly even there. Anywhere else a trailing
+`Of` is naming the method's own argument, and it goes: `formThePairsOf` is
+`formPairs`, `readTheOctetOf` is `readOctetAt`, `findTheChildOf` is
+`childAt`.
+
+**A name flagged for review is read, not stripped.** Look at what the body
+does and name that. `hasNoOrderToTakeTheFirstSoManyOf` is
+`isObjectErrorModuleOrPort` - the positive question the body answers, never
+flipped to `isNot` to make a call site read well. `isTheStarThatMeansKeepIt`
+is `isWildcard`, `giveBackWhatTheCollectorTook` is
+`removeCollectedReservations`, `furnitureOfAResizableWindow` is
+`resizableWindowInsets`. Naming the branches is right when the branches are
+the method: `lendTheElementOf` is `convertToCharacterValueOrReturnInput`.
+
+**If the shorter name is lossy, keep the longer one.** `canonFor` was
+shorter; `canonicalIndexFor` was the name.
+
 The older names are all over the tree and are renamed as they are touched
-(`ide_refactor_rename`, never by hand). What this rule is for is the new
-one.
+(`ide_refactor_rename`, never by hand), with `relatedRenamingStrategy:
+"none"`: the default also renames what it judges related, which here has
+caught test classes, a tree the rule leaves alone. A rename aimed at an
+enum constant's declaration can land on the enum type itself; aim it at a
+use site. What this rule is for is the new one.
 
 The test tree is outside the rule: a test class and a test method name what
 the test exercises -- a description of behaviour, not a message sent to an

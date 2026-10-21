@@ -162,7 +162,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
         private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
 
-        private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
+        private static final double TOO_LARGE_FOR_WHOLE_NUMBER = 9.223372036854776E18;
 
         IntegerDatatype() {
             super("integer");
@@ -198,8 +198,8 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
         private Value makeWholeNumberWithinRange(double quantity) {
             if (Double.isNaN(quantity)
-                    || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
-                    || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
+                    || quantity < -TOO_LARGE_FOR_WHOLE_NUMBER
+                    || quantity >= TOO_LARGE_FOR_WHOLE_NUMBER) {
                 throw Raised.of(EvaluationFailure.OVERFLOW,
                         "no whole number is what " + quantity + " names");
             }
@@ -240,7 +240,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             } catch (NumberFormatException notANumberEither) {
                 throw refuse(original);
             }
-            if (!(Math.abs(asNumber) < TOO_LARGE_FOR_A_WHOLE_NUMBER)) {
+            if (!(Math.abs(asNumber) < TOO_LARGE_FOR_WHOLE_NUMBER)) {
                 throw refuse(original);
             }
             return IntegerValue.of((long) asNumber);

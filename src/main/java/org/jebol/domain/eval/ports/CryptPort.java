@@ -618,7 +618,7 @@ public final class CryptPort {
         if (working.tagOctets == NO_TAG_AT_ALL) {
             return;
         }
-        if (!canIssueATagOfThatLength(working.tagOctets)) {
+        if (!isValidTagLength(working.tagOctets)) {
             working.wouldNotRun = true;
             return;
         }
@@ -630,7 +630,7 @@ public final class CryptPort {
 
     private static final int NO_TAG_AT_ALL = 0;
 
-    private boolean canIssueATagOfThatLength(int wanted) {
+    private boolean isValidTagLength(int wanted) {
         return wanted >= SHORTEST_TAG && wanted <= CounterWithGalois.WHOLE_TAG;
     }
 

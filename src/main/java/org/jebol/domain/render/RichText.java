@@ -19,14 +19,14 @@ import java.util.Optional;
 final class RichText {
 
     private Colour colour;
-    private double size = PaintInstruction.Writing.THE_ORDINARY_SIZE;
+    private double size = PaintInstruction.Writing.ORDINARY_SIZE;
     private boolean bold;
     private boolean italic;
     private TextLayout layout = TextLayout.STANDARD;
-    private WhatTheNextObjectIs theNextObject = WhatTheNextObjectIs.A_FONT;
-    private Optional<ObjectValue> theCaretObject = Optional.empty();
+    private NextObjectKind nextObject = NextObjectKind.FONT;
+    private Optional<ObjectValue> caretObject = Optional.empty();
 
-    private enum WhatTheNextObjectIs { A_FONT, A_PARA, A_CARET }
+    private enum NextObjectKind { FONT, PARA, CARET }
 
     RichText(Colour penColour) {
         this.colour = penColour;
@@ -60,29 +60,29 @@ final class RichText {
         }
         Line withoutACaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
         return new Line(withoutACaret.runs(), withoutACaret.placeOfEachRun(), layout,
-                theCaretObject.map(fields -> readCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
+                caretObject.map(fields -> readCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
     }
 
     private void obeyWord(AnyWordValue command) {
         boolean turningItOn = !(command instanceof RefinementValue);
-        theNextObject = WhatTheNextObjectIs.A_FONT;
+        nextObject = NextObjectKind.FONT;
         switch (command.canonical()) {
             case "bold", "b" -> bold = turningItOn;
             case "italic", "i" -> italic = turningItOn;
-            case "para" -> theNextObject = WhatTheNextObjectIs.A_PARA;
-            case "caret" -> theNextObject = WhatTheNextObjectIs.A_CARET;
+            case "para" -> nextObject = NextObjectKind.PARA;
+            case "caret" -> nextObject = NextObjectKind.CARET;
             default -> {
             }
         }
     }
 
     private void takeObject(ObjectValue fields) {
-        switch (theNextObject) {
-            case A_PARA -> takeParaIn(fields);
-            case A_CARET -> theCaretObject = Optional.of(fields);
-            case A_FONT -> takeFontIn(fields);
+        switch (nextObject) {
+            case PARA -> takeParaIn(fields);
+            case CARET -> caretObject = Optional.of(fields);
+            case FONT -> takeFontIn(fields);
         }
-        theNextObject = WhatTheNextObjectIs.A_FONT;
+        nextObject = NextObjectKind.FONT;
     }
 
     private TextCaret readCaretIn(ObjectValue fields, Line line) {

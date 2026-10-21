@@ -20,6 +20,6 @@ final class Zone implements WritableDateField {
         return given.isNothing()
                 ? date.withZoneDropped()
                 : date.atMidnightIfItHasNoClock()
-                        .withSameClockIn(given.asAZoneOffsetInMinutes());
+                        .withSameClockIn(given.zoneOffsetInMinutes());
     }
 }

@@ -69,7 +69,7 @@ public record Asked(
                 times.<Value>map(given::repeatInBlock).orElse(given),
                 limit,
                 measureHowMuchOf(given, limit),
-                countTheOctetsOf(given, limit),
+                countOctetsFor(given, limit),
                 refinementsAsked.contains("dup")
                         && times.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                         ? Math.max(0, magnitude)
@@ -80,7 +80,7 @@ public record Asked(
                 context);
     }
 
-    private static int countTheOctetsOf(Value given, Value limit) {
+    private static int countOctetsFor(Value given, Value limit) {
         if (limit instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }

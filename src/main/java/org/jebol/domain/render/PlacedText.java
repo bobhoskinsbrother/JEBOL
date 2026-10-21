@@ -52,10 +52,10 @@ public record PlacedText(
     private static List<PlacedLine> placeTheLinesOf(
             TextLines lines, TextLayout layout, Placement where) {
 
-        double top = layout.findWhereTheStackStarts(where, lines.tallness());
+        double top = layout.stackStartDown(where, lines.tallness());
         List<PlacedLine> placed = new ArrayList<>();
         for (TextLines.Line line : lines.lines()) {
-            double along = layout.findWhereALineStarts(where, line.wide());
+            double along = layout.lineStartAcross(where, line.wide());
             double baseline = top + line.ascent();
             List<PlacedPiece> pieces = new ArrayList<>();
             for (TextLines.Piece piece : line.pieces()) {
@@ -74,9 +74,9 @@ public record PlacedText(
         if (!caret.marksSelection()) {
             return List.of();
         }
-        TextLines.CaretPlace from = lines.findWhereTheCaretIs(
+        TextLines.CaretPlace from = lines.caretPlace(
                 caret.selectionFrom().run(), caret.selectionFrom().character(), layout, where);
-        TextLines.CaretPlace to = lines.findWhereTheCaretIs(
+        TextLines.CaretPlace to = lines.caretPlace(
                 caret.selectionTo().run(), caret.selectionTo().character(), layout, where);
         TextLines.CaretPlace first = from.top() < to.top()
                 || (from.top() == to.top() && from.across() <= to.across()) ? from : to;
@@ -101,7 +101,7 @@ public record PlacedText(
         if (!caret.isShown()) {
             return Optional.empty();
         }
-        TextLines.CaretPlace placed = lines.findWhereTheCaretIs(caret.run(), caret.character(), layout, where);
+        TextLines.CaretPlace placed = lines.caretPlace(caret.run(), caret.character(), layout, where);
         Colour inked = caret.run() < written.runs().size()
                 ? written.runs().get(caret.run()).colour()
                 : Colour.BLACK;

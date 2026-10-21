@@ -18,7 +18,7 @@ public record Parameter(
         Set<Datatype> acceptedTypes,
         Optional<String> owningRefinement) {
 
-    static final Set<Datatype> A_REFINEMENTS_SLOT =
+    static final Set<Datatype> REFINEMENTS_SLOT =
             Set.of(NoneValue.TYPE, LogicValue.TYPE);
 
     public Parameter {
@@ -108,7 +108,7 @@ public record Parameter(
 
     TypesetValue makeTypeset() {
         if (kind == ParameterKind.REFINEMENT) {
-            return TypesetValue.of(A_REFINEMENTS_SLOT);
+            return TypesetValue.of(REFINEMENTS_SLOT);
         }
         return TypesetValue.of(acceptedTypes.isEmpty()
                 ? TypesetValue.ANY_TYPE.members()

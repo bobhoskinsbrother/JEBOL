@@ -156,7 +156,7 @@ public record ErrorValue(
                 throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
             }
             if (!fromAnObject && ErrorCatalogue.findCodeFor(category.spelling(), errorId)
-                    < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
+                    < ErrorCatalogue.LOWEST_CODE_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
         }
@@ -384,7 +384,7 @@ public record ErrorValue(
     }
 
     private String fallBackToPlainWords() {
-        return rebolsCatalogueNamesIt() ? ErrorWording.NOTHING_IN_THE_CATALOGUE : message;
+        return rebolsCatalogueNamesIt() ? ErrorWording.NOTHING_IN_CATALOGUE : message;
     }
 
     private boolean rebolsCatalogueNamesIt() {

@@ -77,7 +77,7 @@ final class BrotliGenericEncoder {
                 int howMany = Math.min(roomLeftInTheBlock, left);
                 ringBuffer.write(source, taken, howMany);
                 inputAt += howMany;
-                ringBuffer.clearWhatTheHashesWouldReadPastTheEnd();
+                ringBuffer.clearSlackForHashing();
                 anythingWrittenToTheRingBuffer = true;
                 taken += howMany;
                 continue;
@@ -126,7 +126,7 @@ final class BrotliGenericEncoder {
         }
 
         if (insertLengthNotYetSpokenFor > 0) {
-            commands.addInsertOnlyWhichIsHowAMetaBlockEnds(insertLengthNotYetSpokenFor);
+            commands.addInsertOnly(insertLengthNotYetSpokenFor);
             howManyLiterals += insertLengthNotYetSpokenFor;
             insertLengthNotYetSpokenFor = 0;
         }

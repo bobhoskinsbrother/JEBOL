@@ -23,7 +23,7 @@ public final class EventPath {
                     ? NoneValue.none()
                     : WordValue.of(EventCatalogue.readTypeAt(event.typeIndex()));
             case "port" -> findThePortOf(event, guiPort, callbackPort, consolePort);
-            case "window", "gob" -> findTheGobOf(event);
+            case "window", "gob" -> attachedGob(event);
             case "offset" -> event.has(EventValue.Flag.HAS_XY)
                     ? PairValue.of(event.offsetX(), event.offsetY())
                     : NoneValue.none();
@@ -57,7 +57,7 @@ public final class EventPath {
         return NoneValue.none();
     }
 
-    private static Value findTheGobOf(EventValue event) {
+    private static Value attachedGob(EventValue event) {
         if (event.model() != EventValue.Model.GUI
                 || isADroppedFile(event)
                 || !(event.attached() instanceof GobValue gob)) {

@@ -107,7 +107,7 @@ public final class VectorQuery {
             case "range" -> asVectorCounts(kind,
                     spread.largest - spread.smallest);
             case "mean", "average" -> DecimalValue.of(spread.mean);
-            case "median" -> DecimalValue.of(findTheMedianOf(vector));
+            case "median" -> DecimalValue.of(medianValue(vector));
             case "variance" -> DecimalValue.of(spread.variance());
             case "population-deviation" -> DecimalValue.of(Math.sqrt(spread.variance()));
             case "sample-variance" -> spread.count <= 1
@@ -124,7 +124,7 @@ public final class VectorQuery {
         return kind.measures() ? DecimalValue.of(answer) : IntegerValue.of((long) answer);
     }
 
-    private static double findTheMedianOf(VectorValue vector) {
+    private static double medianValue(VectorValue vector) {
         VectorKind kind = vector.kind();
         long[] sorted = vector.storage().snapshot();
         sortAscending(kind, sorted);

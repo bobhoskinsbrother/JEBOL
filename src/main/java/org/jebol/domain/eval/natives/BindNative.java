@@ -69,7 +69,7 @@ public class BindNative extends DefaultNative {
         if (!target.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
         }
-        return word.bindTo(target.findTheHolderOf(word.canonical()));
+        return word.bindTo(target.contextHolding(word.canonical()));
     }
 
     private Value bindABlockInto(AnyBlockValue block, Context target,
@@ -83,7 +83,7 @@ public class BindNative extends DefaultNative {
                     .forEach(target::register);
         }
         return refinements.contains("copy")
-                ? Binder.bindACopyOfWhatTheTargetHoldsItself(block, target, deeply)
-                : Binder.bindWhatTheTargetHoldsItself(block, target, deeply);
+                ? Binder.bindWordsTargetHoldsInCopy(block, target, deeply)
+                : Binder.bindWordsTargetHolds(block, target, deeply);
     }
 }

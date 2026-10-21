@@ -23,7 +23,7 @@ public class UntilNative extends LoopingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue body = (AnyBlockValue) arguments.getFirst();
-            return answerOfTheLoop(() -> {
+            return runLoop(() -> {
                 Value last;
                 do {
                     last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());

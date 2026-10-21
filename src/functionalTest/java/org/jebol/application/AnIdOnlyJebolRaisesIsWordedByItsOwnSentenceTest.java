@@ -27,7 +27,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
         assertThat(formed)
                 .contains("** Access error: ")
                 .contains("not granted")
-                .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                .doesNotContain(ErrorWording.NOTHING_IN_CATALOGUE);
     }
 
     @Test
@@ -45,7 +45,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
                 .contains("""
                         ** Command error: "the host fell over"
                         """)
-                .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                .doesNotContain(ErrorWording.NOTHING_IN_CATALOGUE);
     }
 
     @Test
@@ -57,7 +57,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
         assertThat(formed)
                 .contains("** Script error: ")
                 .contains("nothing on this view is called")
-                .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                .doesNotContain(ErrorWording.NOTHING_IN_CATALOGUE);
     }
 
     @Test
@@ -79,7 +79,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
             assertThat(formed).as(raised.getLast())
                     .contains("the sentence it was raised with")
-                    .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                    .doesNotContain(ErrorWording.NOTHING_IN_CATALOGUE);
         }
     }
 }

@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 public final class UrlValue extends AnyStringValue {
 
-    private static final char ENDS_THE_SCHEME = ':';
+    private static final char ENDS_SCHEME = ':';
 
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("url") {
 
@@ -55,7 +55,7 @@ public final class UrlValue extends AnyStringValue {
 
     @Override
     public String mold() {
-        return moldUnlessItFailsToReadBack(ENDS_THE_SCHEME);
+        return moldUnlessItFailsToReadBack(ENDS_SCHEME);
     }
 
     @Override

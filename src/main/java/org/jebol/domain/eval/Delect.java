@@ -139,17 +139,17 @@ public final class Delect {
             boolean asALitWord = next instanceof LitWordValue;
             int command = next instanceof AnyWordValue word
                             && (word instanceof WordValue || asALitWord)
-                    ? findTheIndexOfCommand(word)
+                    ? commandIndexFor(word)
                     : 0;
 
             if (command <= 1) {
                 return readDialectsFirstFieldWhateverItIsNamed();
             }
             at++;
-            return readNamedCommand(command, asALitWord, countTheArgumentsThatFollow());
+            return readNamedCommand(command, asALitWord, countFollowingArguments());
         }
 
-        private int countTheArgumentsThatFollow() {
+        private int countFollowingArguments() {
             int ahead = at;
             while (ahead <= input.storage().length()) {
                 Value item = input.storage().at(ahead);
@@ -164,7 +164,7 @@ public final class Delect {
         }
 
         private boolean startsNextCommandRatherThanBeingKeyword(AnyWordValue word) {
-            return findTheIndexOfCommand(word) > 1;
+            return commandIndexFor(word) > 1;
         }
 
         private boolean readDialectsFirstFieldWhateverItIsNamed() {
@@ -242,7 +242,7 @@ public final class Delect {
         }
 
         private boolean isWordDialectLeavesAlone(AnyWordValue word) {
-            return findTheIndexOfCommand(word) != 0;
+            return commandIndexFor(word) != 0;
         }
 
         private Optional<Value> readWhatTheWordHolds(AnyWordValue word) {
@@ -270,7 +270,7 @@ public final class Delect {
             return evaluator == null;
         }
 
-        private int findTheIndexOfCommand(AnyWordValue word) {
+        private int commandIndexFor(AnyWordValue word) {
             for (int position = 0; position < fields.size(); position++) {
                 if (fields.get(position).canonical().equals(word.canonical())) {
                     return fields.get(position).value() instanceof NoneValue
@@ -332,10 +332,10 @@ public final class Delect {
         if (one.isPresent()) {
             return Optional.of(java.util.Set.of(one.get()));
         }
-        return findWhatTheWordNames(word, where);
+        return datatypesNamedBy(word, where);
     }
 
-    private static Optional<java.util.Set<Datatype>> findWhatTheWordNames(
+    private static Optional<java.util.Set<Datatype>> datatypesNamedBy(
             AnyWordValue word, Context where) {
 
         if (where.holds(word.canonical())

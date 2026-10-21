@@ -117,7 +117,7 @@ class TextLinesFromTheSourceTest {
         void sitsAfterTheTextBeforeIt(int run, int character, double across, double down) {
             TextLines lines = linesOf(makeAPlainRun("abcd\nab"), makeAPlainRun("xy"));
 
-            TextLines.CaretPlace placed = lines.findWhereTheCaretIs(run, character, noInset, aBox);
+            TextLines.CaretPlace placed = lines.caretPlace(run, character, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(across);
             assertThat(placed.top()).isEqualTo(down);
@@ -130,14 +130,14 @@ class TextLinesFromTheSourceTest {
             TextLayout centred = new TextLayout(0, 0, 0, 0,
                     TextAlignment.CENTRE, TextVerticalAlignment.TOP, 0, 0);
 
-            assertThat(linesOf(makeAPlainRun("abcd")).findWhereTheCaretIs(0, 0, centred, aBox).across())
+            assertThat(linesOf(makeAPlainRun("abcd")).caretPlace(0, 0, centred, aBox).across())
                     .isEqualTo((200 - 24) / 2.0);
         }
 
         @Test
         @DisplayName("the para's origin moves the caret in from the gob's top left")
         void movesWithTheOrigin() {
-            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab")).findWhereTheCaretIs(0, 1, TextLayout.STANDARD, aBox);
+            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab")).caretPlace(0, 1, TextLayout.STANDARD, aBox);
 
             assertThat(placed.across()).isEqualTo(2 + 6);
             assertThat(placed.top()).isEqualTo(2);
@@ -146,7 +146,7 @@ class TextLinesFromTheSourceTest {
         @Test
         @DisplayName("a run that does not exist puts the caret at the very end")
         void stopsAtTheEndForARunPastIt() {
-            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab\ncd")).findWhereTheCaretIs(9, 0, noInset, aBox);
+            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab\ncd")).caretPlace(9, 0, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(12);
             assertThat(placed.top()).isEqualTo(12);
@@ -237,7 +237,7 @@ class TextLinesFromTheSourceTest {
         })
         @DisplayName("a caret on a wrapped line is drawn on it, and the place where a line was broken starts the next")
         void placesACaretOnAWrappedLine(int character, double across, double down) {
-            TextLines.CaretPlace placed = wrapIn(35, makeAPlainRun("abc de")).findWhereTheCaretIs(0, character, noInset, aBox);
+            TextLines.CaretPlace placed = wrapIn(35, makeAPlainRun("abc de")).caretPlace(0, character, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(across);
             assertThat(placed.top()).isEqualTo(down);

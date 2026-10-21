@@ -19,10 +19,10 @@ public final class GobPath {
                     "cannot select " + selector.datatype().literalSpelling()
                             + " from a gob");
         }
-        return findTheChildOf(gob, magnitude);
+        return childAt(gob, magnitude);
     }
 
-    static Value findTheChildOf(GobValue gob, long count) {
+    static Value childAt(GobValue gob, long count) {
         long at = (gob.index() - 1) + count;
         if (isACountBelowOne(at, gob)) {
             return NoneValue.none();

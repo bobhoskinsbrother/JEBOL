@@ -214,7 +214,7 @@ public final class BitsetActions implements Actions {
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
-                    to = findBitAsked(readTheCodePointOf(findTheFarEndOfTheRun(spec, specs, at + 2)));
+                    to = findBitAsked(readTheCodePointOf(runEndAt(spec, specs, at + 2)));
                     at += 2;
                 }
                 if (to < from) {
@@ -230,7 +230,7 @@ public final class BitsetActions implements Actions {
         return octets;
     }
 
-    private static Value findTheFarEndOfTheRun(Value opening, List<Value> specs, int at) {
+    private static Value runEndAt(Value opening, List<Value> specs, int at) {
         Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
         if (opening.datatype() != closing.datatype()) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(closing));

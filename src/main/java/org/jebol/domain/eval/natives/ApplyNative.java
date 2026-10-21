@@ -57,7 +57,7 @@ public class ApplyNative extends DefaultNative {
     }
 
     private List<Value> takeExactlyAsManyAsItTakes(Value callee, List<Value> supplied) {
-        int wanted = (int) countTheArityOf(callee);
+        int wanted = (int) arity(callee);
         List<Value> exactly = new ArrayList<>(
                 supplied.subList(0, Math.min(wanted, supplied.size())));
         while (exactly.size() < wanted) {
@@ -66,14 +66,14 @@ public class ApplyNative extends DefaultNative {
         return exactly;
     }
 
-    private long countTheArityOf(Value callee) {
+    private long arity(Value callee) {
         return switch (callee) {
             case NativeValue built -> built.parameters().stream()
                     .filter(Parameter::consumesArgument)
                     .filter(parameter -> parameter.owningRefinement().isEmpty())
                     .count();
             case DefinedFunctionValue function -> function.parameters().size();
-            case OperatorValue operator -> countTheArityOf(operator.underlying());
+            case OperatorValue operator -> arity(operator.underlying());
             default -> 0;
         };
     }

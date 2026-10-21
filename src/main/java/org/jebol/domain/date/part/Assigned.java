@@ -49,7 +49,7 @@ record Assigned(Value value, AnyWordValue part) {
         throw refusal();
     }
 
-    int asAZoneOffsetInMinutes() {
+    int zoneOffsetInMinutes() {
         return withinReach(switch (value) {
             case IntegerValue aBareNumberMeansHours ->
                     Math.toIntExact(aBareNumberMeansHours.magnitude()) * 60;

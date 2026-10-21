@@ -111,7 +111,7 @@ public final class DrawDialect {
                         arguments.getFirst() instanceof LogicValue(boolean truth) && truth);
                 case "line-pattern" -> {
                     state = state.withDashes(read.collectEveryNumberIn(arguments));
-                    gapColour = read.readColourAt(arguments, THE_DASH_COLOUR);
+                    gapColour = read.readColourAt(arguments, DASH_COLOUR);
                 }
                 case "arrow" -> {
                     state = state.withArrowEnds(read.readThePairAt(arguments, 1)
@@ -157,7 +157,7 @@ public final class DrawDialect {
             }
             paintGapsBetweenDashes(path);
             paintGradientNoToolkitHas(path);
-            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(),
+            painted.add(new PaintInstruction.Drawn(placementWithCurrentClip(),
                     path, findTransformOnSurface(), makeStateRendererGets()));
             paintAnyArrowheads(path);
         }
@@ -288,7 +288,7 @@ public final class DrawDialect {
             if (gaps.isEmpty()) {
                 return;
             }
-            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), gaps,
+            painted.add(new PaintInstruction.Drawn(placementWithCurrentClip(), gaps,
                     findTransformOnSurface(), state.withDashes(List.of())
                             .withFill(Optional.empty())
                             .withFillGradient(Optional.empty())
@@ -306,7 +306,7 @@ public final class DrawDialect {
             }
             Optional<Colour> filled =
                     arrowColour.isPresent() ? arrowColour : state.strokeColour();
-            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), heads,
+            painted.add(new PaintInstruction.Drawn(placementWithCurrentClip(), heads,
                     findTransformOnSurface(), state.withDashes(List.of())
                             .withStroke(Optional.empty())
                             .withFillGradient(Optional.empty())
@@ -314,29 +314,29 @@ public final class DrawDialect {
         }
 
         private static final double HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE = 0.5522847498;
-        private static final int THE_GRADIENT_TYPE = 0;
-        private static final int THE_GRADIENT_OFFSET = 2;
-        private static final int THE_GRADIENT_RANGE_FROM = 4;
-        private static final int THE_GRADIENT_RANGE_TO = 5;
-        private static final int THE_GRADIENT_ANGLE = 6;
-        private static final int THE_GRADIENT_COLOURS = 9;
+        private static final int GRADIENT_TYPE = 0;
+        private static final int GRADIENT_OFFSET = 2;
+        private static final int GRADIENT_RANGE_FROM = 4;
+        private static final int GRADIENT_RANGE_TO = 5;
+        private static final int GRADIENT_ANGLE = 6;
+        private static final int GRADIENT_COLOURS = 9;
 
         private Optional<Gradient> readAGradientFrom(List<Value> arguments) {
-            Optional<GradientShape> shape = read.readTheWordAt(arguments, THE_GRADIENT_TYPE)
+            Optional<GradientShape> shape = read.readTheWordAt(arguments, GRADIENT_TYPE)
                     .map(GradientShape::findTheShapeNamed)
                     .orElse(Optional.of(GradientShape.LINEAR));
-            List<Colour> colours = collectEveryColourIn(arguments, THE_GRADIENT_COLOURS);
+            List<Colour> colours = collectEveryColourIn(arguments, GRADIENT_COLOURS);
             if (shape.isEmpty() || colours.size() < 2) {
                 return Optional.empty();
             }
-            PairValue offset = read.readThePairAt(arguments, THE_GRADIENT_OFFSET)
+            PairValue offset = read.readThePairAt(arguments, GRADIENT_OFFSET)
                     .orElse(PairValue.of(0, 0));
-            double angle = read.readTheNumberAt(arguments, THE_GRADIENT_ANGLE).orElse(0.0);
+            double angle = read.readTheNumberAt(arguments, GRADIENT_ANGLE).orElse(0.0);
             return Optional.of(new Gradient(
                     shape.orElseThrow(),
                     offset.x(), offset.y(),
-                    read.readTheNumberAt(arguments, THE_GRADIENT_RANGE_FROM).orElse(0.0),
-                    read.readTheNumberAt(arguments, THE_GRADIENT_RANGE_TO).orElse(Math.max(wide, high)),
+                    read.readTheNumberAt(arguments, GRADIENT_RANGE_FROM).orElse(0.0),
+                    read.readTheNumberAt(arguments, GRADIENT_RANGE_TO).orElse(Math.max(wide, high)),
                     shape.orElseThrow() == GradientShape.DIAGONAL ? angle + 45 : angle,
                     colours, stopsFor(colours.size(), shape.orElseThrow())));
         }
@@ -364,7 +364,7 @@ public final class DrawDialect {
             return List.copyOf(stops);
         }
 
-        private Placement findWhereTheClipStandsNow() {
+        private Placement placementWithCurrentClip() {
             return clip == where.clip()
                     ? where
                     : new Placement(where.across(), where.down(),
@@ -675,7 +675,7 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        findWhereTheClipStandsNow().fitInsideShape(outline),
+                        placementWithCurrentClip().fitInsideShape(outline),
                         piece.path(), findTransformOnSurface(), makeStateRendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())
@@ -755,5 +755,5 @@ public final class DrawDialect {
 
     private static final double CATMULL_ROM_SIXTH = 6.0;
 
-    private static final int THE_DASH_COLOUR = 1;
+    private static final int DASH_COLOUR = 1;
 }

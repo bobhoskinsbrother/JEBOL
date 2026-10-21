@@ -4,10 +4,10 @@ final class ScanningATime {
 
     private static final int NOT_GIVEN = -1;
     private static final int DIGITS_OF_A_FRACTION = 9;
-    private static final long NANOSECONDS_A_SECOND = 1_000_000_000L;
-    private static final long NANOSECONDS_A_MINUTE = 60L * NANOSECONDS_A_SECOND;
-    private static final long NANOSECONDS_AN_HOUR = 60L * NANOSECONDS_A_MINUTE;
-    private static final long MOST_HOURS_A_TIME_HOLDS = 9_223_372_036L / 3600L;
+    private static final long NANOSECONDS_SECOND = 1_000_000_000L;
+    private static final long NANOSECONDS_MINUTE = 60L * NANOSECONDS_SECOND;
+    private static final long NANOSECONDS_HOUR = 60L * NANOSECONDS_MINUTE;
+    private static final long MOST_HOURS_TIME_HOLDS = 9_223_372_036L / 3600L;
     private static final int NOON = 12;
 
     private final String text;
@@ -30,7 +30,7 @@ final class ScanningATime {
             return false;
         }
         firstNumber = readWholeNumberFromHere();
-        if (firstNumber > MOST_HOURS_A_TIME_HOLDS || !stepOverColon()) {
+        if (firstNumber > MOST_HOURS_TIME_HOLDS || !stepOverColon()) {
             return false;
         }
         if (!readsSecondNumber()) {
@@ -63,14 +63,14 @@ final class ScanningATime {
             hours = hours == NOON ? 0 : hours;
             hours += afternoonOrMorning == 'P' ? NOON : 0;
         }
-        return hours * NANOSECONDS_AN_HOUR
-                + secondNumber * NANOSECONDS_A_MINUTE
-                + Math.max(thirdNumber, 0) * NANOSECONDS_A_SECOND;
+        return hours * NANOSECONDS_HOUR
+                + secondNumber * NANOSECONDS_MINUTE
+                + Math.max(thirdNumber, 0) * NANOSECONDS_SECOND;
     }
 
     private long minutesAndSeconds() {
-        return firstNumber * NANOSECONDS_A_MINUTE
-                + secondNumber * NANOSECONDS_A_SECOND;
+        return firstNumber * NANOSECONDS_MINUTE
+                + secondNumber * NANOSECONDS_SECOND;
     }
 
     private void readAnyLeadingSign() {

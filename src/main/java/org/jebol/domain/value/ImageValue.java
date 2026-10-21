@@ -11,7 +11,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     private static final int WHOLLY = 0xFF;
 
-    private static final boolean WRITES_THE_ALPHA_TOO = false;
+    private static final boolean WRITES_ALPHA_TOO = false;
 
     private static final boolean WRITTEN = true;
 
@@ -65,7 +65,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     @Override
     public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirstWholeRows(howMany);
+        return copyFirstWholeRows(howMany);
     }
 
     @Override
@@ -124,7 +124,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
         private static final int A_ROW_OF_A_BIG_PICTURE = 500;
 
-        private static final int BYTES_A_PIXEL = 4;
+        private static final int BYTES_PIXEL = 4;
 
         private static final int THE_BITS_OF_AN_OCTET = 0xFF;
 
@@ -155,7 +155,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             if (!(value instanceof BinaryValue bytes)) {
                 throw Raised.of(EvaluationFailure.INVALID_TYPE, value.datatype());
             }
-            int pixels = bytes.lengthFromHere() / BYTES_A_PIXEL;
+            int pixels = bytes.lengthFromHere() / BYTES_PIXEL;
             if (pixels == 0) {
                 throw refuse(value);
             }
@@ -170,7 +170,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             }
             ImageValue made = ImageValue.of(across, down);
             for (int pixel = 1; pixel <= pixels; pixel++) {
-                int at = bytes.index() + (pixel - 1) * BYTES_A_PIXEL;
+                int at = bytes.index() + (pixel - 1) * BYTES_PIXEL;
                 made.storage().setColourAt(pixel,
                         bytes.storage().at(at),
                         bytes.storage().at(at + 1),
@@ -314,10 +314,10 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     @Override
     public Value copy(boolean deeply, Set<Datatype> kinds) {
-        return copyOfTheFirstWholeRows(lengthFromHere());
+        return copyFirstWholeRows(lengthFromHere());
     }
 
-    public ImageValue copyOfTheFirstWholeRows(int howMany) {
+    public ImageValue copyFirstWholeRows(int howMany) {
         int taking = Math.max(0, Math.min(howMany, lengthFromHere()));
         int wideEnoughForARow = Math.max(1, storage.wide());
         int wide = Math.min(taking, wideEnoughForARow);
@@ -333,7 +333,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     public Value append(Value given, long howManyTimes) {
-        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_THE_ALPHA_TOO);
+        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_ALPHA_TOO);
         for (long again = 0; again < howManyTimes; again++) {
             for (PixelWrite pixel : pixels) {
                 growWhiteAndWrite(storage.length() + 1, pixel);
@@ -343,7 +343,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     public Value insert(Value given, long howManyTimes) {
-        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_THE_ALPHA_TOO);
+        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_ALPHA_TOO);
         int at = index;
         for (long again = 0; again < howManyTimes; again++) {
             for (PixelWrite pixel : pixels) {

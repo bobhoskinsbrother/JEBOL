@@ -273,14 +273,14 @@ final class ImagePath {
             case "red" -> readChannels(image, 0);
             case "green" -> readChannels(image, 1);
             case "blue" -> readChannels(image, 2);
-            case "color" -> averageTheColourOf(image);
+            case "color" -> averageColour(image);
             case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheLuminosityOf);
             case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheGreyOf);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         };
     }
 
-    private static Value averageTheColourOf(ImageValue image) {
+    private static Value averageColour(ImageValue image) {
         int pixels = image.lengthFromHere();
         if (pixels == 0) {
             return TRANSPARENT_BLACK;

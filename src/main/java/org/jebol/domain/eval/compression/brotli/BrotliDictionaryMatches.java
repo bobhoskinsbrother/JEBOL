@@ -96,7 +96,7 @@ final class BrotliDictionaryMatches {
 
         boolean hasFoundMatch = false;
       {
-        int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at));
+        int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at));
         boolean end = offset == 0;
         while (!end) {
           int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
@@ -337,7 +337,7 @@ final class BrotliDictionaryMatches {
 
       if (maxLength >= 5 && (data[at] == ' ' || data[at] == '.')) {
         boolean isSpace = data[at] == ' ';
-        int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 1));
+        int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 1));
         boolean end = offset == 0;
         while (!end) {
           int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
@@ -426,7 +426,7 @@ final class BrotliDictionaryMatches {
         if ((data[at + 1] == ' ' &&
              (data[at] == 'e' || data[at] == 's' || data[at] == ',')) ||
             ((data[at] & 0xFF) == 0xC2 && (data[at + 1] & 0xFF) == 0xA0)) {
-          int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 2));
+          int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 2));
           boolean end = offset == 0;
           while (!end) {
             int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
@@ -458,7 +458,7 @@ final class BrotliDictionaryMatches {
              data[at + 3] == 'e' && data[at + 4] == ' ') ||
             (data[at] == '.' && data[at + 1] == 'c' && data[at + 2] == 'o' &&
              data[at + 3] == 'm' && data[at + 4] == '/')) {
-          int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 5));
+          int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 5));
           boolean end = offset == 0;
           while (!end) {
             int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);

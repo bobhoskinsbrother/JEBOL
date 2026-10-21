@@ -135,7 +135,7 @@ final class BrotliCommand {
         count++;
     }
 
-    void addInsertOnlyWhichIsHowAMetaBlockEnds(int insertLengthGiven) {
+    void addInsertOnly(int insertLengthGiven) {
         grow(count + 1);
         insertLength[count] = insertLengthGiven;
         copyLengthAndItsCodeDeltaInTheTopSevenBits[count] = 4 << 25;

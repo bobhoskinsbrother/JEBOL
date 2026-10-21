@@ -157,11 +157,11 @@ public record TimeValue(long nanoseconds) implements Value {
 
     private static final class TimeDatatype extends ScalarDatatype {
 
-        private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
+        private static final double MOST_SECONDS_DURATION_HOLDS = 9_223_372_036.0;
 
-        private static final long MOST_SECONDS_A_TIME_HOLDS = 9_223_372_036L;
+        private static final long MOST_SECONDS_TIME_HOLDS = 9_223_372_036L;
 
-        private static final long SECONDS_AN_HOUR = 3600L;
+        private static final long SECONDS_HOUR = 3600L;
 
         TimeDatatype() {
             super("time");
@@ -198,7 +198,7 @@ public record TimeValue(long nanoseconds) implements Value {
                 throw refuse(BlockValue.of(parts));
             }
             boolean negative = hours < 0;
-            long seconds = Math.abs(hours) * SECONDS_AN_HOUR;
+            long seconds = Math.abs(hours) * SECONDS_HOUR;
             long fraction = 0;
             if (parts.size() > 1) {
                 if (!(parts.get(1) instanceof IntegerValue(long minutes)) || minutes < 0) {
@@ -223,7 +223,7 @@ public record TimeValue(long nanoseconds) implements Value {
         }
 
         private Value makeADurationOfSeconds(Value value, double seconds) {
-            if (seconds < -MOST_SECONDS_A_DURATION_HOLDS || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
+            if (seconds < -MOST_SECONDS_DURATION_HOLDS || seconds > MOST_SECONDS_DURATION_HOLDS) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
             }
             return ofNanoseconds(TimeActions.countTheWholeNanosecondsOf(value));
@@ -236,16 +236,16 @@ public record TimeValue(long nanoseconds) implements Value {
                 throw refuse(parts);
             }
             boolean negated = hours < 0;
-            long seconds = fitInThirtyTwoBits(Math.abs(hours), parts) * SECONDS_AN_HOUR;
+            long seconds = fitInThirtyTwoBits(Math.abs(hours), parts) * SECONDS_HOUR;
             double fraction = 0.0;
             for (int at = 1; at < given.size(); at++) {
-                if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+                if (seconds > MOST_SECONDS_TIME_HOLDS) {
                     throw refuse(parts);
                 }
                 Value part = given.get(at);
                 if (at == 2 && part instanceof DecimalValue fractional) {
                     fraction = fractional.quantity();
-                    if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
+                    if (seconds + (long) fraction + 1 > MOST_SECONDS_TIME_HOLDS) {
                         throw refuse(parts);
                     }
                     break;
@@ -255,7 +255,7 @@ public record TimeValue(long nanoseconds) implements Value {
                 }
                 seconds += fitInThirtyTwoBits(magnitude, parts) * (at == 1 ? 60L : 1L);
             }
-            if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+            if (seconds > MOST_SECONDS_TIME_HOLDS) {
                 throw refuse(parts);
             }
             long nanoseconds = seconds * NANOSECONDS_PER_SECOND

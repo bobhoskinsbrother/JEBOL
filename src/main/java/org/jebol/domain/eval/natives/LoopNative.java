@@ -28,7 +28,7 @@ public class LoopNative extends LoopingNative {
         return (arguments, evaluator, context, refinements) -> {
             long passes = ((IntegerValue) arguments.get(0)).magnitude();
             AnyBlockValue body = (AnyBlockValue) arguments.get(1);
-            return answerOfTheLoop(() -> {
+            return runLoop(() -> {
                 Value last = NoneValue.none();
                 for (long pass = 0; pass < passes; pass++) {
                     last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());

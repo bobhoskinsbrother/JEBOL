@@ -193,7 +193,7 @@ public final class Molder {
                     new IdentityHashMap<>()));
 
     private static String render(Value value, boolean forReading) {
-        Object nesting = findTheNestingIdentityOf(value);
+        Object nesting = nestingKey(value);
         if (nesting != null) {
             if (!ALREADY_INSIDE.get().add(nesting)) {
                 return markAsAlreadyInsideItself(value);
@@ -216,7 +216,7 @@ public final class Molder {
         };
     }
 
-    private static Object findTheNestingIdentityOf(Value value) {
+    private static Object nestingKey(Value value) {
         return switch (value) {
             case AnyBlockValue block -> block.storage();
             case MapValue map -> map;
@@ -303,11 +303,11 @@ public final class Molder {
                 : renderDouble(quantity);
     }
 
-    private static final int A_PERCENT_MOVES_THE_POINT_THIS_FAR = 2;
+    private static final int PERCENT_MOVES_POINT_THIS_FAR = 2;
 
     private static String renderPercent(double quantity) {
         int digits = WRITING_EVERYTHING_OUT.get()
-                ? EVERY_DIGIT_A_DOUBLE_HAS
+                ? EVERY_DIGIT_DOUBLE_HAS
                 : SIGNIFICANT_DIGITS;
         if (quantity == 0.0) {
             return 1 / quantity < 0 ? "-0" : "0";
@@ -315,7 +315,7 @@ public final class Molder {
         BigDecimal rounded = new BigDecimal(quantity)
                 .round(new MathContext(digits))
                 .stripTrailingZeros()
-                .movePointRight(A_PERCENT_MOVES_THE_POINT_THIS_FAR);
+                .movePointRight(PERCENT_MOVES_POINT_THIS_FAR);
         return renderRounded(rounded, digits, MINIMAL);
     }
 
@@ -349,11 +349,11 @@ public final class Molder {
 
     private static final boolean KEEPS_ITS_POINT = false;
 
-    private static final int EVERY_DIGIT_A_DOUBLE_HAS = 17;
+    private static final int EVERY_DIGIT_DOUBLE_HAS = 17;
 
     private static String renderDouble(double quantity) {
         return renderDouble(quantity, WRITING_EVERYTHING_OUT.get()
-                ? EVERY_DIGIT_A_DOUBLE_HAS
+                ? EVERY_DIGIT_DOUBLE_HAS
                 : SIGNIFICANT_DIGITS, KEEPS_ITS_POINT);
     }
 
@@ -412,7 +412,7 @@ public final class Molder {
 
     private static String renderMap(MapValue map, boolean forReading) {
         if (!forReading) {
-            return formThePairsOf(map);
+            return formPairs(map);
         }
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
         String opens = asAConstruct ? "#(map! [" : "#[";
@@ -440,7 +440,7 @@ public final class Molder {
                 + (onSeparateLines ? indentLineAsDeepAsWeAre() : "") + shuts;
     }
 
-    private static String formThePairsOf(MapValue map) {
+    private static String formPairs(MapValue map) {
         List<Value> flat = map.flatten();
         StringBuilder written = new StringBuilder();
         for (int at = 0; at < flat.size(); at += 2) {
@@ -533,7 +533,7 @@ public final class Molder {
         return hex.toString();
     }
 
-    private static final int PIXELS_TO_A_LINE = 10;
+    private static final int PIXELS_TO_LINE = 10;
 
     private static String renderImage(ImageValue image, boolean forReading) {
         String size = image.storage().wide() + "x" + image.storage().high();
@@ -547,11 +547,11 @@ public final class Molder {
             return opens + size + " #{}" + shuts;
         }
         boolean brokenIntoLines =
-                pixels >= PIXELS_TO_A_LINE && !WRITING_ON_ONE_LINE.get();
+                pixels >= PIXELS_TO_LINE && !WRITING_ON_ONE_LINE.get();
         StringBuilder colours = new StringBuilder();
         StringBuilder alphas = new StringBuilder();
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            if (brokenIntoLines && (pixel - 1) % PIXELS_TO_A_LINE == 0) {
+            if (brokenIntoLines && (pixel - 1) % PIXELS_TO_LINE == 0) {
                 colours.append("\n");
                 alphas.append("\n");
             }
@@ -608,13 +608,13 @@ public final class Molder {
         };
     }
 
-    private static final int BYTES_TO_A_HEX_LINE = 32;
+    private static final int BYTES_TO_HEX_LINE = 32;
 
-    private static final int BYTES_TO_A_BINARY_LINE = 8;
+    private static final int BYTES_TO_BINARY_LINE = 8;
 
-    private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE = 48;
+    private static final int BYTES_TO_BASE_SIXTY_FOUR_LINE = 48;
 
-    private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK = 64;
+    private static final int BYTES_TO_BASE_SIXTY_FOUR_LINE_BREAK = 64;
 
     private static String breakIntoRuns(String digits, int digitsToARun) {
         StringBuilder written = new StringBuilder("\n");
@@ -630,8 +630,8 @@ public final class Molder {
 
     private static String writeBase16Digits(byte[] octets, boolean mayBreakLines) {
         String digits = writeTheHexOf(octets);
-        return mayBreakLines && octets.length > BYTES_TO_A_HEX_LINE
-                ? breakIntoRuns(digits, BYTES_TO_A_HEX_LINE * 2)
+        return mayBreakLines && octets.length > BYTES_TO_HEX_LINE
+                ? breakIntoRuns(digits, BYTES_TO_HEX_LINE * 2)
                 : digits;
     }
 
@@ -643,11 +643,11 @@ public final class Molder {
                 digits.append(octet >> bit & 1);
             }
         }
-        if (octets.length == BYTES_TO_A_BINARY_LINE) {
+        if (octets.length == BYTES_TO_BINARY_LINE) {
             digits.setLength(digits.length() - 1);
         }
-        return mayBreakLines && octets.length > BYTES_TO_A_BINARY_LINE
-                ? breakIntoRuns(digits.toString(), BYTES_TO_A_BINARY_LINE * 8)
+        return mayBreakLines && octets.length > BYTES_TO_BINARY_LINE
+                ? breakIntoRuns(digits.toString(), BYTES_TO_BINARY_LINE * 8)
                 : digits.toString();
     }
 
@@ -656,14 +656,14 @@ public final class Molder {
 
     private static String writeBase64Digits(byte[] octets, boolean mayBreakLines) {
         boolean brokenIntoLines =
-                mayBreakLines && octets.length > BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK;
+                mayBreakLines && octets.length > BYTES_TO_BASE_SIXTY_FOUR_LINE_BREAK;
         int wholeGroups = octets.length / 3;
         StringBuilder digits = new StringBuilder(
                 brokenIntoLines && 4 * (wholeGroups - 1) > 64 ? "\n" : "");
         for (int at = 0; at < wholeGroups * 3; at += 3) {
             appendSextets(digits, octets, at, 3);
             if (brokenIntoLines
-                    && (at + 3) % BYTES_TO_A_BASE_SIXTY_FOUR_LINE == 0) {
+                    && (at + 3) % BYTES_TO_BASE_SIXTY_FOUR_LINE == 0) {
                 digits.append("\n");
             }
         }
@@ -706,7 +706,7 @@ public final class Molder {
         }
     }
 
-    private static final int NUMBERS_TO_A_LINE = 10;
+    private static final int NUMBERS_TO_LINE = 10;
 
     private static String writeAsVector(VectorValue vector, int from,
                                         boolean forReading, int positionToName) {
@@ -718,7 +718,7 @@ public final class Molder {
             return String.join(" ", numbers);
         }
         int outer = LINED_DEPTH.get();
-        boolean overALine = numbers.size() > NUMBERS_TO_A_LINE && !WRITING_ON_ONE_LINE.get();
+        boolean overALine = numbers.size() > NUMBERS_TO_LINE && !WRITING_ON_ONE_LINE.get();
         StringBuilder out = new StringBuilder("#(")
                 .append(vector.kind().spelling()).append(" [");
         if (overALine) {
@@ -729,7 +729,7 @@ public final class Molder {
             if (at + 1 == numbers.size()) {
                 continue;
             }
-            if (overALine && (at + 1) % NUMBERS_TO_A_LINE == 0) {
+            if (overALine && (at + 1) % NUMBERS_TO_LINE == 0) {
                 out.append('\n').append(ONE_INDENT.repeat(outer + 1));
             } else {
                 out.append(' ');

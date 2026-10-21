@@ -80,7 +80,7 @@ public final class DesktopScreen extends GobScreen {
     private PairValue measureMetric(ScreenMetric metric, int display) {
         Rectangle whole = displayDimensions(display);
         Rectangle usable = workAreaOfDisplay(display);
-        Insets furniture = furnitureOfAResizableWindow();
+        Insets furniture = resizableWindowInsets();
         return switch (metric) {
             case SCREEN_SIZE -> PairValue.of(whole.width, whole.height);
             case SCREEN_ORIGIN -> PairValue.of(whole.x, whole.y);
@@ -90,7 +90,7 @@ public final class DesktopScreen extends GobScreen {
             case TITLE_SIZE -> PairValue.of(0, furniture.top);
             case BORDER_SIZE -> PairValue.of(furniture.left, furniture.bottom);
             case BORDER_FIXED -> PairValue.of(
-                    measureTheFurnitureOfAFixedWindow().left, measureTheFurnitureOfAFixedWindow().bottom);
+                    fixedWindowInsets().left, fixedWindowInsets().bottom);
             case WINDOW_MIN_SIZE -> measureSmallestWindowSwingLaysOut();
             case LOG_SIZE, PHYS_SIZE -> PairValue.of(1, 1);
             case SCREENS -> PairValue.of(displayCount(), displayCount());
@@ -122,15 +122,15 @@ public final class DesktopScreen extends GobScreen {
         return PairValue.of(resolution, resolution);
     }
 
-    private Insets furnitureOfAResizableWindow() {
-        return measureTheFurnitureOfAWindow(true);
+    private Insets resizableWindowInsets() {
+        return measureWindowInsets(true);
     }
 
-    private Insets measureTheFurnitureOfAFixedWindow() {
-        return measureTheFurnitureOfAWindow(false);
+    private Insets fixedWindowInsets() {
+        return measureWindowInsets(false);
     }
 
-    private Insets measureTheFurnitureOfAWindow(
+    private Insets measureWindowInsets(
             boolean resizable) {
         JFrame measured = new JFrame();
         try {

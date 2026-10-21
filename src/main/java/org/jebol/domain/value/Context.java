@@ -20,7 +20,7 @@ public final class Context {
     private boolean closedToNewNames;
     private Optional<ContextSlot> itsOwnSelf = Optional.empty();
 
-    private static final String THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF = "self";
+    private static final String WORD_OBJECT_ANSWERS_TO_FOR_ITSELF = "self";
 
     private Context(Context parent, boolean unbound) {
         this.parent = parent;
@@ -114,7 +114,7 @@ public final class Context {
 
     public void pointItsOwnSelfAt(Value object) {
         ContextSlot self = new ContextSlot(this,
-                THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF, THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF);
+                WORD_OBJECT_ANSWERS_TO_FOR_ITSELF, WORD_OBJECT_ANSWERS_TO_FOR_ITSELF);
         self.setValue(object);
         itsOwnSelf = Optional.of(self);
     }
@@ -146,7 +146,7 @@ public final class Context {
     }
 
     private boolean answersToItsOwnSelf(String canonicalName) {
-        return itsOwnSelf.isPresent() && canonicalName.equals(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF);
+        return itsOwnSelf.isPresent() && canonicalName.equals(WORD_OBJECT_ANSWERS_TO_FOR_ITSELF);
     }
 
     public boolean holds(String canonicalName) {
@@ -158,15 +158,15 @@ public final class Context {
         return onlyThroughACallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
     }
 
-    public Context findTheHolderOf(String canonicalName) {
+    public Context contextHolding(String canonicalName) {
         if (supersededBy != null) {
-            return findResolvingFrame().findTheHolderOf(canonicalName);
+            return findResolvingFrame().contextHolding(canonicalName);
         }
         if (holds(canonicalName) || answersToItsOwnSelf(canonicalName)) {
             return this;
         }
         if (!unbound && parent != null) {
-            return parent.findTheHolderOf(canonicalName);
+            return parent.contextHolding(canonicalName);
         }
         throw new IllegalStateException("no context holds \"" + canonicalName + "\"; ask knows() first");
     }
@@ -327,7 +327,7 @@ public final class Context {
 
     public Set<String> listTheNamesItBinds() {
         Set<String> bound = new HashSet<>(ownFieldNames());
-        itsOwnSelf.ifPresent(self -> bound.add(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF));
+        itsOwnSelf.ifPresent(self -> bound.add(WORD_OBJECT_ANSWERS_TO_FOR_ITSELF));
         return bound;
     }
 
