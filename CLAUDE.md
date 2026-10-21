@@ -282,6 +282,37 @@ and that carve-out kept three hundred and sixty essays in the test tree. The
 evidence is worth having and it belongs in `docs/`, where the next reader looks
 for it, rather than above a class they have to open the file to find.
 
+## Names: a method name is a message, not a sentence
+
+**You are sending the receiver a message -- `object.dispatchCommand()` -- and
+the name is the message.** A command or a question, not prose about the code:
+`a`, `an` and `the` are words a sentence needs and a message does not.
+`readTheWordAt` is `readWordAt`, `copyTheMap` is `copyMap`,
+`combineWithANumber` is `combineWithNumber`, `combineFromTheLeft` is
+`combineFromLeft`, `asMoneyInTheCurrencyOf` is `asMoneyUsingCurrency`. A
+fresh `aBlah` or `theBlah` is the sign that a sentence was written and then
+pointed at an object. The same words are furniture in a variable or a type
+name.
+
+**A predicate is a question, and there the article is the question.**
+`isAFile` keeps its: "is a file" is what is being asked, not furniture
+around it.
+
+**And the verb is the operation.** `may` hedges the answer into nothing:
+`mayLoseATime` is `willDeductTime`, `mayMeetADate` is
+`canBeUsedToCalculateDate`. A metaphor hides the operation (`meet`,
+`lose`) -- name the operation. A relative clause is the same failure in a
+longer shape: `confineAnyInterpreterThisOneStarts` is `constrainInterpreter`,
+`writeWhatConsolePrints` is `responseBasedOnOutcome`.
+
+The older names are all over the tree and are renamed as they are touched
+(`ide_refactor_rename`, never by hand). What this rule is for is the new
+one.
+
+The test tree is outside the rule: a test class and a test method name what
+the test exercises -- a description of behaviour, not a message sent to an
+object -- and a sentence belongs there.
+
 ## Writing tests that carry REBOL source
 
 **Use a text block, always - one-liners included.** A backslash-escaped quote

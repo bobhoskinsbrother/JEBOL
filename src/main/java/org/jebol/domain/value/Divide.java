@@ -81,7 +81,7 @@ public final class Divide implements ArithmeticOperation {
     }
 
     @Override
-    public boolean subtractsOneFromTheOther() {
+    public boolean canSubtractOneFromOther() {
         return false;
     }
 

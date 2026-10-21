@@ -76,7 +76,7 @@ public final class Multiply implements ArithmeticOperation {
     }
 
     @Override
-    public boolean subtractsOneFromTheOther() {
+    public boolean canSubtractOneFromOther() {
         return false;
     }
 

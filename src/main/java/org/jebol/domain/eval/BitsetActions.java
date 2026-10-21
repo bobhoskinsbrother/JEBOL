@@ -68,7 +68,7 @@ public final class BitsetActions implements Actions {
                     : members.holds(codepoint);
         }
         if (asked instanceof IntegerValue(long magnitude)) {
-            return members.holds(findTheBitAsked(magnitude));
+            return members.holds(findBitAsked(magnitude));
         }
         return holdsEachOf(collectTheCodePointsAskedAboutBy(asked), anyWillDo);
     }
@@ -162,7 +162,7 @@ public final class BitsetActions implements Actions {
                     BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character -> BitsetValue.ofCharacters(character.codepoint());
             case IntegerValue room -> BitsetValue.of(
-                    new byte[(findTheRoomAsked(room.magnitude()) + 7) / 8]);
+                    new byte[(findRoomAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
             case BitsetValue existing -> existing.duplicate();
             case AnyBlockValue members -> fromBlock(members);
@@ -172,7 +172,7 @@ public final class BitsetActions implements Actions {
 
     public static BitsetValue readWhatIsMeantBy(Value source) {
         if (source instanceof IntegerValue(long magnitude)) {
-            return BitsetValue.of(withBitSet(new byte[0], findTheBitAsked(magnitude)));
+            return BitsetValue.of(withBitSet(new byte[0], findBitAsked(magnitude)));
         }
         if (!(source instanceof CharacterValue || source instanceof AnyStringValue
                 || source instanceof BinaryValue || source instanceof AnyBlockValue)) {
@@ -209,12 +209,12 @@ public final class BitsetActions implements Actions {
                     octets = withBitSet(octets, point);
                 }
             } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
-                int from = findTheBitAsked(readTheCodePointOf(spec));
+                int from = findBitAsked(readTheCodePointOf(spec));
                 int to = from;
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
-                    to = findTheBitAsked(readTheCodePointOf(findTheFarEndOfTheRun(spec, specs, at + 2)));
+                    to = findBitAsked(readTheCodePointOf(findTheFarEndOfTheRun(spec, specs, at + 2)));
                     at += 2;
                 }
                 if (to < from) {
@@ -253,7 +253,7 @@ public final class BitsetActions implements Actions {
         if (asked instanceof AnyBlockValue specs) {
             int[] points = collectTheCodePointsIn(specs);
             for (int point : points) {
-                findTheBitAsked(point);
+                findBitAsked(point);
             }
             return points;
         }
@@ -292,18 +292,18 @@ public final class BitsetActions implements Actions {
                 : (int) Comparison.asDouble(value);
     }
 
-    private static final int MOST_BITS_A_SET_IS_ALLOWED = 0x0FFFFFFF;
+    private static final int MOST_BITS_ALLOWED = 0x0FFFFFFF;
 
-    static int findTheBitAsked(long codepoint) {
+    static int findBitAsked(long codepoint) {
         if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(codepoint));
         }
         return (int) codepoint;
     }
 
-    private static int findTheRoomAsked(long bits) {
-        int asked = findTheBitAsked(bits);
-        if (asked > MOST_BITS_A_SET_IS_ALLOWED) {
+    private static int findRoomAsked(long bits) {
+        int asked = findBitAsked(bits);
+        if (asked > MOST_BITS_ALLOWED) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(bits));
         }
         return asked;

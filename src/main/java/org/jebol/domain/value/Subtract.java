@@ -68,7 +68,7 @@ public final class Subtract implements ArithmeticOperation {
     }
 
     @Override
-    public boolean subtractsOneFromTheOther() {
+    public boolean canSubtractOneFromOther() {
         return true;
     }
 

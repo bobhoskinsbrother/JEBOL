@@ -271,7 +271,7 @@ public record TimeValue(long nanoseconds) implements Value {
         }
 
         private Value scanTheTimeFrom(StringValue given) {
-            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findTheOneTime());
+            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findOneTime());
             if (!scanning.readsATime()) {
                 throw refuse(given);
             }

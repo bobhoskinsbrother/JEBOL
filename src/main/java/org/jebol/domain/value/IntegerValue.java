@@ -69,7 +69,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
+    public Value combineWithNumber(Value right, ArithmeticOperation operation) {
         return switch (right) {
             case IntegerValue(long theirs) -> operation.onWholeNumbers(magnitude, theirs);
             case CharacterValue(int codepoint) ->
@@ -80,12 +80,12 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public boolean mayLoseATime(ArithmeticOperation operation) {
-        return operation.subtractsOneFromTheOther();
+    public boolean canDeductTime(ArithmeticOperation operation) {
+        return operation.canSubtractOneFromOther();
     }
 
     @Override
-    public boolean mayMeetADate() {
+    public boolean canBeUsedToCalculateDate() {
         return true;
     }
 
@@ -100,16 +100,16 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+    public Optional<MoneyValue> asMoneyUsingCurrency(MoneyValue other) {
         return Optional.of(new MoneyValue(new Deci(magnitude)));
     }
 
     @Override
-    public Optional<Value[]> bringTogetherWith(Value other) {
+    public Optional<Value[]> combineWith(Value other) {
         return switch (other) {
             case AnyDecimalValue ignored -> meetAsDecimals(other);
             case TimeValue ignored -> meetAsDecimals(other);
-            case MoneyValue theirs -> pairUp(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
+            case MoneyValue theirs -> pairUp(asMoneyUsingCurrency(theirs).orElseThrow(), theirs);
             case CharacterValue letter ->
                     pairUp(this, letter.asWholeNumber().orElseThrow());
             default -> Optional.empty();
@@ -123,11 +123,10 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return IntegerValue.of(
-                operation.onWholeElements(magnitude, readAWholeNumberFrom(right)));
+        return IntegerValue.of(operation.onWholeElements(magnitude, readWholeNumber(right)));
     }
 
-    private long readAWholeNumberFrom(Value right) {
+    private long readWholeNumber(Value right) {
         return switch (right) {
             case IntegerValue(long other) -> other;
             case CharacterValue(int codepoint) -> codepoint;
@@ -146,7 +145,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public boolean isAQuantityOfNothing() {
+    public boolean isZero() {
         return magnitude == 0;
     }
 
@@ -184,12 +183,12 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
                     }
                     yield IntegerValue.of(truth.truth() ? 1 : 0);
                 }
-                case IssueValue issue -> readTheHexNumberIn(issue);
-                case AnyStringValue text -> readAWholeNumberFromText(text);
+                case IssueValue issue -> readHexNumberIn(issue);
+                case AnyStringValue text -> readWholeNumberFromText(text);
                 case CharacterValue character -> IntegerValue.of(character.codepoint());
                 case BinaryValue bytes -> IntegerValue.of(bytes.readTheBitsOfTheLastEightOctets());
                 case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
-                case AnyDecimalValue number -> makeAWholeNumberWithinRange(number.quantity());
+                case AnyDecimalValue number -> makeWholeNumberWithinRange(number.quantity());
                 case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
                 case TimeValue clock ->
                         IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
@@ -197,7 +196,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             };
         }
 
-        private Value makeAWholeNumberWithinRange(double quantity) {
+        private Value makeWholeNumberWithinRange(double quantity) {
             if (Double.isNaN(quantity)
                     || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
                     || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
@@ -207,7 +206,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             return IntegerValue.of((long) quantity);
         }
 
-        private Value readTheHexNumberIn(AnyWordValue issue) {
+        private Value readHexNumberIn(AnyWordValue issue) {
             String digits = issue.spelling();
             if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS
                     || digits.charAt(0) == '+' || digits.charAt(0) == '-') {
@@ -220,9 +219,9 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             }
         }
 
-        private Value readAWholeNumberFromText(AnyStringValue text) {
+        private Value readWholeNumberFromText(AnyStringValue text) {
             String withoutSeparators = new WrittenText(text.text())
-                    .findTheOneNumberIn(MOST_WHOLE_NUMBER_CHARACTERS)
+                    .findOneNumberIn(MOST_WHOLE_NUMBER_CHARACTERS)
                     .replace("'", "");
             try {
                 return IntegerValue.of(Long.parseLong(withoutSeparators));

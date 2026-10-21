@@ -33,7 +33,7 @@ public record UtypeValue() implements Value {
 
         @Override
         public Value makeFrom(Value spec, Maker maker) {
-            if (!isASpecificationAndABody(spec)) {
+            if (!isSpecificationAndBody(spec)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
             return new UtypeValue();
@@ -49,7 +49,7 @@ public record UtypeValue() implements Value {
             throw refuseTheConstruction(contents);
         }
 
-        private boolean isASpecificationAndABody(Value spec) {
+        private boolean isSpecificationAndBody(Value spec) {
             if (!(spec instanceof AnyBlockValue definition)) {
                 return false;
             }

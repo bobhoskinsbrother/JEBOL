@@ -93,8 +93,8 @@ public final class Comparison {
     }
 
     private static Optional<Value[]> bringTogether(Value left, Value right) {
-        return left.bringTogetherWith(right)
-                .or(() -> right.bringTogetherWith(left).map(Comparison::turnRound));
+        return left.combineWith(right)
+                .or(() -> right.combineWith(left).map(Comparison::turnRound));
     }
 
     private static Value[] turnRound(Value[] pair) {

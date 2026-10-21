@@ -32,13 +32,13 @@ public final class TimeActions {
         return addInWholeNanosecondsTo(right, operation);
     }
 
-    public Value combineFromTheLeft(Value left, ArithmeticOperation operation) {
+    public Value combineFromLeft(Value left, ArithmeticOperation operation) {
         boolean allowed = operation.isCommutative()
-                || (operation.subtractsOneFromTheOther() && left instanceof IntegerValue);
+                || (operation.canSubtractOneFromOther() && left instanceof IntegerValue);
         if (!allowed) {
             throw refuseAsNotRelatedToATime(operation);
         }
-        if (operation.subtractsOneFromTheOther()) {
+        if (operation.canSubtractOneFromOther()) {
             return TimeValue.ofNanoseconds(withinWhatADurationHolds(
                     countTheWholeNanosecondsOf(left) - span.nanoseconds()));
         }
@@ -102,7 +102,7 @@ public final class TimeActions {
     private static long combineTheNanoseconds(
             long ours, long theirs, ArithmeticOperation operation) {
 
-        if (operation.subtractsOneFromTheOther()) {
+        if (operation.canSubtractOneFromOther()) {
             return ours - theirs;
         }
         if (!operation.needsANonZeroDivisor()) {

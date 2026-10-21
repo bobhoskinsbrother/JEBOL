@@ -137,7 +137,7 @@ public record DateValue(
 
         private Value readADateFrom(AnyStringValue written, Maker maker) {
             String token = new WrittenText(written.text())
-                    .findTheOneToken(MOST_DATE_CHARACTERS);
+                    .findOneToken(MOST_DATE_CHARACTERS);
             return maker.readTheValuesFrom(token)
                     .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
                     .map(List::getFirst)

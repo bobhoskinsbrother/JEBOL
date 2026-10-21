@@ -14,7 +14,7 @@ public final class CharacterActions {
         long other = readTheCodepointOfferedBy(right);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
-        if (operation.subtractsOneFromTheOther() && right instanceof CharacterValue) {
+        if (operation.canSubtractOneFromOther() && right instanceof CharacterValue) {
             return IntegerValue.of(asAnUnsignedWord(answered));
         }
         return CharacterValue.of(requireACodepoint(answered));

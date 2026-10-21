@@ -108,7 +108,7 @@ public abstract sealed class AnyWordValue implements Value
         }
 
         private String readTheSpellingFrom(String text, Maker maker) {
-            String trimmed = new WrittenText(text).findTheOneWord();
+            String trimmed = new WrittenText(text).findOneWord();
             List<Value> read;
             try {
                 read = maker.readTheValuesFrom(asTheScannerReadsIt(trimmed)).orElse(List.of());
@@ -142,7 +142,7 @@ public abstract sealed class AnyWordValue implements Value
     }
 
     @Override
-    public Optional<Value[]> bringTogetherWith(Value other) {
+    public Optional<Value[]> combineWith(Value other) {
         return other instanceof AnyWordValue ? pairUp(this, other) : Optional.empty();
     }
 

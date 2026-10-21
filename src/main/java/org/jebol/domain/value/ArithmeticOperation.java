@@ -29,7 +29,7 @@ public interface ArithmeticOperation extends ValueOperation {
         return multiplies() || divides();
     }
 
-    boolean subtractsOneFromTheOther();
+    boolean canSubtractOneFromOther();
 
     boolean needsANonZeroDivisor();
 
@@ -44,7 +44,7 @@ public interface ArithmeticOperation extends ValueOperation {
     }
 
     default int signWhenMoving() {
-        return subtractsOneFromTheOther() ? -1 : 1;
+        return canSubtractOneFromOther() ? -1 : 1;
     }
 
 }

@@ -10,7 +10,7 @@ record WrittenText(String text) {
 
     private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
 
-    String findTheOneNumberIn(int mostCharacters) {
+    String findOneNumberIn(int mostCharacters) {
         int start = findTheFirstNonSpace();
         int past = start;
         while (past < text.length() && !isLexicalSpace(text.charAt(past))) {
@@ -31,7 +31,7 @@ record WrittenText(String text) {
         return text.substring(start, past);
     }
 
-    String findTheOneWord() {
+    String findOneWord() {
         int from = findTheFirstNonSpace();
         int end = from;
         while (end < text.length() && !isLexicalSpace(text.charAt(end))) {
@@ -47,7 +47,7 @@ record WrittenText(String text) {
         return trimmed;
     }
 
-    String findTheOneToken(int mostCharacters) {
+    String findOneToken(int mostCharacters) {
         int from = findTheFirstNonSpace();
         int to = from;
         while (to < text.length() && !isLexicalSpace(text.charAt(to))) {
@@ -68,7 +68,7 @@ record WrittenText(String text) {
         return text.substring(from, to);
     }
 
-    String findTheOneTime() {
+    String findOneTime() {
         int from = 0;
         while (from < text.length() && isSpaceOrTab(text.charAt(from))) {
             from++;

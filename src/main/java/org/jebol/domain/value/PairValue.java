@@ -176,7 +176,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
         private Value readPair(AnyStringValue text, Maker maker) {
             String token = new WrittenText(text.text())
-                    .findTheOneToken(text.text().length());
+                    .findOneToken(text.text().length());
             List<Value> read = maker.readTheValuesFrom(token).orElse(List.of());
             if (read.size() != 1 || !(read.getFirst() instanceof PairValue pair)) {
                 throw refuse(StringValue.of(text.text()));

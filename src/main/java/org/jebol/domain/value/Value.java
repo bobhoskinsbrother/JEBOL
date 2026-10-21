@@ -211,7 +211,7 @@ public sealed interface Value permits
         throw Raised.cannotUse(this, "a set operation");
     }
 
-    default Optional<Value[]> bringTogetherWith(Value other) {
+    default Optional<Value[]> combineWith(Value other) {
         return Optional.empty();
     }
 
@@ -234,7 +234,7 @@ public sealed interface Value permits
         return Optional.empty();
     }
 
-    default Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+    default Optional<MoneyValue> asMoneyUsingCurrency(MoneyValue other) {
         return Optional.empty();
     }
 
@@ -254,7 +254,7 @@ public sealed interface Value permits
         return wanted.wrapHundredths(quantity);
     }
 
-    default boolean isAQuantityOfNothing() {
+    default boolean isZero() {
         return false;
     }
 

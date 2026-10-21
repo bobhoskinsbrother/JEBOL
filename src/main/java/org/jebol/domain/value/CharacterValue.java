@@ -83,7 +83,7 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
-    public Optional<Value[]> bringTogetherWith(Value other) {
+    public Optional<Value[]> combineWith(Value other) {
         return other instanceof IntegerValue
                 ? pairUp(asWholeNumber().orElseThrow(), other)
                 : Optional.empty();

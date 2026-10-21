@@ -42,21 +42,21 @@ class ADecimalKnowsItsOwnKindTest {
     @Test
     @DisplayName("two percents added stay a percent")
     void staysAPercentWhenTwoAreAdded() {
-        assertThat(PercentValue.of(0.25).combineWithANumber(PercentValue.of(0.5), new Add()))
+        assertThat(PercentValue.of(0.25).combineWithNumber(PercentValue.of(0.5), new Add()))
                 .isEqualTo(PercentValue.of(0.75));
     }
 
     @Test
     @DisplayName("a percent added to a decimal is a decimal")
     void becomesADecimalWithAPercent() {
-        assertThat(PercentValue.of(0.25).combineWithANumber(DecimalValue.of(0.5), new Add()))
+        assertThat(PercentValue.of(0.25).combineWithNumber(DecimalValue.of(0.5), new Add()))
                 .isInstanceOf(DecimalValue.class);
     }
 
     @Test
     @DisplayName("two percents divided are a plain decimal")
     void becomesADecimalWhenTwoPercentsDivide() {
-        assertThat(PercentValue.of(0.5).combineWithANumber(PercentValue.of(0.25), new Divide()))
+        assertThat(PercentValue.of(0.5).combineWithNumber(PercentValue.of(0.25), new Divide()))
                 .isInstanceOf(DecimalValue.class);
     }
 

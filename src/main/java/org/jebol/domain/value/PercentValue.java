@@ -39,8 +39,8 @@ public final class PercentValue extends AnyDecimalValue {
     }
 
     @Override
-    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
-        Value answered = super.combineWithANumber(right, operation);
+    public Value combineWithNumber(Value right, ArithmeticOperation operation) {
+        Value answered = super.combineWithNumber(right, operation);
         return right instanceof PercentValue
                 && !operation.divides()
                 && answered instanceof AnyDecimalValue number

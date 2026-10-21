@@ -2,25 +2,25 @@ package org.jebol.domain.value;
 
 public sealed interface RebolNumber extends Value permits IntegerValue, AnyDecimalValue {
 
-    Value combineWithANumber(Value right, ArithmeticOperation operation);
+    Value combineWithNumber(Value right, ArithmeticOperation operation);
 
-    boolean mayLoseATime(ArithmeticOperation operation);
+    boolean canDeductTime(ArithmeticOperation operation);
 
-    boolean mayMeetADate();
+    boolean canBeUsedToCalculateDate();
 
     @Override
     default Value calculate(Value right, ArithmeticOperation operation) {
         return switch (right) {
-            case IntegerValue ignored -> combineWithANumber(right, operation);
-            case AnyDecimalValue ignored -> combineWithANumber(right, operation);
-            case CharacterValue ignored -> combineWithANumber(right, operation);
-            case MoneyValue amount -> asMoneyInTheCurrencyOf(amount).orElseThrow()
+            case IntegerValue ignored -> combineWithNumber(right, operation);
+            case AnyDecimalValue ignored -> combineWithNumber(right, operation);
+            case CharacterValue ignored -> combineWithNumber(right, operation);
+            case MoneyValue amount -> asMoneyUsingCurrency(amount).orElseThrow()
                     .calculate(amount, operation);
             case TimeValue span
-                    when operation.isCommutative() || mayLoseATime(operation) ->
-                    new TimeActions(span).combineFromTheLeft(this, operation);
+                    when operation.isCommutative() || canDeductTime(operation) ->
+                    new TimeActions(span).combineFromLeft(this, operation);
             case DateValue moment
-                    when operation.isCommutative() && mayMeetADate() ->
+                    when operation.isCommutative() && canBeUsedToCalculateDate() ->
                     new DateArithmetic(moment).takeFrom(this, operation);
             case PairValue point when operation.isCommutative() ->
                     point.calculate(this, operation);

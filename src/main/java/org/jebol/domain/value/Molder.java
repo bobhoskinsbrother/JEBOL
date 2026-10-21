@@ -122,7 +122,7 @@ public final class Molder {
                 return render(picture, true);
             }
             if (value instanceof HashValue hash) {
-                return writeAHashAsAConstruct(hash);
+                return writeHashAsConstruct(hash);
             }
             if (value instanceof RebolSeries series
                     && standsWithinNeverPastTheEndForABlockOrAPath(series) > 1) {
@@ -137,7 +137,7 @@ public final class Molder {
         });
     }
 
-    private static String writeAHashAsAConstruct(HashValue hash) {
+    private static String writeHashAsConstruct(HashValue hash) {
         String items = hash.remaining().stream()
                 .map(Molder::mold)
                 .collect(Collectors.joining(" "));

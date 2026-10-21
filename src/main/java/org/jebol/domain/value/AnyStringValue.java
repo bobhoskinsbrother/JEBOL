@@ -321,7 +321,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Optional<Value[]> bringTogetherWith(Value other) {
+    public Optional<Value[]> combineWith(Value other) {
         return other instanceof AnyStringValue ? pairUp(this, other) : Optional.empty();
     }
 

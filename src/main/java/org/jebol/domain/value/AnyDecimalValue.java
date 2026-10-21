@@ -56,17 +56,17 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
+    public Value combineWithNumber(Value right, ArithmeticOperation operation) {
         return operation.onFractions(quantity, Numbers.measureTheQuantityOfANumber(right), true);
     }
 
     @Override
-    public boolean mayLoseATime(ArithmeticOperation operation) {
+    public boolean canDeductTime(ArithmeticOperation operation) {
         return false;
     }
 
     @Override
-    public boolean mayMeetADate() {
+    public boolean canBeUsedToCalculateDate() {
         return false;
     }
 
@@ -76,14 +76,14 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+    public Optional<MoneyValue> asMoneyUsingCurrency(MoneyValue other) {
         return Optional.of(new MoneyValue(new Deci(quantity)));
     }
 
     @Override
-    public Optional<Value[]> bringTogetherWith(Value other) {
+    public Optional<Value[]> combineWith(Value other) {
         return switch (other) {
-            case MoneyValue theirs -> pairUp(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
+            case MoneyValue theirs -> pairUp(asMoneyUsingCurrency(theirs).orElseThrow(), theirs);
             case AnyDecimalValue ignored -> pairUp(this, other);
             case TimeValue theirs -> pairUp(this, theirs.asSeconds());
             default -> Optional.empty();
@@ -96,7 +96,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public boolean isAQuantityOfNothing() {
+    public boolean isZero() {
         return quantity == 0.0;
     }
 
@@ -137,7 +137,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         private OptionalDouble scanTheQuantityFrom(Value from) {
             if (from instanceof StringValue text) {
                 return scanADecimalFrom(new WrittenText(text.text())
-                        .findTheOneNumberIn(MOST_FRACTION_CHARACTERS));
+                        .findOneNumberIn(MOST_FRACTION_CHARACTERS));
             }
             if (from instanceof AnyBlockValue parts) {
                 return OptionalDouble.of(multiplyTheMantissaByTenTo(parts));

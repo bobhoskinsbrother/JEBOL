@@ -20,7 +20,7 @@ public final class DateArithmetic {
     }
 
     public Value takeFrom(Value left, ArithmeticOperation operation) {
-        if (operation.subtractsOneFromTheOther()) {
+        if (operation.canSubtractOneFromOther()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     WordValue.of(operation.spelling() + ":"),
                     left.datatype());
@@ -29,7 +29,7 @@ public final class DateArithmetic {
     }
 
     private Value countTheDaysSince(DateValue to, ArithmeticOperation operation) {
-        if (!operation.subtractsOneFromTheOther()) {
+        if (!operation.canSubtractOneFromOther()) {
             throw Raised.cannotUse(moment, "date arithmetic");
         }
         return IntegerValue.of(moment.dayNumber() - to.dayNumber());
@@ -46,7 +46,7 @@ public final class DateArithmetic {
     private void refuseASpanADateCannotMoveBy(Value span, ArithmeticOperation operation) {
         boolean movesADate = operation.isCommutative()
                 ? !operation.multiplies()
-                : operation.subtractsOneFromTheOther();
+                : operation.canSubtractOneFromOther();
         if (!movesADate
                 || !(span instanceof IntegerValue
                         || span instanceof DecimalValue

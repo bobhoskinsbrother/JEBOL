@@ -27,13 +27,13 @@ class WhichValuesConvertToACommonDatatypeTest {
             A_WHOLE_NUMBER, A_DECIMAL, A_PERCENT, SOME_MONEY, A_CHARACTER, A_TIME);
 
     private static boolean shareADatatype(Value one, Value other) {
-        return one.bringTogetherWith(other).isPresent()
-                || other.bringTogetherWith(one).isPresent();
+        return one.combineWith(other).isPresent()
+                || other.combineWith(one).isPresent();
     }
 
     private static List<Datatype> findTheDatatypeTheyBothConvertTo(Value one, Value other) {
-        Value[] pair = one.bringTogetherWith(other).orElseGet(() -> {
-            Value[] backwards = other.bringTogetherWith(one).orElseThrow();
+        Value[] pair = one.combineWith(other).orElseGet(() -> {
+            Value[] backwards = other.combineWith(one).orElseThrow();
             return new Value[] {backwards[1], backwards[0]};
         });
         return List.of(pair[0].datatype(), pair[1].datatype());
@@ -106,7 +106,7 @@ class WhichValuesConvertToACommonDatatypeTest {
         @Test
         @DisplayName("a time beside a whole number becomes decimal seconds")
         void widenATimeToSeconds() {
-            Value[] pair = A_WHOLE_NUMBER.bringTogetherWith(A_TIME).orElseThrow();
+            Value[] pair = A_WHOLE_NUMBER.combineWith(A_TIME).orElseThrow();
             assertThat(pair[0].datatype()).isEqualTo(DecimalValue.TYPE);
             assertThat(pair[1].datatype()).isEqualTo(DecimalValue.TYPE);
             assertThat(((AnyDecimalValue) pair[1]).quantity()).isEqualTo(1.0);
@@ -128,7 +128,7 @@ class WhichValuesConvertToACommonDatatypeTest {
         @DisplayName("a time has a decimal but no money, which is what keeps it apart")
         void refusesATimeAsMoney() {
             assertThat(A_TIME.asDecimalNumber()).isPresent();
-            assertThat(A_TIME.asMoneyInTheCurrencyOf((MoneyValue) SOME_MONEY)).isEmpty();
+            assertThat(A_TIME.asMoneyUsingCurrency((MoneyValue) SOME_MONEY)).isEmpty();
         }
 
         @Test
@@ -137,7 +137,7 @@ class WhichValuesConvertToACommonDatatypeTest {
             Value text = StringValue.of("ab");
             assertThat(text.asWholeNumber()).isEmpty();
             assertThat(text.asDecimalNumber()).isEmpty();
-            assertThat(text.asMoneyInTheCurrencyOf((MoneyValue) SOME_MONEY)).isEmpty();
+            assertThat(text.asMoneyUsingCurrency((MoneyValue) SOME_MONEY)).isEmpty();
         }
     }
 }

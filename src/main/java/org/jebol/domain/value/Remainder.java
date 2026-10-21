@@ -71,7 +71,7 @@ public final class Remainder implements ArithmeticOperation {
     }
 
     @Override
-    public boolean subtractsOneFromTheOther() {
+    public boolean canSubtractOneFromOther() {
         return false;
     }
 

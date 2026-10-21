@@ -14,7 +14,7 @@ public record LogicValue(boolean truth) implements Value {
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
             return LogicValue.of(from.isTruthy()
-                    && !(asking.builds() && from.isAQuantityOfNothing()));
+                    && !(asking.builds() && from.isZero()));
         }
     };
 

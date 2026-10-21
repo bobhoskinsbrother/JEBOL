@@ -330,7 +330,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
 
         private Value scanATupleFrom(String text, Value original) {
             String token = new WrittenText(text)
-                    .findTheOneToken(MAXIMUM_SEGMENTS * 4 + 1);
+                    .findOneToken(MAXIMUM_SEGMENTS * 4 + 1);
             String[] parts = token.split("\\.", -1);
             if (parts.length > MAXIMUM_SEGMENTS) {
                 throw refuse(original);

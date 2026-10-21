@@ -100,7 +100,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+    public Optional<MoneyValue> asMoneyUsingCurrency(MoneyValue other) {
         return Optional.of(this);
     }
 
@@ -230,7 +230,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
     }
 
     @Override
-    public boolean isAQuantityOfNothing() {
+    public boolean isZero() {
         return amount.signum() == 0;
     }
 
@@ -270,7 +270,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
         private MoneyValue readMoney(AnyStringValue text) {
             String written = new WrittenText(text.text())
-                    .findTheOneNumberIn(MOST_MONEY_CHARACTERS);
+                    .findOneNumberIn(MOST_MONEY_CHARACTERS);
             return new DeciReading(written).readTheWhole()
                     .map(MoneyValue::new)
                     .orElseThrow(() -> refuse(text));
