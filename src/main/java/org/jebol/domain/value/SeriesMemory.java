@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,9 +26,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * its own, so no reading can land between a collection and its bookkeeping.
  *
  * <p>Held once per process rather than once per interpreter, which is what
- * {@code PG_} means in the C as well. The test runner forks a JVM per worker
- * and runs sequentially inside one, so two interpreters never write to this at
- * the same moment.
+ * {@code PG_} means in the C as well. Two interpreters can write to this at
+ * the same moment - the embedding tests run a pool of them in parallel - so
+ * the outstanding set is concurrent and the byte count atomic.
  *
  * <p>The number cannot equal Rebol's and is not meant to. A Rebol block holds
  * its values inline and a Java one holds references to values counted where
@@ -38,7 +39,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class SeriesMemory {
 
     private static final ReferenceQueue<Object> COLLECTED = new ReferenceQueue<>();
-    private static final Set<Reservation> OUTSTANDING = new HashSet<>();
+    private static final Set<Reservation> OUTSTANDING =
+            Collections.synchronizedSet(new HashSet<>());
     private static final AtomicLong HELD = new AtomicLong();
 
     private SeriesMemory() {
