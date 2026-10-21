@@ -23,14 +23,6 @@ import java.util.function.Supplier;
  * <p>The exception is {@link #cancel()}, which is meant to be called from
  * another thread and does nothing but set a flag the running script notices.
  *
- * <p>A host supplies every port the interpreter will ever have when it builds
- * it, as one {@link HostPorts} value; a port it does not supply is that port's
- * refusing default, so {@code createOn(HostPorts.none(), ...)} reaches
- * nothing and the convenience factories supply a JVM interpreter's own
- * machine and thread pause. Nothing changes a port afterwards, because a
- * script that could run under one host's rules and finish under another's
- * would be no rule at all.
- *
  * <p>Nothing here throws for anything a script can do. Failing, running too
  * long and nesting too deep all arrive as a {@link ScriptOutcome}, because a
  * host that had to catch a throwable to learn a script misbehaved could not
@@ -117,12 +109,6 @@ public final class Interpreter {
         return new Interpreter(ports, output, bounds);
     }
 
-    /**
-     * The ports a host on this machine gets when it has no opinion about them:
-     * the JVM's own machine and a pause that really waits. A host customising
-     * ports starts from these and replaces what it knows better, rather than
-     * from {@link HostPorts#none()}, which reaches nothing at all.
-     */
     public static HostPorts standardPorts() {
         return HostPorts.none()
                 .withMachine(new JavaMachine())

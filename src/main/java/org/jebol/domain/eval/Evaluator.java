@@ -194,22 +194,10 @@ public final class Evaluator {
         this.alsoWritingTo = null;
     }
 
-    /** Every port this evaluator has, as one value it was built with. */
     public HostPorts ports() {
         return ports;
     }
 
-    /**
-     * Gives the http and https schemes the actor of the port this host
-     * supplied, when it supplied one.
-     *
-     * <p>Swapping the actor is what makes every route the same: a url read,
-     * a port opened by hand and a port stepped through all ask the actor,
-     * and the actor is this host's. Rebol's own protocol stays loaded and
-     * its scheme keeps its spec and its info; only the arm that reached the
-     * connection changes. Called once the schemes are registered, and never
-     * when the host supplied no port, which leaves HTTP to Rebol's own.
-     */
     public void installTheHostsHttpActor() {
         ports.http().ifPresent(port -> {
             for (String scheme : List.of("http", "https")) {

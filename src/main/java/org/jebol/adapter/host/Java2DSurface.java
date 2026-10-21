@@ -25,7 +25,6 @@ public final class Java2DSurface implements Surface {
     private static final int OPAQUE = Placement.OPAQUE;
     private static final float THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
 
-    /** The face the font this build carries draws with, for a caller that has its bytes. */
     public static Font faceFrom(byte[] font) {
         try {
             return Font.createFont(TRUETYPE_FONT, new ByteArrayInputStream(font));

@@ -2,19 +2,6 @@ package org.jebol.domain.host;
 
 import java.util.Optional;
 
-/**
- * Every port an interpreter has, as one value a host supplies when it builds
- * one.
- *
- * <p>Ports arrive together because they are decided together: a host that has
- * thought about what a script may reach has an answer for all of them at the
- * moment it builds the interpreter, and there is no moment afterwards when the
- * answer changes. A port the host does not supply is that port's refusing
- * default, so an interpreter built with none reaches nothing.
- *
- * <p>Every wither answers a copy, as {@code Bounds} does, so a host can build
- * one from another without either noticing.
- */
 public record HostPorts(
         FilePort files,
         EnvironmentPort environment,
@@ -50,7 +37,6 @@ public record HostPorts(
         tasks = aPort(tasks, "tasks");
     }
 
-    /** Every port refusing what it stands for, so an interpreter built with these reaches nothing. */
     public static HostPorts none() {
         return new HostPorts(
                 FilePort.none(),
@@ -136,7 +122,6 @@ public record HostPorts(
                 midiDevices, tasks);
     }
 
-    /** A port that fetches for the host; absent leaves HTTP to Rebol's own protocol. */
     public HostPorts withHttp(HttpPort port) {
         return new HostPorts(files, environment, images, console, windows, screen, pause,
                 processes, machine, network, certificateAuthority, Optional.of(port),
