@@ -32,7 +32,7 @@ class AWaitsTimeIsPassedByTheHostTest {
 
     private static Interpreter makeAnInterpreterWithThePause(ARecordedPause pause) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withPause(pause),
+                AnInterpreter.standardPorts().withPause(pause),
                 OutputPort.discard(),
                 Bounds.standard());
     }
@@ -76,7 +76,7 @@ class AWaitsTimeIsPassedByTheHostTest {
     @Timeout(20)
     @DisplayName("an interpreter given no pause still lets the time pass on its own thread")
     void letsTheTimePassWithTheBuiltInPause() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         long started = System.nanoTime();
         interpreter.run("wait 0.2");

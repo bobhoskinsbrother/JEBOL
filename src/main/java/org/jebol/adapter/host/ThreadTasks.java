@@ -29,7 +29,7 @@ public final class ThreadTasks implements TaskPort {
 
     @Override
     public void runTheBody(String bodyAsWritten, OutputPort output) {
-        Interpreter interpreter = Interpreter.createWithOutput(output, bounds.withoutATimeLimit());
+        Interpreter interpreter = new JavaHost().createWithOutput(output, bounds.withoutATimeLimit());
         Thread.ofPlatform().daemon().name("jebol-task")
                 .start(() -> interpreter.run("do " + bodyAsWritten));
     }

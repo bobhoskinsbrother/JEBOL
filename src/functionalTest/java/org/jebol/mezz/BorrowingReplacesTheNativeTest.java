@@ -1,5 +1,6 @@
 package org.jebol.mezz;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,7 @@ class BorrowingReplacesTheNativeTest {
     @Test
     @DisplayName("a borrowed definition takes the word from the native")
     void letsTheBorrowedDefinitionWin() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("type? :split")))
                 .isEqualTo("#(function!)");
@@ -20,7 +21,7 @@ class BorrowingReplacesTheNativeTest {
     @Test
     @DisplayName("a built-in no borrowed file defines is left alone")
     void keepsTheUnclaimedBuiltIn() {
-        Interpreter borrowing = Interpreter.create();
+        Interpreter borrowing = AnInterpreter.create();
 
         assertThat(borrowing.display(borrowing.run("type? :add")))
                 .as("ADD is declared in actions.reb")

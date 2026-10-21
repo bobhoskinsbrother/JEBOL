@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Conclusion;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NamedThrowTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
@@ -106,7 +107,7 @@ class NamedThrowTest {
     @Test
     @DisplayName("a plain CATCH still does not catch a QUIT")
     void quitNeedsTheRefinement() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String source = "catch [quit/return 7] 99";
         interpreter.defineNewWordsIn(source);
 

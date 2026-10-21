@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HashFromTheSourceTest {
 
     private String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return Molder.moldFlat(interpreter.run(source).value());
     }

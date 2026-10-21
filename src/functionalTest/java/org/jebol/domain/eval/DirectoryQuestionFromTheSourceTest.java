@@ -1,7 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -21,7 +22,7 @@ class DirectoryQuestionFromTheSourceTest {
     private static final String FALSE = "#(false)";
 
     private static String answerTo(String source) {
-        return answerFrom(Interpreter.create(), source);
+        return answerFrom(AnInterpreter.create(), source);
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {
@@ -35,7 +36,7 @@ class DirectoryQuestionFromTheSourceTest {
             bounds = bounds.grant(service);
         }
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 bounds);
     }

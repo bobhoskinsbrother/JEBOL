@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,7 @@ class DeepProtectionTest {
     private static String readTheErrorIdOf(String setup, String attempt) {
         String source = setup + " e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

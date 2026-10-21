@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.host.HostService;
@@ -45,7 +46,7 @@ class CallNativeTest {
                 ? Bounds.standard().grant(HostService.PROCESSES)
                 : Bounds.standard();
         return Interpreter.createOn(
-                Interpreter.standardPorts().withProcesses(port),
+                AnInterpreter.standardPorts().withProcesses(port),
                 OutputPort.discard(),
                 bounds);
     }
@@ -197,7 +198,7 @@ class CallNativeTest {
                 @TempDir java.nio.file.Path directory) {
             Recorded port = new Recorded();
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withProcesses(port)
                             .withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
@@ -217,7 +218,7 @@ class CallNativeTest {
             java.nio.file.Files.createDirectory(directory.resolve("sub"));
             Recorded port = new Recorded();
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withProcesses(port)
                             .withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
@@ -420,7 +421,7 @@ class CallNativeTest {
                     1, Optional.empty(), Optional.empty(), Optional.empty(),
                     Optional.empty());
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withProcesses(broken),
+                    AnInterpreter.standardPorts().withProcesses(broken),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.PROCESSES));
             assertThat(readTheErrorIdOf(interpreter, """
@@ -438,7 +439,7 @@ class CallNativeTest {
     @Test
     @DisplayName("with the grant and no port, CALL still fails")
     void needsAPortToo() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.PROCESSES));
         assertThat(readTheErrorIdOf(interpreter, """
                 call [{ls}]""")).isEqualTo("no-port");

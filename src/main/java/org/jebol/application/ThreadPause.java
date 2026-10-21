@@ -2,7 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.PausePort;
 
-final class ThreadPause implements PausePort {
+public final class ThreadPause implements PausePort {
 
     @Override
     public boolean pauseFor(long milliseconds) {

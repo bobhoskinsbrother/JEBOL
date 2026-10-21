@@ -83,7 +83,7 @@ class WindowServiceTest {
 
     private static Interpreter makeAnInterpreterWithAScreen(WindowPort screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withWindows(screen),
+                AnInterpreter.standardPorts().withWindows(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
@@ -261,11 +261,11 @@ class WindowServiceTest {
         @Test
         @DisplayName("without the grant, every one of the five raises")
         void raiseForEveryDialogWithoutTheGrant() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             for (String call : new String[] {
                     "browse http://a", "request-file", "request-dir",
                     "request-color", "request-password"}) {
-                assertThat(readTheErrorIdFrom(Interpreter.create(), call))
+                assertThat(readTheErrorIdFrom(AnInterpreter.create(), call))
                         .as("%s must raise without the windows grant", call)
                         .isEqualTo("no-service");
             }
@@ -275,12 +275,12 @@ class WindowServiceTest {
         @Test
         @DisplayName("granted with no screen behind it is not-present, not not-granted")
         void sayNotPresentWhenGrantedWithNoScreen() {
-            Interpreter granted = Interpreter.withBounds(
+            Interpreter granted = AnInterpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
 
             assertThat(readTheErrorIdFrom(granted, "request-file")).isEqualTo("no-service");
 
-            Interpreter again = Interpreter.withBounds(
+            Interpreter again = AnInterpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
             assertThat(answerFrom(again,
                     "e: try [request-file] find form disarm e \"no screen\""))
@@ -292,7 +292,7 @@ class WindowServiceTest {
         @DisplayName("the windows grant does not open anything else")
         void grantOneServicePerGrant() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withWindows(Screen.makeOneAnswering("x")),
+                    AnInterpreter.standardPorts().withWindows(Screen.makeOneAnswering("x")),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
 

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.actions;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.natives.*;
@@ -26,7 +27,7 @@ class WhatEachSeriesActionDeclaresTest {
     private final GrantedServices granted = new GrantedServices();
 
     private String ran(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         return interpreter.display(interpreter.run(source));
     }
 

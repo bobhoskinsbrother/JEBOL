@@ -1,5 +1,6 @@
 package org.jebol.domain.read;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.AnyStringValue;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,7 +19,7 @@ class MalformedSourceAsRebolReportsItFromTheSourceTest {
                 e: try [load to string! #{%s}]
                 either error? :e [mold/flat reduce [e/id e/arg1 e/arg2]][mold/flat/all reduce [type? :e :e]]
                 """.formatted(written);
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(asked);
         return ((AnyStringValue) interpreter.run(asked).value()).text();
     }

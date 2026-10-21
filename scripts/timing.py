@@ -4,7 +4,7 @@
     python3 scripts/timing.py speed [workload...]
 
 `boot` builds interpreters on the JVM and prints the first call, then the
-median, p95, min and max of `runs` (default 20) warm `Interpreter.create()`.
+median, p95, min and max of `runs` (default 20) warm `AnInterpreter.create()`.
 
 `speed` runs every workload in `src/testFixtures/resources/timing` through a real
 Rebol 3.22.5 (`./r3-head`) and through JEBOL on the JVM, and prints one table:

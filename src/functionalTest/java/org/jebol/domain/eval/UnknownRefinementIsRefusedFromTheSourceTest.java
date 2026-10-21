@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,7 +11,7 @@ class UnknownRefinementIsRefusedFromTheSourceTest {
 
     private static String errorIdFrom(String source) {
         String asking = "e: try [" + source + "] either error? e [e/id] ['no-error]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));
     }
@@ -43,7 +44,7 @@ class UnknownRefinementIsRefusedFromTheSourceTest {
         assertThat(errorIdFrom("split/into \"a,b\" \",\""))
                 .as("SPLIT has no /into either, so this must still raise")
                 .isEqualTo("no-refine");
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String source = "f: func [x /twice][either twice [x * 2][x]] f/twice 4";
         interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("8");

@@ -1,6 +1,7 @@
 package org.jebol.timing;
 
 import org.jebol.application.Bounds;
+import org.jebol.adapter.host.JavaHost;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.OutputPort;
 
@@ -13,7 +14,7 @@ public final class SpeedRunner {
     }
 
     static void main(String[] argued) throws Exception {
-        Interpreter interpreter = Interpreter.createWithOutput(new OutputPort() {
+        Interpreter interpreter = new JavaHost().createWithOutput(new OutputPort() {
             @Override
             public void write(String text) {
                 System.out.print(text);

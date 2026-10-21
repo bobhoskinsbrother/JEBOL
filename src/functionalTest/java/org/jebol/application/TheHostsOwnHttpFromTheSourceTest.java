@@ -19,7 +19,7 @@ class TheHostsOwnHttpFromTheSourceTest {
 
     private static Interpreter makeAHostThatFetches(HttpPort port) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withHttp(port),
+                AnInterpreter.standardPorts().withHttp(port),
                 OutputPort.discard(),
                 Bounds.standard().withoutATimeLimit()
                         .grant(HostService.WEB).grant(HostService.CONSOLE));
@@ -193,7 +193,7 @@ class TheHostsOwnHttpFromTheSourceTest {
     @Test
     @DisplayName("a host that supplies no fetching keeps Rebol's own protocol")
     void keepsTheProtocolWithoutAHostPort() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().withoutATimeLimit().grant(HostService.WEB));
 
         assertThat(answerTo(interpreter, "type? :system/schemes/http/actor"))
@@ -206,7 +206,7 @@ class TheHostsOwnHttpFromTheSourceTest {
     @DisplayName("without the web service, even a host that fetches is refused")
     void needsTheServiceToo() {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withHttp(new ACannedHost()),
+                AnInterpreter.standardPorts().withHttp(new ACannedHost()),
                 OutputPort.discard(),
                 Bounds.standard().withoutATimeLimit());
 

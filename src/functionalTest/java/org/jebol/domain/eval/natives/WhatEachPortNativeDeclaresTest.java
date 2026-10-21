@@ -2,7 +2,8 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.JvmDigests;
@@ -62,7 +63,7 @@ class WhatEachPortNativeDeclaresTest {
 
     private String answerIn(Path directory, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(directory))
                         .withEnvironment(new AnEnvironmentOfItsOwn())
                         .withProcesses(new JavaProcess()),

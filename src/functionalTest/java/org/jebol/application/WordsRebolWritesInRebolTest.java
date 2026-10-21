@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WordsRebolWritesInRebolTest {
 
     private static String answerTo(String source) {
-        return Interpreter.create().run(source).display();
+        return AnInterpreter.create().run(source).display();
     }
 
     @ParameterizedTest(name = "{0}")

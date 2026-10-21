@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -14,12 +15,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AccessOsFromTheSourceTest {
 
     private static String answerTo(String source) {
-        return answerFrom(Interpreter.create(), source);
+        return answerFrom(AnInterpreter.create(), source);
     }
 
     private static String answerAllowingProcesses(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.PROCESSES));
         return answerFrom(interpreter, source);

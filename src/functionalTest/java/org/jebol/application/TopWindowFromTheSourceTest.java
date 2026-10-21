@@ -14,7 +14,7 @@ class TopWindowFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
@@ -146,7 +146,7 @@ class TopWindowFromTheSourceTest {
         @Test
         @DisplayName("the library still loaded, so there is a root gob")
         void stillHasARoot() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
 
             assertThat(walled.display(walled.run("gob? system/view/screen-gob")))
                     .as("view-funcs.reb loading whole is what puts it there")
@@ -171,7 +171,7 @@ class TopWindowFromTheSourceTest {
         @Test
         @DisplayName("an interpreter given no screen at all is the same case")
         void usesTheAbsentScreenByDefault() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
 
             assertThat(walled.display(walled.run("system/view/screen-gob/size")))
                     .isEqualTo("0x0");

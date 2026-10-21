@@ -48,7 +48,7 @@ class EnvironmentNativesTest {
                 ? Bounds.standard().grant(HostService.ENVIRONMENT)
                 : Bounds.standard();
         return Interpreter.createOn(
-                Interpreter.standardPorts().withEnvironment(makeUpAnEnvironment()),
+                AnInterpreter.standardPorts().withEnvironment(makeUpAnEnvironment()),
                 OutputPort.discard(),
                 bounds);
     }

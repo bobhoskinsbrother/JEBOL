@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ class MathsFamilyTypesFromTheSourceTest {
     @Test
     @DisplayName("the family refuses everything that only looks numeric")
     void theFamilyRefusesWhatOnlyLooksNumeric() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         for (String function : TAKES_ONLY_NUMBERS) {
             for (String value : ONLY_LOOKS_NUMERIC) {
                 assertThat(errorIdOf(interpreter, function + " " + value))
@@ -39,7 +40,7 @@ class MathsFamilyTypesFromTheSourceTest {
     @Test
     @DisplayName("every real number is still taken")
     void everyRealNumberIsStillTaken() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         for (String function : TAKES_ONLY_NUMBERS) {
             for (String value : List.of("1", "0.5", "50%")) {
                 assertThat(errorIdOf(interpreter, function + " " + value))
@@ -52,7 +53,7 @@ class MathsFamilyTypesFromTheSourceTest {
     @Test
     @DisplayName("AS-PAIR takes numbers alone, in both places")
     void asPairTakesNumbersAlone() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         assertThat(errorIdOf(interpreter, "as-pair #\"a\" 1")).isEqualTo("expect-arg");
         assertThat(errorIdOf(interpreter, "as-pair 1 0:0:1")).isEqualTo("expect-arg");
         assertThat(errorIdOf(interpreter, "as-pair 1 2.5")).isEqualTo("no-error");
@@ -61,7 +62,7 @@ class MathsFamilyTypesFromTheSourceTest {
     @Test
     @DisplayName("ABSOLUTE measures numbers, pairs, money and time - not a char")
     void absoluteRefusesAChar() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         assertThat(errorIdOf(interpreter, "absolute #\"a\"")).isEqualTo("expect-arg");
         assertThat(errorIdOf(interpreter, "abs #\"a\"")).isEqualTo("expect-arg");
         for (String value : List.of("-1", "-1x2", "-$1", "-0:0:1")) {

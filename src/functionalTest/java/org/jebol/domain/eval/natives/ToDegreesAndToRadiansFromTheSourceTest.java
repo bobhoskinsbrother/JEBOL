@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.DefaultNative;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ToDegreesAndToRadiansFromTheSourceTest {
 
     private String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

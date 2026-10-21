@@ -1,5 +1,6 @@
 package org.jebol.mezz;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.TranscodeResult;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +44,7 @@ class EveryCarriedRebolFileReadsTest {
                 .as("found too few Rebol files for this to be measuring anything")
                 .hasSizeGreaterThan(300);
 
-        Interpreter reader = Interpreter.create();
+        Interpreter reader = AnInterpreter.create();
         Map<String, String> failures = new LinkedHashMap<>();
         for (Path file : files) {
             try {

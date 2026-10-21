@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("a string made with room for five million characters is visible in STATS")
     void alargeStringIsVisible() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0 before: 0");
         long before = readSettledStats(interpreter);
         interpreter.run("held: make string! " + A_LARGE_STRING);
@@ -50,7 +51,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("and the string is still empty, because the size was room and not length")
     void leavesTheStringEmpty() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0");
         assertThat(answerToNumber(interpreter, "length? held: make string! " + A_LARGE_STRING))
                 .isZero();
@@ -59,7 +60,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("letting go of it and recycling gives the bytes back")
     void givesTheBytesBackWhenLetGo() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("recycle before: stats");
         interpreter.run("held: make string! " + A_LARGE_STRING);
@@ -74,7 +75,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("Rebol's own assertion, run whole")
     void passesRebolsOwnAssertion() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("recycle before: stats held: make string! " + A_LARGE_STRING);
 
@@ -91,7 +92,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("a binary made with room reserves it too")
     void abinaryReservesItsRoom() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0 before: 0");
         long before = readSettledStats(interpreter);
         interpreter.run("held: make binary! 2000000");
@@ -103,7 +104,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("a string that grows past its room is counted again as it grows")
     void countsAGrowingStringAgain() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("held: copy {}");
         long before = readSettledStats(interpreter);
@@ -117,7 +118,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("RECYCLE answers how many bytes it took back")
     void recycleAnswersWhatItFreed() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("held: 0");
         interpreter.run("recycle held: make string! " + A_LARGE_STRING + " held: none");
 
@@ -128,7 +129,7 @@ class SeriesMemoryFromTheSourceTest {
     @Test
     @DisplayName("STATS still answers its other questions")
     void statsStillAnswersItsOtherQuestions() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         assertThat(interpreter.display(interpreter.run("integer? stats/evals")))
                 .isEqualTo("#(true)");
         assertThat(interpreter.display(interpreter.run("time? stats/timer")))

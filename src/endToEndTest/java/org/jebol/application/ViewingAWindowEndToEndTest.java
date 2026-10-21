@@ -17,7 +17,7 @@ class ViewingAWindowEndToEndTest {
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
@@ -126,7 +126,7 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("a script that was not granted the screen refuses")
         @Timeout(20)
         void refuseWithoutTheGrant() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             String script = """
                     error? try [view/no-wait make gob! [size: 320x200]]""";
             walled.defineNewWordsIn(script);
@@ -138,7 +138,7 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("and the two refusals are told apart, because they need different fixes")
         @Timeout(20)
         void tellTheTwoRefusalsApart() {
-            assertThat(readWhatViewingSays(Interpreter.create()))
+            assertThat(readWhatViewingSays(AnInterpreter.create()))
                     .contains("not granted");
             assertThat(readWhatViewingSays(makeAnInterpreterWithAScreen(RecordingScreen.absent())))
                     .as("one can be fixed by granting and the other cannot")

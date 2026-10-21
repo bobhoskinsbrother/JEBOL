@@ -1,5 +1,6 @@
 package org.jebol.domain.read;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConstructionSyntaxFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         String shown = interpreter.display(interpreter.run(source));
         boolean wrapped = shown.length() >= 2

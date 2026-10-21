@@ -28,7 +28,7 @@ class CheckingCertificatesFromTheSourceTest {
 
     private Interpreter makeAGrantedInterpreter() {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withCertificateAuthority(new JavaCertificateAuthority(
+                AnInterpreter.standardPorts().withCertificateAuthority(new JavaCertificateAuthority(
                         fixtures.trustOnly("test-root"),
                         Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
                 printed::append,
@@ -36,11 +36,11 @@ class CheckingCertificatesFromTheSourceTest {
     }
 
     private Interpreter grantedWithoutAuthority() {
-        return Interpreter.createWithOutput(printed::append, Bounds.standard().grant(HostService.CERTIFICATES));
+        return AnInterpreter.createWithOutput(printed::append, Bounds.standard().grant(HostService.CERTIFICATES));
     }
 
     private Interpreter ungranted() {
-        return Interpreter.createWithOutput(printed::append, Bounds.standard());
+        return AnInterpreter.createWithOutput(printed::append, Bounds.standard());
     }
 
     private String print(Interpreter interpreter, String source) {
@@ -90,7 +90,7 @@ class CheckingCertificatesFromTheSourceTest {
         @Test
         @DisplayName("is refused as not present by a host that has no authorities to offer")
         void refusesAsNotPresentWhenUnavailable() {
-            Interpreter browser = Interpreter.createWithOutput(printed::append, Bounds.standard()
+            Interpreter browser = AnInterpreter.createWithOutput(printed::append, Bounds.standard()
                     .markUnavailable(HostService.CERTIFICATES).calls("a browser"));
             assertThat(outcome(browser, "require-certificate-checks"))
                     .isEqualTo("Access no-service | a browser does not allow certificates, which is not present");

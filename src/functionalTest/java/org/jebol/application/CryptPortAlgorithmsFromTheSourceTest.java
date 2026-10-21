@@ -16,7 +16,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
     private static final String COUNTING_BLOCK = "#{00112233445566778899AABBCCDDEEFF}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

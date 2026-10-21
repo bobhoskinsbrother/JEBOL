@@ -1,5 +1,6 @@
 package org.jebol.render;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InteractiveRenderingTest {
 
     private static View viewOf(String source) {
-        return View.of(Interpreter.create(), source);
+        return View.of(AnInterpreter.create(), source);
     }
 
     @Nested

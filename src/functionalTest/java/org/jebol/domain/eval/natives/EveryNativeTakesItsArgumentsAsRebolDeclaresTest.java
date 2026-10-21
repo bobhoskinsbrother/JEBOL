@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Molder;
@@ -20,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class EveryNativeTakesItsArgumentsAsRebolDeclaresTest {
 
-    private final Interpreter interpreter = Interpreter.create();
+    private final Interpreter interpreter = AnInterpreter.create();
 
     private Value answerTo(String source) {
         interpreter.defineNewWordsIn(source);

@@ -38,7 +38,7 @@ class ConsoleNativesTest {
                 ? Bounds.standard().grant(HostService.CONSOLE)
                 : Bounds.standard();
         return Interpreter.createOn(
-                Interpreter.standardPorts().withConsole(new Prepared(lines)),
+                AnInterpreter.standardPorts().withConsole(new Prepared(lines)),
                 OutputPort.discard(),
                 bounds);
     }
@@ -94,7 +94,7 @@ class ConsoleNativesTest {
     @Test
     @DisplayName("with the grant and no console, reading still fails")
     void needsAPortToo() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.CONSOLE));
         assertThat(readTheErrorIdOf(interpreter, "input")).isEqualTo("no-port");
     }

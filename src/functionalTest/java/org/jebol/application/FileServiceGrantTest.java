@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +22,7 @@ class FileServiceGrantTest {
 
     private static Interpreter makeAnInterpreterReadingUnder(Bounds bounds, Path directory) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 bounds);
     }
@@ -87,7 +88,7 @@ class FileServiceGrantTest {
     @Test
     @DisplayName("with the grant and no adapter, reading still raises")
     void needsAnAdapterToo() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
         assertThat(readTheErrorIdOf(interpreter, "read %a.txt")).isNotEqualTo("no-error");
     }

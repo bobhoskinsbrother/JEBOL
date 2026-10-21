@@ -1,8 +1,8 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
-import org.jebol.application.ClasspathFiles;
 import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DesktopScreenFromTheSourceTest {
 
     private static GobValue makeAGobFrom(String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineNewWordsIn(source);
         return (GobValue) interpreter.run(source).value();
@@ -224,7 +224,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and an interpreter given this screen refuses to view, by that name")
         void refusesAnInterpretersView() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
+                    AnInterpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
             String script = """
@@ -240,7 +240,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and the root gob it is given is sized at nothing")
         void sizesTheRootAtNothing() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
+                    AnInterpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
 

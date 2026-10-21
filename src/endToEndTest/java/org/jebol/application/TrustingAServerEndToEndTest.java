@@ -59,7 +59,7 @@ class TrustingAServerEndToEndTest {
 
     private Interpreter makeAnInterpreterTrustingTheTestRoot(Instant now) {
         return Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withNetwork(new JavaSocket())
                         .withCertificateAuthority(new JavaCertificateAuthority(
                                 fixtures.trustOnly("test-root"),
@@ -70,7 +70,7 @@ class TrustingAServerEndToEndTest {
 
     private Interpreter makeANetworkedInterpreter(Bounds bounds) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withNetwork(new JavaSocket()),
+                AnInterpreter.standardPorts().withNetwork(new JavaSocket()),
                 printed::append,
                 bounds);
     }
@@ -290,7 +290,7 @@ class TrustingAServerEndToEndTest {
                     .grant(HostService.CLOCK);
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
                 Interpreter interpreter = Interpreter.createOn(
-                        Interpreter.standardPorts()
+                        AnInterpreter.standardPorts()
                                 .withNetwork(new JavaSocket())
                                 .withCertificateAuthority(new JavaCertificateAuthority(
                                         fixtures.trustOnly("test-root"),

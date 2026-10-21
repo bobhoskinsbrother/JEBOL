@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WhereALibraryFileAssignmentLandsTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -40,6 +40,6 @@ class WhereALibraryFileAssignmentLandsTest {
     @Test
     @DisplayName("Every borrowed file still loads to the end")
     void stillLoadsEveryBorrowedFileToTheEnd() {
-        assertThat(Interpreter.create().borrowedLoadFailures()).isEmpty();
+        assertThat(AnInterpreter.create().borrowedLoadFailures()).isEmpty();
     }
 }

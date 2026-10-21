@@ -1,6 +1,7 @@
 package org.jebol.domain.render;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PaintListFromTheSourceTest {
 
     private static GobValue makeAGobFrom(String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineNewWordsIn(source);
         return (GobValue) interpreter.run(source).value();

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.*;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WhatEachOutputNativeDeclaresTest {
 
     private String answerTo(String source) {
-        return Molder.moldFlat(Interpreter.create().run(source).value());
+        return Molder.moldFlat(AnInterpreter.create().run(source).value());
     }
 
     private String argumentsOfTheErrorFrom(String source) {
@@ -32,7 +33,7 @@ class WhatEachOutputNativeDeclaresTest {
     private String writtenBy(String source) {
         StringBuilder written = new StringBuilder();
         OutputPort output = written::append;
-        Interpreter.createWithOutput(output).run(source);
+        AnInterpreter.createWithOutput(output).run(source);
         return written.toString();
     }
 

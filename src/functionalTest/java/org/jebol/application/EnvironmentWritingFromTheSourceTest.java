@@ -13,7 +13,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching() {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
+                AnInterpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.ENVIRONMENT));
     }
@@ -126,7 +126,7 @@ class EnvironmentWritingFromTheSourceTest {
     @DisplayName("a program started afterwards inherits what was set")
     void passesItToAStartedProgram() {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withEnvironment(new ProcessEnvironment())
                         .withProcesses(new JavaProcess()),
                 OutputPort.discard(),
@@ -145,7 +145,7 @@ class EnvironmentWritingFromTheSourceTest {
     @DisplayName("without the environment grant, all three refuse")
     void refusesWithoutTheGrant() {
         Interpreter without = Interpreter.createOn(
-                Interpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
+                AnInterpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
                 OutputPort.discard(),
                 Bounds.standard());
         assertThat(answerTo(without,

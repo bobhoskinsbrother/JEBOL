@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,7 @@ class ConversionFamilyTest {
             "task", "handle", "struct", "library", "utype", "java-object");
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

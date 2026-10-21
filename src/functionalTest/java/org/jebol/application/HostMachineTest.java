@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.host.OutputPort;
@@ -141,7 +142,7 @@ class HostMachineTest {
 
     private Interpreter interpreterOn(MachinePort machine, Bounds bounds) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withMachine(machine),
+                AnInterpreter.standardPorts().withMachine(machine),
                 OutputPort.discard(),
                 bounds);
     }
@@ -302,7 +303,7 @@ class HostMachineTest {
                     .launchesFor("/", "/tmp/whole.sh")
                     .launchesFor(root, "/tmp/confined.sh");
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withMachine(machine)
                             .withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
@@ -319,7 +320,7 @@ class HostMachineTest {
         void dropsUnconfinedLauncher(@TempDir Path directory) {
             DescribedMachine machine = new DescribedMachine().launchesFor("/", "/tmp/whole.sh");
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withMachine(machine)
                             .withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
@@ -351,7 +352,7 @@ class HostMachineTest {
 
         private Interpreter withProcesses(RecordedProcesses processes) {
             return Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withMachine(new DescribedMachine())
                             .withProcesses(processes),
                     OutputPort.discard(),
@@ -413,7 +414,7 @@ class HostMachineTest {
         void refusesWithoutGrant() {
             RecordedProcesses processes = new RecordedProcesses().running(77);
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withMachine(new DescribedMachine())
                             .withProcesses(processes),
                     OutputPort.discard(),
@@ -434,7 +435,7 @@ class HostMachineTest {
         void reportsJvmMachine() {
             JavaMachine machine = new JavaMachine();
 
-            assertThat(Interpreter.create().run("""
+            assertThat(AnInterpreter.create().run("""
                     reduce [system/platform  system/options/home  access-os 'pid]""").display())
                     .isEqualTo("[" + machine.operatingSystem() + " %" + machine.homeDirectory() + "/ "
                             + machine.processNumber() + "]");

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,7 +12,7 @@ class TraceFromTheSourceTest {
 
     private static String outputOf(String source) {
         StringBuilder captured = new StringBuilder();
-        Interpreter interpreter = Interpreter.createWithOutput(captured::append);
+        Interpreter interpreter = AnInterpreter.createWithOutput(captured::append);
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return captured.toString();
@@ -94,7 +95,7 @@ class TraceFromTheSourceTest {
         @Test
         @DisplayName("TRACE answers nothing at all, whichever way it is called")
         void itAnswersUnset() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             String source = "reduce [unset? trace off unset? trace/back false]";
             interpreter.defineNewWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source)))

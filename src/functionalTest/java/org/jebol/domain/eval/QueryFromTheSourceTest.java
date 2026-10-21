@@ -1,7 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -22,7 +23,7 @@ class QueryFromTheSourceTest {
 
     private Interpreter reachingTheFilesystem() {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
@@ -260,7 +261,7 @@ class QueryFromTheSourceTest {
         @Test
         @DisplayName("a script not granted the filesystem cannot ask at all")
         void anUngrantedScriptIsRefused() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             String source = "e: try [query %a.txt 'size] either error? e [e/id] ['no-error]";
             walled.defineNewWordsIn(source);
             assertThat(walled.display(walled.run(source))).isNotEqualTo("no-error");

@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SmallSuiteBehavioursFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -94,8 +96,8 @@ class SmallSuiteBehavioursFromTheSourceTest {
     void readOnAMissingFileNamesTheFile(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
         Interpreter interpreter = Interpreter.createOn(
-                org.jebol.application.Interpreter.standardPorts().withFiles(
-                        org.jebol.application.FileSystemPort.rootFileSystem(directory)),
+                org.jebol.application.AnInterpreter.standardPorts().withFiles(
+                        FileSystemPort.rootFileSystem(directory)),
                 org.jebol.domain.host.OutputPort.discard(),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));

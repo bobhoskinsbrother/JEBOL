@@ -110,7 +110,7 @@ class TheMidiPortFromTheSourceTest {
 
     private String answerWith(MidiDevices devices, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withMidiDevices(devices),
+                AnInterpreter.standardPorts().withMidiDevices(devices),
                 message -> { },
                 Bounds.standard().grant(HostService.MIDI));
         return readTheAnswerFrom(interpreter, source);
@@ -126,14 +126,14 @@ class TheMidiPortFromTheSourceTest {
 
     private String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withMidiDevices(attachAKeyboardAndTwoSynths()),
+                AnInterpreter.standardPorts().withMidiDevices(attachAKeyboardAndTwoSynths()),
                 OutputPort.discard(),
                 Bounds.standard());
         return readTheAnswerFrom(interpreter, source);
     }
 
     private Interpreter makeAnInterpreterGrantedMidi() {
-        return Interpreter.createWithOutput(message -> { }, Bounds.standard().grant(HostService.MIDI));
+        return AnInterpreter.createWithOutput(message -> { }, Bounds.standard().grant(HostService.MIDI));
     }
 
     private String readTheAnswerFrom(Interpreter interpreter, String source) {
@@ -186,7 +186,7 @@ class TheMidiPortFromTheSourceTest {
         @Test
         @DisplayName("and the MIDI file loads whole")
         void loadsTheFileWhole() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             assertThat(interpreter.borrowedLoadFailures()).doesNotContainKey("sys-ports-midi.reb");
             assertThat(readTheAnswerFrom(interpreter, """
                     function? :system/schemes/midi/init""")).isEqualTo("#(true)");

@@ -16,7 +16,7 @@ class ScreenMetricsFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
@@ -309,7 +309,7 @@ class ScreenMetricsFromTheSourceTest {
         @Test
         @DisplayName("an interpreter that was not granted the screen refuses")
         void refusesAnUngrantedScript() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             assertThat(walled.display(walled.run("error? try [gui-metric 'screen-size]")))
                     .isEqualTo("#(true)");
         }

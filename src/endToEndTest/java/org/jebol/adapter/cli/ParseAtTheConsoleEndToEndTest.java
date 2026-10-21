@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ class ParseAtTheConsoleEndToEndTest {
     private String readWhatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
+        Interpreter interpreter = AnInterpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
         return captured.toString(StandardCharsets.UTF_8);
     }

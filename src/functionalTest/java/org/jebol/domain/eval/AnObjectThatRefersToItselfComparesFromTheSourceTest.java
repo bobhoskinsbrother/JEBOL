@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ class AnObjectThatRefersToItselfComparesFromTheSourceTest {
             o/me: o
             """;
 
-    private final Interpreter interpreter = Interpreter.create();
+    private final Interpreter interpreter = AnInterpreter.create();
 
     private String answerTo(String source) {
         interpreter.defineNewWordsIn(source);

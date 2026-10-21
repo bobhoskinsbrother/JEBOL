@@ -17,7 +17,7 @@ class CryptPortBlocksFromTheSourceTest {
             + "30C81C46A35CE411E5FBC1191A0A52EF}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

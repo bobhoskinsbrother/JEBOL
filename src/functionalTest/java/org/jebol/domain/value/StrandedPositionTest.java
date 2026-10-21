@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import org.jebol.application.Conclusion;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -14,7 +15,7 @@ class StrandedPositionTest {
             "a: [1 2 3 4] b: skip a 3 ignore: remove/part a 3 ";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())

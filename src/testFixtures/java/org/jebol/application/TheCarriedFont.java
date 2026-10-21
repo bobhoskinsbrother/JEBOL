@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.domain.render.TextMeasurement;
 

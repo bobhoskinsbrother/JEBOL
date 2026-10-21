@@ -25,7 +25,7 @@ class ABrowserHostFromTheSourceTest {
     }
 
     private static Interpreter makeABrowser() {
-        return Interpreter.withBounds(measureABrowsersBounds());
+        return AnInterpreter.withBounds(measureABrowsersBounds());
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -84,7 +84,7 @@ class ABrowserHostFromTheSourceTest {
     @Test
     @DisplayName("a host that has the service and did not grant it says not granted instead")
     void saysSomethingElseForAServiceMerelyNotGranted() {
-        Interpreter host = Interpreter.withBounds(Bounds.standard());
+        Interpreter host = AnInterpreter.withBounds(Bounds.standard());
 
         assertThat(readTheSentenceFor(host, "read tcp://127.0.0.1:9"))
                 .contains("network is not granted")

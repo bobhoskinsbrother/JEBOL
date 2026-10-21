@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class DoOfATaskFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWritingTo(StringBuffer written) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit())),
+                AnInterpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit())),
                 written::append,
                 Bounds.standard());
     }
@@ -43,7 +44,7 @@ class DoOfATaskFromTheSourceTest {
     @DisplayName("with no way given to run a body, DO of a task answers the task and starts nothing")
     void startsNothingWithoutAHost() {
         StringBuilder written = new StringBuilder();
-        Interpreter interpreter = Interpreter.createWithOutput(written::append);
+        Interpreter interpreter = AnInterpreter.createWithOutput(written::append);
 
         String answer = interpreter.display(interpreter.run(
                 "task? do make task! [print \"" + THE_BODY_SPEAKS + "\"]"));

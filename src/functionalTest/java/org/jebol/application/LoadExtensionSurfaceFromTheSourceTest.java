@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LoadExtensionSurfaceFromTheSourceTest {
 
     private static String readTheErrorIdOf(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String wrapped = "e: try [" + source + "] either error? e [e/id] ['no-error]";
         interpreter.defineNewWordsIn(wrapped);
         return interpreter.display(interpreter.run(wrapped));

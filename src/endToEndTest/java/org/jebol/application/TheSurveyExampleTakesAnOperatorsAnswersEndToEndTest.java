@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -69,7 +70,7 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
             everything = everything.grant(service);
         }
         interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withScreen(screen)
                         .withEnvironment(new ProcessEnvironment())
                         .withFiles(FileSystemPort.rootFileSystem(

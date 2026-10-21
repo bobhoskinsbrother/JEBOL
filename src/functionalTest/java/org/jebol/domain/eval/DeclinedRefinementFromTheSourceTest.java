@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ class DeclinedRefinementFromTheSourceTest {
                     + "[reduce [a ref1 b ref2 c d]] ";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String whole = FUNCTION + source;
         interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));

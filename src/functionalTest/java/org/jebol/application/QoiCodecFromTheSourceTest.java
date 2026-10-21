@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QoiCodecFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -29,7 +30,7 @@ class QoiCodecFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }

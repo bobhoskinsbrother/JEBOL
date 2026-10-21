@@ -43,7 +43,7 @@ class PreludeTest {
     @Test
     @DisplayName("a function the prelude defines is callable")
     void callsAPreludeFunction() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("length? rejoin [{ab} {c}]")))
                 .isEqualTo("3");
@@ -52,7 +52,7 @@ class PreludeTest {
     @Test
     @DisplayName("a prelude function is an ordinary function value")
     void holdsAPreludeFunctionAsAValue() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("type? :rejoin")))
                 .isEqualTo("#(function!)");
@@ -61,7 +61,7 @@ class PreludeTest {
     @Test
     @DisplayName("a caller cannot tell it from a native")
     void callsARenamedPreludeFunction() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run(
                 "joined: :rejoin  length? joined [{ab} {c}]")))
@@ -71,7 +71,7 @@ class PreludeTest {
     @Test
     @DisplayName("the prelude can use the natives")
     void letsThePreludeSeeTheNatives() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run(
                 "same? :ajoin :ajoin  length? rejoin [1 2 3]")))
@@ -81,9 +81,9 @@ class PreludeTest {
     @Test
     @DisplayName("a script's own words do not disturb it for the next interpreter")
     void keepsTheNextInterpretersPreludeFromAScript() {
-        Interpreter.create().run("rejoin: 3");
+        AnInterpreter.create().run("rejoin: 3");
 
-        Interpreter next = Interpreter.create();
+        Interpreter next = AnInterpreter.create();
         assertThat(next.display(next.run("length? rejoin [{ab} {c}]"))).isEqualTo("3");
     }
 

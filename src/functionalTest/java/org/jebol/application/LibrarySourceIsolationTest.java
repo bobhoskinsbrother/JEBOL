@@ -114,43 +114,43 @@ class LibrarySourceIsolationTest {
         @Test
         @DisplayName("a library list one script appends to is the same length in the next")
         void keepsALibraryListTheSameLengthInTheNext() {
-            Interpreter first = Interpreter.create();
+            Interpreter first = AnInterpreter.create();
             String was = answerTo(first, "length? system/catalog/file-types");
             answerTo(first, "append system/catalog/file-types [%.zzz zzz]");
             assertThat(answerTo(first, "length? system/catalog/file-types"))
                     .isNotEqualTo(was);
-            assertThat(answerTo(Interpreter.create(),
+            assertThat(answerTo(AnInterpreter.create(),
                     "length? system/catalog/file-types")).isEqualTo(was);
         }
 
         @Test
         @DisplayName("a library string one script changes is unchanged in the next")
         void keepsALibraryStringUnchangedInTheNext() {
-            Interpreter first = Interpreter.create();
+            Interpreter first = AnInterpreter.create();
             answerTo(first, "append system/locale/months/1 \"!\"");
             assertThat(answerTo(first, "system/locale/months/1"))
                     .isEqualTo("\"January!\"");
-            assertThat(answerTo(Interpreter.create(), "system/locale/months/1"))
+            assertThat(answerTo(AnInterpreter.create(), "system/locale/months/1"))
                     .isEqualTo("\"January\"");
         }
 
         @Test
         @DisplayName("and a library function's body is the body the file says")
         void keepsALibraryFunctionsBodyAsTheFileSays() {
-            Interpreter first = Interpreter.create();
+            Interpreter first = AnInterpreter.create();
             String was = answerTo(first, "length? body-of :join");
             answerTo(first, "b: body-of :join  append b [1 2 3]");
-            assertThat(answerTo(Interpreter.create(), "length? body-of :join"))
+            assertThat(answerTo(AnInterpreter.create(), "length? body-of :join"))
                     .isEqualTo(was);
         }
 
         @Test
         @DisplayName("booting many times leaves the library the size it started")
         void keepsTheLibrarySizeAcrossManyBoots() {
-            String was = answerTo(Interpreter.create(),
+            String was = answerTo(AnInterpreter.create(),
                     "length? system/catalog/file-types");
             for (int at = 0; at < 5; at++) {
-                assertThat(answerTo(Interpreter.create(),
+                assertThat(answerTo(AnInterpreter.create(),
                         "length? system/catalog/file-types")).isEqualTo(was);
             }
         }

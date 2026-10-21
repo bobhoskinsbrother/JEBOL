@@ -1,9 +1,10 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.ClasspathFiles;
+import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.application.Conclusion;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.application.TheCarriedFont;
@@ -87,7 +88,7 @@ class BrowserScreenFromTheSourceTest {
             BrowserScreen screen, int wide, int high) {
 
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
@@ -98,7 +99,7 @@ class BrowserScreenFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWithASilentBrowser(BrowserScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
@@ -356,7 +357,7 @@ class BrowserScreenFromTheSourceTest {
         void takesAResizeWhileWaiting() throws Exception {
             BrowserScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(screen),
+                    AnInterpreter.standardPorts().withScreen(screen),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
             screen.measure(800, 600);
@@ -735,7 +736,7 @@ class BrowserScreenFromTheSourceTest {
 
         private Interpreter openAWindowUnder(Bounds bounds) {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(screen),
+                    AnInterpreter.standardPorts().withScreen(screen),
                     OutputPort.discard(),
                     bounds.grant(HostService.WINDOWS));
             screen.measure(800, 600);

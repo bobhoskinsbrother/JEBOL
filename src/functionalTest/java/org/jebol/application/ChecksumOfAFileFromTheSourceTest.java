@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +25,7 @@ class ChecksumOfAFileFromTheSourceTest {
     private static Interpreter makeAnInterpreterReaching(Path directory) throws IOException {
         Files.writeString(directory.resolve("subject.txt"), THE_SUBJECT);
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }
@@ -176,7 +177,7 @@ class ChecksumOfAFileFromTheSourceTest {
         @Test
         @DisplayName("and without the filesystem grant the service is refused")
         void refusesTheServiceWithoutTheGrant() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(readTheErrorIdFrom(interpreter, "checksum %subject.txt 'md5"))
                     .isEqualTo("no-service");

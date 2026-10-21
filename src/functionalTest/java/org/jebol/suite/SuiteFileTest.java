@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -165,7 +166,7 @@ class SuiteFileTest {
             List<String> unreadable = new java.util.ArrayList<>();
 
             for (SuiteFile file : SuiteGrading.filesInSuite()) {
-                Interpreter reader = Interpreter.create();
+                Interpreter reader = AnInterpreter.create();
                 for (SuiteFile.Assertion assertion : file.assertions()) {
                     if (!reader.read(assertion.source()).succeeded()) {
                         unreadable.add(assertion + "  ->  " + assertion.source());

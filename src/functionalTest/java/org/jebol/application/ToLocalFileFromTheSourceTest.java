@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +20,7 @@ class ToLocalFileFromTheSourceTest {
             bounds = bounds.grant(service);
         }
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 bounds);
     }
@@ -35,7 +36,7 @@ class ToLocalFileFromTheSourceTest {
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -80,7 +81,7 @@ class ToLocalFileFromTheSourceTest {
         @Test
         @DisplayName("and nothing else is a path at all")
         void refusesAnythingElse() {
-            assertThat(readTheErrorIdOf(Interpreter.create(), "to-local-file 5"))
+            assertThat(readTheErrorIdOf(AnInterpreter.create(), "to-local-file 5"))
                     .isEqualTo("expect-arg");
         }
     }

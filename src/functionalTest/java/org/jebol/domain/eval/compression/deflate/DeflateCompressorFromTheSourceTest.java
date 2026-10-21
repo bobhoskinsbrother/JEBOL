@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.compression.deflate;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -190,7 +191,7 @@ class DeflateCompressorFromTheSourceTest {
     class ThroughTheInterpreter {
 
         private String answerTo(String source) {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(source);
             return interpreter.display(interpreter.run(source));
         }

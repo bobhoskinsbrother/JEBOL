@@ -1,6 +1,8 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaProcess;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,7 +26,7 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
+        Interpreter interpreter = AnInterpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -64,8 +66,8 @@ class ReplEndToEndTest {
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
         Interpreter interpreter = Interpreter.createOn(
-                org.jebol.application.Interpreter.standardPorts().withFiles(
-                        org.jebol.application.FileSystemPort.rootFileSystem(directory)),
+                org.jebol.application.AnInterpreter.standardPorts().withFiles(
+                        FileSystemPort.rootFileSystem(directory)),
                 new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));
@@ -388,7 +390,7 @@ class ReplEndToEndTest {
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
         Interpreter interpreter = Interpreter.createOn(
-                org.jebol.application.Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                org.jebol.application.AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
                 new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.PROCESSES));

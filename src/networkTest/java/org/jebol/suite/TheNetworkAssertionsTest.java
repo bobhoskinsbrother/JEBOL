@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +17,7 @@ class TheNetworkAssertionsTest {
 
     @BeforeAll
     static void bootOneInterpreterFirst() {
-        Interpreter.create();
+        AnInterpreter.create();
     }
 
     static Stream<SuiteFile.Assertion> listTheAssertionsExpectedToPass() {

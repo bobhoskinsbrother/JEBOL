@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CleanPathTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -62,7 +64,7 @@ class CleanPathTest {
     @DisplayName("without /ONLY the current directory is needed")
     void needsTheWorkingDirectoryGrant() {
         String source = "e: try [clean-path %a/b] either error? e [e/id] ['no-error]";
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
+        Interpreter interpreter = AnInterpreter.withBounds(Bounds.standard());
         interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("no-service");
     }
@@ -72,8 +74,8 @@ class CleanPathTest {
     void putsTheCurrentDirectoryInFront() {
         String source = "#\"/\" = first clean-path %a/b";
         Interpreter interpreter = Interpreter.createOn(
-                org.jebol.application.Interpreter.standardPorts().withFiles(
-                        org.jebol.application.FileSystemPort.rootFileSystem(
+                org.jebol.application.AnInterpreter.standardPorts().withFiles(
+                        FileSystemPort.rootFileSystem(
                                 java.nio.file.Path.of("."))),
                 org.jebol.domain.host.OutputPort.discard(),
                 Bounds.standard().grant(HostService.WORKING_DIRECTORY));

@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -45,7 +46,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     private static String answerTo(Path root, EnvironmentPort environment, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(root))
                         .withEnvironment(environment),
                 OutputPort.discard(),
@@ -125,7 +126,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
     @DisplayName("and a host that granted no environment still moves")
     void stillMovesForAHostThatGrantedNoEnvironment(@TempDir Path root) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

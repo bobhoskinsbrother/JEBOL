@@ -65,7 +65,7 @@ class ExtensionsFromTheSourceTest {
         for (Extension extension : extensions) {
             bounds = bounds.add(extension);
         }
-        return Interpreter.withBounds(bounds);
+        return AnInterpreter.withBounds(bounds);
     }
 
     private String answerTo(Interpreter interpreter, String source) {
@@ -216,14 +216,14 @@ class ExtensionsFromTheSourceTest {
         void reachesEveryInterpreterWithTheBounds() {
             Bounds bounds = Bounds.standard().add(demo());
 
-            assertThat(answerTo(Interpreter.withBounds(bounds), "twice 1")).isEqualTo("2");
-            assertThat(answerTo(Interpreter.withBounds(bounds), "twice 2")).isEqualTo("4");
+            assertThat(answerTo(AnInterpreter.withBounds(bounds), "twice 1")).isEqualTo("2");
+            assertThat(answerTo(AnInterpreter.withBounds(bounds), "twice 2")).isEqualTo("4");
         }
 
         @Test
         @DisplayName("an interpreter whose bounds do not carry it has no such word")
         void staysOutOfBoundsWithoutIt() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "twice 1")).startsWith("[no-value twice");
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "twice 1")).startsWith("[no-value twice");
         }
 
         @Test
@@ -534,7 +534,7 @@ class ExtensionsFromTheSourceTest {
         @Test
         @DisplayName("DO-CALLBACK of an event that carries no callback answers none")
         void doCallbackOfAnOrdinaryEvent() {
-            assertThat(answerTo(Interpreter.create(), "do-callback make event! [type: 'callback]")).isEqualTo("_");
+            assertThat(answerTo(AnInterpreter.create(), "do-callback make event! [type: 'callback]")).isEqualTo("_");
         }
 
         @Test

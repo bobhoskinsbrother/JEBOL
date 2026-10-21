@@ -20,7 +20,7 @@ class CryptPortAriaFromTheSourceTest {
     private static final String VECTOR = "#{0F0E0D0C0B0A09080706050403020100}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

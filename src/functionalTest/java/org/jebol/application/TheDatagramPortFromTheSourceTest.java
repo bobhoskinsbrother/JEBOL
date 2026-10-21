@@ -22,7 +22,7 @@ class TheDatagramPortFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withNetwork(new JavaSocket()),
+                AnInterpreter.standardPorts().withNetwork(new JavaSocket()),
                 message -> { },
                 Bounds.standard().grant(HostService.NETWORK));
         interpreter.defineNewWordsIn(source);
@@ -30,7 +30,7 @@ class TheDatagramPortFromTheSourceTest {
     }
 
     private static String runWithoutTheGrant(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

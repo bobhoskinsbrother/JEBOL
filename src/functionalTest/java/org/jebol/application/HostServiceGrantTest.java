@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HostServiceGrantTest {
 
     private static String answerTo(Bounds bounds, String source) {
-        Interpreter interpreter = Interpreter.withBounds(bounds);
+        Interpreter interpreter = AnInterpreter.withBounds(bounds);
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

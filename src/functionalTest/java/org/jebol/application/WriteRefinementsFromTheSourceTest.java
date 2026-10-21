@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +17,7 @@ class WriteRefinementsFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWritingUnder(Path directory) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }
@@ -491,7 +492,7 @@ class WriteRefinementsFromTheSourceTest {
     @DisplayName("a read-only port refuses the seeking and appending forms too")
     void refusesEveryFormOnAReadOnlyPort(@TempDir Path directory) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(
+                AnInterpreter.standardPorts().withFiles(
                         FileSystemPort.rootFileSystem(directory).readOnlyFileSystem()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
@@ -505,7 +506,7 @@ class WriteRefinementsFromTheSourceTest {
     @DisplayName("a refinement write still needs the filePort grant")
     void stillNeedsTheGrantWithRefinements(@TempDir Path directory) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard());
         assertThat(readTheErrorIdOf(interpreter, """

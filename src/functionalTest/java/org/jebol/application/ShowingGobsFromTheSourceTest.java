@@ -16,7 +16,7 @@ class ShowingGobsFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
@@ -367,7 +367,7 @@ class ShowingGobsFromTheSourceTest {
         @Test
         @DisplayName("an interpreter that was not granted the screen refuses")
         void refuseAnUngrantedScript() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             assertThat(walled.display(walled.run(
                     "error? try [show make gob! []]"))).isEqualTo(TRUE);
         }

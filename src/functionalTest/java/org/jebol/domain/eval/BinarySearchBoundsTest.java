@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Conclusion;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +13,7 @@ class BinarySearchBoundsTest {
 
     private static String readTheErrorIdOf(String source) {
         String probe = "e: try [" + source + "] either error? e [e/id] ['no-error]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(probe);
         ScriptOutcome outcome = interpreter.run(probe);
         assertThat(outcome.conclusion())
@@ -22,7 +23,7 @@ class BinarySearchBoundsTest {
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

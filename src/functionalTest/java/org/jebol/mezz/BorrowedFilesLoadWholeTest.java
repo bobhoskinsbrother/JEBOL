@@ -1,5 +1,6 @@
 package org.jebol.mezz;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ class BorrowedFilesLoadWholeTest {
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")
     void runsEveryBorrowedFileToItsEnd() {
-        Map<String, String> failures = Interpreter.create().borrowedLoadFailures();
+        Map<String, String> failures = AnInterpreter.create().borrowedLoadFailures();
 
         assertThat(failures.keySet())
                 .as("a new partial load is a regression, and a fixed one is progress")
@@ -25,7 +26,7 @@ class BorrowedFilesLoadWholeTest {
     @Test
     @DisplayName("each known stop is on the word this test says it is")
     void stopsWhereTheKnownStopsAreSaidToBe() {
-        Map<String, String> failures = Interpreter.create().borrowedLoadFailures();
+        Map<String, String> failures = AnInterpreter.create().borrowedLoadFailures();
 
         STOPS_ON.forEach((file, word) -> assertThat(failures.get(file))
                 .as("%s should still be stopping on %s", file, word)
@@ -35,7 +36,7 @@ class BorrowedFilesLoadWholeTest {
     @Test
     @DisplayName("base-defs.reb generates reflectors that outlive its USE scope")
     void keepsTheReflectors() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("mold words-of make object! [a: 1]")))
                 .as("WORDS-OF is written inside a USE in base-defs.reb")

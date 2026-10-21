@@ -1,5 +1,6 @@
 package org.jebol.domain.read;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
@@ -81,7 +82,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         @Test
         @DisplayName("and an interpreter existing somewhere in the process changes nothing")
         void borrowsNoConstructionFromAnotherInterpreter() {
-            Interpreter.create();
+            AnInterpreter.create();
 
             assertThat(failureOf(Transcoder.transcode(A_STRUCT_LITERAL)))
                     .isEqualTo("malconstruct");

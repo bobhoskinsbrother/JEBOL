@@ -19,7 +19,7 @@ class InteropTest {
         @Test
         @DisplayName("an integer crosses as an integer!")
         void integersCross() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.define("supplied", 42L);
 
             assertThat(interpreter.run("add supplied 1").display()).isEqualTo("43");
@@ -28,7 +28,7 @@ class InteropTest {
         @Test
         @DisplayName("a String crosses as a string!")
         void stringsCross() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.define("greeting", "hello");
 
             assertThat(interpreter.run("uppercase greeting").display()).isEqualTo("\"HELLO\"");
@@ -37,7 +37,7 @@ class InteropTest {
         @Test
         @DisplayName("a List crosses as a block!")
         void listsCross() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.define("numbers", List.of(1L, 2L, 3L));
 
             assertThat(interpreter.run("length? numbers").display()).isEqualTo("3");
@@ -46,7 +46,7 @@ class InteropTest {
         @Test
         @DisplayName("a boolean crosses as a logic!")
         void booleansCross() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.define("flag", true);
 
             assertThat(interpreter.run("if flag [\"taken\"]").display()).isEqualTo("\"taken\"");
@@ -55,7 +55,7 @@ class InteropTest {
         @Test
         @DisplayName("anything else stays a host value REBOL can hold but not read")
         void keepsOtherThingsOpaque() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.define("thing", new StringBuilder("mutable"));
 
             assertThat(interpreter.run("type? thing").display()).isEqualTo("#(java-object!)");
@@ -64,7 +64,7 @@ class InteropTest {
         @Test
         @DisplayName("a host null is not none, and says so")
         void keepsHostNullFromBeingNone() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNull("absent", String.class);
 
             assertThat(interpreter.run("none? absent").display())
@@ -79,21 +79,21 @@ class InteropTest {
 
         @Test
         void returnsAnIntegerAsALong() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(interpreter.run("add 20 22").asHostValue()).isEqualTo(42L);
         }
 
         @Test
         void returnsAStringAsAString() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(interpreter.run("uppercase \"hello\"").asHostValue()).isEqualTo("HELLO");
         }
 
         @Test
         void returnsABlockAsAList() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(interpreter.run("reduce [1 2 3]").asHostValue())
                     .isEqualTo(List.of(1L, 2L, 3L));
@@ -101,7 +101,7 @@ class InteropTest {
 
         @Test
         void returnsALogicAsABoolean() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(interpreter.run("greater? 2 1").asHostValue()).isEqualTo(true);
         }
@@ -109,7 +109,7 @@ class InteropTest {
         @Test
         @DisplayName("none comes back as an empty optional, not as null")
         void returnsNoneAsAbsence() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(interpreter.run("if false [1]").asOptionalHostValue()).isEmpty();
         }
@@ -125,7 +125,7 @@ class InteropTest {
             List<String> shared = new ArrayList<>(List.of("first"));
             Extension counting = new Extension("counting", "1.0.0", List.of(new ExtensionCommand(
                     "count-of", "anything", call -> IntegerValue.of(shared.size()))));
-            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(counting));
+            Interpreter interpreter = AnInterpreter.withBounds(Bounds.standard().add(counting));
             interpreter.define("shared", shared);
 
             assertThat(interpreter.run("count-of 0").display()).isEqualTo("1");

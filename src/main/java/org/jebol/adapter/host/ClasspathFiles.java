@@ -1,4 +1,4 @@
-package org.jebol.application;
+package org.jebol.adapter.host;
 
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;

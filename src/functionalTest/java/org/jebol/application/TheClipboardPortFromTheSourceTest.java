@@ -39,7 +39,7 @@ class TheClipboardPortFromTheSourceTest {
 
     private static String answerWith(ClipboardPort clipboard, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withClipboard(clipboard),
+                AnInterpreter.standardPorts().withClipboard(clipboard),
                 message -> { },
                 Bounds.standard().grant(HostService.CLIPBOARD));
         interpreter.defineNewWordsIn(source);
@@ -48,7 +48,7 @@ class TheClipboardPortFromTheSourceTest {
 
     private static String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withClipboard(new ARememberedClipboard("secret")),
+                AnInterpreter.standardPorts().withClipboard(new ARememberedClipboard("secret")),
                 OutputPort.discard(),
                 Bounds.standard());
         interpreter.defineNewWordsIn(source);

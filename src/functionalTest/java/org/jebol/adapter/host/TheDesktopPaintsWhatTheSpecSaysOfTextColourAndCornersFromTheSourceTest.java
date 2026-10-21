@@ -1,6 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.HostService;
@@ -25,7 +26,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
     private static final Color WHITE = new Color(255, 255, 255);
 
-    private final Interpreter interpreter = Interpreter.withBounds(
+    private final Interpreter interpreter = AnInterpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
     private record Ink(int left, int top, int right, int bottom) {

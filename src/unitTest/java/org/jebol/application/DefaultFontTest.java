@@ -1,5 +1,7 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.ClasspathFiles;
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.DefaultFontRenderer;

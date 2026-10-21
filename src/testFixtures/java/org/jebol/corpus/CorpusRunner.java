@@ -1,5 +1,6 @@
 package org.jebol.corpus;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.OutputPort;
@@ -85,7 +86,7 @@ final class CorpusRunner {
 
     static Result run(CorpusEntry entry) {
         Captured captured = new Captured();
-        Interpreter interpreter = Interpreter.createWithOutput(captured);
+        Interpreter interpreter = AnInterpreter.createWithOutput(captured);
         interpreter.defineNewWordsIn(entry.code());
 
         ScriptOutcome outcome = interpreter.run(entry.code());

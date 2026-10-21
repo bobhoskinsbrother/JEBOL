@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,7 @@ class DoFileFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterGrantedFilesUnder(Path root) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

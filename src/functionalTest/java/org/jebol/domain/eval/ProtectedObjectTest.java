@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Conclusion;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -15,7 +16,7 @@ class ProtectedObjectTest {
     private static String errorIdOf(String setup, String attempt) {
         String source = setup + "e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
@@ -45,7 +46,7 @@ class ProtectedObjectTest {
     @Test
     @DisplayName("the value is unchanged after each refusal")
     void nothingIsChangedByARefusedAssignment() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String source = PROTECTED
                 + "try [set in p 'a 99] try [p/a: 5] try [append p [a: 2]] p/a";
         interpreter.defineNewWordsIn(source);

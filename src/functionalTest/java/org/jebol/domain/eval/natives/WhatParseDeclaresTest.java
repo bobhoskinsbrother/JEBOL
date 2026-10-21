@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
@@ -25,7 +26,7 @@ class WhatParseDeclaresTest {
     private final ParseNative parse = new ParseNative();
 
     private String answerTo(String source) {
-        return Molder.moldFlat(Interpreter.create().run(source).value());
+        return Molder.moldFlat(AnInterpreter.create().run(source).value());
     }
 
     private String argumentsOfTheErrorFrom(String source) {

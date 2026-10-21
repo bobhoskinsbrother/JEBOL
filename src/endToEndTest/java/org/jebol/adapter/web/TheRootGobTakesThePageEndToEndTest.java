@@ -1,7 +1,8 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.ClasspathFiles;
+import org.jebol.adapter.host.ClasspathFiles;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -115,7 +116,7 @@ class TheRootGobTakesThePageEndToEndTest {
 
     private Interpreter makeAScriptOnThisPage(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineNewWordsIn(source);

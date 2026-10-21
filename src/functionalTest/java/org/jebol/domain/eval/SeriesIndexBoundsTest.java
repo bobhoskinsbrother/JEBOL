@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Conclusion;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SeriesIndexBoundsTest {
 
     private static ScriptOutcome ran(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.run(source);
     }
@@ -21,7 +22,7 @@ class SeriesIndexBoundsTest {
         assertThat(outcome.conclusion())
                 .as("%s must arrive as an outcome, never as a host exception", source)
                 .isEqualTo(Conclusion.PRODUCED_VALUE);
-        return Interpreter.create().display(outcome);
+        return AnInterpreter.create().display(outcome);
     }
 
     private static String answerTo(String source) {
@@ -29,7 +30,7 @@ class SeriesIndexBoundsTest {
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
                 .isEqualTo(Conclusion.PRODUCED_VALUE);
-        return Interpreter.create().display(outcome);
+        return AnInterpreter.create().display(outcome);
     }
 
     @Test

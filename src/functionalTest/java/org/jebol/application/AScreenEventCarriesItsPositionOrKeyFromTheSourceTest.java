@@ -38,7 +38,7 @@ class AScreenEventCarriesItsPositionOrKeyFromTheSourceTest {
 
     private Interpreter makeAnInterpreterOn(RecordingScreen watched) {
         Interpreter made = Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(watched),
+                AnInterpreter.standardPorts().withScreen(watched),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)

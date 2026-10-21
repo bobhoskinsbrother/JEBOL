@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.IntegerValue;
@@ -28,7 +29,7 @@ class CommandsFromTheSourceTest {
                     throw new IllegalStateException("fell over");
                 }),
                 new ExtensionCommand("nothing", "", call -> UnsetValue.unset())));
-        return Interpreter.withBounds(Bounds.standard().add(demo));
+        return AnInterpreter.withBounds(Bounds.standard().add(demo));
     }
 
     private String answerTo(Interpreter interpreter, String source) {
@@ -49,21 +50,21 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("a spec and a body is bad-func-def naming the definition, as r3 answers")
         void refusesASpecAndABody() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "make command! [[x] [x]]"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "make command! [[x] [x]]"))
                     .isEqualTo("[bad-func-def [[x] [x]] _]");
         }
 
         @Test
         @DisplayName("TO COMMAND! answers the same")
         void answersTheSameThroughTo() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "to command! [[x] [x]]"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "to command! [[x] [x]]"))
                     .isEqualTo("[bad-func-def [[x] [x]] _]");
         }
 
         @Test
         @DisplayName("two items, and four, are bad-func-def")
         void refusesTheWrongNumberOfItems() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             assertThat(readTheRefusalIn(interpreter, "make command! [[x] 1]")).isEqualTo("[bad-func-def [[x] 1] _]");
             assertThat(readTheRefusalIn(interpreter, "make command! reduce [[x] make object! [a: 1] 1 2]"))
@@ -73,7 +74,7 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("an object whose first field is not a dispatcher is bad-func-def")
         void refusesAnObjectWithoutADispatcher() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "make command! reduce [[x] make object! [a: 1] 1]"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "make command! reduce [[x] make object! [a: 1] 1]"))
                     .startsWith("[bad-func-def");
         }
 
@@ -81,28 +82,28 @@ class CommandsFromTheSourceTest {
         @ValueSource(strings = {"[]", "[[x]]", "[1 2]", "[1 [x]]", "[a: 1]"})
         @DisplayName("a block that does not open with a spec and one more item is bad-make-arg, as Make_Function refuses it first")
         void refusesABlockWithoutASpecFirst(String definition) {
-            assertThat(readTheRefusalIn(Interpreter.create(), "make command! " + definition))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "make command! " + definition))
                     .isEqualTo("[bad-make-arg #(command!) " + definition + "]");
         }
 
         @Test
         @DisplayName("TO COMMAND! refuses it the same way")
         void refusesABlockWithoutASpecFirstThroughTo() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "to command! [1 2]"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "to command! [1 2]"))
                     .isEqualTo("[bad-make-arg #(command!) [1 2]]");
         }
 
         @Test
         @DisplayName("a spec and three more items is bad-func-def, as Make_Command wants exactly three")
         void refusesASpecAndThreeMore() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "make command! [[x] 1 2 3]"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "make command! [[x] 1 2 3]"))
                     .isEqualTo("[bad-func-def [[x] 1 2 3] _]");
         }
 
         @Test
         @DisplayName("a number that is not a block is bad-make-arg, as for any datatype")
         void refusesANumber() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "make command! 5")).isEqualTo("[bad-make-arg #(command!) 5]");
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "make command! 5")).isEqualTo("[bad-make-arg #(command!) 5]");
         }
 
         @Test
@@ -150,7 +151,7 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("a file of native code is no-extension, never portable")
         void refusesAFileAsNeverPortable() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "load-extension %camera.so"))
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "load-extension %camera.so"))
                     .isEqualTo("[no-extension %camera.so \"never portable\"]");
         }
 
@@ -158,7 +159,7 @@ class CommandsFromTheSourceTest {
         @DisplayName("SECURE's extension policy is checked first")
         void secureComesFirst(@TempDir Path root) {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                    AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.FILES));
             answerTo(interpreter, "secure [extension throw]");
@@ -169,13 +170,13 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("a binary without /DISPATCH is invalid-arg, as the C's Trap_Arg makes it")
         void refusesABinaryWithoutDispatch() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "load-extension #{00}")).isEqualTo("[invalid-arg #{00} _]");
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "load-extension #{00}")).isEqualTo("[invalid-arg #{00} _]");
         }
 
         @Test
         @DisplayName("a string is expect-arg, as r3 answers")
         void refusesAString() {
-            assertThat(readTheRefusalIn(Interpreter.create(), "load-extension {x}")).startsWith("[expect-arg load-extension name");
+            assertThat(readTheRefusalIn(AnInterpreter.create(), "load-extension {x}")).startsWith("[expect-arg load-extension name");
         }
 
         @Test
@@ -202,14 +203,14 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("/DISPATCH takes any handle, as the C does, and answers the object")
         void dispatchTakesAnyHandle() {
-            assertThat(answerTo(Interpreter.create(), "object? load-extension/dispatch #{00} rc4/key #{0102}"))
+            assertThat(answerTo(AnInterpreter.create(), "object? load-extension/dispatch #{00} rc4/key #{0102}"))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("but a command made from an extension with no dispatcher is bad-extension")
         void refusesACommandWithoutADispatcher() {
-            assertThat(readTheRefusalIn(Interpreter.create(), """
+            assertThat(readTheRefusalIn(AnInterpreter.create(), """
                     ext: load-extension/dispatch #{00} rc4/key #{0102}
                     make command! reduce [[] ext 0]""")).startsWith("[bad-extension");
         }

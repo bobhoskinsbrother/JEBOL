@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.JavaMachine;
 import org.jebol.domain.eval.natives.LimitUsageNative;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LimitUsageFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

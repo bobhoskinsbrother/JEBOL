@@ -22,7 +22,7 @@ class EmbeddingTest {
 
         @Test
         void producesAValue() {
-            ScriptOutcome outcome = Interpreter.create().run("add 1 2");
+            ScriptOutcome outcome = AnInterpreter.create().run("add 1 2");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.PRODUCED_VALUE);
             assertThat(outcome.display()).isEqualTo("3");
@@ -31,7 +31,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("a failing script reports why without throwing")
         void concludesAFailingScript() {
-            ScriptOutcome outcome = Interpreter.create().run("divide 1 0");
+            ScriptOutcome outcome = AnInterpreter.create().run("divide 1 0");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
             assertThat(outcome.errorId()).contains("zero-divide");
@@ -40,7 +40,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("a syntax error is a conclusion too, not a different type of thing")
         void concludesASyntaxError() {
-            ScriptOutcome outcome = Interpreter.create().run("1 + ]");
+            ScriptOutcome outcome = AnInterpreter.create().run("1 + ]");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
         }
@@ -48,7 +48,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("state persists between runs on the same interpreter")
         void carriesStateBetweenRuns() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             interpreter.run("total: 10");
 
@@ -58,8 +58,8 @@ class EmbeddingTest {
         @Test
         @DisplayName("two interpreters do not see each other")
         void interpretersAreIsolated() {
-            Interpreter first = Interpreter.create();
-            Interpreter second = Interpreter.create();
+            Interpreter first = AnInterpreter.create();
+            Interpreter second = AnInterpreter.create();
 
             first.run("shared: \"first\"");
             second.run("shared: \"second\"");
@@ -76,7 +76,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("a script that runs too long is stopped")
         void stopARunawayScript() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = AnInterpreter.withBounds(
                     org.jebol.application.Bounds.standard()
                             .withTimeLimit(Duration.ofMillis(200)));
 
@@ -93,7 +93,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("and the interpreter is usable afterwards")
         void letTheInterpreterSurviveATimeout() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = AnInterpreter.withBounds(
                     org.jebol.application.Bounds.standard()
                             .withTimeLimit(Duration.ofMillis(200)));
 
@@ -105,7 +105,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("a script that nests too deep is stopped")
         void deepNestingIsStopped() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = AnInterpreter.withBounds(
                     org.jebol.application.Bounds.standard().withMaximumNesting(100));
 
             ScriptOutcome outcome = interpreter.run(
@@ -118,7 +118,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("an ordinary script is not troubled by the bounds")
         void ordinaryWorkIsUnaffected() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = AnInterpreter.withBounds(
                     org.jebol.application.Bounds.standard()
                             .withTimeLimit(Duration.ofSeconds(5)));
 
@@ -137,7 +137,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("a host can stop a running script from another thread")
         void letsAHostCancel() throws Exception {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             ExecutorService worker = Executors.newSingleThreadExecutor();
             try {
                 Future<ScriptOutcome> running =
@@ -156,7 +156,7 @@ class EmbeddingTest {
         @Test
         @DisplayName("cancelling when nothing is running is harmless")
         void doesNoHarmWhenIdle() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
 
             interpreter.cancel();
 
@@ -180,9 +180,9 @@ class EmbeddingTest {
         @Test
         @DisplayName("a construction literal is laid out by the interpreter reading it, not the newest one")
         void keepAConstructionLiteralInItsOwnInterpreter() {
-            Interpreter older = Interpreter.create();
+            Interpreter older = AnInterpreter.create();
             older.run(A_PAIR_OF_BYTES);
-            Interpreter newer = Interpreter.create();
+            Interpreter newer = AnInterpreter.create();
             newer.run(A_PAIR_OF_SHORTS);
 
             assertThat(older.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).display()).isEqualTo("3");
@@ -192,8 +192,8 @@ class EmbeddingTest {
         @Test
         @DisplayName("a layout registered only in another interpreter is unknown here")
         void doNotKnowALayoutRegisteredElsewhere() {
-            Interpreter older = Interpreter.create();
-            Interpreter newer = Interpreter.create();
+            Interpreter older = AnInterpreter.create();
+            Interpreter newer = AnInterpreter.create();
             newer.run(A_PAIR_OF_BYTES);
 
             assertThat(older.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).conclusion())
@@ -208,7 +208,7 @@ class EmbeddingTest {
                 List<Future<String>> sizes = workers.invokeAll(
                         java.util.stream.IntStream.rangeClosed(1, 40)
                                 .mapToObj(number -> (Callable<String>) () -> {
-                                    Interpreter own = Interpreter.create();
+                                    Interpreter own = AnInterpreter.create();
                                     own.run(number % 2 == 0 ? A_PAIR_OF_BYTES : A_PAIR_OF_SHORTS);
                                     return own.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).display();
                                 })
@@ -232,7 +232,7 @@ class EmbeddingTest {
                 List<Future<String>> answers = workers.invokeAll(
                         java.util.stream.IntStream.rangeClosed(1, 40)
                                 .mapToObj(number -> (Callable<String>) () -> {
-                                    Interpreter own = Interpreter.create();
+                                    Interpreter own = AnInterpreter.create();
                                     own.run("n: " + number);
                                     return own.run("multiply n n").display();
                                 })
@@ -256,7 +256,7 @@ class EmbeddingTest {
         @Test
         void sendsPrintedTextWhereTheHostSaid() {
             StringBuilder captured = new StringBuilder();
-            Interpreter interpreter = Interpreter.createWithOutput(captured::append);
+            Interpreter interpreter = AnInterpreter.createWithOutput(captured::append);
 
             interpreter.run("print \"from the script\"");
 

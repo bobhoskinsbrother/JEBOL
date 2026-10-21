@@ -296,7 +296,7 @@ A host creates an interpreter with bounds, hands it a script, and gets a
 running out of time.
 
 ```java
-Interpreter interpreter = Interpreter.withBounds(
+Interpreter interpreter = new JavaHost().withBounds(
         Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
 ScriptOutcome outcome = interpreter.run("while [true] [1]");
@@ -313,7 +313,7 @@ Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
         "lookup-price", "{The price of one item.} item [string!]",
         call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(shop));
+Interpreter interpreter = new JavaHost().withBounds(Bounds.standard().add(shop));
 interpreter.define("vatRate", 0.2);
 
 Object total = interpreter.run("multiply lookup-price {widget} add 1 vatRate")

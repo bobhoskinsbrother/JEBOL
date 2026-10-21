@@ -21,7 +21,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
     @Test
     @DisplayName("a window refused for want of a grant says so, as no-service")
     void saysWhyAWindowWasRefused() {
-        String formed = formIn(Interpreter.withBounds(Bounds.standard()),
+        String formed = formIn(AnInterpreter.withBounds(Bounds.standard()),
                 "form try [view/no-wait make gob! [size: 10x10]]");
 
         assertThat(formed)
@@ -38,7 +38,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
                     throw new IllegalStateException("the host fell over");
                 })));
 
-        String formed = formIn(Interpreter.withBounds(Bounds.standard().add(breaking)),
+        String formed = formIn(AnInterpreter.withBounds(Bounds.standard().add(breaking)),
                 "form try [break-the-host]");
 
         assertThat(formed)
@@ -63,7 +63,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
     @Test
     @DisplayName("an id Rebol names keeps its catalogue's wording")
     void keepsTheWordingOfAnIdRebolNames() {
-        String formed = formIn(Interpreter.create(), "form try [1 / 0]");
+        String formed = formIn(AnInterpreter.create(), "form try [1 / 0]");
 
         assertThat(formed).contains("** Math error: attempt to divide by zero");
     }

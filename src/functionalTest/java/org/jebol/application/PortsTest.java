@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,13 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PortsTest {
 
     private static Interpreter grantedFiles() {
-        return Interpreter.withBounds(
+        return AnInterpreter.withBounds(
                 Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
     }
 
     private static Interpreter over(Path root) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
                 OutputPort.discard(),
                 Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
     }
@@ -297,7 +298,7 @@ class PortsTest {
 
         private Interpreter readOnlyOver(Path directory) {
             return Interpreter.createOn(
-                    Interpreter.standardPorts().withFiles(
+                    AnInterpreter.standardPorts().withFiles(
                             FileSystemPort.rootFileSystem(directory).readOnlyFileSystem()),
                     OutputPort.discard(),
                     Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));

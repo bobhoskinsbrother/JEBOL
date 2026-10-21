@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -17,7 +18,7 @@ class BlurringARealPictureFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(VENDORED))
                         .withImages(new JavaImage()),
                 OutputPort.discard(),

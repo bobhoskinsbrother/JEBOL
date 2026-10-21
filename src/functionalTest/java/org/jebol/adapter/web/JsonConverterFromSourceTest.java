@@ -1,6 +1,7 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.HostService;
@@ -19,7 +20,7 @@ class JsonConverterFromSourceTest {
     private static final String ONE_CONTROL_CHARACTER = String.valueOf((char) 1);
 
     private static GobValue makeAGobFrom(String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineNewWordsIn(source);
         return (GobValue) interpreter.run(source).value();

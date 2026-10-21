@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
@@ -83,7 +84,7 @@ class WaitingOnAPortFromTheSourceTest {
 
     private static Interpreter reaching(ACannedServer server) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withNetwork(server),
+                AnInterpreter.standardPorts().withNetwork(server),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.NETWORK)

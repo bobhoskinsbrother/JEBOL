@@ -1,7 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterpreterStateFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -28,7 +29,7 @@ class InterpreterStateFromTheSourceTest {
 
     private static String runWithFilesUnder(Path directory, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
         interpreter.defineNewWordsIn(source);
@@ -269,7 +270,7 @@ class InterpreterStateFromTheSourceTest {
         void copiesRatherThanRedirects(@TempDir Path directory) throws Exception {
             StringBuilder printed = new StringBuilder();
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                     printed::append,
                     Bounds.standard().grant(HostService.FILES));
 
@@ -284,7 +285,7 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("ECHO of none stops it, and what follows is not in the file")
         void stopsForNone(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.FILES));
 
@@ -299,7 +300,7 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("echoing again replaces rather than stacking")
         void replacesWhenEchoingAgain(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.FILES));
 
@@ -333,7 +334,7 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("a halted run reports that it halted, not that it failed")
         void saysTheRunHalted() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             assertThat(interpreter.run("1 halt 2").conclusion().toString().toLowerCase())
                     .contains("halt");
         }
@@ -341,7 +342,7 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("and the interpreter still works after one")
         void leavesTheInterpreterAlive() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.run("halt");
             assertThat(interpreter.display(interpreter.run("1 + 1"))).isEqualTo("2");
         }
@@ -349,7 +350,7 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("nothing after the halt runs")
         void runsNothingAfterIt() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn("n: 0 halt n: 9");
             interpreter.run("n: 0 halt n: 9");
             assertThat(interpreter.display(interpreter.run("n"))).isEqualTo("0");

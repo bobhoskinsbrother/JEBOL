@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,7 @@ class NowFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter =
-                Interpreter.withBounds(Bounds.standard().grant(HostService.CLOCK));
+                AnInterpreter.withBounds(Bounds.standard().grant(HostService.CLOCK));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

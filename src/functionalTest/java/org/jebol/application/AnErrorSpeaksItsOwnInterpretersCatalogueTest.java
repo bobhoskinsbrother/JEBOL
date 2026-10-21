@@ -38,8 +38,8 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("when the rewording interpreter was made first")
         void keepsTheRewordingOneMadeFirst() {
-            Interpreter rewording = Interpreter.create();
-            Interpreter untouched = Interpreter.create();
+            Interpreter rewording = AnInterpreter.create();
+            Interpreter untouched = AnInterpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
 
             assertThat(readTheMessageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
@@ -51,8 +51,8 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("and when it was made last")
         void keepsTheRewordingOneMadeLast() {
-            Interpreter untouched = Interpreter.create();
-            Interpreter rewording = Interpreter.create();
+            Interpreter untouched = AnInterpreter.create();
+            Interpreter rewording = AnInterpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
 
             assertThat(readTheMessageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
@@ -64,7 +64,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("an error caught before the rewording speaks the rewording when formed after it")
         void readsTheCatalogueWhenFormingNotWhenRaising() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.run("caught: try [1 / 0]");
             interpreter.run(REWORD_DIVIDING_BY_ZERO);
 
@@ -80,7 +80,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("a made error forms from the catalogue")
         void formsAMadeErrorFromTheCatalogue() {
-            String formed = Interpreter.create().run("""
+            String formed = AnInterpreter.create().run("""
                     form make error! [type: 'math id: 'zero-divide]""").display();
 
             assertThat(formed).contains(THE_CATALOGUE_SAYS);
@@ -89,8 +89,8 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("and from its own interpreter's rewording")
         void formsAMadeErrorFromItsOwnRewording() {
-            Interpreter rewording = Interpreter.create();
-            Interpreter.create();
+            Interpreter rewording = AnInterpreter.create();
+            AnInterpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
 
             String formed = rewording.run("""
@@ -107,7 +107,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
         @Test
         @DisplayName("it forms as Rebol forms an id its catalogue lacks, whatever interpreters exist")
         void formsAsAnUnknownId() {
-            Interpreter.create().run(REWORD_DIVIDING_BY_ZERO);
+            AnInterpreter.create().run(REWORD_DIVIDING_BY_ZERO);
 
             String formed = Molder.form(
                     ErrorValue.of(ErrorCategory.MATH, "zero-divide", "attempt to divide by zero"));

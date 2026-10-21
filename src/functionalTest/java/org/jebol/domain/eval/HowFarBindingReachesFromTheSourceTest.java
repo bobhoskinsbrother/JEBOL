@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HowFarBindingReachesFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String whole = "target: make object! [held: 99]\n" + source;
         interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));

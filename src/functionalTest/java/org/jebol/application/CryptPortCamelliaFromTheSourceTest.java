@@ -21,7 +21,7 @@ class CryptPortCamelliaFromTheSourceTest {
     private static final String VECTOR = "#{000102030405060708090A0B0C0D0E0F}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

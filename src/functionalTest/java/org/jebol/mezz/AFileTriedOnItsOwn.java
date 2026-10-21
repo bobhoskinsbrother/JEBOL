@@ -1,5 +1,6 @@
 package org.jebol.mezz;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 
@@ -64,7 +65,7 @@ final class AFileTriedOnItsOwn {
         int afterHeader = body.indexOf(']');
         body = afterHeader >= 0 ? removeTheHeader(body) : source;
 
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         try {
             interpreter.defineNewWordsIn(body);
             ScriptOutcome outcome = interpreter.run(body);

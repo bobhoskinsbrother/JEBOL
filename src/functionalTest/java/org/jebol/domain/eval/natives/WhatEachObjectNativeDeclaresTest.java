@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 
 import org.jebol.domain.eval.actions.MakeAction;
@@ -229,7 +230,7 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("hash gives two equal values the same answer, reading words through the symbol table")
         void hashOfEqualValues() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             assertThat(interpreter.display(interpreter.run("""
                     equal? hash 7 hash 7"""))).isEqualTo("#(true)");
         }
@@ -237,7 +238,7 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("context, abs and true? are the library's names for object, absolute and did, as in r3")
         void theLibraryNamesTheAliases() {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             assertThat(interpreter.display(interpreter.run("""
                     reduce [same? :context :object same? :abs :absolute same? :true? :did true? none]"""
             ))).isEqualTo("[#(true) #(true) #(true) #(false)]");

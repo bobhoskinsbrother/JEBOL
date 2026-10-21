@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +21,7 @@ class AScriptInAPageTagFromTheSourceTest {
     @DisplayName("the page carries the script in a script tag, and it runs and prints its answers")
     void runsThePageScript() throws IOException {
         StringBuilder written = new StringBuilder();
-        Interpreter interpreter = Interpreter.createWithOutput(written::append);
+        Interpreter interpreter = AnInterpreter.createWithOutput(written::append);
 
         ScriptOutcome outcome = interpreter.run(readTheScriptOnThePage());
 

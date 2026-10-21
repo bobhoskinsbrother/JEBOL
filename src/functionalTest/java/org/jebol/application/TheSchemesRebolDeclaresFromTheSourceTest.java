@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheSchemesRebolDeclaresFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

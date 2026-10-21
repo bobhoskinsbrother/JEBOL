@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
 
     private String readNearAndWhereOfTheErrorFrom(String source) {
-        return Molder.moldFlat(Interpreter.create().run(
+        return Molder.moldFlat(AnInterpreter.create().run(
                 source + " reduce [first e/near first e/where]").value());
     }
 
@@ -37,7 +38,7 @@ class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
             remold [1 + 1]                                      | "[2]"
             """)
     void skipsAnArgumentOfASwitchedOffRefinement(String source, String answer) {
-        assertThat(Molder.moldFlat(Interpreter.create().run(source).value())).isEqualTo(answer);
+        assertThat(Molder.moldFlat(AnInterpreter.create().run(source).value())).isEqualTo(answer);
     }
 
     @ParameterizedTest(name = "{0} is refused as {1}")
@@ -46,7 +47,7 @@ class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
             part: true e: try [mold/:part "abc" none]           | [expect-arg mold limit #(none!)]
             """)
     void checksAnArgumentOfASwitchedOnRefinement(String source, String arguments) {
-        assertThat(Molder.moldFlat(Interpreter.create().run(
+        assertThat(Molder.moldFlat(AnInterpreter.create().run(
                 source + " reduce [e/id e/arg1 e/arg2 e/arg3]").value())).isEqualTo(arguments);
     }
 }

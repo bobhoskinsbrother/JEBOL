@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
@@ -99,7 +100,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("BIND/NEW through a word defines the name where that word lives")
     void bindNewDefinesInTheHolderNotTheInnerScope() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         String source = "use [made] ["
                 + " made: make word! \"borrowed-name\""
@@ -116,7 +117,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("BIND given one word places it where BIND given a block would")
     void agreesBetweenTheWordAndBlockBranches() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("outer-value: 10 holder: make object! [a: 1]");
         interpreter.run("outer-value: 10 holder: make object! [a: 1]");
 
@@ -137,7 +138,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("BIND on a word the target itself holds still names the target")
     void stillNamesTheTargetFromTheWordBranchWhenItHolds() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("holder: make object! [a: 1]");
         interpreter.run("holder: make object! [a: 1]");
 
@@ -154,7 +155,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("BIND refuses a target that is neither an object nor a bound word")
     void bindRefusesAnUnusableTarget() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.run("bind 'a 1").succeeded())
                 .as("an integer names no context and must not be coerced into one")
@@ -164,7 +165,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("BIND refuses a word target with no binding of its own")
     void bindRefusesAnUnboundWordAsTarget() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.run("bind 'a to word! \"nowhere-at-all\"").succeeded())
                 .as("a word that lives nowhere cannot say where anything lives")
@@ -174,7 +175,7 @@ class BindingNamesTheHolderTest {
     @Test
     @DisplayName("REBOL's own reflector generator survives its USE scope")
     void letsTheBorrowedReflectorGeneratorWork() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("mold words-of make object! [a: 1]")))
                 .as("WORDS-OF is generated inside a USE in REBOL's base-defs.reb")

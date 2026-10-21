@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
@@ -28,7 +29,7 @@ class BootProcessFromTheSourceTest {
         }
         try {
             return Interpreter.createOn(
-                    Interpreter.standardPorts()
+                    AnInterpreter.standardPorts()
                             .withFiles(FileSystemPort.rootFileSystem(
                                     Files.createTempDirectory("jebol-boot")))
                             .withEnvironment(new ProcessEnvironment())

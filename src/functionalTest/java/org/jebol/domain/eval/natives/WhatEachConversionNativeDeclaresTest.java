@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.actions.ToAction;
 import org.jebol.domain.value.DefaultNative;
@@ -21,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WhatEachConversionNativeDeclaresTest {
 
     private String answerTo(String source) {
-        return Molder.moldFlat(Interpreter.create().run(source).value());
+        return Molder.moldFlat(AnInterpreter.create().run(source).value());
     }
 
     private String errorIdOf(String source) {

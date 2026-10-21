@@ -30,7 +30,7 @@ class TheThreeTextCommandsFromTheSourceTest {
 
     private Interpreter makeAnInterpreterOn(RecordingScreen screen) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)

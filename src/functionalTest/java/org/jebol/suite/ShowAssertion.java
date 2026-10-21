@@ -6,7 +6,7 @@ public final class ShowAssertion {
     }
 
     static void main(String[] argued) throws Exception {
-        org.jebol.application.Interpreter.create();
+        org.jebol.application.AnInterpreter.create();
         String wanted = argued[0];
         for (SuiteFile file : SuiteGrading.filesInSuite()) {
             for (SuiteFile.Assertion assertion : file.assertions()) {

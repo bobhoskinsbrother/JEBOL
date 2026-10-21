@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DiagnosticsFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -21,7 +22,7 @@ class DiagnosticsFromTheSourceTest {
 
     private static String readTheOutputOf(String source) {
         StringBuilder captured = new StringBuilder();
-        Interpreter interpreter = Interpreter.createWithOutput(captured::append);
+        Interpreter interpreter = AnInterpreter.createWithOutput(captured::append);
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return captured.toString();

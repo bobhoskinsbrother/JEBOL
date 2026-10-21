@@ -1,6 +1,7 @@
 package org.jebol.domain.render;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
@@ -19,7 +20,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
     private static final double CLOSE_ENOUGH = 0.0001;
 
     private static List<PaintInstruction> drawTheDrawingOf(String drawBlock) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = AnInterpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
         interpreter.defineNewWordsIn(source);

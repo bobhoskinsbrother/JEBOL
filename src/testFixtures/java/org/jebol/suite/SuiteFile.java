@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
@@ -211,7 +212,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             throw new UncheckedIOException(unreadable);
         }
         String name = path.getFileName().toString();
-        Interpreter reader = Interpreter.create();
+        Interpreter reader = AnInterpreter.create();
         try {
             String readable = reader.read(source).succeeded()
                     ? source

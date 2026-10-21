@@ -1,6 +1,7 @@
 package org.jebol.domain.render;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
@@ -14,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ARichTextCaretIsDrawnFromTheSourceTest {
 
-    private final Interpreter interpreter = Interpreter.withBounds(
+    private final Interpreter interpreter = AnInterpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
     private PaintInstruction.Writing writeTheLineFor(String caretFields) {

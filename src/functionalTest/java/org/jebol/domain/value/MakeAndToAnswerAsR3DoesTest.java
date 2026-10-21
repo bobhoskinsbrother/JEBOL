@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.DynamicTest;
@@ -20,7 +21,7 @@ class MakeAndToAnswerAsR3DoesTest {
 
     private static final int EXPECTED_CASES = 2607;
 
-    private final Interpreter interpreter = Interpreter.create();
+    private final Interpreter interpreter = AnInterpreter.create();
 
     private String answerTo(String expression) {
         String asked = "set/any 'r try [" + expression + "] either error? :r ["

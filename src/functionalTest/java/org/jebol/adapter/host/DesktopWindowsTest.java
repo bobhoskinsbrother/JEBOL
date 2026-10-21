@@ -1,6 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.host.HostService;
@@ -60,7 +61,7 @@ class DesktopWindowsTest {
         @DisplayName("and reaches a script as a catchable error, not a throwable")
         void raisesTheRefusalInTheScript() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withWindows(DesktopWindows.onThisMachine()),
+                    AnInterpreter.standardPorts().withWindows(DesktopWindows.onThisMachine()),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
 
@@ -85,7 +86,7 @@ class DesktopWindowsTest {
         @Test
         @DisplayName("granting the service without handing over a screen still refuses")
         void needsMoreThanTheGrant() {
-            Interpreter granted = Interpreter.withBounds(
+            Interpreter granted = AnInterpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
 
             String source = "e: try [request-dir] either error? e [e/id] ['no-error]";
@@ -128,7 +129,7 @@ class DesktopWindowsTest {
             };
 
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withWindows(declining),
+                    AnInterpreter.standardPorts().withWindows(declining),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
 

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
             """;
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String whole = A_MODULE_SHADOWING_THE_LIBRARY + source;
         interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));

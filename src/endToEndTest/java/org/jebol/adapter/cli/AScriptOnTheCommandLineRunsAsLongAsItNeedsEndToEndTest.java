@@ -1,6 +1,7 @@
 package org.jebol.adapter.cli;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.value.ErrorWording;
@@ -74,7 +75,7 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Timeout(30)
     @DisplayName("a run its bounds stop is reported in the catalogue's words, not as an improperly formatted error")
     void reportsAStoppedRunInTheCataloguesWords() {
-        Interpreter embedded = Interpreter.withBounds(
+        Interpreter embedded = AnInterpreter.withBounds(
                 Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
         ScriptOutcome outcome = embedded.run("forever []");
@@ -88,7 +89,7 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Timeout(30)
     @DisplayName("an embedding host's own runs keep their time limit")
     void keepsTheLimitOfAnEmbeddedRun() {
-        Interpreter embedded = Interpreter.withBounds(
+        Interpreter embedded = AnInterpreter.withBounds(
                 Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
         ScriptOutcome outcome = embedded.run("forever []");

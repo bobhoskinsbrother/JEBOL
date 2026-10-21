@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -16,7 +17,7 @@ class TheSafeSchemeFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
         return Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(directory))
                         .withEnvironment(new ProcessEnvironment()),
                 OutputPort.discard(),

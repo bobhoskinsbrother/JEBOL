@@ -3,6 +3,7 @@ package org.jebol.domain.eval.natives;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.actions.AddAction;
 import org.jebol.domain.host.DigestPort;
@@ -108,7 +109,7 @@ class EveryBuiltInNativeIsRegisteredTest {
     private String whatTheInterpreterKnows(List<String> names) {
         String asked = "collect [foreach name [" + String.join(" ", names)
                 + "] [unless any [value? name find system/catalog/natives name] [keep mold name]]]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(asked);
         return interpreter.display(interpreter.run(asked));
     }

@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -13,14 +14,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheBundledSchemeFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String answerWithAFilesystem(Path root, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

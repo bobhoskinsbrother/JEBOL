@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -110,7 +111,7 @@ class PortingBacklogTest {
     }
 
     private static Set<String> listTheFunctionsInJebol() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String source = """
                 names: copy []
                 foreach w words-of system/contexts/lib [

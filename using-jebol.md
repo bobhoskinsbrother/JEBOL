@@ -13,7 +13,7 @@ JEBOL is a port of Rebol 3 (specifically Oldes/Rebol3 version 3.22.5) from C to 
 JEBOL enforces two key security principles by default: strictly enforced execution time limits and complete isolation from external resources unless explicitly permitted by the host environment.
 
 ```java
-Interpreter interpreter = Interpreter.create();  
+Interpreter interpreter = new JavaHost().create();  
 ScriptOutcome outcome = interpreter.run("1 + 2");  
 System.out.println(outcome.asHostValue());   // 3
 ```
@@ -109,7 +109,7 @@ Embedding JEBOL requires configuring bounds, defining optional extensions or var
 Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(  
 "lookup-price", "{The price of one item.} item [string!]", call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().withWallClockLimit(Duration.ofMillis(200)).add(shop));
+Interpreter interpreter = new JavaHost().withBounds(Bounds.standard().withWallClockLimit(Duration.ofMillis(200)).add(shop));
 interpreter.define("vatRate", 0.2);
 ScriptOutcome outcome = interpreter.run("multiply lookup-price {widget} add 1 vatRate");  
 Object total = outcome.asHostValue();
@@ -148,13 +148,13 @@ Enabling external capabilities requires granting the corresponding service in Bo
 | Read and write what the operator copied      | CLIPBOARD         | withClipboard(port)                           |
 | List, hear and play MIDI instruments         | MIDI              | withMidiDevices(devices)                      |
 ```java
-HostPorts ports = Interpreter.standardPorts()  
+HostPorts ports = new JavaHost().ports()  
 .withFiles(FileSystemPort.rootFileSystem(Path.of("/srv/scripts")).readOnlyFileSystem());  
 Interpreter interpreter = Interpreter.createOn(ports, OutputPort.discard(),  
 Bounds.standard().grant(HostService.FILES));
 ```
 
-Ports are supplied once, at construction, and never change afterwards. `Interpreter.standardPorts()` is the JVM's own machine, a pause that really waits, the build's own carried files, which are where the interpreter's library and font come from, and the JVM's own digests; `HostPorts.none()` is every port refusing, carried files included, and an interpreter whose carried files are refused cannot be built at all. A port the host does not supply is that port's refusing default, and the refusal a script meets names what was not supplied.
+Ports are supplied once, at construction, and never change afterwards. `new JavaHost().ports()` is the JVM's own machine, a pause that really waits, the build's own carried files, which are where the interpreter's library and font come from, and the JVM's own digests; `HostPorts.none()` is every port refusing, carried files included, and an interpreter whose carried files are refused cannot be built at all. A port the host does not supply is that port's refusing default, and the refusal a script meets names what was not supplied.
 
 A host can explicitly mark capabilities as unavailable using lacking(...). Scripts requesting unavailable services receive a not_present error rather than not_granted.
 
@@ -187,7 +187,7 @@ new ExtensionCommand("snap", "{Takes a photo.} quality [integer!] /flash", call 
 new ExtensionCommand("photo-size", "photo [handle!]", call -> IntegerValue.of(call.heldBy(call.arguments().getFirst(), Photo.class).bytes()))))  
                     .withHandleKind(new HandleKind("photo", Photo.class))  
                     .startingWith(postbox -> requireACamera());
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(camera));
+Interpreter interpreter = new JavaHost().withBounds(Bounds.standard().add(camera));
 ```
 Extension behavior in REBOL:
 
@@ -225,7 +225,7 @@ For example, read greet://world delegates execution to the registered scheme act
 Extension clash = new Extension("clash", "1.0.0", List.of(  
 new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
 
-Interpreter.withBounds(Bounds.standard().add(clash)).extensions();  
+new JavaHost().withBounds(Bounds.standard().add(clash)).extensions();  
 // [ExtensionReport[name=clash, refusal=Optional[already-used]]]
 
 ```
@@ -282,7 +282,7 @@ When using the CLI, --root /work/projects/app sets the root directory. Combined 
 
 In Java, root restrictions are established when the port is built:
 ```java
-HostPorts ports = Interpreter.standardPorts()  
+HostPorts ports = new JavaHost().ports()  
 .withFiles(FileSystemPort.rootFileSystem(Path.of("/work/projects/app")));  
 Interpreter interpreter = Interpreter.createOn(ports, OutputPort.discard(),  
 Bounds.standard().grant(HostService.FILES));

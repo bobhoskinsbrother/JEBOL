@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.Optional;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
@@ -77,7 +78,7 @@ class APortsStorageFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withNetwork(new ACannedServer().reply("what came back")),
+                AnInterpreter.standardPorts().withNetwork(new ACannedServer().reply("what came back")),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.NETWORK)

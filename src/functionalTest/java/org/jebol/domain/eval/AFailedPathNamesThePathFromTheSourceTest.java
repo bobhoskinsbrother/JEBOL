@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AFailedPathNamesThePathFromTheSourceTest {
 
     private String readWhatComesBackFrom(String code) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String asking = "e: try [" + code + "] either error? e [reduce [e/id e/arg1 e/arg2]] [e]";
         interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));

@@ -17,7 +17,7 @@ class CryptPortChaChaWithPoly1305FromTheSourceTest {
     private static final String MESSAGE = "#{1400000C89F6A49D54518857D140BE74}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

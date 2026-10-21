@@ -2,7 +2,8 @@ package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.application.Bounds;
-import org.jebol.application.ClasspathFiles;
+import org.jebol.adapter.host.ClasspathFiles;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.HostService;
@@ -248,7 +249,7 @@ class BothRenderersSideBySideTest {
 
     private Interpreter makeAnInterpreterOnThisPage() {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withScreen(screen),
+                AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
         theDrawDialect = (ObjectValue) interpreter.run("system/dialects/draw").value();

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SignalsThroughAllAndAnyFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -111,21 +112,21 @@ class SignalsThroughAllAndAnyFromTheSourceTest {
         @Test
         @DisplayName("a RETURN with no function left becomes an error")
         void aReturnWithNoFunction() {
-            assertThat(Interpreter.create().run("all [return 1]").errorId())
+            assertThat(AnInterpreter.create().run("all [return 1]").errorId())
                     .contains("return");
         }
 
         @Test
         @DisplayName("a BREAK with no loop left becomes one too")
         void aBreakWithNoLoop() {
-            assertThat(Interpreter.create().run("all [break]").errorId())
+            assertThat(AnInterpreter.create().run("all [break]").errorId())
                     .contains("break");
         }
 
         @Test
         @DisplayName("and a THROW nothing caught")
         void aThrowNothingCaught() {
-            assertThat(Interpreter.create().run("all [throw 1]").errorId())
+            assertThat(AnInterpreter.create().run("all [throw 1]").errorId())
                     .contains("throw");
         }
     }

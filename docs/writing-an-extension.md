@@ -25,7 +25,7 @@ Extension greeter = new Extension("greeter", "1.0.0", List.of(
         new ExtensionCommand("greet", "{Says hello.} who [string!]",
                 call -> StringValue.of("hello " + ((StringValue) call.arguments().getFirst()).text()))));
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(greeter));
+Interpreter interpreter = new JavaHost().withBounds(Bounds.standard().add(greeter));
 ```
 
 The script can now call it:
@@ -368,7 +368,7 @@ Bounds bounds = Bounds.standard()
         .add(timers)
         .add(camera);
 
-Interpreter interpreter = Interpreter.withBounds(bounds);
+Interpreter interpreter = new JavaHost().withBounds(bounds);
 ```
 
 Every interpreter built with those bounds installs both, in the order you
@@ -397,7 +397,7 @@ holds the reason:
 Extension clash = new Extension("clash", "1.0.0", List.of(
         new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
 
-Interpreter.withBounds(Bounds.standard().add(clash)).extensions();
+new JavaHost().withBounds(Bounds.standard().add(clash)).extensions();
 // [ExtensionReport[name=clash, refusal=Optional[already-used]]]
 ```
 
@@ -431,7 +431,7 @@ REBOL, and look at the answer.
 ```java
 class TimersTest {
 
-    private final Interpreter interpreter = Interpreter.withBounds(
+    private final Interpreter interpreter = new JavaHost().withBounds(
             Bounds.standard().add(new Timers().extension()));
 
     private String answerTo(String source) {

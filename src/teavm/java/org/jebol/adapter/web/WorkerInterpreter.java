@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.adapter.host.JavaHost;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
@@ -26,7 +27,7 @@ public class WorkerInterpreter {
         ThePageOnTheOtherSide thePage = new ThePageOnTheOtherSide();
         console = new WebConsole(thePage::takeWhatThePagePosts);
         files = new WebFiles(BrowserStore.openForThePage());
-        HostPorts ports = Interpreter.standardPorts()
+        HostPorts ports = new JavaHost().ports()
                 .withDigests(new BrowserDigests())
                 .withConsole(console)
                 .withFiles(files)

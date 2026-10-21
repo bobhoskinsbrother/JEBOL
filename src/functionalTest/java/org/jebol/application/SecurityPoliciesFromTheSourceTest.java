@@ -1,9 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaImage;
-import org.jebol.adapter.host.JavaProcess;
-import org.jebol.adapter.host.JavaSocket;
-import org.jebol.adapter.host.ProcessEnvironment;
+import org.jebol.adapter.host.*;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.HostPorts;
@@ -48,7 +45,7 @@ class SecurityPoliciesFromTheSourceTest {
     }
 
     private HostPorts theHostsAdapters() {
-        return Interpreter.standardPorts()
+        return AnInterpreter.standardPorts()
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(new ProcessEnvironment())
                 .withProcesses(new JavaProcess())

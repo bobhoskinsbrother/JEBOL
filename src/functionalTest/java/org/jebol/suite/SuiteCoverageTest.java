@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.TranscodeResult;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,7 +24,7 @@ class SuiteCoverageTest {
 
     @BeforeAll
     static void bootOneInterpreterFirst() {
-        Interpreter.create();
+        AnInterpreter.create();
     }
 
     private static final Path SUITE = Path.of("src", "testFixtures", "resources", "rebol-suite");
@@ -97,7 +98,7 @@ class SuiteCoverageTest {
     private static Coverage coverageOf(Path path, int written, String source) {
         String name = path.getFileName().toString();
         try {
-            Interpreter reader = Interpreter.create();
+            Interpreter reader = AnInterpreter.create();
             TranscodeResult loaded = reader.read(source);
             String note = loaded.succeeded() ? "read" : findTheFirstLineThatWillNotRead(reader, source);
             return new Coverage(name, written, SuiteFile.read(path).assertions().size(), note);

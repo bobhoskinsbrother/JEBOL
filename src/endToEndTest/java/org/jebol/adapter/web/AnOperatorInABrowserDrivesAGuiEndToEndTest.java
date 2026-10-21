@@ -2,8 +2,9 @@ package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
-import org.jebol.application.ClasspathFiles;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.ClasspathFiles;
+import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -54,7 +55,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
             everything = everything.grant(service);
         }
         interpreter = Interpreter.createOn(
-                Interpreter.standardPorts()
+                AnInterpreter.standardPorts()
                         .withScreen(screen)
                         .withEnvironment(new ProcessEnvironment())
                         .withFiles(FileSystemPort.rootFileSystem(

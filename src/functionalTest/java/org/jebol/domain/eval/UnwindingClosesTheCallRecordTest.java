@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -12,7 +13,7 @@ class UnwindingClosesTheCallRecordTest {
     private static final String AT_REST = "1";
 
     private static Interpreter fresh() {
-        return Interpreter.create();
+        return AnInterpreter.create();
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -22,7 +23,7 @@ class UnwindingClosesTheCallRecordTest {
 
     private static String printedBy(String source) {
         StringBuilder captured = new StringBuilder();
-        Interpreter interpreter = Interpreter.createWithOutput(captured::append);
+        Interpreter interpreter = AnInterpreter.createWithOutput(captured::append);
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return captured.toString();

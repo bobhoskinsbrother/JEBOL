@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -124,7 +125,7 @@ class ActionParityTest {
         TreeMap<String, List<String>> gaps = new TreeMap<>();
         int probed = 0;
 
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         for (var entry : wanted.entrySet()) {
             String datatype = entry.getKey();
             String value = A_VALUE_OF.get(datatype);

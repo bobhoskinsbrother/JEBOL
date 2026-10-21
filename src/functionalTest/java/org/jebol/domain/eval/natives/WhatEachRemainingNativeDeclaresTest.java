@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.JavaProcess;
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
@@ -62,12 +63,12 @@ class WhatEachRemainingNativeDeclaresTest {
     }
 
     private String answerTo(String source) {
-        return Molder.moldFlat(Interpreter.withBounds(everythingGranted()).run(source).value());
+        return Molder.moldFlat(AnInterpreter.withBounds(everythingGranted()).run(source).value());
     }
 
     private String answerFromAHostThatKnowsWhoItRunsAs(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withProcesses(new AHostThatKnowsWhoItRunsAs()),
+                AnInterpreter.standardPorts().withProcesses(new AHostThatKnowsWhoItRunsAs()),
                 OutputPort.discard(),
                 everythingGranted());
         return Molder.moldFlat(interpreter.run(source).value());
@@ -79,7 +80,7 @@ class WhatEachRemainingNativeDeclaresTest {
 
     private String errorArgumentsWithProcesses(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
                 OutputPort.discard(),
                 everythingGranted());
         return Molder.moldFlat(interpreter.run("e: try [" + source + "] reduce [e/id e/arg1 e/arg2 e/arg3]").value());
@@ -337,7 +338,7 @@ class WhatEachRemainingNativeDeclaresTest {
                 random 0.0                      | 0.0
                 """)
         void aPercentStaysAPercent(String source, String expected) {
-            assertThat(Molder.moldAll(Interpreter.create().run(source).value())).isEqualTo(expected);
+            assertThat(Molder.moldAll(AnInterpreter.create().run(source).value())).isEqualTo(expected);
         }
 
         @ParameterizedTest(name = "{0} is {1}")
@@ -390,7 +391,7 @@ class WhatEachRemainingNativeDeclaresTest {
                 random/seed 1 random/secure/only {abcdef}          | #"f"
                 """)
         void secureHashesEachDrawTheWayTheCDoes(String source, String expected) {
-            assertThat(Molder.moldAll(Interpreter.create().run(source).value())).isEqualTo(expected);
+            assertThat(Molder.moldAll(AnInterpreter.create().run(source).value())).isEqualTo(expected);
         }
 
         @Test

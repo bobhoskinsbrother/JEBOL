@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.BootDeclarations;
 import org.jebol.domain.eval.ports.CryptPort;
@@ -40,7 +41,7 @@ class WhatEachSettingNativeDeclaresTest {
     }
 
     private String ran(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         return interpreter.display(interpreter.run(source));
     }
 

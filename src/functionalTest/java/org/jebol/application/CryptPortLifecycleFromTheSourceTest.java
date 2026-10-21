@@ -15,7 +15,7 @@ class CryptPortLifecycleFromTheSourceTest {
     private static final String BLOCK = "#{6BC1BEE22E409F96E93D7E117393172A}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

@@ -18,7 +18,7 @@ class CryptPortCounterWithCbcMacFromTheSourceTest {
             "#{08090A0B0C0D0E0F101112131415161718191A1B1C1D1E}";
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

@@ -14,7 +14,7 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
 
     private static Interpreter granted() {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.PROCESSES));
     }
@@ -60,7 +60,7 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
     @Test
     @DisplayName("a field this machine does not answer is not-here, which is a different thing again")
     void saysNotHereForAFieldThisMachineDoesNotAnswer() {
-        Interpreter withoutProcessPort = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
+        Interpreter withoutProcessPort = AnInterpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
 
         assertThat(failureOf(withoutProcessPort, """
                 access-os 'uid""")).startsWith("[Internal not-here");
@@ -76,7 +76,7 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
     @Test
     @DisplayName("without the processes service nothing is signalled at all")
     void signalsNothingWithoutTheProcessesService() {
-        assertThat(answerTo(Interpreter.create(), """
+        assertThat(answerTo(AnInterpreter.create(), """
                 e: try [access-os/set 'pid 2147483646]
                 either error? e [e/id] ['ok]""")).isEqualTo("no-service");
     }

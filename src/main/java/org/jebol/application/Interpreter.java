@@ -91,32 +91,8 @@ public final class Interpreter {
         evaluator.symbols().startCountingSessionReads();
     }
 
-    public static Interpreter create() {
-        return new Interpreter(standardPorts(), OutputPort.discard(), Bounds.standard());
-    }
-
-    public static Interpreter withBounds(Bounds bounds) {
-        return new Interpreter(standardPorts(), OutputPort.discard(), bounds);
-    }
-
-    public static Interpreter createWithOutput(OutputPort output) {
-        return new Interpreter(standardPorts(), output, Bounds.standard());
-    }
-
-    public static Interpreter createWithOutput(OutputPort output, Bounds bounds) {
-        return new Interpreter(standardPorts(), output, bounds);
-    }
-
     public static Interpreter createOn(HostPorts ports, OutputPort output, Bounds bounds) {
         return new Interpreter(ports, output, bounds);
-    }
-
-    public static HostPorts standardPorts() {
-        return HostPorts.none()
-                .withCarriedFiles(new ClasspathFiles())
-                .withDigests(new JvmDigests())
-                .withMachine(new JavaMachine())
-                .withPause(new ThreadPause());
     }
 
     public Bounds bounds() {
@@ -150,7 +126,7 @@ public final class Interpreter {
     private void checkPorts(HostPorts ports) {
         if (ports == null) {
             throw new IllegalArgumentException(
-                    "an interpreter is built with its ports; use standardPorts() for the JVM's own");
+                    "an interpreter is built with its ports; a JVM host takes them from JavaHost");
         }
         if (ports.machine().operatingSystem().isBlank()) {
             throw new IllegalArgumentException("Unknown operating system");

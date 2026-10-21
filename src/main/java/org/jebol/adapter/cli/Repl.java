@@ -4,12 +4,13 @@ import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.JavaCertificateAuthority;
+import org.jebol.adapter.host.JavaHost;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
-import org.jebol.application.FileSystemPort;
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.HostPorts;
@@ -174,7 +175,7 @@ public final class Repl {
         Bounds bounds = grantEveryHostService().withoutATimeLimit();
         ProcessEnvironment environment = new ProcessEnvironment();
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
-        HostPorts ports = useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(Interpreter.standardPorts()
+        HostPorts ports = useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(new JavaHost().ports()
                 .withTasks(new ThreadTasks(bounds))
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(environment)

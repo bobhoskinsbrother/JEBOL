@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,7 +50,7 @@ class BitOperatorOperandsFromTheSourceTest {
     private static String outcomeOf(String operator, String left, String right) {
         String asked = "e: try [" + operator + " (" + left + ") (" + right + ")] "
                 + "either error? e [rejoin [{!} e/id]] [mold e]";
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(asked);
         String answered = interpreter.display(interpreter.run(asked));
         return answered.startsWith("\"") && answered.endsWith("\"")
@@ -361,7 +362,7 @@ class BitOperatorOperandsFromTheSourceTest {
 
         private static String readTheDatatypeAnsweredFor(String left, String right) {
             String asked = "mold type? and~ (" + left + ") (" + right + ")";
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(asked);
             String shown = interpreter.display(interpreter.run(asked));
             return shown.replace("\"", "");
@@ -428,7 +429,7 @@ class BitOperatorOperandsFromTheSourceTest {
         private static String combineThenRead(String left, String right, String read) {
             String asked = "left: (" + left + ") right: (" + right + ") "
                     + "and~ left right mold " + read;
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(asked);
             return interpreter.display(interpreter.run(asked)).replace("\"", "");
         }
@@ -489,7 +490,7 @@ class BitOperatorOperandsFromTheSourceTest {
 
         private static String moldOf(String source) {
             String asked = "mold (" + source + ")";
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(asked);
             return interpreter.display(interpreter.run(asked)).replace("\"", "");
         }
@@ -502,7 +503,7 @@ class BitOperatorOperandsFromTheSourceTest {
         @ParameterizedTest(name = "{0} is {1}")
         @MethodSource("listTheDegenerateOnes")
         void answerAsOrdinaryOperandsDo(String source, String expected) {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source)))
                     .as(source)
@@ -547,7 +548,7 @@ class BitOperatorOperandsFromTheSourceTest {
     class EverySpellingAnswersTheSame {
 
         private static String answerTo(String source) {
-            Interpreter interpreter = Interpreter.create();
+            Interpreter interpreter = AnInterpreter.create();
             interpreter.defineNewWordsIn(source);
             return interpreter.display(interpreter.run(source));
         }

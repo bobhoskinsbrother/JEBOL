@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QuitEndsTheRunTest {
 
     private static ScriptOutcome runAQuit(String source) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn(source);
         return interpreter.run(source);
     }
@@ -30,18 +30,18 @@ class QuitEndsTheRunTest {
         ScriptOutcome outcome = runAQuit("quit/return 42");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
-        assertThat(Interpreter.create().display(outcome)).isEqualTo("42");
+        assertThat(AnInterpreter.create().display(outcome)).isEqualTo("42");
     }
 
     @Test
     @DisplayName("QUIT/RETURN carries values that look like nothing")
     void quitReturnCarriesDegenerateValues() {
-        assertThat(Interpreter.create().display(runAQuit("quit/return 0"))).isEqualTo("0");
-        assertThat(Interpreter.create().display(runAQuit("quit/return \"\"")))
+        assertThat(AnInterpreter.create().display(runAQuit("quit/return 0"))).isEqualTo("0");
+        assertThat(AnInterpreter.create().display(runAQuit("quit/return \"\"")))
                 .isEqualTo("\"\"");
-        assertThat(Interpreter.create().display(runAQuit("quit/return []")))
+        assertThat(AnInterpreter.create().display(runAQuit("quit/return []")))
                 .isEqualTo("[]");
-        assertThat(Interpreter.create().display(runAQuit("quit/return false")))
+        assertThat(AnInterpreter.create().display(runAQuit("quit/return false")))
                 .isEqualTo("#(false)");
     }
 
@@ -61,7 +61,7 @@ class QuitEndsTheRunTest {
                 "f: func [] [quit/return 1] f 99");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
-        assertThat(Interpreter.create().display(outcome))
+        assertThat(AnInterpreter.create().display(outcome))
                 .as("the 99 after the call must never be reached")
                 .isEqualTo("1");
     }
@@ -71,7 +71,7 @@ class QuitEndsTheRunTest {
     void quitFromInsideALoopEndsEverything() {
         ScriptOutcome outcome = runAQuit("repeat n 10 [if n = 3 [quit/return n]] 99");
 
-        assertThat(Interpreter.create().display(outcome)).isEqualTo("3");
+        assertThat(AnInterpreter.create().display(outcome)).isEqualTo("3");
     }
 
     @Test
@@ -82,7 +82,7 @@ class QuitEndsTheRunTest {
         assertThat(outcome.conclusion())
                 .as("TRY catches errors; stopping on purpose is not one")
                 .isEqualTo(Conclusion.QUIT_EARLY);
-        assertThat(Interpreter.create().display(outcome)).isEqualTo("5");
+        assertThat(AnInterpreter.create().display(outcome)).isEqualTo("5");
     }
 
     @Test
@@ -91,7 +91,7 @@ class QuitEndsTheRunTest {
         ScriptOutcome outcome = runAQuit("catch [quit/return 5] 99");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
-        assertThat(Interpreter.create().display(outcome)).isEqualTo("5");
+        assertThat(AnInterpreter.create().display(outcome)).isEqualTo("5");
     }
 
     @Test
@@ -105,7 +105,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("the interpreter still works after a script quits")
     void letsTheHostSurviveAQuit() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         interpreter.defineNewWordsIn("kept: 7 quit/return 1");
         interpreter.run("kept: 7 quit/return 1");
 
@@ -117,7 +117,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT can be taken as a value, which is how Rebol's own library uses it")
     void quitCanBeAliased() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         assertThat(interpreter.display(interpreter.run("q: :quit type? :q")))
                 .as("base-constants.reb writes `q: :quit` and stopped there without this")

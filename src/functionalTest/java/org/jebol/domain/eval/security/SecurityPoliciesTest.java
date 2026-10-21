@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.security;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.FileValue;
@@ -21,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SecurityPoliciesTest {
 
-    private final Interpreter interpreter = Interpreter.create();
+    private final Interpreter interpreter = AnInterpreter.create();
 
     private SecurityPolicies policiesFrom(String fields) {
         String source = "construct [" + fields + "]";

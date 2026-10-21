@@ -32,7 +32,7 @@ class PortDatatypeTest {
 
     private static Interpreter makeAnInterpreterWithAConsole(String... lines) {
         return Interpreter.createOn(
-                Interpreter.standardPorts().withConsole(new Lines(lines)),
+                AnInterpreter.standardPorts().withConsole(new Lines(lines)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.CONSOLE));
     }
@@ -122,7 +122,7 @@ class PortDatatypeTest {
         @Test
         @DisplayName("a console port opens without the grant, carrying nothing")
         void allowOpeningWithoutTheGrant() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             assertThat(readTheErrorIdFrom(walled, "open [scheme: 'console]"))
                     .isEqualTo("no-error");
             assertThat(answerFrom(walled, "query system/ports/output 'window-cols"))
@@ -132,7 +132,7 @@ class PortDatatypeTest {
         @Test
         @DisplayName("but reading and writing through it are still refused")
         void refuseReadingAndWritingWithoutTheGrant() {
-            Interpreter walled = Interpreter.create();
+            Interpreter walled = AnInterpreter.create();
             assertThat(readTheErrorIdFrom(walled, "read system/ports/output"))
                     .isEqualTo("no-service");
             assertThat(readTheErrorIdFrom(walled, """
@@ -225,8 +225,8 @@ class PortDatatypeTest {
         @Test
         @DisplayName("without the console grant both are refused")
         void needsTheGrantForBoth() {
-            assertThat(readTheErrorIdFrom(Interpreter.create(), "input")).isEqualTo("no-service");
-            assertThat(readTheErrorIdFrom(Interpreter.create(), "ask \"q\"")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(AnInterpreter.create(), "input")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(AnInterpreter.create(), "ask \"q\"")).isEqualTo("no-service");
         }
     }
 }

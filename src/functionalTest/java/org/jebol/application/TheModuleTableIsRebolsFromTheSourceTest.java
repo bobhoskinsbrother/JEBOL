@@ -47,7 +47,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
             Pattern.compile("(?m)^\\s*([a-z0-9-]+):\\s+(https://\\S+)\\s*$");
 
     private static String listWhatJebolHolds(String name) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String asking = "mold select system/modules '" + name;
         interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));
@@ -90,7 +90,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     @Test
     @DisplayName("and every one of them is a module this build can read")
     void offersOnlyModulesThisBuildCanRead() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         for (String name : listWhatThisBuildOffers()) {
             String asking = "binary? read bundled://" + name + ".reb";
             interpreter.defineNewWordsIn(asking);
@@ -101,7 +101,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     }
 
     private static List<String> listWhatThisBuildOffers() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String asking = """
                 collect [
                     foreach name words-of system/modules [

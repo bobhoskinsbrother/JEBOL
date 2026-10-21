@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AssignmentSafetyTest {
 
     private static Interpreter makeAFreshInterpreter(String... lines) {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         for (String line : lines) {
             interpreter.defineNewWordsIn(line);
             interpreter.run(line);
@@ -35,7 +36,7 @@ class AssignmentSafetyTest {
     @Test
     @DisplayName("and stays unset if it never held anything")
     void leavesTheSlotUnsetWhenTheFirstAssignmentFails() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
 
         interpreter.defineNewWordsIn("fresh: divide 1 0");
         ScriptOutcome failed = interpreter.run("fresh: divide 1 0");
@@ -49,7 +50,7 @@ class AssignmentSafetyTest {
     @Test
     @DisplayName("an error partway through a block leaves earlier assignments standing")
     void keepsEarlierAssignments() {
-        Interpreter interpreter = Interpreter.create();
+        Interpreter interpreter = AnInterpreter.create();
         String source = "first-word: 1 second-word: divide 1 0 third-word: 3";
 
         interpreter.defineNewWordsIn(source);

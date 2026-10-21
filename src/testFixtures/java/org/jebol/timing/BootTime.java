@@ -1,5 +1,6 @@
 package org.jebol.timing;
 
+import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 
 import java.util.Arrays;
@@ -29,7 +30,7 @@ public final class BootTime {
 
     private static long timeOneCreate() {
         long before = System.nanoTime();
-        Interpreter.create();
+        AnInterpreter.create();
         return System.nanoTime() - before;
     }
 
