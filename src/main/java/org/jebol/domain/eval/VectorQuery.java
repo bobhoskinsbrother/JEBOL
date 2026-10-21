@@ -52,7 +52,7 @@ public final class VectorQuery {
      * the type is signed, because that is the default the older spelling
      * assumes.
      */
-    public static AnyBlockValue makeTheSpecOf(VectorValue vector) {
+    public static AnyBlockValue vectorSpec(VectorValue vector) {
         VectorKind kind = vector.kind();
         java.util.List<Value> written = new java.util.ArrayList<>();
         if (!kind.isSigned()) {

@@ -34,13 +34,13 @@ public class LengthAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
                 .askTheRebolActor(nativeName(), arguments, Set.of())
-                .orElseGet(() -> measureTheLengthOf(arguments.getFirst(), evaluator));
+                .orElseGet(() -> lengthFor(arguments.getFirst(), evaluator));
     }
 
-    private Value measureTheLengthOf(Value subject, Evaluator evaluator) {
+    private Value lengthFor(Value subject, Evaluator evaluator) {
         return switch (subject) {
             case NoneValue nothing -> nothing;
-            case PortValue port -> measureTheLengthOfThePort(port, evaluator);
+            case PortValue port -> portLength(port, evaluator);
             case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
             case AnyWordValue word -> IntegerValue.of(
                     word.spelling().codePointCount(0, word.spelling().length()));
@@ -53,7 +53,7 @@ public class LengthAction extends SeriesOrFileAction {
         };
     }
 
-    private Value measureTheLengthOfThePort(PortValue port, Evaluator evaluator) {
+    private Value portLength(PortValue port, Evaluator evaluator) {
         if (port.findTheEventQueue().isPresent()) {
             return IntegerValue.of(port.findTheEventQueue().orElseThrow().lengthFromHere());
         }

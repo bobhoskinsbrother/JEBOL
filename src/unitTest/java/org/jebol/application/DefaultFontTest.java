@@ -73,7 +73,7 @@ class DefaultFontTest {
     }
 
     private static TextExtent extentOf(DefaultFontRenderer font, String text, double size) {
-        return font.measure().measureTheExtentOf(
+        return font.measure().textExtent(
                 new TextRun(text, Colour.BLACK, size, false, false));
     }
 }

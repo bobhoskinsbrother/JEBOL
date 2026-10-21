@@ -39,8 +39,8 @@ final class BrotliDictionaryMatches {
         }
     }
 
-    private static int measureHowMuchOfTheWordMatches(byte[] data, int at, int id,
-                                                      int length, int mostThatCouldMatch) {
+    private static int wordMatchLength(byte[] data, int at, int id,
+                                       int length, int mostThatCouldMatch) {
 
         byte[] words = BrotliDictionary.readWords();
         int wordAt = BrotliDictionary.findTheOffsetFor(length) + length * id;
@@ -110,7 +110,7 @@ final class BrotliDictionaryMatches {
           wordLength = l;
           if (wordTransform == 0) {
             int matchlen =
-                measureHowMuchOfTheWordMatches(data, at, id, l, maxLength);
+                wordMatchLength(data, at, id, l, maxLength);
             int minlen;
             int maxlen;
             int len;

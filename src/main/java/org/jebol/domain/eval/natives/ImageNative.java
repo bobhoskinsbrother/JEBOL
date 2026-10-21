@@ -75,7 +75,7 @@ public class ImageNative extends DefaultNative {
                 .map(frame -> (int) ((IntegerValue) frame).magnitude())
                 .orElse(FIRST_FRAME);
         return decodeWithTheCodec(source, type, which, evaluator)
-                .map(this::makeAnImageOf)
+                .map(this::imageFromPixels)
                 .orElseThrow(() -> source instanceof BinaryValue
                         ? Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0))
                         : Raised.of(EvaluationFailure.CANNOT_OPEN, source));
@@ -95,7 +95,7 @@ public class ImageNative extends DefaultNative {
         return Optional.ofNullable(evaluator.ports().images().decode(encoded, type, frame));
     }
 
-    private Value makeAnImageOf(ImagePort.Pixels read) {
+    private Value imageFromPixels(ImagePort.Pixels read) {
         ImageValue image = ImageValue.of(read.wide(), read.high());
         byte[] rgba = read.rgba();
         for (int pixel = 1; pixel <= read.wide() * read.high(); pixel++) {

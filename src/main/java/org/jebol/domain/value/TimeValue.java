@@ -184,8 +184,8 @@ public record TimeValue(long nanoseconds) implements Value {
             return switch (from) {
                 case TimeValue already -> already;
                 case StringValue written -> scanTimeFrom(written);
-                case BlockValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
-                case ParenValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
+                case BlockValue parts -> timeFromParts(parts);
+                case ParenValue parts -> timeFromParts(parts);
                 case IntegerValue number -> durationFromSeconds(number, number.magnitude());
                 case DecimalValue number -> durationFromSeconds(number, number.quantity());
                 default -> throw refuse(from);
@@ -229,7 +229,7 @@ public record TimeValue(long nanoseconds) implements Value {
             return ofNanoseconds(TimeActions.wholeNanoseconds(value));
         }
 
-        private Value makeATimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {
+        private Value timeFromParts(AnyBlockValue parts) {
             List<Value> given = parts.remaining();
             if (given.isEmpty() || given.size() > 3
                     || !(given.getFirst() instanceof IntegerValue(long hours))) {

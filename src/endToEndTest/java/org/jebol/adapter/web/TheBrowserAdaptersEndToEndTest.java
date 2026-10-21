@@ -132,7 +132,7 @@ class TheBrowserAdaptersEndToEndTest {
     }
 
     private static String measureTheLabelsText() {
-        TextExtent extent = TheCarriedFont.measurement().measureTheExtentOf(
+        TextExtent extent = TheCarriedFont.measurement().textExtent(
                 new TextRun("MMMM", Colour.BLACK, 12, false, false));
         return Math.round(extent.wide()) + "x" + Math.round(extent.high());
     }

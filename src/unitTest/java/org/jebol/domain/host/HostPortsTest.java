@@ -66,7 +66,7 @@ class HostPortsTest {
                 .isInstanceOf(WindowPort.Denied.class);
         assertThat(none.screen().hasDisplay()).isFalse();
         assertThatThrownBy(() -> none.screen().textMeasurement()
-                .measureTheExtentOf(aRunOfText()))
+                .textExtent(aRunOfText()))
                 .isInstanceOf(ScreenPort.Denied.class);
         assertThatThrownBy(() -> none.pause().pauseFor(1))
                 .isInstanceOfSatisfying(FilePort.Denied.class,

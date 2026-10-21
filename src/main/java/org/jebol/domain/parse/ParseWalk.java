@@ -48,7 +48,7 @@ public interface ParseWalk {
 
     ParseWalk walkOver(RebolSeries nested);
 
-    boolean matchesTheWholeOf(AnyBlockValue rule);
+    boolean matchesWhole(AnyBlockValue rule);
 
     Value answerFor(AnyBlockValue rule);
 

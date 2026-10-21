@@ -22,7 +22,7 @@ final class Into extends DeclaredKeyword {
                     "into needs a block of rules to apply");
         }
         if (walk.atEnd() || !(walk.current() instanceof RebolSeries nested)
-                || !walk.walkOver(nested).matchesTheWholeOf(innerRule)) {
+                || !walk.walkOver(nested).matchesWhole(innerRule)) {
             return ParseWalk.NO_MATCH;
         }
         walk.moveTo(walk.position() + 1);

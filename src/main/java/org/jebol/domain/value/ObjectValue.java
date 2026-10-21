@@ -138,12 +138,12 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
                 case AnyBlockValue body -> maker.evaluateObject(body);
                 case IntegerValue(long magnitude) -> makeEmptyObjectWithRoomFor(spec, magnitude, maker);
                 case DecimalValue number -> makeEmptyObjectWithRoomFor(spec, number.quantity(), maker);
-                case MapValue map -> makeAnObjectOfTheWordKeysIn(map, maker);
+                case MapValue map -> objectFromWordKeys(map, maker);
                 default -> throw refuse(spec);
             };
         }
 
-        private Value makeAnObjectOfTheWordKeysIn(MapValue map, Maker maker) {
+        private Value objectFromWordKeys(MapValue map, Maker maker) {
             ObjectValue made = maker.evaluateObject(BlockValue.of());
             List<Value> keys = map.keys();
             List<Value> values = map.values();

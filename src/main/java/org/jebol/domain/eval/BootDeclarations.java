@@ -97,7 +97,7 @@ public final class BootDeclarations {
         if (declared != null) {
             return declared;
         }
-        return makeTheSpecBlockOf(built.parameters());
+        return specBlockFor(built.parameters());
     }
 
     public AnyBlockValue makeSpecEveryDatatypeTestHas() {
@@ -154,7 +154,7 @@ public final class BootDeclarations {
         return declaredSpecs;
     }
 
-    private AnyBlockValue makeTheSpecBlockOf(List<Parameter> parameters) {
+    private AnyBlockValue specBlockFor(List<Parameter> parameters) {
         List<Value> spec = new ArrayList<>();
         for (Parameter parameter : parameters) {
             switch (parameter.kind()) {

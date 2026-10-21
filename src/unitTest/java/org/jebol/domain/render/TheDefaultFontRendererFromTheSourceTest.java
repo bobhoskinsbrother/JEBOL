@@ -13,7 +13,7 @@ class TheDefaultFontRendererFromTheSourceTest {
     private static final DefaultFontRenderer THE_FONT = TheCarriedFont.font().renderer();
 
     private static TextExtent measureTheExtentOf(String text, double size) {
-        return THE_FONT.measure().measureTheExtentOf(new TextRun(text, BLACK, size, false, false));
+        return THE_FONT.measure().textExtent(new TextRun(text, BLACK, size, false, false));
     }
 
     @Test
@@ -83,7 +83,7 @@ class TheDefaultFontRendererFromTheSourceTest {
     @Test
     @DisplayName("the same bytes read twice measure the same")
     void readsTheSameTwice() {
-        assertThat(TheCarriedFont.font().renderer().measure().measureTheExtentOf(
+        assertThat(TheCarriedFont.font().renderer().measure().textExtent(
                 new TextRun("survey", BLACK, 20, false, false)).wide())
                 .isEqualTo(measureTheExtentOf("survey", 20).wide());
     }

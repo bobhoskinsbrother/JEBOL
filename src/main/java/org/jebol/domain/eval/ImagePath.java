@@ -274,8 +274,8 @@ final class ImagePath {
             case "green" -> readChannels(image, 1);
             case "blue" -> readChannels(image, 2);
             case "color" -> averageColour(image);
-            case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheLuminosityOf);
-            case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheGreyOf);
+            case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::luminosity);
+            case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::greyLevel);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         };
     }
@@ -317,11 +317,11 @@ final class ImagePath {
         return 255 - alpha;
     }
 
-    private static int measureTheLuminosityOf(int red, int green, int blue) {
+    private static int luminosity(int red, int green, int blue) {
         return (int) (0.2126 * red + 0.7152 * green + 0.0722 * blue);
     }
 
-    private static int measureTheGreyOf(int red, int green, int blue) {
+    private static int greyLevel(int red, int green, int blue) {
         return (red + green + blue) / 3;
     }
 

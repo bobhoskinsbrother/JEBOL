@@ -39,13 +39,13 @@ final class FileReading {
     }
 
     private Optional<Value> refuseANegative(Optional<Value> asked) {
-        if (asked.isPresent() && measureTheMagnitudeOf(asked.get()) < 0) {
+        if (asked.isPresent() && wholeMagnitude(asked.get()) < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.get());
         }
         return asked;
     }
 
-    private long measureTheMagnitudeOf(Value number) {
+    private long wholeMagnitude(Value number) {
         return (long) Arithmetic.asMagnitude(number);
     }
 
@@ -84,11 +84,11 @@ final class FileReading {
     }
 
     private byte[] takeBytesAskedFor(byte[] whole) {
-        int from = (int) Math.min(position.map(this::measureTheMagnitudeOf).orElse(0L), whole.length);
+        int from = (int) Math.min(position.map(this::wholeMagnitude).orElse(0L), whole.length);
         if (bound.isEmpty()) {
             return Arrays.copyOfRange(whole, from, whole.length);
         }
-        long asked = measureTheMagnitudeOf(bound.get());
+        long asked = wholeMagnitude(bound.get());
         if (asked >= 0) {
             return Arrays.copyOfRange(whole, from, (int) Math.min(from + asked, whole.length));
         }
@@ -140,7 +140,7 @@ final class FileReading {
 
         List<String> listTheNamesMatchingIn(FilePort files) {
             return files.listFileNames(directory.isEmpty() ? "." : directory).stream()
-                    .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchTheWholeOf(
+                    .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchesWhole(
                             withoutItsSlash(listed), pattern))
                     .toList();
         }

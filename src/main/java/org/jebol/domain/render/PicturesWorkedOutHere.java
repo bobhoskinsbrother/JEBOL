@@ -25,7 +25,7 @@ final class PicturesWorkedOutHere {
             copied[pixel * CHANNELS + 2] = parts[2];
             copied[pixel * CHANNELS + 3] = matches ? SEE_THROUGH : readTheAlphaOf(parts);
         }
-        return makeAPictureOf(copied, wide, high);
+        return imageFromChannels(copied, wide, high);
     }
 
     static ImageValue pullOntoFourCorners(
@@ -54,7 +54,7 @@ final class PicturesWorkedOutHere {
                 made[at + 3] = readTheAlphaOf(parts);
             }
         }
-        return makeAPictureOf(made, wide, high);
+        return imageFromChannels(made, wide, high);
     }
 
     private static final int HOW_MANY_TIMES_TO_NARROW_IT = 24;
@@ -110,7 +110,7 @@ final class PicturesWorkedOutHere {
         return parts.length >= 4 ? parts[3] : OPAQUE;
     }
 
-    private static ImageValue makeAPictureOf(int[] channels, int wide, int high) {
+    private static ImageValue imageFromChannels(int[] channels, int wide, int high) {
         ImageValue made = ImageValue.of(Math.max(1, wide), Math.max(1, high));
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int at = pixel * CHANNELS;

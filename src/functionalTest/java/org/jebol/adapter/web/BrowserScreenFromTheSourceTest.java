@@ -804,13 +804,13 @@ class BrowserScreenFromTheSourceTest {
                 .isCloseTo(9.6, org.assertj.core.data.Offset.offset(1e-9));
         assertThat(measureOn(screen, "AB"))
                 .isNotCloseTo(TheCarriedFont.measurement()
-                        .measureTheExtentOf(new TextRun("AB", Colour.BLACK, 12, false, false))
+                        .textExtent(new TextRun("AB", Colour.BLACK, 12, false, false))
                         .wide(), org.assertj.core.data.Offset.offset(1e-3));
     }
 
     private static double measureOn(BrowserScreen screen, String text) {
         return screen.textMeasurement()
-                .measureTheExtentOf(new TextRun(text, Colour.BLACK, 12, false, false))
+                .textExtent(new TextRun(text, Colour.BLACK, 12, false, false))
                 .wide();
     }
 

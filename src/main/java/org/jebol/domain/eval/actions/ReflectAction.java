@@ -49,7 +49,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
 
     private Value reflectFrom(VectorValue vector, AnyWordValue field) {
         return field.canonical().equals("spec")
-                ? VectorQuery.makeTheSpecOf(vector)
+                ? VectorQuery.vectorSpec(vector)
                 : VectorQuery.readTheField(vector, field.canonical()).orElseThrow(
                         () -> Raised.of(EvaluationFailure.INVALID_ARG, field));
     }

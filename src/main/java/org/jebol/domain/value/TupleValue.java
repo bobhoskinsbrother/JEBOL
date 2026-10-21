@@ -271,14 +271,14 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             return switch (from) {
                 case TupleValue already -> already;
                 case AnyStringValue text -> scanTupleFrom(text.text(), from);
-                case AnyBlockValue segments -> makeATupleOfSegments(segments);
-                case BinaryValue octets -> makeATupleOfOctets(octets);
-                case IssueValue issue -> makeATupleOfHexPairs(issue.spelling(), from);
+                case AnyBlockValue segments -> tupleFromSegments(segments);
+                case BinaryValue octets -> tupleFromOctets(octets);
+                case IssueValue issue -> tupleFromHexPairs(issue.spelling(), from);
                 default -> throw refuse(from);
             };
         }
 
-        private Value makeATupleOfSegments(AnyBlockValue segments) {
+        private Value tupleFromSegments(AnyBlockValue segments) {
             List<Value> items = segments.remaining();
             if (items.size() > MAXIMUM_SEGMENTS) {
                 throw refuse(segments);
@@ -304,7 +304,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             return (int) number;
         }
 
-        private Value makeATupleOfOctets(BinaryValue octets) {
+        private Value tupleFromOctets(BinaryValue octets) {
             int width = Math.min(octets.lengthFromHere(), MAXIMUM_SEGMENTS);
             int[] kept = new int[width];
             for (int at = 0; at < width; at++) {
@@ -313,7 +313,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             return TupleValue.of(kept);
         }
 
-        private Value makeATupleOfHexPairs(String digits, Value original) {
+        private Value tupleFromHexPairs(String digits, Value original) {
             if (digits.length() % 2 != 0 || digits.length() / 2 > MAXIMUM_SEGMENTS) {
                 throw refuse(original);
             }

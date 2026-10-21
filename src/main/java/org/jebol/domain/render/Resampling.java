@@ -60,7 +60,7 @@ public enum Resampling {
                         (down * wide + across) * CHANNELS, CHANNELS);
             }
         }
-        return makeAPictureOf(made, wide, high);
+        return imageFromChannels(made, wide, high);
     }
 
     private int[] pickTheNearestIn(
@@ -140,7 +140,7 @@ public enum Resampling {
         return channels;
     }
 
-    private static ImageValue makeAPictureOf(int[] channels, int wide, int high) {
+    private static ImageValue imageFromChannels(int[] channels, int wide, int high) {
         ImageValue made = ImageValue.of(wide, high);
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int at = pixel * CHANNELS;

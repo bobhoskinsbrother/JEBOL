@@ -40,7 +40,7 @@ public final class DateArithmetic {
         int sign = operation.signWhenMoving();
         return span instanceof IntegerValue
                 ? moveByDays(sign * (long) readTheQuantityOf(span))
-                : moveByClock(sign * measureTheClockShiftOf(span));
+                : moveByClock(sign * clockShiftNanoseconds(span));
     }
 
     private void refuseSpanDateCannotMoveBy(Value span, ArithmeticOperation operation) {
@@ -102,7 +102,7 @@ public final class DateArithmetic {
         };
     }
 
-    private static long measureTheClockShiftOf(Value span) {
+    private static long clockShiftNanoseconds(Value span) {
         return span instanceof TimeValue(long nanoseconds)
                 ? nanoseconds
                 : (long) (readTheQuantityOf(span) * TimeValue.NANOSECONDS_PER_DAY);

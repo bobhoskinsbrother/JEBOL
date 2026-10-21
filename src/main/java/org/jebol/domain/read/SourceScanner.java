@@ -1422,7 +1422,7 @@ final class SourceScanner {
                     }
                     return AfterAToken.END_BLOCK;
                 }
-                default -> value = makeTheValueOfAToken(token, bp, ep, ep - bp, modeChar);
+                default -> value = valueForToken(token, bp, ep, ep - bp, modeChar);
             }
         }
         block.emit(value, bp);
@@ -1509,7 +1509,7 @@ final class SourceScanner {
                 .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
     }
 
-    private Value makeTheValueOfAToken(int token, int bp, int ep, int len, int modeChar) {
+    private Value valueForToken(int token, int bp, int ep, int len, int modeChar) {
         segmentEnd = ep;
         switch (token) {
             case TOKEN_NONE -> {

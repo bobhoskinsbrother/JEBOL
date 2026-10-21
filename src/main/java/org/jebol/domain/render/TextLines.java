@@ -145,7 +145,7 @@ public final class TextLines {
             return piece.wide();
         }
         int end = piece.text().offsetByCodePoints(0, characters);
-        return measure.measureTheExtentOf(withText(piece.font(), piece.text().substring(0, end))).wide();
+        return measure.textExtent(withText(piece.font(), piece.text().substring(0, end))).wide();
     }
 
     private TextRun withText(TextRun font, String text) {
@@ -186,17 +186,17 @@ public final class TextLines {
             if (fits(letters.subList(lineStart, wordEnd))) {
                 at = spaceRunEndFrom(letters, wordEnd);
             } else if (at > lineStart) {
-                broken.add(makeALineOfTheLetters(letters.subList(lineStart, at)));
+                broken.add(makeLineFromLetters(letters.subList(lineStart, at)));
                 lineStart = at;
             } else {
                 int fitting = fitTheMostOfTheWord(letters, at, wordEnd);
-                broken.add(makeALineOfTheLetters(letters.subList(at, fitting)));
+                broken.add(makeLineFromLetters(letters.subList(at, fitting)));
                 lineStart = fitting;
                 at = fitting;
             }
         }
         if (lineStart < letters.size() || broken.isEmpty()) {
-            broken.add(makeALineOfTheLetters(letters.subList(lineStart, letters.size())));
+            broken.add(makeLineFromLetters(letters.subList(lineStart, letters.size())));
         }
         return broken;
     }
@@ -243,7 +243,7 @@ public final class TextLines {
         return measureTheWidthOfThePieces(gatherIntoPieces(letters)) <= roomForEachLine;
     }
 
-    private Line makeALineOfTheLetters(List<Letter> letters) {
+    private Line makeLineFromLetters(List<Letter> letters) {
         int printed = letters.size();
         while (printed > 0 && letters.get(printed - 1).isASpace()) {
             printed--;
@@ -264,13 +264,13 @@ public final class TextLines {
                     && !letters.get(start).standsForEmptyPiece() && !letters.get(end).standsForEmptyPiece()) {
                 end++;
             }
-            pieces.add(makeAPieceOfTheLetters(letters.subList(start, end)));
+            pieces.add(pieceFromLetters(letters.subList(start, end)));
             start = end;
         }
         return pieces;
     }
 
-    private Piece makeAPieceOfTheLetters(List<Letter> letters) {
+    private Piece pieceFromLetters(List<Letter> letters) {
         Letter first = letters.getFirst();
         int[] characters = letters.stream()
                 .mapToInt(Letter::codePoint)
@@ -306,7 +306,7 @@ public final class TextLines {
     }
 
     private Piece makePiece(int run, int from, String text, TextRun font) {
-        return new Piece(run, from, text, font, measure.measureTheExtentOf(withText(font, text)).wide());
+        return new Piece(run, from, text, font, measure.textExtent(withText(font, text)).wide());
     }
 
     private Line makeALineOf(List<Piece> pieces) {
@@ -317,7 +317,7 @@ public final class TextLines {
         double ascent = 0;
         double descent = 0;
         for (Piece piece : pieces) {
-            TextExtent extent = measure.measureTheExtentOf(withText(piece.font(), piece.text()));
+            TextExtent extent = measure.textExtent(withText(piece.font(), piece.text()));
             ascent = Math.max(ascent, extent.ascent());
             descent = Math.max(descent, extent.descent());
         }

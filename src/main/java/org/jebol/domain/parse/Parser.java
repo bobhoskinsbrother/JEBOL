@@ -43,7 +43,7 @@ public final class Parser implements ParseWalk {
         return LogicValue.of(matched && atEnd());
     }
 
-    public boolean matchesTheWholeOf(AnyBlockValue rule) {
+    public boolean matchesWhole(AnyBlockValue rule) {
         return matchSequence(rule.remaining()) && atEnd();
     }
 

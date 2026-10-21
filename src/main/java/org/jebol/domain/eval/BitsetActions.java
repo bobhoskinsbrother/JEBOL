@@ -332,7 +332,7 @@ public final class BitsetActions implements Actions {
         return BitsetValue.ofCharacters(characters.chars().toArray());
     }
 
-    public static BitsetValue makeARangeOfCharacters(int from, int to) {
+    public static BitsetValue characterRange(int from, int to) {
         int[] codes = new int[to - from + 1];
         for (int at = 0; at < codes.length; at++) {
             codes[at] = from + at;
@@ -341,7 +341,7 @@ public final class BitsetActions implements Actions {
     }
 
     public static BitsetValue lettersOfBothCases() {
-        return join(makeARangeOfCharacters('a', 'z'), makeARangeOfCharacters('A', 'Z'));
+        return join(characterRange('a', 'z'), characterRange('A', 'Z'));
     }
 
     public static BitsetValue listQuotedPrintableOctets() {

@@ -153,12 +153,12 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 case IntegerValue whole -> PairValue.square(whole.magnitude());
                 case DecimalValue quantity -> PairValue.square(quantity.quantity());
                 case AnyStringValue text -> readPair(text, maker);
-                case BlockValue block -> makeAPairOf(block);
+                case BlockValue block -> pairFromBlock(block);
                 default -> throw refuse(from);
             };
         }
 
-        private Value makeAPairOf(BlockValue block) {
+        private Value pairFromBlock(BlockValue block) {
             List<Value> halves = block.remaining();
             if (halves.size() != 2) {
                 throw refuse(block);
