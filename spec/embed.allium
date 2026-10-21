@@ -1301,7 +1301,7 @@ value HttpResponse {
 -- So a browser's bounds mark those four unavailable and may grant any of the
 -- others. Asking for an unavailable one is refused not_present with the browser named,
 -- which is a different answer from the same script on a machine where the
--- operator simply did not grant it. The three are refused before anything is
+-- operator simply did not grant it. The four are refused before anything is
 -- attempted, so a script cannot learn whether a host exists by timing a name
 -- lookup it was never allowed to make.
 rule ABrowserOffersWhatItsPageCan {

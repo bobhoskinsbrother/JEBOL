@@ -517,6 +517,27 @@ rule TheCommandLineGrantsEveryService {
     ensures: the_granted_services() = every_host_service()
 }
 
+-- The machine's dialogs come with the machine's window, and with nothing else.
+--
+-- The WINDOW service's five requests -- BROWSE, REQUEST-FILE, REQUEST-DIR,
+-- REQUEST-COLOR and REQUEST-PASSWORD -- need something to put a dialog on, and
+-- the command line handed nothing over for any of them: it granted every
+-- service and supplied no port, so all five were reachable and could not
+-- succeed. `--screen=window` is the run that has already said it may use this
+-- machine's screen -- it is the same switch that turns the JVM's headless mode
+-- off -- so that is where the machine's own dialogs are handed over.
+--
+-- `--screen=web` draws into a page and runs headless, and a run that asked for
+-- no screen at all stays as it was, so both refuse a dialog as the host having
+-- none. That refusal is the answer to enabling the example that asked: run it
+-- again with a window, and the chooser opens.
+rule TheWindowScreenComesWithTheMachinesDialogs {
+    when: line: CommandLine.created
+    requires: the_screen_asked_for_is_the_window()
+
+    ensures: the_window_port_supplied() = the_machines_own_dialogs()
+}
+
 -- With `--screen=web` and a script, the script waits for a browser. The page's
 -- address is printed, and the script starts once a browser has opened it. A
 -- script that opens a window on a page nobody is looking at has its SHOW

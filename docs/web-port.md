@@ -199,7 +199,7 @@ HMAC over them are the browser's answers and everything else -- `md5`,
 `sha224`, the SHA-3 sizes -- is absent from the catalogue and refused by
 name. JEBOL's own Java digests work everywhere, and so do its ciphers. The
 browser gate asserts the worker's SHA-1 and HMAC equal the JVM's. Decision 34;
-the TLS checking is goal 1's.
+the TLS checking is decision 43's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.

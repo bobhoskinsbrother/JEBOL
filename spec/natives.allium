@@ -11162,7 +11162,7 @@ rule TheUsageLimitsAreNeverConsulted {
     ensures: not (check.class in {eval, memory})
 }
 
-open question "The six natives that wait on a datatype -- AS-COLOR on image!, MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and RELEASE on handle! -- have nothing to specify until the datatype they take exists, because each is a small arm over a value JEBOL cannot make. They are recorded in Goal 1 of TODO.md in the order boot/types.reb declares the datatypes, which is the order they will be built. What is not yet decided is whether handle! should carry a Java object directly, since that is what a JVM codec would need to hold, or stay opaque the way the C's does."
+open question "The six natives that wait on a datatype -- AS-COLOR on image!, MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and RELEASE on handle! -- have nothing to specify until the datatype they take exists, because each is a small arm over a value JEBOL cannot make. They are recorded in the order boot/types.reb declares the datatypes, which is the order they will be built. What is not yet decided is whether handle! should carry a Java object directly, since that is what a JVM codec would need to hold, or stay opaque the way the C's does."
 
 -- === Extensions, from the script's side =====================
 

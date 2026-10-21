@@ -257,8 +257,8 @@ That last one is not a footnote, and it is no longer only a note. A script
 calls into the host only through an extension the embedder adds to the
 bounds, and the bounds carry none by default. A host that has not thought
 about what a script may reach has not thereby decided it may reach
-everything. (This was a `HostAccess` policy until goal 4 replaced
-`defineFunction` with extensions; the policy gated only that, so it went
+everything. (This was a `HostAccess` policy until extensions replaced
+`defineFunction`; the policy gated only that, so it went
 with it.) Mutability of an object
 that does cross remains the caller's, and `InteropTest` has a test that
 demonstrates it rather than a comment that warns about it.
@@ -1126,7 +1126,8 @@ decide which platform it is on.
 algorithm class the core reaches for is a stand-in whose methods throw an error
 naming the method. A page that asks for a signature gets a refusal rather than
 an answer invented in the browser. Digests and HMACs came later, through the
-browser's own WebCrypto -- decision 34 -- and how TLS is checked is goal 1's.
+browser's own WebCrypto -- decision 34 -- and how TLS is checked is decision
+43's.
 
 **The web compile lives in the second gate.** `browserCheck` depends on
 `buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
@@ -1442,7 +1443,7 @@ stops laying text out: a few hundred lines of JavaScript that duplicated
 `TextLines` are deleted rather than kept in step.
 
 **Decided while planning the web port**, after the plan's first draft
-proposed the rasteriser. Goals 5 and 6 change with it: a phone app
+proposed the rasteriser. Goals 3 and 4 change with it: a phone app
 implements the surface on its own canvas rather than copying a grid.
 
 ## 36. A page is painted between events, not once per show
@@ -1529,7 +1530,7 @@ The rest of the profile, each with a stack and a share:
 
 **What this makes of the two goals.** The boot work and the speed work are
 one job: the same per-call overheads dominate both, so fixing the call path
-moves the gate, the desktop and the browser at once. Goal 19 carries the
+moves the gate, the desktop and the browser at once. Goal 14 carries the
 ranked list; this decision holds the numbers. The instrument is
 `scripts/timing.py`, whose docstring says how to run it and what the figures
 do and do not mean.
@@ -1537,7 +1538,7 @@ do and do not mean.
 ## 38. The per-call plumbing comes out, and the web boot was compared wrongly
 
 **What was done, all of it removing work that was redone per call.** The
-ranked actions of goal 19, in the order decision 37 measured them:
+ranked actions of goal 14, in the order decision 37 measured them:
 
 - `PendingCall` no longer filters parameters with streams on every call. It
   keeps the callee's own parameter list and builds the sequence of parameters
@@ -1705,16 +1706,16 @@ nothing to run first, so it takes the same grants a script does, and
 A person at a keyboard can already run `jebol --do "..."` or a script, so the
 sandbox was not a boundary; it was an inconsistency that made `read
 %README.md` answer `no-service` at the prompt. That resolves the loose end
-goal 13 carried.
+goal 9 carried.
 
 **What start prints is R3's banner, not JEBOL's.** The old line, "JEBOL --
 REBOL 3 on the JVM. Type quit to leave.", is gone from the command line. What
 JEBOL calls itself in the banner (`Rebol/core` against `Rebol/Bulk`) and the
-empty build fields are goal 17's next part, not this one.
+empty build fields are goal 13's next part, not this one.
 
 **One difference this leaves open.** A `quit/return 42` typed at the prompt
 leaves the process with nought here and with 42 in R3, because the console
-loop returns without carrying what QUIT held. It is text down in goal 17
+loop returns without carrying what QUIT held. It is text down in goal 13
 rather than fixed here, since nothing asked for it and the fix is a behaviour
 of its own.
 
@@ -1742,7 +1743,7 @@ itself inside fetch. The command line and the suite grant it and use the
 JDK's store.
 
 **The hook is an edit to the vendored `prot-tls.reb`, not the CRT codec.**
-Goal 1 had planned the codec, and it cannot work: the codec decodes one
+The TLS goal had planned the codec, and it cannot work: the codec decodes one
 certificate at a time and never sees the host, and the TLS 1.3 signature hole
 is not in the codec at all. Four edits, each the smallest that closes its
 hole:
@@ -1926,3 +1927,52 @@ those two steps are the file's alone; `sys-start.reb` carries the branch and
 ORDER.txt the note. A url that cannot be fetched is reported and leaves with
 one, as a missing file does. `./gradlew networkTests` runs a real github
 script, with its arguments, at the command line.
+
+## 48. The window screen brings this machine's dialogs
+
+**`--screen=window` supplies `DesktopWindows` along with the desktop screen.**
+The WINDOW service has five requests -- BROWSE, REQUEST-FILE, REQUEST-DIR,
+REQUEST-COLOR and REQUEST-PASSWORD -- and the command line granted every one of
+them while supplying a port for none: all five were reachable and none could
+succeed, from `jebol --do "browse http://example.com"` to a script asking for a
+colour. The adapter has existed since 2026-08-10 and only tests and embedding
+hosts could reach it, because the command line never handed it over.
+
+**A window, and for now only a window.**
+`--screen=window` is what says a run may use this machine's display; it is the
+same switch that turns the JVM's headless mode off, decision 26. `--screen=web`
+draws into a page and a bare run draws nothing, so both keep the refusing port
+they had, and a request there is refused as the host having no screen rather
+than as the service being withheld -- the grant was never the half that was
+missing. `TheWindowScreenComesWithTheMachinesDialogs` in `spec/repl.allium`
+says so.
+
+**The example is `examples/choose-colour/`, and it is run by hand.**
+`jebol --screen=window examples/choose-colour/` opens the machine's own colour
+chooser: the script asks with `/default` for a blue, prints each colour picked,
+suggests the last pick back to the chooser, and says "no colour chosen" when
+the operator cancels. The mac AppleScript version in `mezz-osx-dialogs.reb` is
+still not loaded, deliberately; this is what runs instead, on every platform.
+
+**No test opens a dialog, on purpose.** A chooser left open hangs the build
+until somebody clicks it, which is exactly what happened when two tests first
+reached one; the test JVMs run headless for that reason. So the tests stop at
+the port boundary: `ReplPortsTest` pins that the command line hands
+`DesktopWindows` over with a window and a refusing port otherwise, and
+`TheChooseColourExampleEndToEndTest` runs the example's real file against a
+recording operator that answers with colours. The real chooser is proved by
+running the example, not by the gate.
+
+**What this leaves: the page's own dialogs, which are goal 1's.** A browser
+has a colour picker, file and directory choosers and a save picker, so a page
+fills four of the five needs with its own controls; the fifth, the password,
+is one Rebol form everywhere, because no environment has a password dialog
+worth taking -- Swing's is a generic box and a browser has none at all. The
+port asks for what it needs and the environment answers with what it has,
+which is what a port is for. The form stays Rebol, and the plumbing to run it
+on a page is the web's to carry. That is a second adapter with a transport of
+its own -- asks down the page's stream, answers posted back -- and when it
+lands this decision's rule becomes "each screen brings its own dialogs": the
+machine's with `--screen=window`, the page's with `--screen=web`. Until then a
+page run keeps the refusal, because a port that is not built is honestly
+absent.

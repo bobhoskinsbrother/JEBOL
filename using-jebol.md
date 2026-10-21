@@ -99,6 +99,13 @@ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
 
 The shipped example is the 2010 R3 GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
 
+`--screen=window` is also what the dialogs need. `request-color`, `request-file`, `request-dir`, `request-password` and `browse` are refused without a screen, and a run given the native window may use them. The second shipped example opens the machine's colour chooser and prints each colour chosen; cancelling ends it.
+
+```
+JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
+./build/install/jebol/bin/jebol --screen=window examples/choose-colour/
+```
+
 ---
 
 ## **3. Embedding JEBOL in Java Applications**

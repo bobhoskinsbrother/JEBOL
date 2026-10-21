@@ -1,9 +1,14 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.DesktopWindows;
+import org.jebol.domain.host.WindowPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class ChosenScreenTest {
 
@@ -19,6 +24,25 @@ class ChosenScreenTest {
     @DisplayName("a window turns the display back on")
     void choosesAWindow() {
         assertThat(headlessAfter("--screen=window")).isEqualTo("false");
+    }
+
+    @Test
+    @DisplayName("a window screen is answered with this machine's own dialogs")
+    void aWindowScreenBringsTheMachinesDialogs() {
+        assertThat(ChosenScreen.windowPortFor(new String[] {"--screen=window"}))
+                .isInstanceOf(DesktopWindows.class);
+    }
+
+    @Test
+    @DisplayName("a page and a bare run are answered with a port that refuses")
+    void otherScreensGetTheRefusingPort() {
+        for (String[] arguments : new String[][] {
+                {"--screen=web"}, {"script.r3"}, {}}) {
+            assertThatExceptionOfType(WindowPort.Denied.class)
+                    .isThrownBy(() -> ChosenScreen.windowPortFor(arguments)
+                            .chooseColour(Optional.empty()))
+                    .withMessageContaining("no screen");
+        }
     }
 
     private static String headlessAfter(String... arguments) {

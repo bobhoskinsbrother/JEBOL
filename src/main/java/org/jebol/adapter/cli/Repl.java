@@ -174,6 +174,17 @@ public final class Repl {
     private static Interpreter buildInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
         Bounds bounds = grantEveryHostService().withoutTimeLimit();
         ProcessEnvironment environment = new ProcessEnvironment();
+        Interpreter interpreter = Interpreter.createOn(
+                portsFor(bounds, arguments, out, anythingWasAsked, root, environment),
+                new StreamOutput(out), bounds);
+        applyDataSwitch(interpreter, environment, arguments);
+        return interpreter;
+    }
+
+    static HostPorts portsFor(
+            Bounds bounds, String[] arguments, PrintStream out,
+            boolean anythingWasAsked, Path root, ProcessEnvironment environment) {
+
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
         HostPorts ports = attachJavaImagesCodec(new JavaHost().ports()
                 .withTasks(new ThreadTasks(bounds))
@@ -188,10 +199,9 @@ public final class Repl {
         if (ChosenScreen.isAskedFor(arguments)) {
             ports = ports.withScreen(ChosenScreen.screenFor(
                     arguments, out, anythingWasAsked, ports.carriedFiles()));
+            ports = ports.withWindows(ChosenScreen.windowPortFor(arguments));
         }
-        Interpreter interpreter = Interpreter.createOn(ports, new StreamOutput(out), bounds);
-        applyDataSwitch(interpreter, environment, arguments);
-        return interpreter;
+        return ports;
     }
 
     private static void applyDataSwitch(

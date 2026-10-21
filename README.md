@@ -269,7 +269,7 @@ Things to note:
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a text reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
-- **`midi` is registered and has no instrument behind it yet** (goal 7).
+- **`midi` is registered and has no instrument behind it yet** (goal 5).
   `query midi:// 'devices-in` lists nothing and `open midi://1` is refused, as
   in a real 3.22.5 with nothing attached; a host can supply devices through
   `Interpreter.useMidiDevices`, and MIDI needs a grant of its own.

@@ -6642,7 +6642,7 @@ code that only a build error can reach.
 
 Put to `./r3-head` on 2026-10-15, one `read` each:
 
-| url | r3-head | JEBOL before goal 1 |
+| url | r3-head | JEBOL before the checks |
 | --- | --- | --- |
 | `https://badssl.com` | 11625 bytes | the same |
 | `https://expired.badssl.com` | 494 bytes | the same |

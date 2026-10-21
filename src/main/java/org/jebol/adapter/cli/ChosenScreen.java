@@ -1,10 +1,12 @@
 package org.jebol.adapter.cli;
 
 import org.jebol.adapter.host.DesktopScreen;
+import org.jebol.adapter.host.DesktopWindows;
 import org.jebol.adapter.web.BrowserScreen;
 import org.jebol.adapter.web.WebScreenServer;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.WindowPort;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -52,6 +54,13 @@ final class ChosenScreen {
             case PAGE -> pageScreen(out, forScript, files);
             default -> refuseAsNotUnderstood(asked);
         };
+    }
+
+    static WindowPort windowPortFor(String[] arguments) {
+        boolean isWindow = switchValue(arguments)
+                .filter(WINDOW::equalsIgnoreCase)
+                .isPresent();
+        return isWindow ? DesktopWindows.onThisMachine() : WindowPort.none();
     }
 
     private static ScreenPort windowScreen(PrintStream out, FilePort files) {
