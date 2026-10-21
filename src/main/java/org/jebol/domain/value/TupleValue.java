@@ -270,7 +270,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TupleValue already -> already;
-                case AnyStringValue text -> scanATupleFrom(text.text(), from);
+                case AnyStringValue text -> scanTupleFrom(text.text(), from);
                 case AnyBlockValue segments -> makeATupleOfSegments(segments);
                 case BinaryValue octets -> makeATupleOfOctets(octets);
                 case IssueValue issue -> makeATupleOfHexPairs(issue.spelling(), from);
@@ -328,7 +328,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             return TupleValue.of(octets);
         }
 
-        private Value scanATupleFrom(String text, Value original) {
+        private Value scanTupleFrom(String text, Value original) {
             String token = new WrittenText(text)
                     .findOneToken(MAXIMUM_SEGMENTS * 4 + 1);
             String[] parts = token.split("\\.", -1);

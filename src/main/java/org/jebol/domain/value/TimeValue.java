@@ -183,7 +183,7 @@ public record TimeValue(long nanoseconds) implements Value {
         protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TimeValue already -> already;
-                case StringValue written -> scanTheTimeFrom(written);
+                case StringValue written -> scanTimeFrom(written);
                 case BlockValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
                 case ParenValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
                 case IntegerValue number -> makeADurationOfSeconds(number, number.magnitude());
@@ -270,7 +270,7 @@ public record TimeValue(long nanoseconds) implements Value {
             return magnitude;
         }
 
-        private Value scanTheTimeFrom(StringValue given) {
+        private Value scanTimeFrom(StringValue given) {
             ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findOneTime());
             if (!scanning.readsATime()) {
                 throw refuse(given);

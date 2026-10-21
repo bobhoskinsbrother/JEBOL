@@ -686,7 +686,7 @@ final class ScannedValues {
         return Optional.of(TupleValue.of(kept));
     }
 
-    Value scanASpecInteger(int from, int length) {
+    Value scanSpecInteger(int from, int length) {
         int cp = from;
         int remaining = length;
         long accumulated = 0;

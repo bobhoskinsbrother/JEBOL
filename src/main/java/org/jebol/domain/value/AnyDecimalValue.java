@@ -123,20 +123,20 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
 
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
-            return from.asDecimal(this, asking).orElseGet(() -> scanIntoADecimal(from));
+            return from.asDecimal(this, asking).orElseGet(() -> scanIntoDecimal(from));
         }
 
-        private Value scanIntoADecimal(Value from) {
-            OptionalDouble scanned = scanTheQuantityFrom(from);
+        private Value scanIntoDecimal(Value from) {
+            OptionalDouble scanned = scanQuantityFrom(from);
             if (scanned.isEmpty()) {
                 throw refuse(from);
             }
             return from.countInHundredths(this, scanned.getAsDouble());
         }
 
-        private OptionalDouble scanTheQuantityFrom(Value from) {
+        private OptionalDouble scanQuantityFrom(Value from) {
             if (from instanceof StringValue text) {
-                return scanADecimalFrom(new WrittenText(text.text())
+                return scanDecimalFrom(new WrittenText(text.text())
                         .findOneNumberIn(MOST_FRACTION_CHARACTERS));
             }
             if (from instanceof AnyBlockValue parts) {
@@ -172,7 +172,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             };
         }
 
-        private OptionalDouble scanADecimalFrom(String written) {
+        private OptionalDouble scanDecimalFrom(String written) {
             String body = written;
             if (body.endsWith("%")) {
                 if (!isWrittenWithAPercentSign()) {

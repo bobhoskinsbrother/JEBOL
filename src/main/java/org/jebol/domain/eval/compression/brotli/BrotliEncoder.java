@@ -225,7 +225,7 @@ final class BrotliEncoder {
                 System.arraycopy(COMMAND_HISTOGRAM_SEED, 0, commandHistogram, 0, 128);
                 int end = from + blockSize;
                 Match found =
-                        scanForMatchesWideningTheStrideTheLongerNothingIsFound(end);
+                        scanForMatchesWideningStrideLongerNothingIsFound(end);
                 if (found == Match.ABANDONED) {
                     return from < fragmentEnd;
                 }
@@ -259,7 +259,7 @@ final class BrotliEncoder {
 
         private enum Match { RAN_OUT, ABANDONED }
 
-        private Match scanForMatchesWideningTheStrideTheLongerNothingIsFound(
+        private Match scanForMatchesWideningStrideLongerNothingIsFound(
                 int end) {
             if (blockSize < INPUT_MARGIN_BYTES) {
                 return Match.RAN_OUT;

@@ -31,7 +31,7 @@ public final class Transcoder {
         }
         Transcoder reader = new Transcoder(source, new OnlyFindingWhereValuesAre(), 1);
         try {
-            reader.scanner.scanTheWholeSource();
+            reader.scanner.scanWholeSource();
         } catch (ScanFailure unreadable) {
             return List.of();
         }
@@ -133,7 +133,7 @@ public final class Transcoder {
 
     private Reading beginReading() {
         try {
-            SourceScanner.ScannedBlock whole = scanner.scanTheWholeSource();
+            SourceScanner.ScannedBlock whole = scanner.scanWholeSource();
             return new Reading(whole.values(), Optional.empty(), readCodepointAt(scanner.end()),
                     scanner.lineCount(), scanner.topLineStarts());
         } catch (ScanFailure malformed) {
