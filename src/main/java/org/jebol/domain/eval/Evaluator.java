@@ -1518,7 +1518,7 @@ public final class Evaluator {
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
             if (current.value() instanceof AnyFunctionValue) {
-                AnyWordValue refinement = readTheRefinementWordOf(segment);
+                AnyWordValue refinement = refinementWord(segment);
                 mentioned.add(refinement.canonical());
                 mentionedAsWritten.add(refinement);
                 if (isSwitchedOn(refinement, context)) {
@@ -1620,7 +1620,7 @@ public final class Evaluator {
                 : selector;
     }
 
-    private AnyWordValue readTheRefinementWordOf(Value segment) {
+    private AnyWordValue refinementWord(Value segment) {
         if (segment instanceof AnyWordValue word) {
             return word;
         }

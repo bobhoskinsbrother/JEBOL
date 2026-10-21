@@ -39,11 +39,11 @@ final class ExtensionCommands implements ExtensionDispatcher {
             if (call.escapesFromScript(failed)) {
                 throw failed;
             }
-            throw Raised.of(EvaluationFailure.COMMAND_FAIL, StringValue.of(readTheMessageOf(failed)));
+            throw Raised.of(EvaluationFailure.COMMAND_FAIL, StringValue.of(messageFrom(failed)));
         }
     }
 
-    private String readTheMessageOf(RuntimeException failed) {
+    private String messageFrom(RuntimeException failed) {
         return failed.getMessage() == null ? failed.getClass().getSimpleName() : failed.getMessage();
     }
 }

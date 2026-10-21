@@ -269,7 +269,7 @@ final class ImagePath {
             case "argb", "orgb" -> readChannels(image, 3, 0, 1, 2);
             case "abgr", "obgr" -> readChannels(image, 3, 2, 1, 0);
             case "alpha" -> readChannels(image, 3);
-            case "opacity" -> readTheOpacitiesOf(image);
+            case "opacity" -> opacityBytes(image);
             case "red" -> readChannels(image, 0);
             case "green" -> readChannels(image, 1);
             case "blue" -> readChannels(image, 2);
@@ -304,7 +304,7 @@ final class ImagePath {
 
     private static final TupleValue TRANSPARENT_BLACK = TupleValue.of(0, 0, 0, 0);
 
-    private static BinaryValue readTheOpacitiesOf(ImageValue image) {
+    private static BinaryValue opacityBytes(ImageValue image) {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {

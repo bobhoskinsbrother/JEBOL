@@ -99,9 +99,9 @@ final class BrotliDictionaryMatches {
         int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at));
         boolean end = offset == 0;
         while (!end) {
-          int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
+          int wordLength = BrotliDictionaryWords.wordLengthWithFlag(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
+          int wordIndex = BrotliDictionaryWords.wordIndex(offset);
           offset++;
           int l = wordLength & 0x1F;
           int n = 1 << BrotliDictionary.readSizeBitsFor(l);
@@ -340,9 +340,9 @@ final class BrotliDictionaryMatches {
         int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 1));
         boolean end = offset == 0;
         while (!end) {
-          int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
+          int wordLength = BrotliDictionaryWords.wordLengthWithFlag(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
+          int wordIndex = BrotliDictionaryWords.wordIndex(offset);
           offset++;
           int l = wordLength & 0x1F;
           int n = 1 << BrotliDictionary.readSizeBitsFor(l);
@@ -429,9 +429,9 @@ final class BrotliDictionaryMatches {
           int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 2));
           boolean end = offset == 0;
           while (!end) {
-            int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
+            int wordLength = BrotliDictionaryWords.wordLengthWithFlag(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
+          int wordIndex = BrotliDictionaryWords.wordIndex(offset);
           offset++;
             int l = wordLength & 0x1F;
             int n = 1 << BrotliDictionary.readSizeBitsFor(l);
@@ -461,9 +461,9 @@ final class BrotliDictionaryMatches {
           int offset = BrotliDictionaryWords.firstWordInBucket(hash15(data, at + 5));
           boolean end = offset == 0;
           while (!end) {
-            int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
+            int wordLength = BrotliDictionaryWords.wordLengthWithFlag(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
+          int wordIndex = BrotliDictionaryWords.wordIndex(offset);
           offset++;
             int l = wordLength & 0x1F;
             int n = 1 << BrotliDictionary.readSizeBitsFor(l);

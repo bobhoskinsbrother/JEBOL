@@ -14,7 +14,7 @@ final class HuffmanCodes {
         return lengths[symbol];
     }
 
-    int readTheOffsetLength(int slot) {
+    int offsetLength(int slot) {
         return lengths[OFFSET_LENGTHS_FROM + slot];
     }
 }

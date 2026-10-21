@@ -63,7 +63,7 @@ public final class Bincode {
                 || BITS.contains(code)
                 || MOMENTS.contains(code)
                 || SHAPES.contains(code)
-                || !readTheLengthCodeOf(code).isEmpty();
+                || !lengthCodeIn(code).isEmpty();
     }
 
     private static final List<String> POSITIONS =
@@ -192,8 +192,8 @@ public final class Bincode {
 
     private static int writeOtherThanANumber(Cursor cursor, Script dialect,
             int step, String code, LongSupplier secondsSinceTheEpoch) {
-        if (!readTheLengthCodeOf(code).isEmpty()) {
-            writeBytesAfterTheirLength(cursor, readTheLengthCodeOf(code),
+        if (!lengthCodeIn(code).isEmpty()) {
+            writeBytesAfterTheirLength(cursor, lengthCodeIn(code),
                     readItemAt(dialect, ++step, code));
             return step;
         }
@@ -277,8 +277,8 @@ public final class Bincode {
 
     private static int readOtherThanANumber(Cursor cursor, Script dialect,
             int step, String code, Produced read) {
-        if (!readTheLengthCodeOf(code).isEmpty()) {
-            read.add(readBytesAfterTheirLength(cursor, readTheLengthCodeOf(code)));
+        if (!lengthCodeIn(code).isEmpty()) {
+            read.add(readBytesAfterTheirLength(cursor, lengthCodeIn(code)));
             return step;
         }
         Value command = dialect.asWritten(step);
@@ -384,7 +384,7 @@ public final class Bincode {
         return BinaryValue.of(octets);
     }
 
-    private static String readTheLengthCodeOf(String code) {
+    private static String lengthCodeIn(String code) {
         if (!code.endsWith("bytes") || code.equals("bytes")
                 || code.equals("random-bytes")) {
             return "";

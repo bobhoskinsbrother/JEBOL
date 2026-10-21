@@ -12,7 +12,7 @@ final class Second implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return date.readTheSecondOfTheMinute();
+        return date.secondOnClock();
     }
 
     @Override

@@ -98,7 +98,7 @@ public final class Ports {
     }
 
     private SequencedSet<String> listTheConsoleModesInTheModeTable() {
-        List<Value> rows = declarations.readTheRowsBelowTheHeaderOf(modeTableSource);
+        List<Value> rows = declarations.rowsBelowHeader(modeTableSource);
         for (int at = 0; at + 1 < rows.size(); at++) {
             if (rows.get(at) instanceof AnyWordValue heading
                     && heading.canonical().equals(CONSOLE_MODE_HEADING)
@@ -170,10 +170,10 @@ public final class Ports {
             return Optional.empty();
         }
         PortValue routed = openPortFor(target, evaluator, context);
-        return routed.isAFile() ? Optional.of(readThePathOf(routed)) : Optional.empty();
+        return routed.isAFile() ? Optional.of(portPath(routed)) : Optional.empty();
     }
 
-    public String readThePathOf(PortValue port) {
+    public String portPath(PortValue port) {
         return new SeekableFilePort(port).path();
     }
 
@@ -210,7 +210,7 @@ public final class Ports {
         return switch (port.schemeName()) {
             case "console" -> lineReadFromConsole(evaluator);
             case "clipboard" -> readWhatTheOperatorLastCopied(port, evaluator, asked);
-            case "bundled" -> readTheSourceOfABundledModule(port, evaluator);
+            case "bundled" -> bundledModuleSource(port, evaluator);
             case "tcp" -> readBytesFromConnection(port, evaluator);
             case "udp" -> readOneDatagramInto(port, evaluator);
             case "dns" -> resolveDnsQuery(port, evaluator);
@@ -261,14 +261,14 @@ public final class Ports {
         }
     }
 
-    private Value readTheSourceOfABundledModule(PortValue port, Evaluator evaluator) {
+    private Value bundledModuleSource(PortValue port, Evaluator evaluator) {
         return readTheNameABundledUrlAsksFor(port)
                 .flatMap(name -> evaluator.bundledModules().readTheSourceOf(name))
                 .map(source -> (Value) BinaryValue.ofBytes(source))
-                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_OPEN, readTheReferenceOf(port)));
+                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_OPEN, portReference(port)));
     }
 
-    private Value readTheReferenceOf(PortValue port) {
+    private Value portReference(PortValue port) {
         return port.readFieldValue("spec") instanceof ObjectValue spec
                 ? spec.readFieldValue("ref")
                 : NoneValue.none();
@@ -417,7 +417,7 @@ public final class Ports {
             case "crypt" -> encipherIntoPort(port, data);
             case "file" -> {
                 if (!port.isOpen()) {
-                    requireFilePolicy(readThePathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
+                    requireFilePolicy(portPath(port), evaluator, Set.of(PolicyAccess.WRITE));
                 }
                 yield new OpenFile(port, evaluator.ports().files(), granted)
                         .write(data, asked.seek(), asked.part(), asked.refinements().contains("append"));
@@ -463,7 +463,7 @@ public final class Ports {
         }
         if (!port.isOpen()) {
             port.markOpen(true);
-            checksumPort.startEvenOnAlreadyOpenPort(port, checksumPort.readTheMethodOf(port));
+            checksumPort.startEvenOnAlreadyOpenPort(port, checksumPort.checksumMethod(port));
         }
         RebolSeries written = (RebolSeries) data;
         byte[] whole = written.head().asOctets();
@@ -482,7 +482,7 @@ public final class Ports {
     private Value encipherIntoPort(PortValue port, Value data) {
         cryptPort.refuseWhenClosed(port);
         if (!(data instanceof BinaryValue octets)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, readTheReferenceOf(port));
+            throw Raised.of(EvaluationFailure.FEATURE_NA, portReference(port));
         }
         cryptPort.write(port, octets.octetsFromHere());
         return port;
@@ -491,7 +491,7 @@ public final class Ports {
     public Value open(PortValue port, Evaluator evaluator, Set<String> refinements) {
         requireServiceForScheme(port.schemeName());
         if (SCHEMES_CHECKED_AGAINST_NET_POLICY.contains(port.schemeName())) {
-            evaluator.policies().require(PolicyClass.NET, PolicyAccess.EXECUTE, Optional.of(readTheReferenceOf(port)));
+            evaluator.policies().require(PolicyClass.NET, PolicyAccess.EXECUTE, Optional.of(portReference(port)));
         }
         if (port.schemeName().equals("tcp")) {
             return connectOrLeaveClosed(port, evaluator);
@@ -499,7 +499,7 @@ public final class Ports {
         switch (port.schemeName()) {
             case "udp" -> bindDatagramPort(port, evaluator);
             case "crypt" -> startCipherBehindBlankingKeyInSpec(port);
-            case "checksum" -> checksumPort.startEvenOnAlreadyOpenPort(port, checksumPort.readTheMethodOf(port));
+            case "checksum" -> checksumPort.startEvenOnAlreadyOpenPort(port, checksumPort.checksumMethod(port));
             default -> refuseToReachOutside();
         }
         if (port.isAFile()) {
@@ -518,7 +518,7 @@ public final class Ports {
 
     private PortValue connectOrLeaveClosed(PortValue port, Evaluator evaluator) {
         try {
-            NetworkPort.Connection made = evaluator.ports().network().connectTo(readHostNamedBy(port), readThePortNumberOf(port));
+            NetworkPort.Connection made = evaluator.ports().network().connectTo(readHostNamedBy(port), portNumber(port));
             port.setField("state", JavaObjectValue.of(made));
             queueWhatHappenedTo(port, "connect", evaluator);
             return markOpen(port);
@@ -577,7 +577,7 @@ public final class Ports {
 
     private void startCipherBehindBlankingKeyInSpec(PortValue port) {
         if (cryptPort.isWorking(port)) {
-            throw Raised.of(EvaluationFailure.ALREADY_OPEN, readTheReferenceOf(port));
+            throw Raised.of(EvaluationFailure.ALREADY_OPEN, portReference(port));
         }
         if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
@@ -642,7 +642,7 @@ public final class Ports {
 
     private void bindDatagramPort(PortValue port, Evaluator evaluator) {
         int number = findHostToSendTo(port).isEmpty()
-                ? readThePortNumberOf(port)
+                ? portNumber(port)
                 : WHATEVER_NUMBER_MACHINE_HAS_FREE;
         runThroughNetwork(() -> {
             NetworkPort.Datagrams bound = evaluator.ports().network().bindTo(number);
@@ -688,14 +688,14 @@ public final class Ports {
         };
         NetworkPort.Datagrams bound = findTheDatagramsBehind(port);
         return runThroughNetwork(() -> {
-            bound.sendTo(findHostToSendTo(port), readThePortNumberOf(port), bytes);
+            bound.sendTo(findHostToSendTo(port), portNumber(port), bytes);
             port.setField("data", NoneValue.none());
             queueWhatHappenedTo(port, "wrote", evaluator);
             return port;
         });
     }
 
-    private int readThePortNumberOf(PortValue port) {
+    private int portNumber(PortValue port) {
         if (port.readFieldValue("spec") instanceof ObjectValue(Context context)
                 && context.holds("port")
                 && context.ownSlotFor("port").value() instanceof IntegerValue(long magnitude)) {

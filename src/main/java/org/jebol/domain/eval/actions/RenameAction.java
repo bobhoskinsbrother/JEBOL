@@ -56,10 +56,10 @@ public class RenameAction extends PortAction {
         }
         granted.require(HostService.FILES);
         if (from.schemeName().equals("dir")) {
-            ports.requireFilePolicy(ports.readThePathOf(from), evaluator, Set.of(PolicyAccess.WRITE));
+            ports.requireFilePolicy(ports.portPath(from), evaluator, Set.of(PolicyAccess.WRITE));
         }
         try {
-            evaluator.ports().files().rename(ports.readThePathOf(from), to.text());
+            evaluator.ports().files().rename(ports.portPath(from), to.text());
         } catch (FilePort.Denied refused) {
             if (refused.isRefusedByHost()) {
                 throw refused.raise();

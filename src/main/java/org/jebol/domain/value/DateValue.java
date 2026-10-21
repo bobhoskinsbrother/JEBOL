@@ -223,7 +223,7 @@ public record DateValue(
         return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 60 % 60);
     }
 
-    public Value readTheSecondOfTheMinute() {
+    public Value secondOnClock() {
         long onTheClock = nanosecondsOnClock();
         long whole = onTheClock / NANOSECONDS_SECOND % 60;
         long fraction = onTheClock % NANOSECONDS_SECOND;

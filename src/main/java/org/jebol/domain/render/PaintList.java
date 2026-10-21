@@ -220,7 +220,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
         Placement showing = new Placement(
                 where.across(), where.down(), where.wide(), where.high(), where.clip(),
-                multiplyOpacity(where.opacity(), Colour.readTheOpacityOfTuple(parts)));
+                multiplyOpacity(where.opacity(), Colour.opacityIn(parts)));
         return Optional.of(
                 new PaintInstruction.Fill(showing, Colour.ofTuple(parts).solid()));
     }

@@ -15,11 +15,11 @@ public final class PairActions {
         refuseWhatIsNotAPairOrAPlainNumber(right);
         if (operation.needsNonZeroDivisor()) {
             operation.requireNonZeroDivisor(firstHalf(right));
-            operation.requireNonZeroDivisor(readTheSecondHalfOf(right));
+            operation.requireNonZeroDivisor(secondHalf(right));
         }
         return PairValue.of(
                 combineHalf(firstHalf(left), firstHalf(right), operation),
-                combineHalf(readTheSecondHalfOf(left), readTheSecondHalfOf(right), operation));
+                combineHalf(secondHalf(left), secondHalf(right), operation));
     }
 
     private static void refuseWhatIsNotAPairOrAPlainNumber(Value side) {
@@ -42,7 +42,7 @@ public final class PairActions {
         return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
     }
 
-    public static double readTheSecondHalfOf(Value value) {
+    public static double secondHalf(Value value) {
         return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
     }
 }

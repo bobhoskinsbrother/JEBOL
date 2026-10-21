@@ -39,7 +39,7 @@ public final class DateArithmetic {
         refuseSpanDateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
         return span instanceof IntegerValue
-                ? moveByDays(sign * (long) readTheQuantityOf(span))
+                ? moveByDays(sign * (long) quantityFrom(span))
                 : moveByClock(sign * clockShiftNanoseconds(span));
     }
 
@@ -94,7 +94,7 @@ public final class DateArithmetic {
         return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 
-    private static double readTheQuantityOf(Value span) {
+    private static double quantityFrom(Value span) {
         return switch (span) {
             case IntegerValue(long magnitude) -> magnitude;
             case AnyDecimalValue fraction -> fraction.quantity();
@@ -105,7 +105,7 @@ public final class DateArithmetic {
     private static long clockShiftNanoseconds(Value span) {
         return span instanceof TimeValue(long nanoseconds)
                 ? nanoseconds
-                : (long) (readTheQuantityOf(span) * TimeValue.NANOSECONDS_PER_DAY);
+                : (long) (quantityFrom(span) * TimeValue.NANOSECONDS_PER_DAY);
     }
 
 }

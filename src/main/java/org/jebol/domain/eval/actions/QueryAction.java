@@ -108,7 +108,7 @@ public class QueryAction extends PortAction {
         if (!port.isAFile()) {
             throw ports.refuseWithNoActionFor(nativeName());
         }
-        return askFile(ports.readThePathOf(port), field, evaluator);
+        return askFile(ports.portPath(port), field, evaluator);
     }
 
     private Value askFile(String path, Value field, Evaluator evaluator) {

@@ -114,7 +114,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
     private HttpPort.Answer fetch(PortValue port, WhatWasAsked asked) {
         HttpPort.Request request = new HttpPort.Request(
                 readTheUrlOf(port),
-                readTheMethodOf(port),
+                httpMethod(port),
                 listTheHeaderNamesOf(port, asked),
                 listTheHeaderValuesOf(port, asked),
                 contentBytes(port),
@@ -252,7 +252,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return scheme + "://" + hostName + namedPort + (path.isEmpty() ? "/" : path);
     }
 
-    private String readTheMethodOf(PortValue port) {
+    private String httpMethod(PortValue port) {
         Value method = port.readFieldValue("spec").readFieldValue("method");
         return method instanceof AnyWordValue word ? word.spelling() : "GET";
     }

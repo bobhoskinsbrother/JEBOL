@@ -47,7 +47,7 @@ public class CreateAction extends PortAction {
             throw ports.refuseWithNoActionFor(nativeName());
         }
         granted.require(HostService.FILES);
-        String path = ports.readThePathOf(port);
+        String path = ports.portPath(port);
         ports.requireFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
         return ports.runThroughFileSystem(() -> {
             if (path.endsWith("/")) {

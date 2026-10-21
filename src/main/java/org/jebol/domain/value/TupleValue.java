@@ -285,12 +285,12 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             }
             int[] octets = new int[items.size()];
             for (int at = 0; at < items.size(); at++) {
-                octets[at] = readTheOctetOf(items.get(at), segments);
+                octets[at] = octetFrom(items.get(at), segments);
             }
             return TupleValue.of(octets);
         }
 
-        private int readTheOctetOf(Value item, Value whole) {
+        private int octetFrom(Value item, Value whole) {
             long number = switch (item) {
                 case IntegerValue wholeNumber -> wholeNumber.magnitude();
                 case CharacterValue letter -> letter.codepoint();

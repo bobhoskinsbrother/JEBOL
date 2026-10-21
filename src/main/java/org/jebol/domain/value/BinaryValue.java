@@ -470,7 +470,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                 case BlockValue block -> collectOctets(block);
                 case VectorValue vector -> BinaryValue.ofBytes(vector.readOctetsFromHere());
                 case StructValue struct -> BinaryValue.ofBytes(struct.octets());
-                case TupleValue segments -> BinaryValue.ofBytes(readTheOctetsOf(segments));
+                case TupleValue segments -> BinaryValue.ofBytes(octetsFromTuple(segments));
                 case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
                 case ImageValue picture -> BinaryValue.ofBytes(picture.copyEveryPixel());
                 case CharacterValue letter -> BinaryValue.ofBytes(
@@ -498,7 +498,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             return (int) magnitude;
         }
 
-        private byte[] readTheOctetsOf(TupleValue segments) {
+        private byte[] octetsFromTuple(TupleValue segments) {
             byte[] octets = new byte[segments.segmentCount()];
             for (int at = 0; at < octets.length; at++) {
                 octets[at] = (byte) segments.readOctetAt(at + 1);

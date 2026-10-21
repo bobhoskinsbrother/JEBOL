@@ -44,17 +44,17 @@ final class ChosenScreen {
                 .toArray(String[]::new);
     }
 
-    static ScreenPort aScreenFor(
+    static ScreenPort screenFor(
             String[] arguments, PrintStream out, boolean forAScript, FilePort files) {
         String asked = switchValue(arguments).orElseThrow();
         return switch (asked.toLowerCase(Locale.ROOT)) {
-            case WINDOW -> aWindow(out, files);
-            case PAGE -> aPage(out, forAScript, files);
+            case WINDOW -> windowScreen(out, files);
+            case PAGE -> pageScreen(out, forAScript, files);
             default -> refuseAsNotUnderstood(asked);
         };
     }
 
-    private static ScreenPort aWindow(PrintStream out, FilePort files) {
+    private static ScreenPort windowScreen(PrintStream out, FilePort files) {
         DesktopScreen screen = DesktopScreen.onThisMachine(files);
         out.println(screen.hasDisplay()
                 ? "Screen: a native window."
@@ -62,7 +62,7 @@ final class ChosenScreen {
         return screen;
     }
 
-    private static ScreenPort aPage(PrintStream out, boolean forAScript, FilePort files) {
+    private static ScreenPort pageScreen(PrintStream out, boolean forAScript, FilePort files) {
         try {
             WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, files);
             BrowserScreen screen = BrowserScreen.showTo(serving, files);

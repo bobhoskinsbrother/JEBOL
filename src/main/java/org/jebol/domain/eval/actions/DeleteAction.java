@@ -51,10 +51,10 @@ public class DeleteAction extends PortAction {
         }
         granted.require(HostService.FILES);
         if (port.schemeName().equals("dir")) {
-            ports.requireFilePolicy(ports.readThePathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
+            ports.requireFilePolicy(ports.portPath(port), evaluator, Set.of(PolicyAccess.WRITE));
         }
         try {
-            return evaluator.ports().files().delete(ports.readThePathOf(port)) ? port : LogicValue.of(false);
+            return evaluator.ports().files().delete(ports.portPath(port)) ? port : LogicValue.of(false);
         } catch (FilePort.Denied refused) {
             if (refused.isRefusedByHost()) {
                 throw refused.raise();

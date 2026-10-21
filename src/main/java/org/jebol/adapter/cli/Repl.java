@@ -186,7 +186,7 @@ public final class Repl {
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));
         if (ChosenScreen.isAskedFor(arguments)) {
-            ports = ports.withScreen(ChosenScreen.aScreenFor(
+            ports = ports.withScreen(ChosenScreen.screenFor(
                     arguments, out, anythingWasAsked, ports.carriedFiles()));
         }
         Interpreter interpreter = Interpreter.createOn(ports, new StreamOutput(out), bounds);

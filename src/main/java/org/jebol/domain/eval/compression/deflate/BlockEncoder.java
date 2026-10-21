@@ -175,7 +175,7 @@ final class BlockEncoder {
                     * (EXTRA_LENGTH_BITS[slot] + codes.readLitlenLength(FIRST_LENGTH_SYMBOL + slot));
         }
         for (int slot = 0; slot < EXTRA_OFFSET_BITS.length; slot++) {
-            cost += (long) offsetFrequencies[slot] * (EXTRA_OFFSET_BITS[slot] + codes.readTheOffsetLength(slot));
+            cost += (long) offsetFrequencies[slot] * (EXTRA_OFFSET_BITS[slot] + codes.offsetLength(slot));
         }
         return cost;
     }
@@ -247,7 +247,7 @@ final class BlockEncoder {
 
     void writeMatch(BitWriter out, HuffmanCodes with, int length, int offset, int offsetSlot) {
         out.add(fullLengthCodewords[length], fullLengthLengths[length]);
-        out.add(with.offsetCodewords[offsetSlot], with.readTheOffsetLength(offsetSlot));
+        out.add(with.offsetCodewords[offsetSlot], with.offsetLength(offsetSlot));
         out.add(offset - OFFSET_SLOT_BASE[offsetSlot], EXTRA_OFFSET_BITS[offsetSlot]);
     }
 
@@ -273,7 +273,7 @@ final class BlockEncoder {
                     * (codes.readLitlenLength(FIRST_LENGTH_SYMBOL + slot) + EXTRA_LENGTH_BITS[slot]);
         }
         for (int slot = 0; slot < EXTRA_OFFSET_BITS.length; slot++) {
-            cost += (long) offsetFrequencies[slot] * (codes.readTheOffsetLength(slot) + EXTRA_OFFSET_BITS[slot]);
+            cost += (long) offsetFrequencies[slot] * (codes.offsetLength(slot) + EXTRA_OFFSET_BITS[slot]);
         }
         return cost & 0xFFFFFFFFL;
     }

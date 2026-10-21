@@ -136,11 +136,11 @@ public final class Encodings {
 
     public byte[] debase(String text, int base, boolean urlSafe) {
         return switch (base) {
-            case 16 -> readTheOctetsOfHex(text);
-            case 2 -> readTheOctetsOfBits(text);
-            case 64 -> readTheOctetsOfBase64(text, urlSafe ? BASE64_URL : BASE64);
-            case 36 -> readTheOctetsOfBase36(withoutWhitespace(text));
-            case 85 -> readTheOctetsOfAscii85(text);
+            case 16 -> octetsFromHex(text);
+            case 2 -> octetsFromBits(text);
+            case 64 -> octetsFromBase64(text, urlSafe ? BASE64_URL : BASE64);
+            case 36 -> octetsFromBase36(withoutWhitespace(text));
+            case 85 -> octetsFromAscii85(text);
             default -> throw new IllegalArgumentException("base " + base);
         };
     }
@@ -157,7 +157,7 @@ public final class Encodings {
         return letter == ' ' || letter == '\n' || letter == '\r';
     }
 
-    private byte[] readTheOctetsOfHex(String text) {
+    private byte[] octetsFromHex(String text) {
         Octets decoded = new Octets();
         int nibblesSoFar = text.length() % 2;
         int accumulated = 0;
@@ -191,7 +191,7 @@ public final class Encodings {
         return text.toString();
     }
 
-    private byte[] readTheOctetsOfBits(String text) {
+    private byte[] octetsFromBits(String text) {
         Octets decoded = new Octets();
         int bitsSoFar = text.length() % 8;
         if (bitsSoFar != 0) {
@@ -242,7 +242,7 @@ public final class Encodings {
         return text.toString();
     }
 
-    private byte[] readTheOctetsOfBase64(String text, String alphabet) {
+    private byte[] octetsFromBase64(String text, String alphabet) {
         Octets decoded = new Octets();
         boolean urlSafe = BASE64_URL.equals(alphabet);
         int group = 0;
@@ -264,7 +264,7 @@ public final class Encodings {
             int value = alphabet.indexOf(letter);
             if (value < 0) {
                 if (!urlSafe && (letter == '-' || letter == '_')) {
-                    return readTheOctetsOfBase64(text, BASE64_URL);
+                    return octetsFromBase64(text, BASE64_URL);
                 }
                 if (isSkippedBetweenDigits(letter) || letter == '\t') {
                     continue;
@@ -321,7 +321,7 @@ public final class Encodings {
         return digits.reverse().toString();
     }
 
-    private byte[] readTheOctetsOfBase36(String text) {
+    private byte[] octetsFromBase36(String text) {
         if (text.isEmpty()) {
             return new byte[0];
         }
@@ -379,7 +379,7 @@ public final class Encodings {
         return text.toString();
     }
 
-    private byte[] readTheOctetsOfAscii85(String text) {
+    private byte[] octetsFromAscii85(String text) {
         Octets decoded = new Octets();
         long group = 0;
         int held = 0;

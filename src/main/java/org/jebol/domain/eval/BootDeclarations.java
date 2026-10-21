@@ -47,7 +47,7 @@ public final class BootDeclarations {
 
     private String errorCatalogueSource = "";
 
-    public List<Value> readTheRowsBelowTheHeaderOf(String source) {
+    public List<Value> rowsBelowHeader(String source) {
         try {
             List<Value> values =
                     Transcoder.transcode(source).values().orElseThrow().remaining();
@@ -78,11 +78,11 @@ public final class BootDeclarations {
     }
 
     public List<Value> operatorRows() {
-        return readTheRowsBelowTheHeaderOf(operatorTableSource);
+        return rowsBelowHeader(operatorTableSource);
     }
 
     public List<Value> errorCatalogueRows() {
-        return readTheRowsBelowTheHeaderOf(errorCatalogueSource);
+        return rowsBelowHeader(errorCatalogueSource);
     }
 
     public Optional<DatatypeSpec> findTheSpecOf(Datatype datatype) {
@@ -113,7 +113,7 @@ public final class BootDeclarations {
 
     private Map<String, DatatypeSpec> readTheSpecsFrom(String source) {
         Map<String, DatatypeSpec> read = new LinkedHashMap<>();
-        List<Value> values = readTheRowsBelowTheHeaderOf(source);
+        List<Value> values = rowsBelowHeader(source);
         for (int at = 0; at + 1 < values.size(); at++) {
             if (!(values.get(at) instanceof AnyWordValue declaring)
                     || !(values.get(at + 1) instanceof AnyBlockValue row)) {

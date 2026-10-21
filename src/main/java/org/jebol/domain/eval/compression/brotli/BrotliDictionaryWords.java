@@ -85,7 +85,7 @@ final class BrotliDictionaryWords {
         return unpack().bucketStarts()[bucket];
     }
 
-    static int readTheLengthAndFlagOf(int word) {
+    static int wordLengthWithFlag(int word) {
         return unpack().wordLengths()[word] & 0xFF;
     }
 
@@ -93,7 +93,7 @@ final class BrotliDictionaryWords {
         return unpack().wordTransforms()[word];
     }
 
-    static int readTheIndexOf(int word) {
+    static int wordIndex(int word) {
         return unpack().wordIndexes()[word];
     }
 

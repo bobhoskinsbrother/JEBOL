@@ -132,7 +132,7 @@ final class ChecksumPort {
         }).orElseGet(NoneValue::none);
     }
 
-    String readTheMethodOf(PortValue port) {
+    String checksumMethod(PortValue port) {
         if (!(port.readFieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
                 || !(context.ownSlotFor("method").value() instanceof AnyWordValue method)) {

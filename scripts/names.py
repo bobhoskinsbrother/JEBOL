@@ -40,6 +40,18 @@ KIND_QUESTIONS = {
 
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+")
 
+PRIMITIVES = {"int", "long", "double", "float", "boolean", "char", "byte",
+              "short", "void", "var"}
+
+
+def opensAVariable(name, stripped, at):
+    before = stripped[:at].rstrip()
+    previous = re.search(r"([A-Za-z_$][A-Za-z0-9_$]*|>)$", before)
+    if not previous:
+        return False
+    word = previous.group(1)
+    return word == ">" or word[0].isupper() or word in PRIMITIVES
+
 DECLARATION = re.compile(
     r"^\s*(?:(?:public|private|protected|static|final|default|abstract"
     r"|synchronized|sealed|non-sealed|native|strictfp|transient|volatile)\s+)*"
@@ -157,7 +169,8 @@ def find_offences():
             if is_constant(name):
                 constants[name].add((str(relative), line, column))
             elif name not in methods and name not in types:
-                variables[name].add((str(relative), line, column))
+                variables[name].add((str(relative), line, column,
+                                     opensAVariable(name, stripped, match.start())))
     return {"method": methods, "constant": constants, "type": types,
             "variable": variables}
 
@@ -166,6 +179,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--count", action="store_true")
     parser.add_argument("--sites", action="store_true")
+    parser.add_argument("--variables", action="store_true")
     arguments = parser.parse_args()
 
     offences = find_offences()
@@ -178,12 +192,14 @@ def main():
         return
 
     for kind, found in offences.items():
-        if arguments.sites and kind == "variable":
+        if arguments.sites and kind == "variable" and not arguments.variables:
             continue
         for name in sorted(found):
             sites = sorted(found[name])
             if arguments.sites:
                 for site in sites:
+                    if kind == "variable" and not site[3]:
+                        continue
                     print("%s\t%d\t%d\t%s\t%s" % (
                         site[0], site[1], site[2], name, suggestion_for(name)))
             else:
