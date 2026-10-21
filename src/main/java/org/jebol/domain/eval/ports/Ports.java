@@ -2,6 +2,7 @@ package org.jebol.domain.eval.ports;
 
 import org.jebol.domain.eval.*;
 import org.jebol.domain.host.ClipboardPort;
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
@@ -66,7 +67,7 @@ public final class Ports {
 
     private final GrantedServices granted;
 
-    private final ChecksumPort checksumPort = new ChecksumPort(new Encodings());
+    private final ChecksumPort checksumPort;
 
     private final CryptPort cryptPort = new CryptPort();
 
@@ -78,8 +79,9 @@ public final class Ports {
 
     private SequencedSet<String> consoleModes = new LinkedHashSet<>();
 
-    public Ports(GrantedServices granted) {
+    public Ports(GrantedServices granted, DigestPort digests) {
         this.granted = granted;
+        this.checksumPort = new ChecksumPort(new Encodings(digests));
     }
 
     public CryptPort cryptPort() {

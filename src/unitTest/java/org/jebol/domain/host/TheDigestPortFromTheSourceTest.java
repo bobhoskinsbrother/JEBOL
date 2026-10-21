@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TheDigestPortFromTheSourceTest {
 
-    private static final DigestPort THE_PORT = DigestPorts.chooseTheOneForThisBuild();
+    private static final DigestPort THE_PORT = new JvmDigests();
 
     private static byte[] readTheBytesOf(String text) {
         return text.getBytes(StandardCharsets.UTF_8);

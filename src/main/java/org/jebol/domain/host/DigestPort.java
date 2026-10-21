@@ -19,6 +19,35 @@ public interface DigestPort {
         byte[] soFar();
     }
 
+    static DigestPort none() {
+        return new DigestPort() {
+
+            @Override
+            public Set<String> methods() {
+                throw refuse();
+            }
+
+            @Override
+            public RunningDigest start(String method) {
+                throw refuse();
+            }
+
+            @Override
+            public byte[] digestOf(String method, byte[] octets) {
+                throw refuse();
+            }
+
+            @Override
+            public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
+                throw refuse();
+            }
+
+            private Refused refuse() {
+                return new Refused("no-port", "this interpreter was given no way to hash");
+            }
+        };
+    }
+
     final class Refused extends RuntimeException {
 
         private static final long serialVersionUID = 1L;

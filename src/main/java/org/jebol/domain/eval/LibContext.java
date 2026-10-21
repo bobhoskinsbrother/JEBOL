@@ -4,6 +4,7 @@ import org.jebol.domain.eval.actions.*;
 import org.jebol.domain.eval.natives.*;
 
 import org.jebol.domain.eval.ports.Ports;
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
@@ -19,14 +20,16 @@ public final class LibContext {
     private final GrantedServices grantedServices;
     private final Ports ports;
     private final Encodings encodings;
+    private final DigestPort digests;
     private final LocalFileSeparator localFileSeparator;
 
     public LibContext(BootDeclarations declarations, GrantedServices grantedServices, Ports ports,
-            Encodings encodings, LocalFileSeparator localFileSeparator) {
+            Encodings encodings, DigestPort digests, LocalFileSeparator localFileSeparator) {
         this.declarations = declarations;
         this.grantedServices = grantedServices;
         this.ports = ports;
         this.encodings = encodings;
+        this.digests = digests;
         this.localFileSeparator = localFileSeparator;
         registerConstants();
         registerDatatypesAndTypesets();
@@ -93,7 +96,7 @@ public final class LibContext {
         registerAction(new ComplementAction());
         registerAction(new AbsoluteAction());
         registerAction(new RoundAction());
-        registerAction(new RandomAction(encodings));
+        registerAction(new RandomAction(encodings, digests));
         registerAction(new IsOddAction());
         registerAction(new IsEvenAction());
         registerAction(new HeadAction(grantedServices));
@@ -277,7 +280,7 @@ public final class LibContext {
         registerNative(new IsAsciiNative());
         registerNative(new IsLatin1Native());
         registerNative(new StatsNative());
-        registerNative(new DoCodecNative());
+        registerNative(new DoCodecNative(digests));
         registerNative(new SetSchemeNative(grantedServices));
         registerNative(new LoadExtensionNative());
         registerNative(new DoCommandsNative());

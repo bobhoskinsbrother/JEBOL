@@ -3,7 +3,7 @@ package org.jebol.adapter.web;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.jebol.application.TheCarriedFont;
-import org.jebol.domain.host.DigestPorts;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.TextExtent;
 import org.jebol.domain.render.TextRun;
@@ -138,12 +138,12 @@ class TheBrowserAdaptersEndToEndTest {
     }
 
     private static String writeTheHexOf(String text) {
-        return encodeAsHex(DigestPorts.chooseTheOneForThisBuild()
+        return encodeAsHex(new JvmDigests()
                 .digestOf("sha1", text.getBytes(StandardCharsets.UTF_8)));
     }
 
     private static String writeTheKeyedHexOf(String text) {
-        return encodeAsHex(DigestPorts.chooseTheOneForThisBuild().digestWithAKey(
+        return encodeAsHex(new JvmDigests().digestWithAKey(
                 "sha1", text.getBytes(StandardCharsets.UTF_8),
                 "key".getBytes(StandardCharsets.UTF_8)));
     }

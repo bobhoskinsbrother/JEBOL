@@ -19,6 +19,7 @@ class HostPortsTest {
     private static final List<Function<HostPorts, Object>> EVERY_PORT = List.of(
             HostPorts::files,
             HostPorts::carriedFiles,
+            HostPorts::digests,
             HostPorts::environment,
             HostPorts::images,
             HostPorts::console,
@@ -35,8 +36,8 @@ class HostPortsTest {
             HostPorts::tasks);
 
     private static final List<String> EVERY_PORT_NAME = List.of(
-            "files", "carriedFiles", "environment", "images", "console", "windows", "screen",
-            "pause", "processes", "machine", "network", "certificateAuthority", "http",
+            "files", "carriedFiles", "digests", "environment", "images", "console", "windows",
+            "screen", "pause", "processes", "machine", "network", "certificateAuthority", "http",
             "clipboard", "midiDevices", "tasks");
 
     @Test
@@ -49,6 +50,9 @@ class HostPortsTest {
                         refused -> assertThat(refused.errorId()).isEqualTo("no-port"));
         assertThatThrownBy(() -> none.carriedFiles().readBytes("/anything"))
                 .isInstanceOfSatisfying(FilePort.Denied.class,
+                        refused -> assertThat(refused.errorId()).isEqualTo("no-port"));
+        assertThatThrownBy(() -> none.digests().methods())
+                .isInstanceOfSatisfying(DigestPort.Refused.class,
                         refused -> assertThat(refused.errorId()).isEqualTo("no-port"));
         assertThatThrownBy(() -> none.environment().valueOf("anything"))
                 .isInstanceOfSatisfying(FilePort.Denied.class,
@@ -99,6 +103,7 @@ class HostPortsTest {
         HostPorts none = HostPorts.none();
         FilePort files = FilePort.none();
         FilePort carriedFiles = FilePort.none();
+        DigestPort digests = DigestPort.none();
         EnvironmentPort environment = EnvironmentPort.none();
         ImagePort images = ImagePort.none();
         ConsolePort console = ConsolePort.none();
@@ -121,6 +126,7 @@ class HostPortsTest {
                 new Replacement("files", files, none.withFiles(files)),
                 new Replacement("carriedFiles", carriedFiles,
                         none.withCarriedFiles(carriedFiles)),
+                new Replacement("digests", digests, none.withDigests(digests)),
                 new Replacement("environment", environment, none.withEnvironment(environment)),
                 new Replacement("images", images, none.withImages(images)),
                 new Replacement("console", console, none.withConsole(console)),
@@ -165,6 +171,9 @@ class HostPortsTest {
         assertThatThrownBy(() -> HostPorts.none().withCarriedFiles(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("carried files");
+        assertThatThrownBy(() -> HostPorts.none().withDigests(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("digests");
     }
 
     private static TextRun aRunOfText() {

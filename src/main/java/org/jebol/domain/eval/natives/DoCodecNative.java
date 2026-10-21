@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Codecs;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.*;
 
 import java.util.List;
@@ -11,7 +12,11 @@ public class DoCodecNative extends DefaultNative {
 
     private static final String A_CODEC = "codec";
 
-    private final Codecs codecs = new Codecs();
+    private final Codecs codecs;
+
+    public DoCodecNative(DigestPort digests) {
+        this.codecs = new Codecs(digests);
+    }
 
     @Override
     public String nativeName() {

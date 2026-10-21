@@ -11,7 +11,6 @@ import org.jebol.domain.eval.hashing.RipeMd160;
 import org.jebol.domain.eval.hashing.XxHash;
 import org.jebol.domain.eval.hashing.XxHash3;
 import org.jebol.domain.host.DigestPort;
-import org.jebol.domain.host.DigestPorts;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
@@ -573,10 +572,6 @@ public final class Encodings {
     private final Lzw lzw = new Lzw();
 
     private final DigestPort port;
-
-    public Encodings() {
-        this(DigestPorts.chooseTheOneForThisBuild());
-    }
 
     public Encodings(DigestPort port) {
         this.port = port;

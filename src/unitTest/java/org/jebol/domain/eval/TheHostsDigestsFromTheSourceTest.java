@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.DigestPort;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.Raised;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ class TheHostsDigestsFromTheSourceTest {
     @Test
     @DisplayName("the JVM computes Rebol's whole digest catalogue")
     void computesTheWholeCatalogueOnTheJvm() {
-        Encodings encodings = new Encodings();
+        Encodings encodings = new Encodings(new JvmDigests());
 
         assertThat(encodings.listTheChecksumMethods())
                 .contains("md5", "sha1", "sha256", "ripemd160", "xxh3", "crc32");

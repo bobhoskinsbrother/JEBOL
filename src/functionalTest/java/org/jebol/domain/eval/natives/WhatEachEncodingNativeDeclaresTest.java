@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,7 @@ class WhatEachEncodingNativeDeclaresTest {
     }
 
     Stream<Arguments> eachNameAndItsRefinements() {
-        Encodings encodings = new Encodings();
+        Encodings encodings = new Encodings(new JvmDigests());
         return Stream.of(
                 Arguments.of(new EnhexNative(encodings), "enhex", Set.of("escape", "except", "uri")),
                 Arguments.of(new DehexNative(encodings), "dehex", Set.of("escape", "uri")),

@@ -5,6 +5,8 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.actions.AddAction;
+import org.jebol.domain.host.DigestPort;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.Catalogue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DefaultNative;
@@ -69,9 +71,15 @@ class EveryBuiltInNativeIsRegisteredTest {
         built.setAccessible(true);
         Object[] collaborators = new Object[built.getParameterCount()];
         for (int at = 0; at < collaborators.length; at++) {
-            collaborators[at] = builtFromItsSmallestConstructor(built.getParameterTypes()[at]);
+            collaborators[at] = collaboratorFor(built.getParameterTypes()[at]);
         }
         return built.newInstance(collaborators);
+    }
+
+    private Object collaboratorFor(Class<?> wanted) throws ReflectiveOperationException {
+        return wanted == DigestPort.class
+                ? new JvmDigests()
+                : builtFromItsSmallestConstructor(wanted);
     }
 
     private boolean isAFamilyOfOnePerDatatype(Class<?> definition) {

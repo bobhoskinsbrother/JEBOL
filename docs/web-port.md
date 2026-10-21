@@ -193,8 +193,8 @@ change is awaited into it, so a reload finds what a script wrote; a browser
 without OPFS falls back to memory. Decision 33.
 
 **Crypto is the browser's own where it can be, and refused where it cannot.**
-`DigestPort` (`org.jebol.domain.host`) is the port; the web build substitutes
-`WebDigestPorts` over `crypto.subtle`, so SHA-1, SHA-256, SHA-384, SHA-512 and
+`DigestPort` (`org.jebol.domain.host`) is the port; the worker supplies
+`BrowserDigests` over `crypto.subtle`, so SHA-1, SHA-256, SHA-384, SHA-512 and
 HMAC over them are the browser's answers and everything else -- `md5`,
 `sha224`, the SHA-3 sizes -- is absent from the catalogue and refused by
 name. JEBOL's own Java digests work everywhere, and so do its ciphers. The

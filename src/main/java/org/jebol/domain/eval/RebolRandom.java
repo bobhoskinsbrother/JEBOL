@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 
@@ -15,8 +16,13 @@ public final class RebolRandom extends RandomDrawing {
 
     private final long[] state = new long[LONG_LAG];
     private final long[] drawn = new long[QUALITY];
+    private final DigestPort digests;
     private int cursor = -1;
     private boolean everSeeded;
+
+    public RebolRandom(DigestPort digests) {
+        this.digests = digests;
+    }
 
     private long modDiff(long left, long right) {
         return (left - right) & (MODULUS - 1);
@@ -126,6 +132,6 @@ public final class RebolRandom extends RandomDrawing {
     }
 
     public RandomDrawing secured() {
-        return new SecureDrawing(this);
+        return new SecureDrawing(this, digests);
     }
 }

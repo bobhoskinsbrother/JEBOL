@@ -5,6 +5,7 @@ import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.eval.actions.RandomAction;
@@ -97,7 +98,7 @@ class WhatEachRemainingNativeDeclaresTest {
                 Arguments.of(new DoCallbackNative(), "do-callback", Set.of()),
                 Arguments.of(new DoCommandsNative(), "do-commands", Set.of()),
                 Arguments.of(new AccessOsNative(granted), "access-os", Set.of("set")),
-                Arguments.of(new RandomAction(new Encodings()), "random",
+                Arguments.of(new RandomAction(new Encodings(new JvmDigests()), new JvmDigests()), "random",
                         Set.of("seed", "secure", "only")));
     }
 
@@ -140,7 +141,7 @@ class WhatEachRemainingNativeDeclaresTest {
         void commentAndRandomNameNoType() {
             assertThat(new CommentNative().parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("value");
-            assertThat(new RandomAction(new Encodings()).parametersAsWritten()).extracting(Parameter::name)
+            assertThat(new RandomAction(new Encodings(new JvmDigests()), new JvmDigests()).parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("value");
         }
 

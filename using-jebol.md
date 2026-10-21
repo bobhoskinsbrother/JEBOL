@@ -154,7 +154,7 @@ Interpreter interpreter = Interpreter.createOn(ports, OutputPort.discard(),
 Bounds.standard().grant(HostService.FILES));
 ```
 
-Ports are supplied once, at construction, and never change afterwards. `Interpreter.standardPorts()` is the JVM's own machine, a pause that really waits, and the build's own carried files, which are where the interpreter's library and font come from; `HostPorts.none()` is every port refusing, carried files included, and an interpreter whose carried files are refused cannot be built at all. A port the host does not supply is that port's refusing default, and the refusal a script meets names what was not supplied.
+Ports are supplied once, at construction, and never change afterwards. `Interpreter.standardPorts()` is the JVM's own machine, a pause that really waits, the build's own carried files, which are where the interpreter's library and font come from, and the JVM's own digests; `HostPorts.none()` is every port refusing, carried files included, and an interpreter whose carried files are refused cannot be built at all. A port the host does not supply is that port's refusing default, and the refusal a script meets names what was not supplied.
 
 A host can explicitly mark capabilities as unavailable using lacking(...). Scripts requesting unavailable services receive a not_present error rather than not_granted.
 

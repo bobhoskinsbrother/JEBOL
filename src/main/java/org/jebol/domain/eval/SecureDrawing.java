@@ -1,7 +1,6 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.DigestPort;
-import org.jebol.domain.host.DigestPorts;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 
@@ -17,9 +16,11 @@ final class SecureDrawing extends RandomDrawing {
     private static final long THE_LARGEST_UNSIGNED = -1L;
 
     private final RebolRandom generator;
+    private final DigestPort digests;
 
-    SecureDrawing(RebolRandom generator) {
+    SecureDrawing(RebolRandom generator, DigestPort digests) {
         this.generator = generator;
+        this.digests = digests;
     }
 
     @Override
@@ -36,9 +37,9 @@ final class SecureDrawing extends RandomDrawing {
                 .order(ByteOrder.LITTLE_ENDIAN).getLong();
     }
 
-    private static byte[] hashWithSha1(byte[] octets) {
+    private byte[] hashWithSha1(byte[] octets) {
         try {
-            return DigestPorts.chooseTheOneForThisBuild().digestOf("sha1", octets);
+            return digests.digestOf("sha1", octets);
         } catch (DigestPort.Refused refused) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, "sha1");
         }

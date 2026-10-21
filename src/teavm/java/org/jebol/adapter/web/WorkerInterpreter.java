@@ -27,6 +27,7 @@ public class WorkerInterpreter {
         console = new WebConsole(thePage::takeWhatThePagePosts);
         files = new WebFiles(BrowserStore.openForThePage());
         HostPorts ports = Interpreter.standardPorts()
+                .withDigests(new BrowserDigests())
                 .withConsole(console)
                 .withFiles(files)
                 .withHttp(new WebHttp());

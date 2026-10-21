@@ -1378,10 +1378,11 @@ is refused rather than read in the open.
 ## 34. The browser's cryptography comes from WebCrypto, and its refusals are errors
 
 **Built: digests and HMACs come from WebCrypto, the rest is refused.**
-`DigestPort` (`org.jebol.domain.host`) is the port, and `DigestPorts`
-answers the one this build computes with: `JvmDigests` over MessageDigest and
-Mac, which has Rebol's whole catalogue, and, in the web build,
-`WebDigestPorts` over `crypto.subtle`, substituted whole. WebCrypto's
+`DigestPort` (`org.jebol.domain.host`) is the port, and the host supplies the
+one this build computes with as a port on `HostPorts`: `JvmDigests` over
+MessageDigest and Mac, which has Rebol's whole catalogue, and, in the web
+build, `BrowserDigests` supplied by the worker over `crypto.subtle`.
+WebCrypto's
 catalogue is fixed -- SHA-1, the SHA-256 family, and HMAC over them -- so a
 browser's digest methods are those four and the rest (`md5`, `sha224`, the
 SHA-3 sizes) are not in `system/catalog/checksums` there and are refused

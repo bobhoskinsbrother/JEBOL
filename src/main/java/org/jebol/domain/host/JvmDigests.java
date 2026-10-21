@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Set;
 
-final class JvmDigests implements DigestPort {
+public final class JvmDigests implements DigestPort {
 
     private static final Map<String, String> ALGORITHMS = Map.ofEntries(
             Map.entry("md5", "MD5"),

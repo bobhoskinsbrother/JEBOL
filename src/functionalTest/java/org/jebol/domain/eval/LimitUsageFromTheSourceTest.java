@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.application.Interpreter;
 import org.jebol.application.JavaMachine;
 import org.jebol.domain.eval.natives.LimitUsageNative;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -59,7 +60,8 @@ class LimitUsageFromTheSourceTest {
         }
 
         private static Evaluator makeAnEvaluator() {
-            Boot boot = Boot.makeStandard(new JavaMachine(), BootSources.none(), Set.of());
+            Boot boot = Boot.makeStandard(
+                    new JavaMachine(), new JvmDigests(), BootSources.none(), Set.of());
             return new Evaluator(boot.start().lib(), line -> { });
         }
 

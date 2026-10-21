@@ -54,7 +54,8 @@ public final class Interpreter {
         Set<HostService> duringBoot = EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringBoot.addAll(bounds.grantedServices());
         RebolFiles rebolFiles = new RebolFiles(this.ports.carriedFiles());
-        Boot boot = Boot.makeStandard(this.ports.machine(), rebolFiles, duringBoot);
+        Boot boot = Boot.makeStandard(
+                this.ports.machine(), this.ports.digests(), rebolFiles, duringBoot);
         this.bounds = bounds;
         SystemObject system = boot.start();
         this.systemContext = system.lib();
@@ -113,6 +114,7 @@ public final class Interpreter {
     public static HostPorts standardPorts() {
         return HostPorts.none()
                 .withCarriedFiles(new ClasspathFiles())
+                .withDigests(new JvmDigests())
                 .withMachine(new JavaMachine())
                 .withPause(new ThreadPause());
     }

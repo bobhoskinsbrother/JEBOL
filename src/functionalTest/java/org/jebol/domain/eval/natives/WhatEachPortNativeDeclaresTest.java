@@ -5,6 +5,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.EnvironmentPort;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.LocalFileSeparator;
@@ -84,7 +85,7 @@ class WhatEachPortNativeDeclaresTest {
 
     Stream<Arguments> eachNameAndItsRefinements() {
         GrantedServices granted = new GrantedServices();
-        Ports ports = new Ports(granted);
+        Ports ports = new Ports(granted, new JvmDigests());
         return Stream.of(
                 Arguments.of(new ReadAction(granted, ports), "read",
                         Set.of("part", "seek", "string", "binary", "lines", "all")),

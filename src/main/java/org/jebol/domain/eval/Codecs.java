@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
@@ -8,7 +9,11 @@ import java.util.List;
 
 public final class Codecs {
 
-    private final Encodings encodings = new Encodings();
+    private final Encodings encodings;
+
+    public Codecs(DigestPort digests) {
+        this.encodings = new Encodings(digests);
+    }
 
     public enum Action { IDENTIFY, DECODE, ENCODE }
 

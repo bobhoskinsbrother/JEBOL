@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +50,7 @@ class WhatEachInterpreterStateNativeDeclaresTest {
                 Arguments.of(new WaitNative(), "wait", Set.of("all", "only")),
                 Arguments.of(new ReadKeyNative(granted), "read-key", Set.of()),
                 Arguments.of(new HaltNative(), "halt", Set.of()),
-                Arguments.of(new DoCodecNative(), "do-codec", Set.of()),
+                Arguments.of(new DoCodecNative(new JvmDigests()), "do-codec", Set.of()),
                 Arguments.of(new ReleaseNative(), "release", Set.of()),
                 Arguments.of(new MapEventNative(), "map-event", Set.of()),
                 Arguments.of(new WakeUpNative(), "wake-up", Set.of()),
