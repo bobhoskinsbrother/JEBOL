@@ -246,7 +246,7 @@ class TextLinesFromTheSourceTest {
         @Test
         @DisplayName("a point on the second wrapped line finds the caret there")
         void findsTheWrappedLineFromAPoint() {
-            TextLines.RunAndCharacter found = wrapIn(35, makeAPlainRun("abc de")).findTheCaretNearest(7, 13, noInset, aBox);
+            TextLines.RunAndCharacter found = wrapIn(35, makeAPlainRun("abc de")).findCaretNearest(7, 13, noInset, aBox);
 
             assertThat(found.character()).isEqualTo(5);
         }
@@ -275,7 +275,7 @@ class TextLinesFromTheSourceTest {
         void findsTheNearestBoundary(double across, double down, int run, int character) {
             TextLines lines = linesOf(makeAPlainRun("abcd\nab"), makeAPlainRun("xy"));
 
-            TextLines.RunAndCharacter found = lines.findTheCaretNearest(across, down, noInset, aBox);
+            TextLines.RunAndCharacter found = lines.findCaretNearest(across, down, noInset, aBox);
 
             assertThat(found.run()).isEqualTo(run);
             assertThat(found.character()).isEqualTo(character);
@@ -284,7 +284,7 @@ class TextLinesFromTheSourceTest {
         @Test
         @DisplayName("with no runs there is no caret")
         void findsNoCaretWithoutRuns() {
-            assertThat(linesOf().findTheCaretNearest(5, 5, noInset, aBox).isNowhere()).isTrue();
+            assertThat(linesOf().findCaretNearest(5, 5, noInset, aBox).isNowhere()).isTrue();
         }
     }
 }

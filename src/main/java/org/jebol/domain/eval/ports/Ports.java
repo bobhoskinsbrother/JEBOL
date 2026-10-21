@@ -148,7 +148,7 @@ public final class Ports {
             return already;
         }
         Value built = evaluator.applyFunction(
-                context.findTheSystemFunctionNamed("make-port*"), List.of(target));
+                context.findSystemFunctionNamed("make-port*"), List.of(target));
         if (!(built instanceof PortValue port)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, "nothing knows how to open that");
         }
@@ -428,7 +428,7 @@ public final class Ports {
 
     private Value writeToTheConsole(PortValue port, Value data, Evaluator evaluator) {
         granted.require(HostService.CONSOLE);
-        evaluator.findTheOutput().write(Molder.form(data));
+        evaluator.findOutput().write(Molder.form(data));
         return port;
     }
 
@@ -641,7 +641,7 @@ public final class Ports {
     }
 
     private void bindTheDatagramPort(PortValue port, Evaluator evaluator) {
-        int number = findTheHostToSendTo(port).isEmpty()
+        int number = findHostToSendTo(port).isEmpty()
                 ? readThePortNumberOf(port)
                 : WHATEVER_NUMBER_THE_MACHINE_HAS_FREE;
         runThroughTheNetwork(() -> {
@@ -651,7 +651,7 @@ public final class Ports {
         });
     }
 
-    private String findTheHostToSendTo(PortValue port) {
+    private String findHostToSendTo(PortValue port) {
         if (port.readFieldValue("spec") instanceof ObjectValue(Context context)
                 && context.holds("host")
                 && context.ownSlotFor("host").value() instanceof AnyStringValue host) {
@@ -688,7 +688,7 @@ public final class Ports {
         };
         NetworkPort.Datagrams bound = findTheDatagramsBehind(port);
         return runThroughTheNetwork(() -> {
-            bound.sendTo(findTheHostToSendTo(port), readThePortNumberOf(port), bytes);
+            bound.sendTo(findHostToSendTo(port), readThePortNumberOf(port), bytes);
             port.setField("data", NoneValue.none());
             queueWhatHappenedTo(port, "wrote", evaluator);
             return port;

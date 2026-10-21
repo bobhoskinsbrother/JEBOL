@@ -87,12 +87,12 @@ final class RichText {
 
     private TextCaret readCaretIn(ObjectValue fields, Line line) {
         return new TextCaret(
-                findThePlaceNamedBy(readField(fields, "caret"), line),
-                findThePlaceNamedBy(readField(fields, "start"), line),
-                findThePlaceNamedBy(readField(fields, "end"), line));
+                findPlaceNamedBy(readField(fields, "caret"), line),
+                findPlaceNamedBy(readField(fields, "start"), line),
+                findPlaceNamedBy(readField(fields, "end"), line));
     }
 
-    private TextLines.RunAndCharacter findThePlaceNamedBy(Optional<Value> field, Line line) {
+    private TextLines.RunAndCharacter findPlaceNamedBy(Optional<Value> field, Line line) {
         if (field.isEmpty() || !(field.get() instanceof AnyBlockValue pair) || pair.remaining().size() < 2) {
             return TextLines.RunAndCharacter.NOWHERE;
         }

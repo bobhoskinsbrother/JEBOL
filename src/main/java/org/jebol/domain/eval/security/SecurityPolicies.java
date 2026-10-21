@@ -33,31 +33,31 @@ public final class SecurityPolicies {
         this.fileNamesFoldCase = fileNamesFoldCase;
     }
 
-    public PolicyLevel findTheLevelFor(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
-        int written = findTheTupleFor(kind, subject).readOctetAt(access.ordinal() + 1);
+    public PolicyLevel findLevelFor(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
+        int written = findTupleFor(kind, subject).readOctetAt(access.ordinal() + 1);
         PolicyLevel[] levels = PolicyLevel.values();
         return written < levels.length ? levels[written] : PolicyLevel.ALLOW;
     }
 
-    private TupleValue findTheTupleFor(PolicyClass kind, Optional<Value> subject) {
-        Value held = findTheFieldFor(kind);
+    private TupleValue findTupleFor(PolicyClass kind, Optional<Value> subject) {
+        Value held = findFieldFor(kind);
         if (held instanceof TupleValue tuple) {
             return tuple;
         }
         if (!(held instanceof AnyBlockValue entries)) {
             throw refuseAsMalformed(held);
         }
-        return findTheTupleAmong(entries.remaining(), kind, subject);
+        return findTupleAmong(entries.remaining(), kind, subject);
     }
 
-    private Value findTheFieldFor(PolicyClass kind) {
+    private Value findFieldFor(PolicyClass kind) {
         if (policies instanceof ObjectValue(Context fields) && fields.hasItsOwnSlotFor(kind.word())) {
             return fields.ownSlotFor(kind.word()).value();
         }
         throw refuseAsMalformed(WordValue.of(kind.word()));
     }
 
-    private TupleValue findTheTupleAmong(List<Value> entries, PolicyClass kind, Optional<Value> subject) {
+    private TupleValue findTupleAmong(List<Value> entries, PolicyClass kind, Optional<Value> subject) {
         Optional<TupleValue> theDefault = Optional.empty();
         for (int at = 0; at < entries.size(); at += 2) {
             Value key = entries.get(at);

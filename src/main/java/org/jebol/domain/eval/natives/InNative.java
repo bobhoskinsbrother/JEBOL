@@ -27,7 +27,7 @@ public class InNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             if (arguments.getFirst() instanceof AnyBlockValue searched
                     && !(searched instanceof PathValue)) {
-                return findTheFirstHolderIn(searched, arguments.get(1), evaluator, context);
+                return findFirstHolderIn(searched, arguments.get(1), evaluator, context);
             }
             Context frame = findTheContextOf(arguments.getFirst());
             if (arguments.get(1) instanceof AnyBlockValue body) {
@@ -58,7 +58,7 @@ public class InNative extends DefaultNative {
         return fields;
     }
 
-    private Value findTheFirstHolderIn(
+    private Value findFirstHolderIn(
             AnyBlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
         if (!(wanted instanceof AnyWordValue word)) {

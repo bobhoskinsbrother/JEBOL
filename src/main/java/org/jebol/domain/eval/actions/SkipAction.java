@@ -34,10 +34,10 @@ public class SkipAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> {
             Value offset = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue port when port.isAFile() -> findTheFileBehind(port, evaluator)
+                case PortValue port when port.isAFile() -> findFileBehind(port, evaluator)
                         .moveBy((long) Arithmetic.asMagnitude(offset));
                 case RebolSeries series -> series.skip(
-                        series.findThePositionNamedBy(offset, COUNTING_FROM_NOUGHT));
+                        series.findPositionNamedBy(offset, COUNTING_FROM_NOUGHT));
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };

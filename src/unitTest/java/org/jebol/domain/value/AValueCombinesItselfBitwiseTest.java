@@ -28,7 +28,7 @@ class AValueCombinesItselfBitwiseTest {
             A_WHOLE_NUMBER, A_TRUTH, A_POINT, A_TUPLE, A_CHARACTER,
             SOME_OCTETS, A_BITSET, A_TYPESET, A_DATATYPE, A_VECTOR);
 
-    private static final BitwiseOperation AND = BitwiseOperation.findTheOneCalled("and");
+    private static final BitwiseOperation AND = BitwiseOperation.findOneCalled("and");
 
     private static void takes(Value left, Value right) {
         assertThat(left.combineBitwise(right, AND))

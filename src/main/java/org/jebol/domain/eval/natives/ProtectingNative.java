@@ -132,12 +132,12 @@ public abstract class ProtectingNative extends DefaultNative {
                     object, protectedNow, deeply, onlyTheWords, reached);
             case AnyWordValue word -> {
                 if (protectedNow) {
-                    word.findTheBoundSlot().protectFromAssignment();
+                    word.findBoundSlot().protectFromAssignment();
                 } else {
-                    word.findTheBoundSlot().allowAssignment();
+                    word.findBoundSlot().allowAssignment();
                 }
-                if (deeply && carriesProtection(word.findTheBoundSlot().value())) {
-                    setProtection(word.findTheBoundSlot().value(), protectedNow, true, onlyTheWords, reached);
+                if (deeply && carriesProtection(word.findBoundSlot().value())) {
+                    setProtection(word.findBoundSlot().value(), protectedNow, true, onlyTheWords, reached);
                 }
             }
             case BitsetValue members -> members.protectFromChange(protectedNow);

@@ -258,7 +258,7 @@ public sealed interface Value permits
         return false;
     }
 
-    default Datatype findTheDatatypeItStandsFor() {
+    default Datatype findDatatypeItStandsFor() {
         return datatype();
     }
 }

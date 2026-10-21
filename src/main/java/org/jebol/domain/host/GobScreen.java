@@ -77,7 +77,7 @@ public abstract class GobScreen implements ScreenPort {
             closeWindowFor(gob);
             return;
         }
-        findTheWindowHolding(gob).filter(this::hasAWindow).ifPresent(this::repaintWindowFor);
+        findWindowHolding(gob).filter(this::hasAWindow).ifPresent(this::repaintWindowFor);
     }
 
     protected abstract Denied refuseWithNoService();
@@ -113,7 +113,7 @@ public abstract class GobScreen implements ScreenPort {
         openWindowFor(gob);
     }
 
-    private Optional<GobValue> findTheWindowHolding(GobValue gob) {
+    private Optional<GobValue> findWindowHolding(GobValue gob) {
         GobStorage outermost = gob.storage();
         while (outermost.parent() != null && outermost.parent() != root.storage()) {
             outermost = outermost.parent();

@@ -217,7 +217,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     public PairValue withHalfWritten(Value selector, Value written) {
-        int half = findTheHalfNamedBy(selector);
+        int half = findHalfNamedBy(selector);
         double replacement = switch (written) {
             case IntegerValue whole -> whole.magnitude();
             case AnyDecimalValue quantity -> quantity.quantity();
@@ -226,7 +226,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
         return withHalfAt(half, replacement);
     }
 
-    private int findTheHalfNamedBy(Value selector) {
+    private int findHalfNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue name when name.canonical().equals(FIRST_HALF) -> 1;
             case AnyWordValue name when name.canonical().equals(SECOND_HALF) -> 2;

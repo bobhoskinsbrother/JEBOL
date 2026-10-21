@@ -21,7 +21,7 @@ public class ModNative extends ArithmeticNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> Arithmetic.findTheRest(
+        return (arguments, evaluator, context, refinements) -> Arithmetic.findRest(
                 arguments.get(0), arguments.get(1),
                 Arithmetic.Division.SIGN_FOLLOWS_THE_DIVIDEND);
     }

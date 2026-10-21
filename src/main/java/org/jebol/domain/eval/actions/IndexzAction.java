@@ -43,7 +43,7 @@ public class IndexzAction extends SeriesOrFileAction {
             case ImageValue picture when refinements.contains("xy") ->
                     picture.findWhereItStands(COUNTING_FROM_NOUGHT);
             case PortValue port when port.isAFile() ->
-                    IntegerValue.of(findTheFileBehind(port, evaluator).position());
+                    IntegerValue.of(findFileBehind(port, evaluator).position());
             case RebolSeries series -> IntegerValue.of(series.index() - THE_HEAD_IS_ONE);
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };

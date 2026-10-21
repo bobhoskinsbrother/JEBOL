@@ -50,7 +50,7 @@ public class BinaryNative extends DefaultNative {
                 writeThroughTheDialect(held, readTheCodesWrittenIn(
                         readTheArgumentOf("write", 0, arguments, refinements).orElseThrow()), lookedUp);
                 if (arguments.getFirst() instanceof BinaryValue given) {
-                    layBackInto(given, findTheCursorNamed(held, "buffer").head());
+                    layBackInto(given, findCursorNamed(held, "buffer").head());
                 }
             }
             if (refinements.contains("read")) {
@@ -79,7 +79,7 @@ public class BinaryNative extends DefaultNative {
                 && existing.context().findSlotFor("buffer").value() instanceof BinaryValue) {
             return existing;
         }
-        return findTheDialectContextFor(bufferOfTheDialectContext(given));
+        return findDialectContextFor(bufferOfTheDialectContext(given));
     }
 
     private BinaryValue bufferOfTheDialectContext(Value given) {
@@ -94,7 +94,7 @@ public class BinaryNative extends DefaultNative {
         return BinaryValue.of();
     }
 
-    private ObjectValue findTheDialectContextFor(BinaryValue buffer) {
+    private ObjectValue findDialectContextFor(BinaryValue buffer) {
         Context made = Context.root();
         made.register("type", WordValue.of("bincode"));
         made.register("buffer", buffer);
@@ -127,7 +127,7 @@ public class BinaryNative extends DefaultNative {
         }
     }
 
-    private BinaryValue findTheCursorNamed(ObjectValue held, String field) {
+    private BinaryValue findCursorNamed(ObjectValue held, String field) {
         return held.context().contains(field)
                 && held.context().findSlotFor(field).value() instanceof BinaryValue at
                 ? at
@@ -137,21 +137,21 @@ public class BinaryNative extends DefaultNative {
     private void writeThroughTheDialect(ObjectValue held, List<Value> dialect,
             UnaryOperator<Value> lookedUp) {
 
-        BinaryValue writing = findTheCursorNamed(held, "buffer-write");
+        BinaryValue writing = findCursorNamed(held, "buffer-write");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 listTheOctetsOfTheBuffer(writing.head()), writing.index() - 1);
         Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
                 () -> Instant.now().getEpochSecond(), this::nameTheValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
-        held.context().register("buffer", written.atIndex(findTheCursorNamed(held, "buffer").index()));
+        held.context().register("buffer", written.atIndex(findCursorNamed(held, "buffer").index()));
         held.context().register("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
     private Value readThroughTheDialect(ObjectValue held, Value asked,
             UnaryOperator<Value> lookedUp, Value count, Optional<Value> into) {
 
-        BinaryValue reading = findTheCursorNamed(held, "buffer");
+        BinaryValue reading = findCursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 listTheOctetsOfTheBuffer(reading.head()), reading.index() - 1,
                 countTheBitsAlreadyTakenIn(held));
@@ -191,7 +191,7 @@ public class BinaryNative extends DefaultNative {
     }
 
     private void shortenFromTheFront(ObjectValue held, Bincode.Cursor cursor) {
-        int writingWas = findTheCursorNamed(held, "buffer-write").index();
+        int writingWas = findCursorNamed(held, "buffer-write").index();
         BinaryValue shortened = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().register("buffer", shortened.atIndex(cursor.at() + 1));

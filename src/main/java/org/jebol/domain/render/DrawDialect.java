@@ -158,11 +158,11 @@ public final class DrawDialect {
             paintTheGapsBetweenTheDashes(path);
             paintAGradientNoToolkitHas(path);
             painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(),
-                    path, findTheTransformOnTheSurface(), makeTheStateARendererGets()));
+                    path, findTransformOnSurface(), makeTheStateARendererGets()));
             paintAnyArrowheads(path);
         }
 
-        private Transform findTheTransformOnTheSurface() {
+        private Transform findTransformOnSurface() {
             return Transform.moveBy(where.across(), where.down()).combineWith(transform);
         }
 
@@ -211,7 +211,7 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        clipToTheShapeItFills(path), piece.path(), findTheTransformOnTheSurface(), state));
+                        clipToTheShapeItFills(path), piece.path(), findTransformOnSurface(), state));
             }
             state = wasStanding;
         }
@@ -289,7 +289,7 @@ public final class DrawDialect {
                 return;
             }
             painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), gaps,
-                    findTheTransformOnTheSurface(), state.withDashes(List.of())
+                    findTransformOnSurface(), state.withDashes(List.of())
                             .withFill(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withStroke(gapColour)));
@@ -307,7 +307,7 @@ public final class DrawDialect {
             Optional<Colour> filled =
                     arrowColour.isPresent() ? arrowColour : state.strokeColour();
             painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), heads,
-                    findTheTransformOnTheSurface(), state.withDashes(List.of())
+                    findTransformOnSurface(), state.withDashes(List.of())
                             .withStroke(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withFill(filled)));
@@ -676,7 +676,7 @@ public final class DrawDialect {
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
                         findWhereTheClipStandsNow().fitInsideTheShape(outline),
-                        piece.path(), findTheTransformOnTheSurface(), makeTheStateARendererGets()));
+                        piece.path(), findTransformOnSurface(), makeTheStateARendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())
                     .withFillGradient(Optional.empty());

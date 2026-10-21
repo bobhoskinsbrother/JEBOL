@@ -29,7 +29,7 @@ public final class JvmDigests implements DigestPort {
 
     @Override
     public RunningDigest start(String method) {
-        MessageDigest running = findTheDigestNamed(method);
+        MessageDigest running = findDigestNamed(method);
         return new RunningDigest() {
 
             @Override
@@ -50,13 +50,13 @@ public final class JvmDigests implements DigestPort {
 
     @Override
     public byte[] digestOf(String method, byte[] octets) {
-        return findTheDigestNamed(method).digest(octets);
+        return findDigestNamed(method).digest(octets);
     }
 
     @Override
     public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
         try {
-            String algorithm = "Hmac" + findTheDigestNamed(method).getAlgorithm().replace("-", "");
+            String algorithm = "Hmac" + findDigestNamed(method).getAlgorithm().replace("-", "");
             Mac mac = Mac.getInstance(algorithm);
             mac.init(new SecretKeySpec(key.length == 0 ? new byte[1] : key, algorithm));
             return mac.doFinal(octets);
@@ -65,7 +65,7 @@ public final class JvmDigests implements DigestPort {
         }
     }
 
-    private static MessageDigest findTheDigestNamed(String method) {
+    private static MessageDigest findDigestNamed(String method) {
         String algorithm = ALGORITHMS.get(method);
         if (algorithm == null) {
             throw new Refused("feature-na", method + " is not a method this host has");

@@ -118,7 +118,7 @@ public final class ErrorCatalogue {
      */
     public static final int LOWEST_CODE_AN_ENTRY_HAS = 100;
 
-    public static int findTheCodeFor(String category, String errorId) {
+    public static int findCodeFor(String category, String errorId) {
         int at = listTheIdsIn(category).indexOf(errorId);
         return at < 0 ? findTheBaseCodeOf(category) : findTheBaseCodeOf(category) + at;
     }

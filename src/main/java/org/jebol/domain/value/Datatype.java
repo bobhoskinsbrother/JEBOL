@@ -39,7 +39,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     }
 
     @Override
-    public Datatype findTheDatatypeItStandsFor() {
+    public Datatype findDatatypeItStandsFor() {
         return this;
     }
 

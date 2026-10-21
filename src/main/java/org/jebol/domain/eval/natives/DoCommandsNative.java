@@ -71,7 +71,7 @@ public class DoCommandsNative extends DefaultNative {
                     at++;
                 }
                 Value answer = runTheNextCommand();
-                answerGoesTo.ifPresent(named -> named.findTheBoundSlot().setValue(answer));
+                answerGoesTo.ifPresent(named -> named.findBoundSlot().setValue(answer));
                 last = answer;
             }
             return last;
@@ -79,7 +79,7 @@ public class DoCommandsNative extends DefaultNative {
 
         private Value runTheNextCommand() {
             Value named = items.get(at++);
-            Value function = named instanceof WordValue word ? word.findTheBoundSlot().value() : named;
+            Value function = named instanceof WordValue word ? word.findBoundSlot().value() : named;
             if (!(function instanceof CommandValue command)) {
                 throw Raised.of(EvaluationFailure.EXPECT_VAL, SetWordValue.of("command!"), named);
             }
@@ -119,7 +119,7 @@ public class DoCommandsNative extends DefaultNative {
             boolean fetched = parameter.kind() == ParameterKind.NORMAL;
             return switch (written) {
                 case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
-                case WordValue word when fetched -> word.findTheBoundSlot().value();
+                case WordValue word when fetched -> word.findBoundSlot().value();
                 case AnyPathValue path when fetched ->
                         evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
                 default -> written;

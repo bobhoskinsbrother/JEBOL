@@ -39,8 +39,8 @@ public final class VectorQuery {
                     WordValue.of(kind.elementDatatype().literalSpelling()));
             case "size" -> Optional.of(IntegerValue.of(kind.bits()));
             case "length" -> Optional.of(IntegerValue.of(vector.storageLength()));
-            case "min", "minimum" -> Optional.of(findTheExtreme(vector, true));
-            case "max", "maximum" -> Optional.of(findTheExtreme(vector, false));
+            case "min", "minimum" -> Optional.of(findExtreme(vector, true));
+            case "max", "maximum" -> Optional.of(findExtreme(vector, false));
             default -> computeTheStatistic(vector, field);
         };
     }
@@ -64,7 +64,7 @@ public final class VectorQuery {
         return BlockValue.of(written);
     }
 
-    private static Value findTheExtreme(VectorValue vector, boolean wantingTheLeast) {
+    private static Value findExtreme(VectorValue vector, boolean wantingTheLeast) {
         int held = vector.storageLength();
         if (held == 0) {
             return NoneValue.none();

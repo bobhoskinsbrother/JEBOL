@@ -54,16 +54,16 @@ public class DoNative extends DefaultNative {
 
         Optional<AnyBlockValue> steppable = findTheSteppableBlock(value, evaluator, context);
         if (steppable.isEmpty()) {
-            var.findTheBoundSlot().setValue(NoneValue.none());
+            var.findBoundSlot().setValue(NoneValue.none());
             return value;
         }
         AnyBlockValue stepping = steppable.get();
         if (stepping.atTail()) {
-            var.findTheBoundSlot().setValue(stepping);
+            var.findBoundSlot().setValue(stepping);
             return UnsetValue.unset();
         }
         Evaluator.Step taken = evaluator.evaluateNextOrRaise(stepping, context);
-        var.findTheBoundSlot().setValue(stepping.atIndex(taken.nextIndex()));
+        var.findBoundSlot().setValue(stepping.atIndex(taken.nextIndex()));
         return taken.value();
     }
 
@@ -103,7 +103,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value handToTheHost(TaskValue task, Evaluator evaluator) {
-        evaluator.ports().tasks().runTheBody(Molder.mold(task.body()), evaluator.findTheOutput());
+        evaluator.ports().tasks().runTheBody(Molder.mold(task.body()), evaluator.findOutput());
         return task;
     }
 
@@ -116,7 +116,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value doAsAScript(BinaryValue bytes, Evaluator evaluator) {
-        Value loadHeader = evaluator.systemContext().findTheSystemFunctionNamed("load-header");
+        Value loadHeader = evaluator.systemContext().findSystemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
         if (read instanceof AnyWordValue why) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
@@ -153,7 +153,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value runAsAScript(AnyStringValue address, Evaluator evaluator) {
-        Value doStar = evaluator.systemContext().findTheSystemFunctionNamed("do*");
+        Value doStar = evaluator.systemContext().findSystemFunctionNamed("do*");
         return evaluator.applyFunction(doStar, List.of(address));
     }
 

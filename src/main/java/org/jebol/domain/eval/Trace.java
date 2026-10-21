@@ -36,13 +36,13 @@ public final class Trace {
     public void setTheLevel(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
-        this.depthWhenTraceBegan = findTheZeroTheIndentationCountsFrom();
+        this.depthWhenTraceBegan = findZeroIndentationCountsFrom();
         if (level == 0) {
             keepingRatherThanPrinting = false;
         }
     }
 
-    private int findTheZeroTheIndentationCountsFrom() {
+    private int findZeroIndentationCountsFrom() {
         return depthNow;
     }
 

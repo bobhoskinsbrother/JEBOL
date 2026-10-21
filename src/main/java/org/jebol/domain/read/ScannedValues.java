@@ -70,7 +70,7 @@ final class ScannedValues {
         return octet >= '0' && octet <= '9';
     }
 
-    int findTheIntegerEnd(int from) {
+    int findIntegerEnd(int from) {
         int cp = from;
         if (at(cp) == '-' || at(cp) == '+') {
             cp++;
@@ -335,14 +335,14 @@ final class ScannedValues {
             return Optional.empty();
         }
         long part1 = grabAnInteger(cp);
-        cp = findTheIntegerEnd(cp);
+        cp = findIntegerEnd(cp);
         if (part1 > MAX_HOUR) {
             return Optional.empty();
         }
         if (at(cp++) != ':') {
             return Optional.empty();
         }
-        int sp = findTheIntegerEnd(cp);
+        int sp = findIntegerEnd(cp);
         long part2 = grabAnInteger(cp);
         if (part2 < 0 || sp == cp) {
             return Optional.empty();
@@ -352,7 +352,7 @@ final class ScannedValues {
         long part4 = -1;
         if (at(cp) == ':') {
             sp = cp + 1;
-            cp = findTheIntegerEnd(sp);
+            cp = findIntegerEnd(sp);
             part3 = grabAnInteger(sp);
             if (part3 < 0 || cp == sp) {
                 return Optional.empty();
@@ -436,7 +436,7 @@ final class ScannedValues {
         if (cp == end) {
             return Optional.empty();
         }
-        ep = findTheIntegerEnd(cp);
+        ep = findIntegerEnd(cp);
         int num = grabAnInteger(cp);
         if (num < 0) {
             return Optional.empty();
@@ -454,7 +454,7 @@ final class ScannedValues {
             return Optional.empty();
         }
         int separator = at(cp++);
-        ep = findTheIntegerEnd(cp);
+        ep = findIntegerEnd(cp);
         num = grabAnInteger(cp);
         if (num < 0) {
             return Optional.empty();
@@ -484,7 +484,7 @@ final class ScannedValues {
         if (at(cp++) != separator) {
             return Optional.empty();
         }
-        ep = findTheIntegerEnd(cp);
+        ep = findIntegerEnd(cp);
         num = grabAnInteger(cp);
         if (at(cp) == '-' || num < 0) {
             return Optional.empty();
@@ -539,7 +539,7 @@ final class ScannedValues {
                 return Optional.of(makeADate(year, month, day, time, zone));
             }
             if (at(cp) == '-' || at(cp) == '+') {
-                ep = findTheIntegerEnd(cp + 1);
+                ep = findIntegerEnd(cp + 1);
                 num = grabAnInteger(cp + 1);
                 if (ep - cp == 0) {
                     return Optional.empty();
@@ -557,7 +557,7 @@ final class ScannedValues {
                     }
                     zone = num * (60 / ZONE_MINUTES);
                     int minutesFrom = ep + 1;
-                    ep = findTheIntegerEnd(minutesFrom);
+                    ep = findIntegerEnd(minutesFrom);
                     num = grabAnInteger(minutesFrom);
                     if (num % ZONE_MINUTES != 0) {
                         return Optional.empty();
@@ -669,7 +669,7 @@ final class ScannedValues {
         int ep = from;
         for (; length > ep - from; ep++) {
             int n = grabAnInteger(ep);
-            ep = findTheIntegerEnd(ep);
+            ep = findIntegerEnd(ep);
             if (n < 0 || n > 255) {
                 return Optional.empty();
             }
@@ -736,7 +736,7 @@ final class ScannedValues {
         int remaining = length;
         int base = 16;
         if (at(cp) != '#') {
-            int ep = findTheIntegerEnd(cp);
+            int ep = findIntegerEnd(cp);
             base = grabAnInteger(cp);
             if (cp == ep || at(ep) != '#') {
                 return 0;

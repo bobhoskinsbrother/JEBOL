@@ -583,7 +583,7 @@ final class BrotliDecoder {
             return Huffman.ofLengths(lengths);
         }
 
-        private static int findTheOnlyOneNamed(int[] codeLengthLengths) {
+        private static int findOnlyOneNamed(int[] codeLengthLengths) {
             for (int each = 0; each < codeLengthLengths.length; each++) {
                 if (codeLengthLengths[each] != 0) {
                     return each;
@@ -616,7 +616,7 @@ final class BrotliDecoder {
                         "Brotli code-length code is not a prefix code");
             }
             Huffman lengthCode = symbolsUsed == 1
-                    ? Huffman.ofOneSymbol(findTheOnlyOneNamed(codeLengthLengths))
+                    ? Huffman.ofOneSymbol(findOnlyOneNamed(codeLengthLengths))
                     : Huffman.ofLengths(codeLengthLengths);
 
             int[] lengths = new int[alphabetSize];

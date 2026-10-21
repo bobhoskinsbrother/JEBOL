@@ -56,7 +56,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: 0.0.0");
 
             for (PolicyAccess access : PolicyAccess.values()) {
-                assertThat(policies.findTheLevelFor(PolicyClass.FILE, access, aFile("/x"))).isEqualTo(PolicyLevel.ALLOW);
+                assertThat(policies.findLevelFor(PolicyClass.FILE, access, aFile("/x"))).isEqualTo(PolicyLevel.ALLOW);
             }
         }
 
@@ -65,11 +65,11 @@ class SecurityPoliciesTest {
         void eachByteIsOneAccess() {
             SecurityPolicies policies = policiesFrom("call: 1.2.3");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.CALL, PolicyAccess.READ, Optional.empty()))
+            assertThat(policies.findLevelFor(PolicyClass.CALL, PolicyAccess.READ, Optional.empty()))
                     .isEqualTo(PolicyLevel.ASK);
-            assertThat(policies.findTheLevelFor(PolicyClass.CALL, PolicyAccess.WRITE, Optional.empty()))
+            assertThat(policies.findLevelFor(PolicyClass.CALL, PolicyAccess.WRITE, Optional.empty()))
                     .isEqualTo(PolicyLevel.THROW);
-            assertThat(policies.findTheLevelFor(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.empty()))
+            assertThat(policies.findLevelFor(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.empty()))
                     .isEqualTo(PolicyLevel.QUIT);
         }
 
@@ -79,7 +79,7 @@ class SecurityPoliciesTest {
         void aByteAtEachBoundary(int written, PolicyLevel meant) {
             SecurityPolicies policies = policiesFrom("envr: " + written + "." + written + "." + written);
 
-            assertThat(policies.findTheLevelFor(PolicyClass.ENVR, PolicyAccess.READ, Optional.empty())).isEqualTo(meant);
+            assertThat(policies.findLevelFor(PolicyClass.ENVR, PolicyAccess.READ, Optional.empty())).isEqualTo(meant);
         }
 
         @Test
@@ -88,7 +88,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = new SecurityPolicies(
                     interpreter.run("make object! [call: to tuple! [2 2]]").value());
 
-            assertThat(policies.findTheLevelFor(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.empty()))
+            assertThat(policies.findLevelFor(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.empty()))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
     }
@@ -102,7 +102,7 @@ class SecurityPoliciesTest {
         void beneathAFolder() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/in.txt")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/in.txt")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -111,7 +111,7 @@ class SecurityPoliciesTest {
         void theFolderExactly() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -120,7 +120,7 @@ class SecurityPoliciesTest {
         void oneCharacterShort() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app")))
                     .isEqualTo(PolicyLevel.THROW);
         }
 
@@ -129,7 +129,7 @@ class SecurityPoliciesTest {
         void aFileNameCoversALongerOne() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/in.txt 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/in.txt2")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/in.txt2")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -138,7 +138,7 @@ class SecurityPoliciesTest {
         void elsewhereTakesTheDefault() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/apple.txt")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/apple.txt")))
                     .isEqualTo(PolicyLevel.THROW);
         }
 
@@ -147,9 +147,9 @@ class SecurityPoliciesTest {
         void theFirstMatchDecides() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/app/secret/ 3.3.3 %/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/secret/x")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/secret/x")))
                     .isEqualTo(PolicyLevel.QUIT);
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -158,7 +158,7 @@ class SecurityPoliciesTest {
         void aFileMatchesByCase() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 %/App/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
                     .isEqualTo(PolicyLevel.THROW);
         }
 
@@ -167,7 +167,7 @@ class SecurityPoliciesTest {
         void aUrlMatchesWithoutCase() {
             SecurityPolicies policies = policiesFrom("net: [net 2.2.2 tcp://LOCALHOST 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.NET, PolicyAccess.EXECUTE,
+            assertThat(policies.findLevelFor(PolicyClass.NET, PolicyAccess.EXECUTE,
                     Optional.of(UrlValue.of("tcp://localhost:80"))))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
@@ -177,7 +177,7 @@ class SecurityPoliciesTest {
         void theLaterWordIsTheDefault() {
             SecurityPolicies policies = policiesFrom("file: [file 2.2.2 again 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -186,7 +186,7 @@ class SecurityPoliciesTest {
         void noDefaultButAMatch() {
             SecurityPolicies policies = policiesFrom("file: [%/app/ 0.0.0]");
 
-            assertThat(policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
+            assertThat(policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")))
                     .isEqualTo(PolicyLevel.ALLOW);
         }
 
@@ -196,7 +196,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: [%/app/ 0.0.0]");
 
             Refusal refused = refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/elsewhere")));
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/elsewhere")));
 
             assertThat(refused.id()).isEqualTo("security");
             assertThat(refused.arg1()).isEqualTo(FileValue.of("/elsewhere"));
@@ -208,7 +208,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: []");
 
             assertThat(refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).id())
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).id())
                     .isEqualTo("security");
         }
     }
@@ -223,7 +223,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("net: 0.0.0");
 
             Refusal refused = refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")));
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")));
 
             assertThat(refused.id()).isEqualTo("security-error");
             assertThat(refused.arg1()).isEqualTo(WordValue.of("file"));
@@ -235,7 +235,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = new SecurityPolicies(interpreter.run("[file 0.0.0]").value());
 
             assertThat(refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).arg1())
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).arg1())
                     .isEqualTo(WordValue.of("file"));
         }
 
@@ -245,7 +245,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: 5");
 
             Refusal refused = refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")));
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x")));
 
             assertThat(refused.id()).isEqualTo("security-error");
             assertThat(refused.arg1()).isEqualTo(interpreter.run("5").value());
@@ -257,7 +257,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: [file 0.0.0 %/app/ allow]");
 
             Refusal refused = refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")));
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/app/x")));
 
             assertThat(refused.id()).isEqualTo("security-error");
             assertThat(refused.arg1()).isEqualTo(FileValue.of("/app/"));
@@ -269,7 +269,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("debug: [debug 0.0.0 %/app/ 0.0.0]");
 
             Refusal refused = refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty()));
+                    policies.findLevelFor(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty()));
 
             assertThat(refused.id()).isEqualTo("security-error");
             assertThat(refused.arg1()).isEqualTo(FileValue.of("/app/"));
@@ -281,7 +281,7 @@ class SecurityPoliciesTest {
             SecurityPolicies policies = policiesFrom("file: [file 0.0.0 7 0.0.0]");
 
             assertThat(refusalOf(() ->
-                    policies.findTheLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).id())
+                    policies.findLevelFor(PolicyClass.FILE, PolicyAccess.READ, aFile("/x"))).id())
                     .isEqualTo("security-error");
         }
     }

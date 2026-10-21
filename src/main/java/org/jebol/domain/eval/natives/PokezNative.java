@@ -34,12 +34,12 @@ public class PokezNative extends DefaultNative {
             }
             long index = ((IntegerValue) arguments.get(1)).magnitude();
             boolean countsFromOne = index >= 0 && !(series instanceof BitsetValue);
-            return evaluator.applyFunction(findTheActionItWraps(context),
+            return evaluator.applyFunction(findActionItWraps(context),
                     List.of(series, IntegerValue.of(countsFromOne ? index + 1 : index), arguments.get(2)));
         };
     }
 
-    private Value findTheActionItWraps(Context context) {
+    private Value findActionItWraps(Context context) {
         if (!context.contains(THE_ACTION_IT_WRAPS)) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, THE_ACTION_IT_WRAPS);
         }

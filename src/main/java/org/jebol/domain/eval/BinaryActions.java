@@ -25,7 +25,7 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value poke(Value position, Value written) {
-        int at = findThePokedStoragePosition(position);
+        int at = findPokedStoragePosition(position);
         bytes.storage().set(at, readOctetPokedFrom(written));
         return written;
     }

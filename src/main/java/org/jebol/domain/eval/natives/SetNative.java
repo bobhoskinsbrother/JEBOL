@@ -40,7 +40,7 @@ public class SetNative extends DefaultNative {
             }
             return switch (target) {
                 case AnyWordValue word -> {
-                    word.findTheBoundSlot().setValue(supplied);
+                    word.findBoundSlot().setValue(supplied);
                     yield supplied;
                 }
                 case AnyPathValue path ->
@@ -80,7 +80,7 @@ public class SetNative extends DefaultNative {
             if (onlySome && assigned instanceof NoneValue) {
                 continue;
             }
-            ((AnyWordValue) words.get(index)).findTheBoundSlot().setValue(assigned);
+            ((AnyWordValue) words.get(index)).findBoundSlot().setValue(assigned);
         }
         return supplied;
     }
@@ -116,7 +116,7 @@ public class SetNative extends DefaultNative {
         if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
             return refuseTheDatatype(path);
         }
-        Value holder = head.findTheBoundSlot().value();
+        Value holder = head.findBoundSlot().value();
         for (int at = 1; at < segments.size() - 1; at++) {
             if (!(segments.get(at) instanceof AnyWordValue field)
                     || !(holder instanceof ObjectValue(Context fields))

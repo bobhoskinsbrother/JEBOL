@@ -50,7 +50,7 @@ public final class GobActions extends SeriesActions {
     @Override
     public Value insert(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("insert");
-        takeTheChildrenOf(asked.given(), gob.findThePositionWithinThePane());
+        takeTheChildrenOf(asked.given(), gob.findPositionWithinPane());
         return gob;
     }
 

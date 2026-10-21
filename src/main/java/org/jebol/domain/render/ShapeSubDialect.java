@@ -52,10 +52,10 @@ final class ShapeSubDialect {
             switch (command) {
                 case "move" -> moveTo(points, relative);
                 case "line" -> lineThrough(points, relative);
-                case "hline" -> lineTo(read.findTheNumberIn(arguments, relative ? across : 0)
+                case "hline" -> lineTo(read.findNumberIn(arguments, relative ? across : 0)
                         + (relative ? across : 0), down);
                 case "vline" -> lineTo(across,
-                        read.findTheNumberIn(arguments, relative ? down : 0)
+                        read.findNumberIn(arguments, relative ? down : 0)
                                 + (relative ? down : 0));
                 case "curve" -> drawACubicThrough(points, relative);
                 case "curv" -> drawACubicThrough(points, relative);

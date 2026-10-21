@@ -11,7 +11,7 @@ final class ImagePath {
         if (selector instanceof AnyWordValue field) {
             return describeTheImage(image, field);
         }
-        int pixel = findThePixelNamedBy(image, selector);
+        int pixel = findPixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             return NoneValue.none();
         }
@@ -45,7 +45,7 @@ final class ImagePath {
             writeTheWholePicture(image, field, written);
             return;
         }
-        int pixel = findThePixelNamedBy(image, selector);
+        int pixel = findPixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "pixel " + pixel + " is outside the image");
@@ -219,7 +219,7 @@ final class ImagePath {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "one byte of a pixel holds 0 to 255");
         }
-        int pixel = findThePixelNamedBy(image, pixelSegment);
+        int pixel = findPixelNamedBy(image, pixelSegment);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "pixel " + pixel + " is outside the image");
@@ -228,7 +228,7 @@ final class ImagePath {
                 (int) magnitude);
     }
 
-    private static int findThePixelNamedBy(ImageValue image, Value selector) {
+    private static int findPixelNamedBy(ImageValue image, Value selector) {
         return switch (selector) {
             case PairValue coordinate -> ((int) coordinate.y() - 1) * image.storage().wide()
                     + ((int) coordinate.x() - 1) + 1;

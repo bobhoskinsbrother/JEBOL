@@ -28,13 +28,13 @@ public class RegisterNative extends DefaultNative {
             }
             StructValue given = (StructValue) arguments.get(1);
             if (name instanceof SetWordValue) {
-                name.findTheBoundSlot().setValue(given);
+                name.findBoundSlot().setValue(given);
             }
-            return fileUnder(WordValue.of(name.spelling()), given, findTheCatalogueIn(evaluator));
+            return fileUnder(WordValue.of(name.spelling()), given, findCatalogueIn(evaluator));
         };
     }
 
-    private MapValue findTheCatalogueIn(Evaluator evaluator) {
+    private MapValue findCatalogueIn(Evaluator evaluator) {
         return (MapValue) evaluator.systemContext().readValueAt("system", "catalog", "structs");
     }
 

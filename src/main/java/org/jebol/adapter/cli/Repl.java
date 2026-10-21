@@ -116,14 +116,14 @@ public final class Repl {
         Path root = readRoot(arguments);
         RebolArguments asked = new RebolArguments(List.of(
                 argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutTheSwitch(arguments))));
-        asked.script().ifPresent(script -> asked.nameTheScript(findTheAppsEntry(script)));
+        asked.script().ifPresent(script -> asked.nameTheScript(findAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = buildInterpreter(arguments, out, anythingWasAsked, root);
         return new TheCommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
     }
 
-    private static String findTheAppsEntry(String whereItPoints) {
+    private static String findAppsEntry(String whereItPoints) {
         if (whereItPoints.isEmpty() || isAnHttpsUrl(whereItPoints)) {
             return whereItPoints;
         }

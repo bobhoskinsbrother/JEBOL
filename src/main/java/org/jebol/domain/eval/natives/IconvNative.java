@@ -53,9 +53,9 @@ public class IconvNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            String text = encodings.textDecodedAs(octets, findTheCharacterSetFor(arguments.get(1)));
+            String text = encodings.textDecodedAs(octets, findCharacterSetFor(arguments.get(1)));
             return readTheArgumentOf("to", 0, arguments, refinements)
-                    .map(this::findTheCharacterSetFor)
+                    .map(this::findCharacterSetFor)
                     .<Value>map(into -> StandardCharsets.UTF_8.equals(into)
                             ? StringValue.of(text)
                             : BinaryValue.ofBytes(text.getBytes(into)))
@@ -63,7 +63,7 @@ public class IconvNative extends EncodingNative {
         };
     }
 
-    private Charset findTheCharacterSetFor(Value asked) {
+    private Charset findCharacterSetFor(Value asked) {
         String spelling = switch (asked) {
             case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text();

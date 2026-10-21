@@ -252,7 +252,7 @@ public final class GobPath {
 
     private static void raiseUnlessTheWordIsNoFlag(
             GobStorage storage, AnyWordValue word) {
-        GobStorage.Flag flag = GobStorage.Flag.findTheFlagNamed(word.canonical());
+        GobStorage.Flag flag = GobStorage.Flag.findFlagNamed(word.canonical());
         if (flag != null) {
             storage.raise(flag);
         }

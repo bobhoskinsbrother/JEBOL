@@ -81,7 +81,7 @@ abstract class DeflateParser {
         }
     }
 
-    int findTheMaxBlockEnd(int blockBegin, int end, int softMaxLength) {
+    int findMaxBlockEnd(int blockBegin, int end, int softMaxLength) {
         if (end - blockBegin < softMaxLength + MIN_BLOCK_LENGTH) {
             return end;
         }

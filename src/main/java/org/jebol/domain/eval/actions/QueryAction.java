@@ -172,7 +172,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             return VectorQuery.readTheField(vector, asked);
         }
 
@@ -196,7 +196,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             return names().contains(asked)
                     ? Optional.of(DatePart.readFrom(date, WordValue.of(asked)))
                     : Optional.empty();
@@ -232,7 +232,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             return names().contains(asked) ? Optional.of(WordValue.of(handle.typeName())) : Optional.empty();
         }
 
@@ -257,7 +257,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             if (!names().contains(asked)) {
                 return Optional.empty();
             }
@@ -293,7 +293,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             return switch (asked) {
                 case "name" -> Optional.of(FileValue.of(wholePath));
                 case "size" -> Optional.of(about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));

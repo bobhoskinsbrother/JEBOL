@@ -22,7 +22,7 @@ public final class GobText {
     public GobText(GobValue gob, TextMeasurement measure) {
         this.gob = gob;
         this.line = readTheLineOf(gob);
-        this.lines = new TextLines(line.runs(), measure, line.layout().measureTheRoomForEachLine(findTheGobsOwnBox()));
+        this.lines = new TextLines(line.runs(), measure, line.layout().measureTheRoomForEachLine(findGobsOwnBox()));
     }
 
     private RichText.Line readTheLineOf(GobValue written) {
@@ -52,14 +52,14 @@ public final class GobText {
         return line.layout();
     }
 
-    public Placement findTheGobsOwnBox() {
+    public Placement findGobsOwnBox() {
         int wide = (int) Math.round(gob.storage().size().x());
         int high = (int) Math.round(gob.storage().size().y());
         return new Placement(0, 0, wide, high, ClipRectangle.coverTheWholeSurface(Math.max(1, wide), Math.max(1, high)),
                 Placement.OPAQUE);
     }
 
-    public int findTheRunAt(int placeInTheBlock) {
+    public int findRunAt(int placeInTheBlock) {
         return line.findTheRunAt(placeInTheBlock).orElse(line.runs().size());
     }
 

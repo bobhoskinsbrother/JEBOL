@@ -175,7 +175,7 @@ public final class Evaluator {
 
     private OutputPort alsoWritingTo;
 
-    public OutputPort findTheOutput() {
+    public OutputPort findOutput() {
         if (alsoWritingTo == null) {
             return output;
         }
@@ -345,7 +345,7 @@ public final class Evaluator {
     public Outcome applyAsHostApplies(String systemFunction) {
         try {
             return new Outcome.Completed(runUnsignalled(() -> applyFunction(
-                    systemContext.findTheSystemFunctionNamed(systemFunction), List.of())));
+                    systemContext.findSystemFunctionNamed(systemFunction), List.of())));
         } catch (Raised raised) {
             return new Outcome.Raised(raised.error());
         }
@@ -372,7 +372,7 @@ public final class Evaluator {
                         name -> locals.register(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
                 AnyBlockValue running = findTheBodyThisCallRuns(function, locals);
-                findTheFrameThisCallTakesOverFrom(function).giveWayTo(locals);
+                findFrameThisCallTakesOverFrom(function).giveWayTo(locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
                     yield walk(running, locals, 1, null, THE_BODY_OF_AN_APPLIED_FUNCTION);
@@ -433,7 +433,7 @@ public final class Evaluator {
     }
 
     public void queueOnTheSystemPort(EventValue event) {
-        if (findTheHostPort("system") instanceof PortValue queue) {
+        if (findHostPort("system") instanceof PortValue queue) {
             queue.findTheEventQueue().ifPresent(onIt -> onIt.storage().insertAt(onIt.storage().length() + 1, event));
         }
     }
@@ -453,11 +453,11 @@ public final class Evaluator {
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());
         }
-        Context into = findTheContextAStringIsDoneIn();
+        Context into = findContextStringIsDoneIn();
         return walk(Binder.bindAndDefine(read.values().orElseThrow(), into), into, 1);
     }
 
-    private Context findTheContextAStringIsDoneIn() {
+    private Context findContextStringIsDoneIn() {
         if (systemContext.readValueAt("system", "contexts", "user") instanceof ObjectValue(Context user)) {
             return user;
         }
@@ -771,14 +771,14 @@ public final class Evaluator {
         framesOpen = frames.size();
         if (being != null) {
             functionsCalled++;
-            findTheFrameThisCallTakesOverFrom(being).giveWayTo(context);
+            findFrameThisCallTakesOverFrom(being).giveWayTo(context);
             functionsBeingRun.push(new OpenCall(nameOfTheCallBeingMade, being, context));
             nameOfTheCallBeingMade = "";
             lastWordCalledThrough = "";
         }
     }
 
-    private Context findTheFrameThisCallTakesOverFrom(DefinedFunctionValue function) {
+    private Context findFrameThisCallTakesOverFrom(DefinedFunctionValue function) {
         for (OpenCall open : functionsBeingRun) {
             if (open.function() == function) {
                 return open.locals();
@@ -789,7 +789,7 @@ public final class Evaluator {
 
     private void handBackTheFrameTakenOverBy(OpenCall ending) {
         ending.locals().giveWayTo(null);
-        findTheFrameThisCallTakesOverFrom(ending.function()).giveWayTo(null);
+        findFrameThisCallTakesOverFrom(ending.function()).giveWayTo(null);
     }
 
     private static AnyBlockValue findTheBodyThisCallRuns(
@@ -899,7 +899,7 @@ public final class Evaluator {
         if (!(frame.current() instanceof WordValue word)) {
             return Optional.empty();
         }
-        ContextSlot slot = word.binding().findTheSlotOrNone(word.canonical());
+        ContextSlot slot = word.binding().findSlotOrNone(word.canonical());
         if (slot == null) {
             return Optional.empty();
         }
@@ -943,7 +943,7 @@ public final class Evaluator {
     }
 
     private StepOutcome evaluateSetWord(Frame frame, AnyWordValue word) {
-        ContextSlot slot = word.binding().findTheSlotOrNone(word.canonical());
+        ContextSlot slot = word.binding().findSlotOrNone(word.canonical());
         if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
@@ -972,7 +972,7 @@ public final class Evaluator {
     }
 
     private ContextSlot resolve(AnyWordValue word) {
-        ContextSlot slot = word.binding().findTheSlotOrNone(word.canonical());
+        ContextSlot slot = word.binding().findSlotOrNone(word.canonical());
         if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
@@ -1481,7 +1481,7 @@ public final class Evaluator {
 
         Value selector = makeTheSelectorFor(segment, context);
         try {
-            return findTheSlotWith(holder, selector);
+            return findSlotWith(holder, selector);
         } catch (Raised refused) {
             throw refuseAt(refused, asWritten, segment);
         }
@@ -1540,7 +1540,7 @@ public final class Evaluator {
                         .value().isTruthy();
     }
 
-    private Slot findTheSlotWith(Slot holder, Value selector) {
+    private Slot findSlotWith(Slot holder, Value selector) {
         Value target = holder.value();
         if (target instanceof PathTarget steppedInto) {
             return steppedInto.placeSteppedIntoBy(selector);
@@ -1548,7 +1548,7 @@ public final class Evaluator {
         if (target instanceof RebolSeries series
                 && selector instanceof IntegerValue position
                 && reachesIntoTheSeries(series, position)) {
-            return new SeriesSlot(series, findThePositionIn(series, position),
+            return new SeriesSlot(series, findPositionIn(series, position),
                     selectWith(target, selector));
         }
         return new ComputedSlot(selectWith(target, selector), selector);
@@ -1561,7 +1561,7 @@ public final class Evaluator {
         return counted >= 1 && counted <= series.lengthFromHere();
     }
 
-    private static int findThePositionIn(RebolSeries series, IntegerValue position) {
+    private static int findPositionIn(RebolSeries series, IntegerValue position) {
         return series.index()
                 + (int) countFromTheSeriesPosition(position.magnitude()) - 1;
     }
@@ -1651,8 +1651,8 @@ public final class Evaluator {
                 case "size" -> IntegerValue.of(
                         text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
                 case "width" -> IntegerValue.of(measureTheTerminalWidthOf(text.text()));
-                case "user" -> findTheEmailNamedBy(text, field).user();
-                case "host" -> findTheEmailNamedBy(text, field).host();
+                case "user" -> findEmailNamedBy(text, field).user();
+                case "host" -> findEmailNamedBy(text, field).host();
                 default -> throw Raised.of(
                         EvaluationFailure.INVALID_PATH, field.spelling());
             };
@@ -1679,7 +1679,7 @@ public final class Evaluator {
         }
         if (target instanceof EventValue event) {
             return EventPath.read(event, selector,
-                    findTheHostPort("event"), findTheHostPort("callback"), findTheHostPort("input"));
+                    findHostPort("event"), findHostPort("callback"), findHostPort("input"));
         }
         if (target instanceof VectorValue vector) {
             return VectorPath.read(vector, selector);
@@ -1730,7 +1730,7 @@ public final class Evaluator {
         return new BitsetActions(members).pickForAPath(selector);
     }
 
-    public Value findTheHostPort(String scheme) {
+    public Value findHostPort(String scheme) {
         if (!systemContext.contains("system")) {
             return NoneValue.none();
         }
@@ -1839,7 +1839,7 @@ public final class Evaluator {
         return TerminalWidth.of(text.codePoints().toArray());
     }
 
-    private static EmailValue findTheEmailNamedBy(AnyStringValue text, AnyWordValue half) {
+    private static EmailValue findEmailNamedBy(AnyStringValue text, AnyWordValue half) {
         if (!(text instanceof EmailValue email)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, half.canonical());
         }

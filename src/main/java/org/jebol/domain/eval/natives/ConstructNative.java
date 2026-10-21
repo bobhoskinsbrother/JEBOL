@@ -107,7 +107,7 @@ public class ConstructNative extends DefaultNative {
         String[] lines = header.split("\n", -1);
         for (int at = 0; at < lines.length; at++) {
             String line = withoutACarriageReturn(lines[at]);
-            int colon = findTheColonAfterAName(line);
+            int colon = findColonAfterName(line);
             if (colon < 0) {
                 continue;
             }
@@ -126,7 +126,7 @@ public class ConstructNative extends DefaultNative {
         return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
     }
 
-    private int findTheColonAfterAName(String line) {
+    private int findColonAfterName(String line) {
         String name = line.stripLeading();
         if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
             return -1;

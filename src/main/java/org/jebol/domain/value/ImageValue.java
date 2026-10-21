@@ -50,9 +50,9 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public long findThePositionNamedBy(Value given, boolean countingFromOne) {
+    public long findPositionNamedBy(Value given, boolean countingFromOne) {
         if (!(given instanceof PairValue(double x, double y))) {
-            return RebolSeries.super.findThePositionNamedBy(given, countingFromOne);
+            return RebolSeries.super.findPositionNamedBy(given, countingFromOne);
         }
         return ((long) y - (countingFromOne ? 1 : 0)) * storage.wide() + (long) x;
     }

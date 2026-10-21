@@ -87,7 +87,7 @@ public sealed interface RebolSeries extends Value
         return atClamped(index() + steps);
     }
 
-    default long findThePositionNamedBy(Value given, boolean countingFromOne) {
+    default long findPositionNamedBy(Value given, boolean countingFromOne) {
         return switch (given) {
             case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG, given);
             case IntegerValue number -> number.magnitude();

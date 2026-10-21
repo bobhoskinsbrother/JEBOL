@@ -41,7 +41,7 @@ final class WedgesAndRings {
             double to = (wedge + 1) * 360.0 / WEDGES_ROUND + gradient.angle();
             pieces.add(new Piece(
                     makeAWedge(gradient, from, to, reach),
-                    findTheColourAlong(gradient, wedge / (double) (WEDGES_ROUND - 1))));
+                    findColourAlong(gradient, wedge / (double) (WEDGES_ROUND - 1))));
         }
         return List.copyOf(pieces);
     }
@@ -71,7 +71,7 @@ final class WedgesAndRings {
             double howFar = reach * ring / RINGS_OUT;
             pieces.add(new Piece(
                     makeADiamond(gradient, howFar),
-                    findTheColourAlong(gradient, (ring - 1) / (double) (RINGS_OUT - 1))));
+                    findColourAlong(gradient, (ring - 1) / (double) (RINGS_OUT - 1))));
         }
         return List.copyOf(pieces);
     }
@@ -87,7 +87,7 @@ final class WedgesAndRings {
                 new PathStep.Close());
     }
 
-    private static Colour findTheColourAlong(Gradient gradient, double share) {
+    private static Colour findColourAlong(Gradient gradient, double share) {
         List<Colour> colours = gradient.colours();
         List<Double> stops = gradient.stops();
         double along = Math.clamp(share, 0, 1);

@@ -44,7 +44,7 @@ public class IndexAction extends SeriesOrFileAction {
             case ImageValue picture when refinements.contains("xy") ->
                     picture.findWhereItStands(COUNTING_FROM_ONE);
             case PortValue port when port.isAFile() -> IntegerValue.of(
-                    findTheFileBehind(port, evaluator).position() + COUNTING_FROM_ONE);
+                    findFileBehind(port, evaluator).position() + COUNTING_FROM_ONE);
             case GobValue gob -> IntegerValue.of(gob.positionCountedAsUnsigned());
             case RebolSeries series -> IntegerValue.of(series.index());
             case Value anythingElse -> refuseTheDatatype(anythingElse);

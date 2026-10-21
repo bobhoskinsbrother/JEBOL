@@ -21,7 +21,7 @@ public class GreatestCommonDivisorNative extends WholeNumberNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> IntegerValue.of(
-                findTheGreatestDivisorSharedBy(readTheWholeNumberOf(arguments.get(0)),
+                findGreatestDivisorSharedBy(readTheWholeNumberOf(arguments.get(0)),
                         readTheWholeNumberOf(arguments.get(1))));
     }
 }

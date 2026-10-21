@@ -34,7 +34,7 @@ public final class PolicyEnforcement {
             return;
         }
         PolicyLevel level = new SecurityPolicies(readField(state.get(), "policies"), fileNamesFoldCase())
-                .findTheLevelFor(kind, access, subject);
+                .findLevelFor(kind, access, subject);
         switch (level) {
             case ALLOW -> letTheAccessGoAhead();
             case ASK -> refuseUnlessConfirmed(state.get(), kind, access, subject);

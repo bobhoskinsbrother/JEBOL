@@ -70,7 +70,7 @@ public final class Context {
     }
 
     public Value functionOwningThisFrame() {
-        return supersededBy != null ? findTheResolvingFrame().functionOwningThisFrame() : ownedByFunction;
+        return supersededBy != null ? findResolvingFrame().functionOwningThisFrame() : ownedByFunction;
     }
 
     public void giveWayTo(Context newer) {
@@ -83,7 +83,7 @@ public final class Context {
 
     public boolean callHasEnded() {
         if (supersededBy != null) {
-            return findTheResolvingFrame().callHasEnded();
+            return findResolvingFrame().callHasEnded();
         }
         return callEnded || onlyThroughACallThatIsRunning;
     }
@@ -105,7 +105,7 @@ public final class Context {
             return false;
         }
         if (supersededBy != null) {
-            return findTheResolvingFrame().contains(canonicalName);
+            return findResolvingFrame().contains(canonicalName);
         }
         return slotsByCanonicalName.containsKey(canonicalName)
                 || answersToItsOwnSelf(canonicalName)
@@ -160,7 +160,7 @@ public final class Context {
 
     public Context findTheHolderOf(String canonicalName) {
         if (supersededBy != null) {
-            return findTheResolvingFrame().findTheHolderOf(canonicalName);
+            return findResolvingFrame().findTheHolderOf(canonicalName);
         }
         if (holds(canonicalName) || answersToItsOwnSelf(canonicalName)) {
             return this;
@@ -176,7 +176,7 @@ public final class Context {
             throw new IllegalStateException("the unbound context holds no slots; ask knows() first");
         }
         if (supersededBy != null) {
-            return findTheResolvingFrame().findSlotFor(canonicalName);
+            return findResolvingFrame().findSlotFor(canonicalName);
         }
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {
@@ -191,12 +191,12 @@ public final class Context {
         throw new IllegalStateException("no slot for \"" + canonicalName + "\"; ask knows() first");
     }
 
-    public ContextSlot findTheSlotOrNone(String canonicalName) {
+    public ContextSlot findSlotOrNone(String canonicalName) {
         if (unbound || lacksALentFrame()) {
             return null;
         }
         if (supersededBy != null) {
-            return findTheResolvingFrame().findTheSlotOrNone(canonicalName);
+            return findResolvingFrame().findSlotOrNone(canonicalName);
         }
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {
@@ -205,7 +205,7 @@ public final class Context {
         if (answersToItsOwnSelf(canonicalName)) {
             return itsOwnSelf.orElse(null);
         }
-        return parent != null ? parent.findTheSlotOrNone(canonicalName) : null;
+        return parent != null ? parent.findSlotOrNone(canonicalName) : null;
     }
 
     public ContextSlot register(String spelling) {
@@ -213,7 +213,7 @@ public final class Context {
             throw new IllegalStateException("the unbound context cannot be extended");
         }
         if (supersededBy != null) {
-            return findTheResolvingFrame().register(spelling);
+            return findResolvingFrame().register(spelling);
         }
         String canonical = canonicalise(spelling);
         ContextSlot existing = slotsByCanonicalName.get(canonical);
@@ -250,7 +250,7 @@ public final class Context {
         return reached;
     }
 
-    public Value findTheSystemFunctionNamed(String name) {
+    public Value findSystemFunctionNamed(String name) {
         if (!(readValueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
@@ -349,7 +349,7 @@ public final class Context {
         return unbound ? "Context(unbound)" : "Context(" + slotCount() + " slots)";
     }
 
-    private Context findTheResolvingFrame() {
+    private Context findResolvingFrame() {
         Context frame = this;
         while (frame.supersededBy != null) {
             frame = frame.supersededBy;

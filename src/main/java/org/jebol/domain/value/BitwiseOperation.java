@@ -46,7 +46,7 @@ public interface BitwiseOperation extends ValueOperation {
             .collect(toUnmodifiableMap(
                     BitwiseOperation::spelling, identity()));
 
-    static BitwiseOperation findTheOneCalled(String spelling) {
+    static BitwiseOperation findOneCalled(String spelling) {
         return Optional.ofNullable(BY_SPELLING.get(spelling)).orElseThrow();
     }
 }

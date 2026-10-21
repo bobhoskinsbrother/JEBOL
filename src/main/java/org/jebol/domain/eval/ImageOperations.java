@@ -40,7 +40,7 @@ public final class ImageOperations {
         int spread = limitToHalfTheShorterSide(radius, wide, high);
         byte[] picture = readTheChannelsOf(storage, wide, high);
         byte[] working = new byte[picture.length];
-        for (int boxWidth : findTheBoxWidthsMatching(spread)) {
+        for (int boxWidth : findBoxWidthsMatching(spread)) {
             blurWithBoxes(picture, working, wide, high, (boxWidth - 1) / 2);
         }
         writeChannelsBack(storage, picture, wide, high);
@@ -50,7 +50,7 @@ public final class ImageOperations {
         return Math.min(radius, Math.min(wide / 2, high / 2));
     }
 
-    private static int[] findTheBoxWidthsMatching(double spread) {
+    private static int[] findBoxWidthsMatching(double spread) {
         int narrower = (int) Math.floor(Math.sqrt((12 * spread * spread / 3) + 1));
         if (narrower % 2 == 0) {
             narrower--;

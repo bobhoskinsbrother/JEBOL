@@ -17,7 +17,7 @@ final class KeysAlikeApartFromCase {
         stored.forEach(this::add);
     }
 
-    Value findTheFirstStoredLike(Value wanted) {
+    Value findFirstStoredLike(Value wanted) {
         List<Value> alike = storedByFolding.getOrDefault(fold(wanted), List.of());
         return alike.isEmpty() ? NoneValue.none() : alike.getFirst();
     }

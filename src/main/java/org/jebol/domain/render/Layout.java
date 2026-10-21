@@ -73,7 +73,7 @@ public final class Layout {
     }
 
     /** The HTML element a face type becomes. */
-    public static String findTheElementFor(String kind) {
+    public static String findElementFor(String kind) {
         return KINDS.getOrDefault(kind, "div");
     }
 

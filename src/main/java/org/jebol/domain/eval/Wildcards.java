@@ -16,10 +16,10 @@ public record Wildcards(char anyRun, char oneCharacter) {
     }
 
     public boolean matchTheWholeOf(String within, String pattern) {
-        return findThePatternEnd(within, 0, within.length(), pattern, true) == within.length();
+        return findPatternEnd(within, 0, within.length(), pattern, true) == within.length();
     }
 
-    public int findThePatternEnd(
+    public int findPatternEnd(
             String within, int from, int upTo, String pattern, boolean mindingCase) {
         if (pattern.isEmpty()) {
             return from;
@@ -36,7 +36,7 @@ public record Wildcards(char anyRun, char oneCharacter) {
         if (first != oneCharacter && !isTheSameCharacter(within.charAt(from), first, mindingCase)) {
             return -1;
         }
-        return findThePatternEnd(within, from + 1, upTo, pattern.substring(1), mindingCase);
+        return findPatternEnd(within, from + 1, upTo, pattern.substring(1), mindingCase);
     }
 
     private Wildcards chooseFrom(String characters) {
@@ -48,7 +48,7 @@ public record Wildcards(char anyRun, char oneCharacter) {
     private int endAfterTheShortestRun(
             String within, int from, int upTo, String pattern, boolean mindingCase) {
         for (int taken = from; taken <= upTo; taken++) {
-            int end = findThePatternEnd(within, taken, upTo, pattern.substring(1), mindingCase);
+            int end = findPatternEnd(within, taken, upTo, pattern.substring(1), mindingCase);
             if (end >= 0) {
                 return end;
             }

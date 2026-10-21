@@ -35,7 +35,7 @@ public record TimeValue(long nanoseconds) implements Value {
     public Value pickBy(Value selector) {
         long seconds = Math.abs(nanoseconds) / NANOSECONDS_PER_SECOND;
         long fraction = Math.abs(nanoseconds) % NANOSECONDS_PER_SECOND;
-        return switch (findThePartNamedBy(selector)) {
+        return switch (findPartNamedBy(selector)) {
             case "hour" -> IntegerValue.of(seconds / 3600);
             case "minute" -> IntegerValue.of(seconds / 60 % 60);
             case "second" -> fraction == 0
@@ -45,7 +45,7 @@ public record TimeValue(long nanoseconds) implements Value {
         };
     }
 
-    private String findThePartNamedBy(Value selector) {
+    private String findPartNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue asked -> asked.canonical();
             case IntegerValue whole when whole.magnitude() == 1 -> "hour";

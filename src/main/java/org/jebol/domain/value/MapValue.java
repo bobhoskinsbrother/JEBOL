@@ -113,13 +113,13 @@ public final class MapValue implements Value, PathTarget {
                 : stored;
     }
 
-    private Value findTheFirstStoredKeyMatching(
+    private Value findFirstStoredKeyMatching(
             Value asked, boolean mindingCase) {
         Value wanted = storeAnyWordAsASetWord(asked);
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
-        return keysAlikeApartFromCase.findTheFirstStoredLike(wanted);
+        return keysAlikeApartFromCase.findFirstStoredLike(wanted);
     }
 
     public Value select(Value key) {
@@ -127,7 +127,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public Value select(Value key, boolean mindingCase) {
-        Value found = findTheFirstStoredKeyMatching(key, mindingCase);
+        Value found = findFirstStoredKeyMatching(key, mindingCase);
         return found instanceof NoneValue
                 ? NoneValue.none()
                 : entries.getOrDefault(found, NoneValue.none());
@@ -138,12 +138,12 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public boolean holds(Value key, boolean mindingCase) {
-        return !(findTheFirstStoredKeyMatching(key, mindingCase)
+        return !(findFirstStoredKeyMatching(key, mindingCase)
                 instanceof NoneValue);
     }
 
-    public Value findTheStoredKeyLike(Value asked, boolean mindingCase) {
-        return findTheFirstStoredKeyMatching(asked, mindingCase);
+    public Value findStoredKeyLike(Value asked, boolean mindingCase) {
+        return findFirstStoredKeyMatching(asked, mindingCase);
     }
 
     public void put(Value key, Value value) {
@@ -181,7 +181,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public void putWhetherProtectedOrNot(Value key, Value value, boolean mindingCase) {
-        Value existing = findTheFirstStoredKeyMatching(key, mindingCase);
+        Value existing = findFirstStoredKeyMatching(key, mindingCase);
         if (existing instanceof NoneValue) {
             Value added = copyAndLockText(storeAnyWordAsASetWord(key));
             entries.put(added, value);

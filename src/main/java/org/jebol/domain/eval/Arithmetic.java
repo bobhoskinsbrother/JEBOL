@@ -31,10 +31,10 @@ public final class Arithmetic {
         };
     }
 
-    public static Value findTheRest(Value dividend, Value divisor, Division definition) {
+    public static Value findRest(Value dividend, Value divisor, Division definition) {
         if (dividend instanceof IntegerValue(long magnitude1) && divisor instanceof IntegerValue(long magnitude)) {
             return IntegerValue.of(
-                    findTheWholeRest(magnitude1, magnitude, definition));
+                    findWholeRest(magnitude1, magnitude, definition));
         }
         double first = asMagnitude(dividend);
         double second = asMagnitude(divisor);
@@ -50,7 +50,7 @@ public final class Arithmetic {
                 : rest);
     }
 
-    private static long findTheWholeRest(long dividend, long divisor, Division definition) {
+    private static long findWholeRest(long dividend, long divisor, Division definition) {
         requireNonZero(divisor);
         long rest = dividend % divisor;
         return switch (definition) {

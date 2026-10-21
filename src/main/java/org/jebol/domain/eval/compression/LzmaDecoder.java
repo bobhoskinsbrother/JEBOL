@@ -189,7 +189,7 @@ final class LzmaDecoder {
         return at - (1 << howManyBits);
     }
 
-    private int findThePositionStateFor(int howManyDone) {
+    private int findPositionStateFor(int howManyDone) {
         return (howManyDone & positionMask) << POSITION_BITS_MAX;
     }
 
@@ -202,7 +202,7 @@ final class LzmaDecoder {
 
     private void decodeOneSymbol() {
         noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance();
-        int positionState = findThePositionStateFor(processed);
+        int positionState = findPositionStateFor(processed);
         if (decodeBit(isMatch, positionState + state) == 0) {
             decodeLiteral();
             return;

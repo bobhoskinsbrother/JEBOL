@@ -10,7 +10,7 @@ public abstract class WholeNumberNative extends ArithmeticNative {
         return ((IntegerValue) given).magnitude();
     }
 
-    protected long findTheGreatestDivisorSharedBy(long first, long second) {
+    protected long findGreatestDivisorSharedBy(long first, long second) {
         long larger = Math.abs(first);
         long smaller = Math.abs(second);
         while (smaller != 0) {

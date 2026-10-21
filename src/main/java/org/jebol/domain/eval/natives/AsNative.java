@@ -31,6 +31,6 @@ public class AsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                arguments.getFirst().findTheDatatypeItStandsFor().as(arguments.get(1));
+                arguments.getFirst().findDatatypeItStandsFor().as(arguments.get(1));
     }
 }

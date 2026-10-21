@@ -33,7 +33,7 @@ public class TraceNative extends DefaultNative {
             evaluator.policies().require(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty());
             Value mode = arguments.getFirst();
             Trace tracing = evaluator.tracing();
-            tracing.writeTo(evaluator.findTheOutput());
+            tracing.writeTo(evaluator.findOutput());
             if (refinements.contains("back") && mode instanceof IntegerValue(long lines)) {
                 tracing.showTheLastAndStopTracing((int) lines);
                 return UnsetValue.unset();

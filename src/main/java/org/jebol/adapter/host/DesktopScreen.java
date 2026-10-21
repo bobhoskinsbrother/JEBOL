@@ -97,18 +97,18 @@ public final class DesktopScreen extends GobScreen {
         };
     }
 
-    private GraphicsDevice findTheDeviceAt(int display) {
+    private GraphicsDevice findDeviceAt(int display) {
         GraphicsDevice[] all = GraphicsEnvironment
                 .getLocalGraphicsEnvironment().getScreenDevices();
         return all[Math.min(Math.max(0, display), all.length - 1)];
     }
 
     private Rectangle displayDimensions(int display) {
-        return findTheDeviceAt(display).getDefaultConfiguration().getBounds();
+        return findDeviceAt(display).getDefaultConfiguration().getBounds();
     }
 
     private Rectangle workAreaOfDisplay(int display) {
-        GraphicsConfiguration where = findTheDeviceAt(display).getDefaultConfiguration();
+        GraphicsConfiguration where = findDeviceAt(display).getDefaultConfiguration();
         Rectangle whole = where.getBounds();
         Insets taken = Toolkit.getDefaultToolkit().getScreenInsets(where);
         return new Rectangle(
@@ -178,18 +178,18 @@ public final class DesktopScreen extends GobScreen {
 
     @Override
     protected void repaintWindowFor(GobValue gob) {
-        findTheWindowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
+        findWindowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
     }
 
     @Override
     protected void closeWindowFor(GobValue gob) {
-        findTheWindowFor(gob).ifPresent(standing -> {
+        findWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
             onTheToolkitThreadAndWaitedFor(standing::dispose);
         });
     }
 
-    private Optional<JFrame> findTheWindowFor(GobValue gob) {
+    private Optional<JFrame> findWindowFor(GobValue gob) {
         return windows.entrySet().stream()
                 .filter(each -> each.getKey().sharesStorageWith(gob))
                 .map(Map.Entry::getValue)

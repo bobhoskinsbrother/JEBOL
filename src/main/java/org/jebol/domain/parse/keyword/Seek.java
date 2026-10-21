@@ -62,8 +62,8 @@ final class Seek extends DeclaredKeyword {
         refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
         Value looked = walk.readWhatTheWordHolds(wanted);
         return looked instanceof AnyBlockValue || looked instanceof BitsetValue
-                ? findTheFirstPlaceTheRuleMatches(walk, looked)
-                : findTheFirstPlaceTheTextAppears(walk, looked);
+                ? findFirstPlaceRuleMatches(walk, looked)
+                : findFirstPlaceTextAppears(walk, looked);
     }
 
     private static boolean namesTheTail(Value wanted) {
@@ -93,7 +93,7 @@ final class Seek extends DeclaredKeyword {
         }
     }
 
-    private int findTheFirstPlaceTheRuleMatches(ParseWalk walk, Value looked) {
+    private int findFirstPlaceRuleMatches(ParseWalk walk, Value looked) {
         for (int from = walk.position(); from <= walk.inputLength(); from++) {
             walk.moveTo(from);
             if (walk.matchValue(looked)) {
@@ -106,9 +106,9 @@ final class Seek extends DeclaredKeyword {
         return ParseWalk.NO_MATCH;
     }
 
-    private int findTheFirstPlaceTheTextAppears(ParseWalk walk, Value looked) {
+    private int findFirstPlaceTextAppears(ParseWalk walk, Value looked) {
         int[] needle = walk.readTheTextOf(looked).codePoints().toArray();
-        int found = walk.findTheFirstMatchFrom(needle, walk.position());
+        int found = walk.findFirstMatchFrom(needle, walk.position());
         if (found < 0) {
             return ParseWalk.NO_MATCH;
         }

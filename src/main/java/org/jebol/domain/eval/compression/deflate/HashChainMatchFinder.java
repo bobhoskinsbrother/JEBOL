@@ -42,7 +42,7 @@ final class HashChainMatchFinder extends MatchFinder {
         base += DeflateTables.WINDOW_SIZE;
     }
 
-    int findTheLongestMatch(byte[] input, int next, int lengthToBeat, int maxLength, int niceLength, int maxSearchDepth) {
+    int findLongestMatch(byte[] input, int next, int lengthToBeat, int maxLength, int niceLength, int maxSearchDepth) {
         int bestLength = lengthToBeat;
         int bestMatch = next;
         int depthRemaining = maxSearchDepth;
@@ -51,7 +51,7 @@ final class HashChainMatchFinder extends MatchFinder {
             slideWindow();
             position = 0;
         }
-        int cutoff = findTheCutoffFor(position);
+        int cutoff = findCutoffFor(position);
         search:
         {
             if (maxLength < REQUIRED_BYTES) {

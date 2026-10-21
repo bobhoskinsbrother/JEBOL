@@ -218,7 +218,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return new BinaryValue(copied, 1);
     }
 
-    public int findTheByteOrderMark() {
+    public int findByteOrderMark() {
         if (startsWith(0xEF, 0xBB, 0xBF)) {
             return 8;
         }
@@ -356,7 +356,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     public String decodeAsText() {
         byte[] bytes = octetsFromHere();
-        int marked = findTheByteOrderMark();
+        int marked = findByteOrderMark();
         if (marked != 0) {
             return textBehindTheMark(bytes, marked);
         }

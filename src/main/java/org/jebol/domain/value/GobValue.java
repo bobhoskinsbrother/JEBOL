@@ -17,7 +17,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
         return Integer.toUnsignedLong(index);
     }
 
-    public int findThePositionWithinThePane() {
+    public int findPositionWithinPane() {
         long counted = Integer.toUnsignedLong(index - 1) + 1;
         return (int) Math.min(Math.max(counted, 1), storage.length() + 1L);
     }

@@ -37,7 +37,7 @@ public class DsNative extends DefaultNative {
     private void printTheFrameStack(Evaluator evaluator) {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
         int slotsInUse = (open.size() + 1) * StackNative.FRAME_VALUE_UNITS;
-        evaluator.findTheOutput().writeLine(String.format(FRAME_LINE,
+        evaluator.findOutput().writeLine(String.format(FRAME_LINE,
                 slotsInUse, nativeName(), 0, NativeValue.TYPE.literalSpelling()));
         slotsInUse -= StackNative.FRAME_VALUE_UNITS;
         for (Evaluator.OpenCall call : open) {
@@ -48,13 +48,13 @@ public class DsNative extends DefaultNative {
 
     private void printOneFrame(Evaluator evaluator, Evaluator.OpenCall call, int slotsInUse) {
         List<String> slots = call.listTheSlotNames();
-        evaluator.findTheOutput().writeLine(String.format(FRAME_LINE,
+        evaluator.findOutput().writeLine(String.format(FRAME_LINE,
                 slotsInUse,
                 call.name().isEmpty() ? NO_NAME : call.name(),
                 slots.size(),
                 call.function().datatype().literalSpelling()));
         for (String slot : slots) {
-            evaluator.findTheOutput().writeLine(String.format(SLOT_LINE, slot,
+            evaluator.findOutput().writeLine(String.format(SLOT_LINE, slot,
                     moldWithinTheLimit(call.locals().findSlotFor(Context.canonicalise(slot)).value())));
         }
     }

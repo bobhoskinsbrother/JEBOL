@@ -21,7 +21,7 @@ final class FastestParser extends DeflateParser {
         int next = 0;
         do {
             int blockBegin = next;
-            int blockEnd = findTheMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
             int sequence = 0;
             beginSequences(sequences);
             do {
@@ -36,7 +36,7 @@ final class FastestParser extends DeflateParser {
                     }
                     niceLength = Math.min(niceLength, maxLength);
                 }
-                int matched = finder.findTheLongestMatch(input, next, maxLength, niceLength);
+                int matched = finder.findLongestMatch(input, next, maxLength, niceLength);
                 if (matched != 0) {
                     sequence = chooseMatch(matched, finder.offset(), false, sequences, sequence);
                     finder.skipBytes(input, next + 1, length, matched - 1);

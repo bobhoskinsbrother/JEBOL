@@ -21,7 +21,7 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
         return acceptsWhateverComesAlong("series");
     }
 
-    protected OpenFile findTheFileBehind(PortValue port, Evaluator evaluator) {
+    protected OpenFile findFileBehind(PortValue port, Evaluator evaluator) {
         return new OpenFile(port, evaluator.ports().files(), granted);
     }
 

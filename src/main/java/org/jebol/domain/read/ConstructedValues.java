@@ -58,7 +58,7 @@ final class ConstructedValues {
         if (namesAVector(leading, contents.size())) {
             return VectorSpec.readConstruction(contents).orElseThrow(CannotConstruct::new);
         }
-        Value resolved = findTheDatatypeNamed(leading);
+        Value resolved = findDatatypeNamed(leading);
         if (contents.size() == 1) {
             return resolved;
         }
@@ -83,7 +83,7 @@ final class ConstructedValues {
         return VectorKind.findTheKindNamed(leading.spelling()).isPresent();
     }
 
-    private Value findTheDatatypeNamed(AnyWordValue word) {
+    private Value findDatatypeNamed(AnyWordValue word) {
         if (!word.spelling().endsWith("!")) {
             throw new CannotConstruct();
         }

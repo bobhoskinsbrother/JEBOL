@@ -40,14 +40,14 @@ public class CaretToOffsetNative extends TextMeasuringNative {
         return (arguments, evaluator, context, refinements) -> {
             GobText text = readTheTextOf((GobValue) arguments.get(0), evaluator);
             TextLines.CaretPlace placed = text.lines().findWhereTheCaretIs(
-                    text.findTheRunAt(findThePlaceInTheBlock(arguments.get(1))),
-                    findTheCharacterBefore(arguments.get(2)),
-                    text.layout(), text.findTheGobsOwnBox());
+                    text.findRunAt(findPlaceInBlock(arguments.get(1))),
+                    findCharacterBefore(arguments.get(2)),
+                    text.layout(), text.findGobsOwnBox());
             return roundToWholePixels(placed.across(), placed.top());
         };
     }
 
-    private int findThePlaceInTheBlock(Value element) {
+    private int findPlaceInBlock(Value element) {
         return switch (element) {
             case IntegerValue(long place) -> (int) place;
             case AnyBlockValue atTheString -> atTheString.index();
@@ -55,7 +55,7 @@ public class CaretToOffsetNative extends TextMeasuringNative {
         };
     }
 
-    private int findTheCharacterBefore(Value position) {
+    private int findCharacterBefore(Value position) {
         return switch (position) {
             case IntegerValue(long place) -> (int) place - 1;
             case AnyStringValue atTheCaret -> atTheCaret.index() - 1;

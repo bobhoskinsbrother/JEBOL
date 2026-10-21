@@ -137,7 +137,7 @@ final class NearOptimalParser extends DeflateParser {
         boolean previousBlockUsedOnlyLiterals = false;
         resetStatistics();
         do {
-            int blockEnd = findTheMaxBlockEnd(blockBegin, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findMaxBlockEnd(blockBegin, length, SOFT_MAX_BLOCK_LENGTH);
             int previousEndBlockCheck = -1;
             boolean changeDetected = false;
             int nextObservation = next;
@@ -267,13 +267,13 @@ final class NearOptimalParser extends DeflateParser {
         if (blockLength <= longestBlockToOptimiseAsStatic) {
             saveCosts();
             setCostsFromCodeLengths(encoder.staticCodes.lengths);
-            findTheCheapestPath(blockLength, cacheEnd);
+            findCheapestPath(blockLength, cacheEnd);
             staticCost = Integer.toUnsignedLong(nodeCosts[0]) / BIT_COST + STATIC_END_OF_BLOCK_BITS;
             restoreCosts();
         }
         setInitialCosts(input, blockBegin, blockLength, firstBlock);
         do {
-            findTheCheapestPath(blockLength, cacheEnd);
+            findCheapestPath(blockLength, cacheEnd);
             trueCost = encoder.trueCost();
             if (trueCost + minImprovementToContinue > bestTrueCost) {
                 break;
@@ -292,11 +292,11 @@ final class NearOptimalParser extends DeflateParser {
                 onlyLiterals = true;
             } else {
                 setCostsFromCodeLengths(encoder.staticCodes.lengths);
-                findTheCheapestPath(blockLength, cacheEnd);
+                findCheapestPath(blockLength, cacheEnd);
             }
         } else if (trueCost >= bestTrueCost + minBitsToUseANonFinalPath) {
             restoreCosts();
-            findTheCheapestPath(blockLength, cacheEnd);
+            findCheapestPath(blockLength, cacheEnd);
             setCostsFromCodeLengths(encoder.codes.lengths);
         }
         encoder.flushBlock(out, input, blockBegin, blockLength, content, finalBlock);
@@ -324,7 +324,7 @@ final class NearOptimalParser extends DeflateParser {
         encoder.makeHuffmanCodes(encoder.codes);
     }
 
-    private void findTheCheapestPath(int blockLength, int cacheEnd) {
+    private void findCheapestPath(int blockLength, int cacheEnd) {
         int node = blockLength;
         int cacheAt = cacheEnd;
         nodeCosts[node] = 0;

@@ -39,6 +39,6 @@ public class UnsetNative extends DefaultNative {
         names.stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)
-                .forEach(word -> word.findTheBoundSlot().setValue(UnsetValue.unset()));
+                .forEach(word -> word.findBoundSlot().setValue(UnsetValue.unset()));
     }
 }

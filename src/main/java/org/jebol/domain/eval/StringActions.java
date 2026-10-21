@@ -27,7 +27,7 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value poke(Value position, Value written) {
-        text.storage().set(findThePokedStoragePosition(position), readCodepointPokedFrom(written));
+        text.storage().set(findPokedStoragePosition(position), readCodepointPokedFrom(written));
         return written;
     }
 

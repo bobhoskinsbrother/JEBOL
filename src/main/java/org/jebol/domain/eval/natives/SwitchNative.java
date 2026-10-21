@@ -42,7 +42,7 @@ public class SwitchNative extends DefaultNative {
                         || !matches(choices.get(at), wanted, caseSensitive)) {
                     continue;
                 }
-                int branchAt = findTheNextBlockFrom(choices, at);
+                int branchAt = findNextBlockFrom(choices, at);
                 if (branchAt >= choices.size()) {
                     break;
                 }
@@ -69,7 +69,7 @@ public class SwitchNative extends DefaultNative {
                 : Comparison.areLooselyEqual(choice, wanted);
     }
 
-    private int findTheNextBlockFrom(List<Value> choices, int from) {
+    private int findNextBlockFrom(List<Value> choices, int from) {
         int at = from;
         while (at < choices.size() && !isExactlyABlock(choices.get(at))) {
             at++;

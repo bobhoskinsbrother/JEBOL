@@ -155,7 +155,7 @@ public record ErrorValue(
             if (!ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
             }
-            if (!fromAnObject && ErrorCatalogue.findTheCodeFor(category.spelling(), errorId)
+            if (!fromAnObject && ErrorCatalogue.findCodeFor(category.spelling(), errorId)
                     < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
@@ -325,7 +325,7 @@ public record ErrorValue(
     }
 
     private long numberTheCode() {
-        int fromCatalogue = ErrorCatalogue.findTheCodeFor(
+        int fromCatalogue = ErrorCatalogue.findCodeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
                         Locale.ROOT),
                 errorId);

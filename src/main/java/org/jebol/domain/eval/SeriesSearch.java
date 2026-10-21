@@ -50,7 +50,7 @@ public final class SeriesSearch {
         return refinements.contains("skip") && stride < 1 && !refinements.contains("reverse");
     }
 
-    public int findThePosition() {
+    public int findPosition() {
         if (seeksAnEmptyRun()) {
             return -1;
         }
@@ -91,7 +91,7 @@ public final class SeriesSearch {
     public int measureTheLengthMatchedAt(int found) {
         if (series instanceof AnyStringValue patterned && refinements.contains("any")) {
             int from = found - 1;
-            int reached = wildcards.findThePatternEnd(patterned.head().text(), from, end(),
+            int reached = wildcards.findPatternEnd(patterned.head().text(), from, end(),
                     Molder.form(wanted), refinements.contains("case"));
             return reached < 0 ? 1 : reached - from;
         }
@@ -162,7 +162,7 @@ public final class SeriesSearch {
 
     private boolean matchesHere(List<Value> items, int at, int end) {
         if (series instanceof AnyStringValue text && refinements.contains("any")) {
-            return wildcards.findThePatternEnd(text.head().text(), at, end, Molder.form(wanted),
+            return wildcards.findPatternEnd(text.head().text(), at, end, Molder.form(wanted),
                     refinements.contains("case")) >= 0;
         }
         if ((wanted instanceof Datatype || wanted instanceof TypesetValue)
@@ -284,7 +284,7 @@ public final class SeriesSearch {
 
     private boolean matchesAtRecord(List<Value> items, int at, int end) {
         if (series instanceof AnyStringValue text && refinements.contains("any")) {
-            return wildcards.findThePatternEnd(text.head().text(), at, end, Molder.form(wanted),
+            return wildcards.findPatternEnd(text.head().text(), at, end, Molder.form(wanted),
                     refinements.contains("case")) >= 0;
         }
         if (wanted instanceof BitsetValue members) {

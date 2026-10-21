@@ -34,7 +34,7 @@ public class ProtectNative extends ProtectingNative {
             Value target = arguments.getFirst();
             evaluator.policies().require(PolicyClass.PROTECT, PolicyAccess.WRITE, Optional.of(target));
             if (refinements.contains("hide") && target instanceof AnyWordValue word) {
-                word.findTheBoundSlot().hide(true);
+                word.findBoundSlot().hide(true);
                 return target;
             }
             if (refinements.contains("hide") && refinements.contains("words")
@@ -59,6 +59,6 @@ public class ProtectNative extends ProtectingNative {
         names.remaining().stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)
-                .forEach(word -> word.findTheBoundSlot().hide(true));
+                .forEach(word -> word.findBoundSlot().hide(true));
     }
 }

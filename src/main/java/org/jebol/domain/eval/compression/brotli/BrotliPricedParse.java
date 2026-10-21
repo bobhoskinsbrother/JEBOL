@@ -94,7 +94,7 @@ final class BrotliPricedParse {
             return Math.min(howManyPushed, HOW_MANY_STARTS_ARE_KEPT);
         }
 
-        int findTheSlotFor(int which) {
+        int findSlotFor(int which) {
             return (which - howManyPushed) & 7;
         }
 
@@ -131,7 +131,7 @@ final class BrotliPricedParse {
         }
     }
 
-    private void findTheRecentDistancesAt(int position, int[] startingFrom, int[] into) {
+    private void findRecentDistancesAt(int position, int[] startingFrom, int[] into) {
         int filled = 0;
         int walk = costThenShortcutThenNext[position];
         while (filled < 4 && walk > 0) {
@@ -170,7 +170,7 @@ final class BrotliPricedParse {
                 shortcutFor(blockStart, position, furthestBack);
         if (itsCost <= model.priceTheLiterals(0, position)) {
             int[] distances = new int[4];
-            findTheRecentDistancesAt(position, startingDistances, distances);
+            findRecentDistancesAt(position, startingDistances, distances);
             starts.push(position, itsCost,
                     itsCost - model.priceTheLiterals(0, position), distances);
         }
@@ -216,7 +216,7 @@ final class BrotliPricedParse {
 
         int shortestWorthTrying;
         {
-            int slot = starts.findTheSlotFor(0);
+            int slot = starts.findSlotFor(0);
             float floor = starts.cost[slot] + model.cheapestCommand()
                     + model.priceTheLiterals(starts.position[slot], position);
             shortestWorthTrying = shortestCopyWorthTrying(floor, position);
@@ -224,7 +224,7 @@ final class BrotliPricedParse {
 
         for (int which = 0; which < howManyStartsToTry && which < starts.size();
                 which++) {
-            int slot = starts.findTheSlotFor(which);
+            int slot = starts.findSlotFor(which);
             int start = starts.position[slot];
             int insertCode = BrotliCommand.insertLengthCode(position - start);
             float startDifference = starts.savedAgainstLiterals[slot];

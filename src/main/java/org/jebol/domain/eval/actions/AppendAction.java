@@ -33,7 +33,7 @@ public class AppendAction extends AddingAction {
                         throw Raised.of(EvaluationFailure.BAD_REFINES,
                                 "append on a file port is a write, and takes no dup or only");
                     }
-                    yield findTheFileBehind(file, evaluator).append(added);
+                    yield findFileBehind(file, evaluator).append(added);
                 }
                 case Value subject when Actions.of(subject).isPresent() ->
                         Actions.of(subject).orElseThrow().append(

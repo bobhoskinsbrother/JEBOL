@@ -140,7 +140,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
             KeyPairGenerator generating = KeyPairGenerator.getInstance("EC");
             generating.initialize(new ECGenParameterSpec(asTheJdkCallsIt));
             KeyPair pair = generating.generateKeyPair();
-            int width = (findTheCurveBehind(pair).getCurve().getField().getFieldSize() + 7) / 8;
+            int width = (findCurveBehind(pair).getCurve().getField().getFieldSize() + 7) / 8;
             return Optional.of(new EllipticCurveKey(pair, curveName, width,
                     HowThePointIsPublished.BOTH_COORDINATES_AFTER_A_LEAD_BYTE));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
@@ -163,7 +163,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         }
     }
 
-    private static ECParameterSpec findTheCurveBehind(KeyPair pair) {
+    private static ECParameterSpec findCurveBehind(KeyPair pair) {
         return ((ECPublicKey) pair.getPublic()).getParams();
     }
 
@@ -261,7 +261,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         KeyAgreement agreeing = KeyAgreement.getInstance("ECDH");
         agreeing.init(pair.getPrivate());
         agreeing.doPhase(KeyFactory.getInstance("EC").generatePublic(
-                new ECPublicKeySpec(new ECPoint(x, y), findTheCurveBehind(pair))), true);
+                new ECPublicKeySpec(new ECPoint(x, y), findCurveBehind(pair))), true);
         return Optional.of(agreeing.generateSecret());
     }
 

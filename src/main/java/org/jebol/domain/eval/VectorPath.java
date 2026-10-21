@@ -25,7 +25,7 @@ public final class VectorPath {
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             asked.spelling()));
         }
-        Integer chosen = findThePositionChosenBy(vector, selector);
+        Integer chosen = findPositionChosenBy(vector, selector);
         if (chosen == null) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
         }
@@ -39,7 +39,7 @@ public final class VectorPath {
         if (!(selector instanceof IntegerValue) && !(selector instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(selector));
         }
-        Integer chosen = findThePositionChosenBy(vector, selector);
+        Integer chosen = findPositionChosenBy(vector, selector);
         if (chosen == null || chosen < 1 || chosen > vector.storageLength()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(selector));
         }
@@ -59,7 +59,7 @@ public final class VectorPath {
         }
     }
 
-    private static Integer findThePositionChosenBy(VectorValue vector, Value selector) {
+    private static Integer findPositionChosenBy(VectorValue vector, Value selector) {
         long asked;
         if (selector instanceof IntegerValue(long magnitude)) {
             asked = magnitude;

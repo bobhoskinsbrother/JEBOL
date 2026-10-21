@@ -179,7 +179,7 @@ final class BrotliMetaBlock {
         BrotliMetaBlockSplit built = new BrotliMetaBlockSplit();
         int howManyContexts = contextMap == null
                 ? 1
-                : findTheHighestIn(contextMap) + 1;
+                : findHighestIn(contextMap) + 1;
         int howManyLiterals = 0;
         for (int which = 0; which < commands.count(); which++) {
             howManyLiterals += commands.insertLengthAt(which);
@@ -256,7 +256,7 @@ final class BrotliMetaBlock {
         return built;
     }
 
-    private static int findTheHighestIn(int[] map) {
+    private static int findHighestIn(int[] map) {
         int highest = 0;
         for (int each : map) {
             highest = Math.max(highest, each);

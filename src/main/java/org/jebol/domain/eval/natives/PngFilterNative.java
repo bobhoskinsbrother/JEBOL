@@ -37,14 +37,14 @@ public abstract class PngFilterNative extends EncodingNative {
 
     protected int readFilterNamedBy(Value asked) {
         return switch (asked) {
-            case IntegerValue(long magnitude) -> Math.clamp((int) magnitude, NO_FILTER, findTheLastFilter());
+            case IntegerValue(long magnitude) -> Math.clamp((int) magnitude, NO_FILTER, findLastFilter());
             case AnyWordValue word when Encodings.PNG_FILTERS.contains(word.canonical()) ->
                     Encodings.PNG_FILTERS.indexOf(word.canonical()) + FIRST_NAMED_FILTER;
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         };
     }
 
-    private int findTheLastFilter() {
+    private int findLastFilter() {
         return Encodings.PNG_FILTERS.size();
     }
 
@@ -53,12 +53,12 @@ public abstract class PngFilterNative extends EncodingNative {
     }
 
     protected int readBytesPerPixelIn(List<Value> arguments, Set<String> refinements) {
-        return findTheBytesPerPixelAsked(arguments, refinements)
+        return findBytesPerPixelAsked(arguments, refinements)
                 .map(asked -> (int) ((IntegerValue) asked).magnitude())
                 .orElse(ONE_BYTE_PER_PIXEL);
     }
 
-    private Optional<Value> findTheBytesPerPixelAsked(List<Value> arguments, Set<String> refinements) {
+    private Optional<Value> findBytesPerPixelAsked(List<Value> arguments, Set<String> refinements) {
         return readTheArgumentOf("skip", 0, arguments, refinements);
     }
 
@@ -71,7 +71,7 @@ public abstract class PngFilterNative extends EncodingNative {
         int bytesPerPixel = readBytesPerPixelIn(arguments, refinements);
         if (bytesPerPixel < 1 || bytesPerPixel > lineLength) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    findTheBytesPerPixelAsked(arguments, refinements).orElseThrow());
+                    findBytesPerPixelAsked(arguments, refinements).orElseThrow());
         }
     }
 }

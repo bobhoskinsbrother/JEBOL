@@ -21,6 +21,6 @@ public class UtfNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                IntegerValue.of(((BinaryValue) arguments.getFirst()).findTheByteOrderMark());
+                IntegerValue.of(((BinaryValue) arguments.getFirst()).findByteOrderMark());
     }
 }

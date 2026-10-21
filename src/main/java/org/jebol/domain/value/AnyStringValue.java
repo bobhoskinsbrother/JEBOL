@@ -195,7 +195,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         while (at < text.length()) {
             char here = text.charAt(at++);
             if (here == '\n' || here == '\r') {
-                if (at < text.length() && text.charAt(at) == findTheOtherEnding(here)) {
+                if (at < text.length() && text.charAt(at) == findOtherEnding(here)) {
                     at++;
                 }
                 here = '\n';
@@ -205,7 +205,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return standardised.toString();
     }
 
-    private char findTheOtherEnding(char one) {
+    private char findOtherEnding(char one) {
         return one == '\n' ? '\r' : '\n';
     }
 

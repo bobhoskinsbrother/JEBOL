@@ -45,25 +45,25 @@ public class FindAction extends SeriesSearchAction {
                         object.declaresAFieldFindCanReachBy(wanted)
                                 ? LogicValue.of(true)
                                 : NoneValue.none();
-                case MapValue map -> map.findTheStoredKeyLike(wanted, refinements.contains("case"));
+                case MapValue map -> map.findStoredKeyLike(wanted, refinements.contains("case"));
                 case BitsetValue bitset -> LogicValue.of(new BitsetActions(bitset).holds(
                         wanted, refinements.contains("any"), !refinements.contains("case")));
                 case TypesetValue typeset -> LogicValue.of(
                         wanted instanceof Datatype represents
                                 && typeset.holds(represents));
-                case GobValue searched -> findTheChild(searched, wanted);
+                case GobValue searched -> findChild(searched, wanted);
                 case ImageValue picture -> picture.findThePixel(wanted,
                         refinements.contains("match"), refinements.contains("only"),
                         refinements.contains("tail"));
                 case VectorValue numbers -> refuseTheDatatype(numbers);
                 case RebolSeries series ->
-                        findTheMatch(series, wanted, arguments, refinements);
+                        findMatch(series, wanted, arguments, refinements);
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };
     }
 
-    private Value findTheChild(GobValue searched, Value wanted) {
+    private Value findChild(GobValue searched, Value wanted) {
         if (!(wanted instanceof GobValue child)) {
             return NoneValue.none();
         }
@@ -71,8 +71,8 @@ public class FindAction extends SeriesSearchAction {
         return at == 0 ? NoneValue.none() : searched.atIndex(at);
     }
 
-    private Value findTheMatch(RebolSeries series, Value wanted, List<Value> arguments,
-                               Set<String> refinements) {
+    private Value findMatch(RebolSeries series, Value wanted, List<Value> arguments,
+                            Set<String> refinements) {
         SeriesSearch search = new SeriesSearch(series, wanted, refinements,
                 readTheArgumentOf("part", 0, arguments, refinements),
                 readTheArgumentOf("skip", 0, arguments, refinements),
@@ -86,7 +86,7 @@ public class FindAction extends SeriesSearchAction {
             }
             return NoneValue.none();
         }
-        int found = search.findThePosition();
+        int found = search.findPosition();
         if (found < 0 || (refinements.contains("match") && found != series.index())) {
             return NoneValue.none();
         }

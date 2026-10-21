@@ -40,7 +40,7 @@ public class AtzAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> {
             Value position = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue port when port.isAFile() -> findTheFileBehind(port, evaluator)
+                case PortValue port when port.isAFile() -> findFileBehind(port, evaluator)
                         .moveTo((long) Arithmetic.asMagnitude(position));
                 case RebolSeries series -> series.atClamped(findWhereItStands(series, position));
                 case Value anythingElse -> refuseTheArgument(anythingElse, "series");
@@ -50,6 +50,6 @@ public class AtzAction extends SeriesOrFileAction {
 
     private long findWhereItStands(RebolSeries series, Value position) {
         boolean aLogicCountsAsAtDoes = position instanceof LogicValue;
-        return series.findThePositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
+        return series.findPositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
     }
 }

@@ -99,11 +99,11 @@ public final class TextLines {
                 findTheTopOfLine(last, layout, box), lines.get(last).high());
     }
 
-    public RunAndCharacter findTheCaretNearest(double across, double down, TextLayout layout, Placement box) {
+    public RunAndCharacter findCaretNearest(double across, double down, TextLayout layout, Placement box) {
         if (lines.isEmpty()) {
             return RunAndCharacter.NOWHERE;
         }
-        int index = findTheLineLevelWith(down, layout, box);
+        int index = findLineLevelWith(down, layout, box);
         RunAndCharacter nearest = RunAndCharacter.NOWHERE;
         double nearestDistance = Double.MAX_VALUE;
         double along = startOfLine(index, layout, box);
@@ -120,7 +120,7 @@ public final class TextLines {
         return nearest;
     }
 
-    private int findTheLineLevelWith(double down, TextLayout layout, Placement box) {
+    private int findLineLevelWith(double down, TextLayout layout, Placement box) {
         for (int index = 0; index < lines.size(); index++) {
             if (down < findTheTopOfLine(index, layout, box) + lines.get(index).high()) {
                 return index;

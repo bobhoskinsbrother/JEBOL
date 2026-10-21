@@ -45,7 +45,7 @@ public class SelectAction extends SeriesSearchAction {
             case Value object when object.isAnyObject() -> readFieldWanted(object, wanted);
             case RebolSeries series -> {
                 series.refuseANeedleItCannotHold(wanted, nativeName());
-                yield findTheItemAfterTheMatch(series, wanted, arguments, refinements);
+                yield findItemAfterMatch(series, wanted, arguments, refinements);
             }
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
@@ -58,7 +58,7 @@ public class SelectAction extends SeriesSearchAction {
         return object.readFieldValue(((AnyWordValue) wanted).canonical());
     }
 
-    private Value findTheItemAfterTheMatch(
+    private Value findItemAfterMatch(
             RebolSeries series, Value wanted, List<Value> arguments, Set<String> refinements) {
         SeriesSearch search = new SeriesSearch(series, wanted, refinements,
                 readTheArgumentOf("part", 0, arguments, refinements),
@@ -67,7 +67,7 @@ public class SelectAction extends SeriesSearchAction {
         if (search.stridesForwardByLessThanOne()) {
             return refuseARecordWidthBelowOne(series, search.stride());
         }
-        int found = search.findThePosition();
+        int found = search.findPosition();
         if (found < 0) {
             return NoneValue.none();
         }

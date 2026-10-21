@@ -29,7 +29,7 @@ final class LazyParser extends DeflateParser {
         int next = 0;
         do {
             int blockBegin = next;
-            int blockEnd = findTheMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
             int nextRecalculation = next + Math.min(length - next, RECALCULATION_INTERVAL);
             int sequence = 0;
             splitStatistics.reset();
@@ -41,7 +41,7 @@ final class LazyParser extends DeflateParser {
                     nextRecalculation += Math.min(length - nextRecalculation, next - blockBegin);
                 }
                 adjustMaxAndNiceLength(length - next);
-                int currentLength = finder.findTheLongestMatch(
+                int currentLength = finder.findLongestMatch(
                         input, next, minLength - 1, maxLength, niceLength, maxSearchDepth);
                 int currentOffset = finder.offset();
                 if (currentLength < minLength
@@ -58,7 +58,7 @@ final class LazyParser extends DeflateParser {
                         break;
                     }
                     adjustMaxAndNiceLength(length - next);
-                    int nextLength = finder.findTheLongestMatch(
+                    int nextLength = finder.findLongestMatch(
                             input, next++, currentLength - 1, maxLength, niceLength, maxSearchDepth >> 1);
                     int nextOffset = finder.offset();
                     if (isBetterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_ONE_BYTE)) {
@@ -69,7 +69,7 @@ final class LazyParser extends DeflateParser {
                     }
                     if (looksTwoBytesAhead) {
                         adjustMaxAndNiceLength(length - next);
-                        nextLength = finder.findTheLongestMatch(
+                        nextLength = finder.findLongestMatch(
                                 input, next++, currentLength - 1, maxLength, niceLength, maxSearchDepth >> 2);
                         nextOffset = finder.offset();
                         if (isBetterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_TWO_BYTES)) {

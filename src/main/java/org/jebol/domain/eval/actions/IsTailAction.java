@@ -34,7 +34,7 @@ public class IsTailAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    LogicValue.of(findTheFileBehind(port, evaluator).atItsEnd());
+                    LogicValue.of(findFileBehind(port, evaluator).atItsEnd());
             case Value anythingElse -> LogicValue.of(anythingElse.atTail());
         };
     }

@@ -110,15 +110,15 @@ public final class View {
         int at = 0;
         for (Face face : faces) {
             if (face.action().isPresent()) {
-                stillThere.add(findTheHandleFor(at));
-                actions.put(findTheHandleFor(at), (AnyBlockValue) face.action().orElseThrow());
+                stillThere.add(findHandleFor(at));
+                actions.put(findHandleFor(at), (AnyBlockValue) face.action().orElseThrow());
             }
             at++;
         }
         actions.keySet().retainAll(stillThere);
     }
 
-    private static String findTheHandleFor(int position) {
+    private static String findHandleFor(int position) {
         return "face-" + position;
     }
 }

@@ -21,7 +21,7 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value poke(Value position, Value written) {
-        block.storage().set(findThePokedStoragePosition(position), written);
+        block.storage().set(findPokedStoragePosition(position), written);
         return written;
     }
 

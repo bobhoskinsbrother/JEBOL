@@ -33,7 +33,7 @@ public final class Html {
     }
 
     private static String renderFace(Face face, String handle) {
-        String element = Layout.findTheElementFor(face.kind());
+        String element = Layout.findElementFor(face.kind());
         StringBuilder rendered = new StringBuilder("<").append(element);
 
         rendered.append(" class=\"jebol-").append(face.kind()).append('"');

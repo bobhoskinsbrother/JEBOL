@@ -17,7 +17,7 @@ public abstract class SteppingNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            ContextSlot slot = ((AnyWordValue) arguments.getFirst()).findTheBoundSlot();
+            ContextSlot slot = ((AnyWordValue) arguments.getFirst()).findBoundSlot();
             Value before = slot.value();
             slot.setValue(step(before));
             return before;

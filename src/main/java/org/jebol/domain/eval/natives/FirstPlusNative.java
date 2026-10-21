@@ -20,7 +20,7 @@ public class FirstPlusNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            ContextSlot slot = findTheSlotNamedBy(arguments.getFirst());
+            ContextSlot slot = findSlotNamedBy(arguments.getFirst());
             if (!(slot.value() instanceof RebolSeries series)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         WordValue.of(((AnyWordValue) arguments.getFirst()).spelling()));
@@ -33,7 +33,7 @@ public class FirstPlusNative extends DefaultNative {
         };
     }
 
-    private ContextSlot findTheSlotNamedBy(Value given) {
+    private ContextSlot findSlotNamedBy(Value given) {
         if (!(given instanceof AnyWordValue word)
                 || !word.isBound()
                 || !word.binding().contains(word.canonical())) {

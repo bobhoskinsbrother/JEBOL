@@ -15,7 +15,7 @@ public final class Lzw {
         return 31 - Integer.numberOfLeadingZeros(number);
     }
 
-    int findTheWidestSymbolForTheLevel(int level) {
+    int findWidestSymbolForLevel(int level) {
         long asked = Integer.toUnsignedLong(level);
         if (asked >= 1 && asked <= 7) {
             return 8 + (int) asked;
@@ -43,7 +43,7 @@ public final class Lzw {
     }
 
     public byte[] compress(byte[] source, int level) {
-        int widest = findTheWidestSymbolForTheLevel(level);
+        int widest = findWidestSymbolForLevel(level);
         int totalCodes = 1 << widest;
         int mostEntriesAvailable = totalCodes - FIRST_STRING - 1;
         int highestCode = totalCodes - 2;

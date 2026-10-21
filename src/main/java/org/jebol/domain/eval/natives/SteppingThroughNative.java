@@ -13,7 +13,7 @@ import org.jebol.domain.value.AnyWordValue;
 public abstract class SteppingThroughNative extends LoopingNative {
 
     protected Value walkBySteps(Evaluator evaluator, AnyWordValue word, int step, AnyBlockValue body) {
-        ContextSlot slot = word.findTheBoundSlot();
+        ContextSlot slot = word.findBoundSlot();
         if (slot.value() instanceof NoneValue nothing) {
             return nothing;
         }

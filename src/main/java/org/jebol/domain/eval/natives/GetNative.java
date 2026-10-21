@@ -35,7 +35,7 @@ public class GetNative extends DefaultNative {
     }
 
     private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnAnswer) {
-        Value held = word.findTheBoundSlot().value();
+        Value held = word.findBoundSlot().value();
         if (held instanceof UnsetValue && !unsetIsAnAnswer) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling() + " has no value");
         }

@@ -24,7 +24,7 @@ final class WritingIntoATime {
     private static final int THE_SECOND = 2;
 
     TimeValue write(TimeValue time, Value selector, Value written) {
-        int part = findThePartNamedBy(selector);
+        int part = findPartNamedBy(selector);
         long whole = readWholeNumberIn(written);
         long unsigned = Math.abs(time.nanoseconds());
         long hours = unsigned / NANOSECONDS_IN_AN_HOUR;
@@ -50,7 +50,7 @@ final class WritingIntoATime {
                 + seconds * NANOSECONDS_IN_A_SECOND + fraction);
     }
 
-    private int findThePartNamedBy(Value selector) {
+    private int findPartNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue name when name.canonical().equals("hour") -> THE_HOUR;
             case AnyWordValue name when name.canonical().equals("minute") -> THE_MINUTE;

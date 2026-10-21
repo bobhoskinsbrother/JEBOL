@@ -640,7 +640,7 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public AnyWordValue findTheWordToWriteInto(List<Value> rules, int at) {
+    public AnyWordValue findWordToWriteInto(List<Value> rules, int at) {
         return ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(at + 1 < rules.size() ? rules.get(at + 1) : null);
     }
 
@@ -1061,7 +1061,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public int findTheFirstMatchFrom(int[] needle, int from) {
+    public int findFirstMatchFrom(int[] needle, int from) {
         for (int at = from; at + needle.length <= codePoints.length; at++) {
             if (matchesAt(needle, at)) {
                 return at;

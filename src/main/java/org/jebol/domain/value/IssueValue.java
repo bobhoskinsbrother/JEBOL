@@ -15,7 +15,7 @@ public final class IssueValue extends AnyWordValue {
         }
 
         @Override
-        Datatype findTheDatatypeTheScannerReads() {
+        Datatype findDatatypeScannerReads() {
             return this;
         }
     };

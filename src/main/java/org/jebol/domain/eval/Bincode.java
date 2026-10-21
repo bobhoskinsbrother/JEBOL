@@ -164,7 +164,7 @@ public final class Bincode {
                 writeBytes(cursor, dialect.readValueAt(step));
                 continue;
             }
-            String code = findTheCodeAt(dialect, step);
+            String code = findCodeAt(dialect, step);
             if (readTheWidthOf(code) > 0) {
                 step++;
                 writeWholeNumber(cursor, code,
@@ -853,7 +853,7 @@ public final class Bincode {
         return word.canonical();
     }
 
-    private static String findTheCodeAt(Script dialect, int step) {
+    private static String findCodeAt(Script dialect, int step) {
         Value item = dialect.readValueAt(step);
         if (!(item instanceof AnyWordValue word)) {
             throw Raised.of(EvaluationFailure.DIALECT,

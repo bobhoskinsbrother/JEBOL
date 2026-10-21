@@ -69,7 +69,7 @@ abstract class SeriesActions implements Actions {
         return taken;
     }
 
-    int findThePokedStoragePosition(Value position) {
+    int findPokedStoragePosition(Value position) {
         long at = position.asPosition();
         if (at < 1 || at > held().lengthFromHere()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, position);

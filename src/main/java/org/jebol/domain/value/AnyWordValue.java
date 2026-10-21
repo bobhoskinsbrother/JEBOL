@@ -62,7 +62,7 @@ public abstract sealed class AnyWordValue implements Value
             return spelling;
         }
 
-        Datatype findTheDatatypeTheScannerReads() {
+        Datatype findDatatypeScannerReads() {
             return WordValue.TYPE;
         }
 
@@ -116,7 +116,7 @@ public abstract sealed class AnyWordValue implements Value
                 throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
             if (read.size() != 1 || !(read.getFirst() instanceof AnyWordValue word)
-                    || word.datatype() != findTheDatatypeTheScannerReads()
+                    || word.datatype() != findDatatypeScannerReads()
                     || !word.spelling().equals(trimmed)) {
                 throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
@@ -148,7 +148,7 @@ public abstract sealed class AnyWordValue implements Value
 
     @Override
     public void refuseToBeWrittenWhenItReachesItsContextsOwnSelf() {
-        ContextSlot reached = binding.findTheSlotOrNone(canonical);
+        ContextSlot reached = binding.findSlotOrNone(canonical);
         if (reached != null && reached.isItsContextsOwnSelf()) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }
@@ -158,8 +158,8 @@ public abstract sealed class AnyWordValue implements Value
         return !binding.isUnbound();
     }
 
-    public ContextSlot findTheBoundSlot() {
-        ContextSlot slot = binding.findTheSlotOrNone(canonical);
+    public ContextSlot findBoundSlot() {
+        ContextSlot slot = binding.findSlotOrNone(canonical);
         if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
         }

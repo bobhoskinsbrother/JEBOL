@@ -58,7 +58,7 @@ public final class DefaultFontRenderer {
     }
 
     private int findTheGlyphOf(int character) {
-        int glyph = characters.findTheGlyphFor(character);
+        int glyph = characters.findGlyphFor(character);
         return glyph >= 0 && glyph < advances.length ? glyph : 0;
     }
 
@@ -100,7 +100,7 @@ public final class DefaultFontRenderer {
 
     private interface ReadingOfCharacters {
 
-        int findTheGlyphFor(int character);
+        int findGlyphFor(int character);
 
         static ReadingOfCharacters readFrom(Tables tables) {
             int at = tables.findTheOffset("cmap");
@@ -149,7 +149,7 @@ public final class DefaultFontRenderer {
         }
 
         @Override
-        public int findTheGlyphFor(int character) {
+        public int findGlyphFor(int character) {
             int low = 0;
             int high = firsts.length - 1;
             while (low <= high) {
@@ -194,7 +194,7 @@ public final class DefaultFontRenderer {
         }
 
         @Override
-        public int findTheGlyphFor(int character) {
+        public int findGlyphFor(int character) {
             int segment = 0;
             while (segment < ends.length && ends[segment] < character) {
                 segment++;

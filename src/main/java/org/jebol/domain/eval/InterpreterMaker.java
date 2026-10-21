@@ -54,7 +54,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Value applyASystemFunction(String name, Value argument) {
-        return evaluator.applyFunction(context.findTheSystemFunctionNamed(name), List.of(argument));
+        return evaluator.applyFunction(context.findSystemFunctionNamed(name), List.of(argument));
     }
 
     @Override

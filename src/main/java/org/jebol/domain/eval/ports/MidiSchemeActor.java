@@ -101,7 +101,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             makeTheOneDeviceAnOutput(spec);
         }
         MidiDevices devices = evaluator.ports().midiDevices();
-        MidiRoute route = findTheRouteTheSpecNames(port, spec, devices);
+        MidiRoute route = findRouteSpecNames(port, spec, devices);
         try {
             port.setField("state", JavaObjectValue.of(devices.connect(route)));
         } catch (MidiDevices.Refused refused) {
@@ -119,7 +119,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         spec.context().register("device-out", IntegerValue.of(asAnInput));
     }
 
-    private MidiRoute findTheRouteTheSpecNames(PortValue port, ObjectValue spec, MidiDevices devices) {
+    private MidiRoute findRouteSpecNames(PortValue port, ObjectValue spec, MidiDevices devices) {
         long input = readNumberIn(spec.readFieldValue("device-in"));
         long output = readNumberIn(spec.readFieldValue("device-out"));
         if (input == NO_DEVICE_AT_ALL && output == NO_DEVICE_AT_ALL) {
@@ -238,7 +238,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         }
 
         @Override
-        protected Optional<Value> findTheFieldNamed(String asked) {
+        protected Optional<Value> findFieldNamed(String asked) {
             return switch (asked) {
                 case DEVICES_IN -> Optional.of(listTheNamesOf(devices.inputs()));
                 case DEVICES_OUT -> Optional.of(listTheNamesOf(devices.outputs()));
@@ -247,7 +247,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         }
 
         @Override
-        protected String findTheFieldItAsksFor(AnyWordValue asked) {
+        protected String findFieldItAsksFor(AnyWordValue asked) {
             return asked.spelling();
         }
 

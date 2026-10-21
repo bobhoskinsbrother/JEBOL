@@ -18,7 +18,7 @@ class AWordFindsItsOwnSlotTest {
         Context context = Context.root();
         context.register("x", IntegerValue.of(1));
 
-        assertThat(WordValue.of("x").bindTo(context).findTheBoundSlot().value())
+        assertThat(WordValue.of("x").bindTo(context).findBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
@@ -29,7 +29,7 @@ class AWordFindsItsOwnSlotTest {
         above.register("x", IntegerValue.of(1));
         Context beneath = Context.makeChildOf(above);
 
-        assertThat(WordValue.of("x").bindTo(beneath).findTheBoundSlot().value())
+        assertThat(WordValue.of("x").bindTo(beneath).findBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
@@ -39,7 +39,7 @@ class AWordFindsItsOwnSlotTest {
         Context context = Context.root();
         context.register("Foo", IntegerValue.of(1));
 
-        assertThat(WordValue.of("FOO").bindTo(context).findTheBoundSlot().value())
+        assertThat(WordValue.of("FOO").bindTo(context).findBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
@@ -49,7 +49,7 @@ class AWordFindsItsOwnSlotTest {
         Context context = Context.root();
         context.register("x", IntegerValue.of(1));
 
-        WordValue.of("x").bindTo(context).findTheBoundSlot().setValue(IntegerValue.of(2));
+        WordValue.of("x").bindTo(context).findBoundSlot().setValue(IntegerValue.of(2));
 
         assertThat(context.findSlotFor("x").value()).isEqualTo(IntegerValue.of(2));
     }
@@ -57,7 +57,7 @@ class AWordFindsItsOwnSlotTest {
     @Test
     @DisplayName("an unbound word has no slot, and says so as not-defined")
     void refusesAnUnboundWord() {
-        assertThatThrownBy(() -> WordValue.of("x").findTheBoundSlot())
+        assertThatThrownBy(() -> WordValue.of("x").findBoundSlot())
                 .isInstanceOf(Raised.class)
                 .extracting(AWordFindsItsOwnSlotTest::readTheErrorIdOf)
                 .isEqualTo("not-defined");
@@ -69,7 +69,7 @@ class AWordFindsItsOwnSlotTest {
         Context context = Context.root();
         context.register("y", IntegerValue.of(1));
 
-        assertThatThrownBy(() -> WordValue.of("x").bindTo(context).findTheBoundSlot())
+        assertThatThrownBy(() -> WordValue.of("x").bindTo(context).findBoundSlot())
                 .isInstanceOf(Raised.class)
                 .extracting(AWordFindsItsOwnSlotTest::readTheErrorIdOf)
                 .isEqualTo("not-defined");

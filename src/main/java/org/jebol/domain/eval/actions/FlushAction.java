@@ -24,7 +24,7 @@ public class FlushAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            evaluator.findTheOutput().flush();
+            evaluator.findOutput().flush();
             return arguments.getFirst();
         };
     }

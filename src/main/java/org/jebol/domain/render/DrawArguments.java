@@ -52,7 +52,7 @@ final class DrawArguments {
                 : Optional.empty();
     }
 
-    double findTheNumberIn(List<Value> arguments, double whenAbsent) {
+    double findNumberIn(List<Value> arguments, double whenAbsent) {
         for (Value each : arguments) {
             if (each instanceof AnyDecimalValue fraction) {
                 return fraction.quantity();

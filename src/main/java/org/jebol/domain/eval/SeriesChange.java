@@ -152,7 +152,7 @@ public final class SeriesChange {
             }
             case ImageValue image -> insertPixels(image, value);
             case GobValue gob -> new GobActions(gob)
-                    .takeTheChildrenOf(value, gob.findThePositionWithinThePane());
+                    .takeTheChildrenOf(value, gob.findPositionWithinPane());
             case VectorValue vector -> {
                 List<Value> numbers = vector.kind().collectTheNumbersContributedBy(value);
                 for (int at = numbers.size(); at > 0; at--) {

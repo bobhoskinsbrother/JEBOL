@@ -82,7 +82,7 @@ public class CallNative extends HostNative {
     private String readTheCommandWordOf(Value item, Evaluator evaluator, Context context) {
         Value resolved = item;
         if (item instanceof GetWordValue word) {
-            resolved = word.findTheBoundSlot().value();
+            resolved = word.findBoundSlot().value();
         } else if (item instanceof GetPathValue path) {
             resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
         }

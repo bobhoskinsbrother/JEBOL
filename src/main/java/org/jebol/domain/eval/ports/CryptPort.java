@@ -249,7 +249,7 @@ public final class CryptPort {
         port.setField("state", NoneValue.none());
     }
 
-    private Working findTheWorkInProgress(PortValue port) {
+    private Working findWorkInProgress(PortValue port) {
         if (port.readFieldValue("state") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped
@@ -260,7 +260,7 @@ public final class CryptPort {
     }
 
     public boolean isWorking(PortValue port) {
-        return findTheWorkInProgress(port) != null;
+        return findWorkInProgress(port) != null;
     }
 
     public void refuseWhenClosed(PortValue port) {
@@ -274,7 +274,7 @@ public final class CryptPort {
     }
 
     public Value modify(PortValue port, String field, Value given) {
-        Working working = findTheWorkInProgress(port);
+        Working working = findWorkInProgress(port);
         if (working == null) {
             return LogicValue.of(false);
         }
@@ -365,7 +365,7 @@ public final class CryptPort {
     }
 
     public void write(PortValue port, byte[] octets) {
-        Working working = findTheWorkInProgress(port);
+        Working working = findWorkInProgress(port);
         if (working == null) {
             return;
         }
@@ -405,7 +405,7 @@ public final class CryptPort {
     }
 
     public void update(PortValue port) {
-        Working working = findTheWorkInProgress(port);
+        Working working = findWorkInProgress(port);
         if (working == null || working.wouldNotRun) {
             return;
         }
@@ -432,7 +432,7 @@ public final class CryptPort {
     }
 
     public Value read(PortValue port) {
-        Working working = findTheWorkInProgress(port);
+        Working working = findWorkInProgress(port);
         if (working == null || working.wouldNotRun || !working.somethingIsReady) {
             return NoneValue.none();
         }

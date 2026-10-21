@@ -21,7 +21,7 @@ final class Capture extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        AnyWordValue word = walk.findTheWordToWriteInto(rules, at);
+        AnyWordValue word = walk.findWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -38,7 +38,7 @@ final class Capture extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        AnyWordValue target = walk.findTheWordToWriteInto(rules, at);
+        AnyWordValue target = walk.findWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }

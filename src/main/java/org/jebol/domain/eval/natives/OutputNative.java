@@ -19,7 +19,7 @@ public abstract class OutputNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            write(evaluator.findTheOutput(), writeForOutput(arguments.getFirst(), evaluator));
+            write(evaluator.findOutput(), writeForOutput(arguments.getFirst(), evaluator));
             return UnsetValue.unset();
         };
     }

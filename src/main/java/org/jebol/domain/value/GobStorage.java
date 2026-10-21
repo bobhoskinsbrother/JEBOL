@@ -61,7 +61,7 @@ public final class GobStorage {
         }
 
         /** The flag a word names, or nothing. {@code Set_Gob_Flag} ignores the rest. */
-        public static Flag findTheFlagNamed(String word) {
+        public static Flag findFlagNamed(String word) {
             for (Flag flag : values()) {
                 if (flag.spelling().equals(word)) {
                     return flag;

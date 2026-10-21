@@ -111,7 +111,7 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Value findWhicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
-        if (!(evaluator.findTheHostPort("system") instanceof PortValue queue)
+        if (!(evaluator.findHostPort("system") instanceof PortValue queue)
                 || !(queue.readFieldValue("awake") instanceof AnyFunctionValue)) {
             return NoneValue.none();
         }

@@ -37,7 +37,7 @@ abstract class MatchFinder {
         return length;
     }
 
-    int findTheCutoffFor(int position) {
+    int findCutoffFor(int position) {
         return (short) (position - DeflateTables.WINDOW_SIZE);
     }
 

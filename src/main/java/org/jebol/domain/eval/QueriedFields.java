@@ -23,7 +23,7 @@ public abstract class QueriedFields {
 
     protected abstract List<String> names();
 
-    protected abstract Optional<Value> findTheFieldNamed(String asked);
+    protected abstract Optional<Value> findFieldNamed(String asked);
 
     protected abstract Value answerAnUnknownAlone(AnyWordValue asked);
 
@@ -35,7 +35,7 @@ public abstract class QueriedFields {
         return false;
     }
 
-    protected String findTheFieldItAsksFor(AnyWordValue asked) {
+    protected String findFieldItAsksFor(AnyWordValue asked) {
         return asked.canonical();
     }
 
@@ -43,7 +43,7 @@ public abstract class QueriedFields {
         return switch (field) {
             case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
                     && answersItsNames() -> listTheNames();
-            case AnyWordValue asked -> findTheFieldNamed(findTheFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownAlone(asked));
+            case AnyWordValue asked -> findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownAlone(asked));
             case AnyBlockValue several -> answerEachOf(several);
             case NoneValue nothing -> listTheNames();
             default -> gatherEveryFieldIntoAnObject(evaluator);
@@ -65,7 +65,7 @@ public abstract class QueriedFields {
                 answer.add(asked.asSetWord());
                 whereEachLabelStartsALine.add(answer.size());
             }
-            answer.add(findTheFieldNamed(findTheFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownInABlock(asked)));
+            answer.add(findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownInABlock(asked)));
         }
         BlockValue answered = BlockValue.of(answer);
         whereEachLabelStartsALine.forEach(position -> answered.storage().setLineBreakAt(position, true));
@@ -86,7 +86,7 @@ public abstract class QueriedFields {
     }
 
     protected Value readFieldInObject(String part) {
-        return findTheFieldNamed(part).orElseGet(NoneValue::none);
+        return findFieldNamed(part).orElseGet(NoneValue::none);
     }
 
     protected Raised cannotUse(AnyWordValue asked, Datatype datatype) {

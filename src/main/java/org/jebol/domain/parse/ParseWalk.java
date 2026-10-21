@@ -60,7 +60,7 @@ public interface ParseWalk {
 
     Value replacementFor(Value replacement);
 
-    AnyWordValue findTheWordToWriteInto(List<Value> rules, int at);
+    AnyWordValue findWordToWriteInto(List<Value> rules, int at);
 
     void assign(AnyWordValue word, Value value);
 
@@ -76,7 +76,7 @@ public interface ParseWalk {
 
     Optional<Value> readWhatMatchedBetween(int from, int to);
 
-    int findTheFirstMatchFrom(int[] needle, int from);
+    int findFirstMatchFrom(int[] needle, int from);
 
     String readTheTextOf(Value value);
 

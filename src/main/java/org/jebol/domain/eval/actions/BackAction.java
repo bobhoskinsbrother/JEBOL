@@ -23,7 +23,7 @@ public class BackAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    findTheFileBehind(port, evaluator).moveBy(-ONE_STEP);
+                    findFileBehind(port, evaluator).moveBy(-ONE_STEP);
             case RebolSeries series -> series.atIndex(Math.max(1, series.index() - ONE_STEP));
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };

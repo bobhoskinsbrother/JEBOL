@@ -23,7 +23,7 @@ public class LowestCommonMultipleNative extends WholeNumberNative {
         return (arguments, evaluator, context, refinements) -> {
             long first = readTheWholeNumberOf(arguments.get(0));
             long second = readTheWholeNumberOf(arguments.get(1));
-            long divisor = findTheGreatestDivisorSharedBy(first, second);
+            long divisor = findGreatestDivisorSharedBy(first, second);
             return IntegerValue.of(divisor == 0
                     ? 0
                     : Math.abs(first / divisor * second));

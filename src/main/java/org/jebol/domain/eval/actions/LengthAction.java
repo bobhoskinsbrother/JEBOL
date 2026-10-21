@@ -63,7 +63,7 @@ public class LengthAction extends SeriesOrFileAction {
             case "udp" -> IntegerValue.of(port.readFieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);
-            case "file", "dir" -> findTheFileBehind(port, evaluator).measureTheLengthLeft();
+            case "file", "dir" -> findFileBehind(port, evaluator).measureTheLengthLeft();
             default -> IntegerValue.of(port.context().fieldCount());
         };
     }

@@ -118,7 +118,7 @@ class AContextWalksItsOwnFieldsTest {
         void findsANative() {
             NativeValue held = new DoNative();
 
-            assertThat(makeASystemWhoseSysHolds("do*", held).findTheSystemFunctionNamed("do*"))
+            assertThat(makeASystemWhoseSysHolds("do*", held).findSystemFunctionNamed("do*"))
                     .isEqualTo(held);
         }
 
@@ -127,14 +127,14 @@ class AContextWalksItsOwnFieldsTest {
         void findsAnOperator() {
             OperatorValue held = new OperatorValue("+", new AddAction());
 
-            assertThat(makeASystemWhoseSysHolds("do*", held).findTheSystemFunctionNamed("do*"))
+            assertThat(makeASystemWhoseSysHolds("do*", held).findSystemFunctionNamed("do*"))
                     .isEqualTo(held);
         }
 
         @Test
         @DisplayName("with no system at all the name is not-defined")
         void answersWithNoSystem() {
-            assertThatThrownBy(() -> Context.root().findTheSystemFunctionNamed("do*"))
+            assertThatThrownBy(() -> Context.root().findSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
                     .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("not-defined");
@@ -145,7 +145,7 @@ class AContextWalksItsOwnFieldsTest {
         void sysLacksTheName() {
             Context context = makeASystemWhoseSysHolds("other", IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
                     .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("bad-sys-func");
@@ -156,7 +156,7 @@ class AContextWalksItsOwnFieldsTest {
         void sysHoldsSomethingElse() {
             Context context = makeASystemWhoseSysHolds("do*", IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
                     .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("bad-sys-func");
@@ -167,7 +167,7 @@ class AContextWalksItsOwnFieldsTest {
         void sysIsNotAnObject() {
             Context context = makeASystemWhoseSysIs(IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
                     .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("not-defined");
