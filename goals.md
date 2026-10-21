@@ -74,7 +74,17 @@ comes before improving on it: a place where JEBOL answers something a real
    canvas and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled.
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
-   console view. CALL is refused.
+   console view. CALL is refused. And a task's body must run on the host's
+   ports too: `ThreadTasks`
+   (`src/main/java/org/jebol/adapter/host/ThreadTasks.java:32`) builds its
+   child interpreter with `Interpreter.createWithOutput(...)`, which is
+   `Interpreter.standardPorts()`, so a task body on Android would answer
+   `system/platform` with `Linux` and reach nothing the host supplied, where
+   `TheFateOfATasksBodyIsTheHostsToDecide` already says the child inherits
+   the parent's output and pause. `ThreadTasks` wants the parent's
+   `HostPorts`, which also settles what a task body may reach, since today it
+   has no files at all and a file port carries the directory it is standing
+   in, so the parent's own cannot simply be shared.
 4. **Touch in the 2010 GUI.** A tap is a click; a drag scrolls; focusing a
    field brings up the keyboard; layouts scale with the screen's size and
    density. This is done once, in the GUI's REBOL, and iOS and the web on a
@@ -239,23 +249,39 @@ grants it runs under; and whether a script may debug itself.
 
 ### 16. Dev tools
 
-#### 16.a MCP tools for AI tools to write REBOL
+Two homes: the flag and the example go in JEBOL; the server and its tools are a
+second Gradle build in this repo: one executable jar taking JEBOL's jar as its
+one dependency, with a gate of its own rather than `allTests`.
 
-- **A dialect that fails loudly.** A rule that does not match answers false
-  and the calling code drops it.
-- **One worked dialect with a test**, stating that DELECT matches by type in
-  any order and PARSE by position.
-- **`--manual`**, printing `using-jebol.md` to standard output.
-- **A dialect schema generated from a booted interpreter**, as a test in the
-  shape of `SurfaceReportTest`, with descriptions in a file beside it.
-- **An MCP server with three tools:** `run` (evaluate under a declared fixture,
-  reporting services asked for), `match` (where a block stopped against a
-  grammar) and `word` (what a word takes and whether it is reliable here).
-
-#### 16.b Hot reload
-After the checksum has been implemented, and loading rebol by url is already in
-place, so we have the base ingredients to be able to hot reload any file changes.
-Add this as a feature part of the dev tools above
+1. **`--manual` prints `using-jebol.md` to standard output.** The file is
+   copied into the jar's resources at build time. The same pass gives `--help`
+   and `-V` their missing output: both are parsed today and neither is read.
+2. **One worked dialect with a test**, stating that DELECT matches by type in
+   any order where PARSE matches by position, and written so a rule that does
+   not match raises rather than answering false and being dropped. This is the
+   example an AI author copies.
+3. **The dev-tools project.** An executable jar of its own, hand-rolled
+   JSON-RPC over stdio, one long-lived interpreter session, so an editor or an
+   AI tool starts it once and keeps talking to it.
+4. **`run`.** Evaluate a script under a scope the call declares - granted
+   services, file root, limits, nothing granted by default - and report every
+   service the script asked for, so the caller learns everything it wanted
+   rather than where it first failed.
+5. **Every dialect's schema, generated from a booted interpreter.**
+   `system/dialects` holds draw, effect and text, and each is written out with
+   a checked-in file of descriptions beside it. Written for the AI to read: the
+   types say what fits, the descriptions say what it does. The generator is a
+   test in this project in `SurfaceReportTest`'s shape.
+6. **`match`.** Where a block stopped against a dialect's grammar, built on the
+   schema.
+7. **`word`.** What a word takes and whether it is reliable here, meaning it
+   answers as the C does; the declaration parity and the runtime parity's three
+   deliberate differences are where reliable comes from.
+8. **Hot reload.** The dev server serves and watches a script's files, the
+   checksum is the change detector, and a changed file is re-parsed into the
+   live session. The same reload serves the session, the browser page and the
+   desktop app, since all three run one interpreter; nothing survives a reload
+   at first.
 
 
 ### 17. What the command line does differently from r3
