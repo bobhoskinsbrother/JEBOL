@@ -59,7 +59,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Value readASimpleValue(Value piece) {
-        return evaluator.readASimpleValue(piece, context);
+        return evaluator.readSimpleValue(piece, context);
     }
 
     @Override

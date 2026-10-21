@@ -15,7 +15,7 @@ public abstract class BinaryBaseNative extends EncodingNative {
 
     abstract Raised refuseUnknownBase(List<Value> arguments);
 
-    protected int readAKnownBase(List<Value> arguments) {
+    protected int readKnownBase(List<Value> arguments) {
         long base = ((IntegerValue) arguments.get(1)).magnitude();
         if (base != (int) base || !Encodings.BASES.contains((int) base)) {
             throw refuseUnknownBase(arguments);

@@ -483,12 +483,12 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             List<Value> items = block.remaining();
             int[] octets = new int[items.size()];
             for (int at = 0; at < items.size(); at++) {
-                octets[at] = readAnOctetIn(items.get(at));
+                octets[at] = readOctetIn(items.get(at));
             }
             return BinaryValue.of(octets);
         }
 
-        private int readAnOctetIn(Value item) {
+        private int readOctetIn(Value item) {
             if (!(item instanceof IntegerValue(long magnitude))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }

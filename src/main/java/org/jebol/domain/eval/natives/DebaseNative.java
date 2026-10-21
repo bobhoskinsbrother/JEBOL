@@ -39,7 +39,7 @@ public class DebaseNative extends BinaryBaseNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int base = readAKnownBase(arguments);
+            int base = readKnownBase(arguments);
             Value value = arguments.getFirst();
             try {
                 return BinaryValue.ofBytes(encodings.debase(

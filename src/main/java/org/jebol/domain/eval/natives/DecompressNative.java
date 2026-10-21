@@ -69,10 +69,10 @@ public class DecompressNative extends CompressionNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String method = readAKnownCompression(arguments.get(1));
+            String method = readKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
             int wanted = readTheArgumentOf("size", 0, arguments, refinements)
-                    .map(this::readASizeAboveNothing)
+                    .map(this::readSizeAboveNothing)
                     .orElse(AS_MUCH_AS_IT_HOLDS);
             byte[] compressed = readOctetsWithinAnyPart(data, arguments, refinements);
             if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
@@ -83,7 +83,7 @@ public class DecompressNative extends CompressionNative {
         };
     }
 
-    private int readASizeAboveNothing(Value asked) {
+    private int readSizeAboveNothing(Value asked) {
         long size = ((IntegerValue) asked).magnitude();
         if (size < 1 || size > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked);

@@ -44,7 +44,7 @@ public class SwapEndianNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             BinaryValue bytes = (BinaryValue) arguments.getFirst();
-            int width = readAWidthItSwaps(readTheArgumentOf("width", 0, arguments, refinements)
+            int width = readWidthItSwaps(readTheArgumentOf("width", 0, arguments, refinements)
                     .orElse(TWO_BYTES_UNLESS_ASKED));
             byte[] octets = bytes.octetsFromHere();
             int reach = readTheArgumentOf("part", 0, arguments, refinements)
@@ -58,7 +58,7 @@ public class SwapEndianNative extends EncodingNative {
         };
     }
 
-    private int readAWidthItSwaps(Value asked) {
+    private int readWidthItSwaps(Value asked) {
         long width = ((IntegerValue) asked).magnitude();
         if (!WIDTHS_IT_SWAPS.contains(width)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);

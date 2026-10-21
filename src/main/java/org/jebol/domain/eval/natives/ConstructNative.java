@@ -72,7 +72,7 @@ public class ConstructNative extends DefaultNative {
                 waiting.add(name);
                 continue;
             }
-            Value held = asWritten ? item : readANamedConstant(item);
+            Value held = asWritten ? item : readNamedConstant(item);
             if (!asWritten && held instanceof UnsetValue) {
                 held = NoneValue.none();
             }
@@ -90,7 +90,7 @@ public class ConstructNative extends DefaultNative {
         }
     }
 
-    private Value readANamedConstant(Value value) {
+    private Value readNamedConstant(Value value) {
         if (!(value instanceof WordValue word)) {
             return value;
         }

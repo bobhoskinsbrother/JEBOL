@@ -51,7 +51,7 @@ public class ReadAction extends PortAction {
             if (source instanceof PortValue port) {
                 return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
                         .orElseGet(() -> port.isAFile()
-                                ? ports.readFromTheFileBehind(port, evaluator, asked)
+                                ? ports.readFromFileBehind(port, evaluator, asked)
                                 : ports.readFrom(port, evaluator, arguments, asked));
             }
             Optional<String> behindTheUrl = ports.findTheFileNamedByAUrl(source, evaluator, context);

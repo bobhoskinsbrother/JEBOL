@@ -284,48 +284,48 @@ public final class Bincode {
         Value command = dialect.asWritten(step);
         switch (readTheBaseOf(code)) {
             case "at" -> moveTo(cursor,
-                    readAWholeNumberAfter(dialect, ++step, command) - 1);
+                    readWholeNumberAfter(dialect, ++step, command) - 1);
             case "atz" -> moveTo(cursor,
-                    readAWholeNumberAfter(dialect, ++step, command));
+                    readWholeNumberAfter(dialect, ++step, command));
             case "skip" -> moveTo(cursor,
-                    cursor.at + readAWholeNumberAfter(dialect, ++step, command));
+                    cursor.at + readWholeNumberAfter(dialect, ++step, command));
             case "index" -> read.add(IntegerValue.of(cursor.at + 1));
             case "indexz" -> read.add(IntegerValue.of(cursor.at));
-            case "length" -> read.add(IntegerValue.of(readALengthPrefix(cursor)));
+            case "length" -> read.add(IntegerValue.of(readLengthPrefix(cursor)));
             case "length?" -> read.add(
                     IntegerValue.of(cursor.octets.size() - (long) cursor.at));
             case "pad" -> moveTo(cursor, alignUp(cursor.at,
-                    readAWholeNumberAfter(dialect, ++step, command)));
+                    readWholeNumberAfter(dialect, ++step, command)));
             case "ub" -> read.add(IntegerValue.of(readBits(cursor,
-                    (int) readAWholeNumberAfter(dialect, ++step, command))));
+                    (int) readWholeNumberAfter(dialect, ++step, command))));
             case "sb" -> read.add(IntegerValue.of(readSignedBits(cursor,
-                    (int) readAWholeNumberAfter(dialect, ++step, command))));
+                    (int) readWholeNumberAfter(dialect, ++step, command))));
             case "fb" -> read.add(DecimalValue.of(readSignedBits(cursor,
-                    (int) readAWholeNumberAfter(dialect, ++step, command))
+                    (int) readWholeNumberAfter(dialect, ++step, command))
                     / A_WHOLE_FIXED_POINT_UNIT));
             case "encodedu32" -> read.add(IntegerValue.of(
-                    readSevenBitsAByte(cursor) & WIDEST_A_NARROW_ONE_TAKES));
-            case "encodedu64" -> read.add(IntegerValue.of(readSevenBitsAByte(cursor)));
-            case "vint" -> read.add(IntegerValue.of(readAVariableNumber(cursor)));
+                    readSevenBitsByte(cursor) & WIDEST_A_NARROW_ONE_TAKES));
+            case "encodedu64" -> read.add(IntegerValue.of(readSevenBitsByte(cursor)));
+            case "vint" -> read.add(IntegerValue.of(readVariableNumber(cursor)));
             case "skipbits" -> skipBits(cursor,
-                    readAWholeNumberAfter(dialect, ++step, command));
+                    readWholeNumberAfter(dialect, ++step, command));
             case "bit" -> read.add(LogicValue.of(readNextBit(cursor) == 1));
             case "not-bit" -> read.add(LogicValue.of(readNextBit(cursor) == 0));
             case "align" -> alignToAByte(cursor);
-            case "msdos-time" -> read.add(readAnMsdosTime(cursor));
-            case "msdos-date" -> read.add(readAnMsdosDate(cursor));
-            case "msdos-datetime" -> read.add(readAnMsdosDateTime(cursor));
+            case "msdos-time" -> read.add(readMsdosTime(cursor));
+            case "msdos-date" -> read.add(readMsdosDate(cursor));
+            case "msdos-datetime" -> read.add(readMsdosDateTime(cursor));
             case "crop" -> cropWhatHasBeenRead(cursor);
-            case "tuple3" -> read.add(readATuple(cursor, 3));
-            case "tuple4" -> read.add(readATuple(cursor, 4));
+            case "tuple3" -> read.add(readTuple(cursor, 3));
+            case "tuple4" -> read.add(readTuple(cursor, 4));
             case "fixed8" -> read.add(DecimalValue.of(
                     readWholeNumber(cursor, "ui16le") / (double) A_FIXED8_UNIT));
             case "fixed16" -> read.add(DecimalValue.of(
                     readWholeNumber(cursor, "ui32le") / A_WHOLE_FIXED_POINT_UNIT));
             case "string" -> read.add(StringValue.of(textUpToItsNought(cursor)));
-            case "bitset8" -> read.add(readABitset(cursor, 1));
-            case "bitset16" -> read.add(readABitset(cursor, 2));
-            case "bitset32" -> read.add(readABitset(cursor, 4));
+            case "bitset8" -> read.add(readBitset(cursor, 1));
+            case "bitset16" -> read.add(readBitset(cursor, 2));
+            case "bitset32" -> read.add(readBitset(cursor, 4));
             case "bytes", "octal-bytes", "string-bytes" -> {
                 boolean aCountFollows = step + 1 < dialect.size();
                 read.add(runOfBytesRead(cursor, readTheBaseOf(code), aCountFollows
@@ -517,7 +517,7 @@ public final class Bincode {
         } while (left != 0);
     }
 
-    private static long readSevenBitsAByte(Cursor cursor) {
+    private static long readSevenBitsByte(Cursor cursor) {
         long gathered = 0;
         int shift = 0;
         int octet;
@@ -556,7 +556,7 @@ public final class Bincode {
         }
     }
 
-    private static long readAVariableNumber(Cursor cursor) {
+    private static long readVariableNumber(Cursor cursor) {
         refuseReadPastEnd(cursor, 1);
         int first = readOctetAt(cursor, cursor.at);
         int howManyBytes = 1;
@@ -609,7 +609,7 @@ public final class Bincode {
         }
     }
 
-    private static Value readAnMsdosTime(Cursor cursor) {
+    private static Value readMsdosTime(Cursor cursor) {
         long packed = readWholeNumber(cursor, "ui16le");
         return TimeValue.ofNanoseconds(A_SECOND * (
                 (packed >> 11 & 0x1F) * 3600
@@ -619,7 +619,7 @@ public final class Bincode {
 
     private static final long A_SECOND = 1_000_000_000L;
 
-    private static Value readAnMsdosDate(Cursor cursor) {
+    private static Value readMsdosDate(Cursor cursor) {
         long packed = readWholeNumber(cursor, "ui16le");
         return DateValue.of((int) (packed >> 9 & 0x7F) + MSDOS_EPOCH_YEAR,
                 (int) (packed >> 5 & 0x0F), (int) (packed & 0x1F));
@@ -627,9 +627,9 @@ public final class Bincode {
 
     private static final int MSDOS_EPOCH_YEAR = 1980;
 
-    private static Value readAnMsdosDateTime(Cursor cursor) {
-        TimeValue clock = (TimeValue) readAnMsdosTime(cursor);
-        DateValue day = (DateValue) readAnMsdosDate(cursor);
+    private static Value readMsdosDateTime(Cursor cursor) {
+        TimeValue clock = (TimeValue) readMsdosTime(cursor);
+        DateValue day = (DateValue) readMsdosDate(cursor);
         return DateValue.of(day.year(), day.month(), day.day(), clock);
     }
 
@@ -697,7 +697,7 @@ public final class Bincode {
         return true;
     }
 
-    private static Value readATuple(Cursor cursor, int parts) {
+    private static Value readTuple(Cursor cursor, int parts) {
         refuseReadPastEnd(cursor, parts);
         int[] segments = new int[parts];
         for (int at = 0; at < parts; at++) {
@@ -722,7 +722,7 @@ public final class Bincode {
         return text.toString();
     }
 
-    private static Value readABitset(Cursor cursor, int width) {
+    private static Value readBitset(Cursor cursor, int width) {
         refuseReadPastEnd(cursor, width);
         byte[] octets = new byte[width];
         for (int at = 0; at < width; at++) {
@@ -819,7 +819,7 @@ public final class Bincode {
         return at < cursor.octets.size() ? cursor.octets.get(at) : 0;
     }
 
-    private static long readALengthPrefix(Cursor cursor) {
+    private static long readLengthPrefix(Cursor cursor) {
         refuseReadPastEnd(cursor, 1);
         int first = readOctetAt(cursor, cursor.at);
         if (first <= 128) {
@@ -881,7 +881,7 @@ public final class Bincode {
         return dialect.readValueAt(step);
     }
 
-    private static long readAWholeNumberAfter(
+    private static long readWholeNumberAfter(
             Script dialect, int step, Value code) {
 
         Value given = readValueAfter(dialect, step, code);

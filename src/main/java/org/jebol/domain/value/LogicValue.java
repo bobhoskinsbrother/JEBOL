@@ -40,10 +40,10 @@ public record LogicValue(boolean truth) implements Value {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return LogicValue.of(operation.onLogics(truth, readATruthFrom(right)));
+        return LogicValue.of(operation.onLogics(truth, readTruthFrom(right)));
     }
 
-    private boolean readATruthFrom(Value right) {
+    private boolean readTruthFrom(Value right) {
         if (right instanceof LogicValue(boolean theirs)) {
             return theirs;
         }

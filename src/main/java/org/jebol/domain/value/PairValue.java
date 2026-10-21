@@ -163,10 +163,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
             if (halves.size() != 2) {
                 throw refuse(block);
             }
-            return PairValue.of(readAHalfIn(halves.get(0), block), readAHalfIn(halves.get(1), block));
+            return PairValue.of(readHalfIn(halves.get(0), block), readHalfIn(halves.get(1), block));
         }
 
-        private double readAHalfIn(Value half, BlockValue block) {
+        private double readHalfIn(Value half, BlockValue block) {
             return switch (half) {
                 case IntegerValue(long magnitude) -> magnitude;
                 case AnyDecimalValue number -> number.quantity();

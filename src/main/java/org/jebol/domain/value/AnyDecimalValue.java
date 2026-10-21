@@ -180,7 +180,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
                 }
                 body = body.substring(0, body.length() - 1);
             }
-            OptionalDouble endless = readAnEndlessNumberIn(body.replace("'", ""));
+            OptionalDouble endless = readEndlessNumberIn(body.replace("'", ""));
             if (endless.isPresent()) {
                 return endless;
             }
@@ -196,7 +196,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
                     : Optional.empty();
         }
 
-        private OptionalDouble readAnEndlessNumberIn(String body) {
+        private OptionalDouble readEndlessNumberIn(String body) {
             int hash = body.indexOf('#');
             if (hash < 0) {
                 return OptionalDouble.empty();

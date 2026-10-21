@@ -56,7 +56,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     }
 
     private Value roundAsMoneyRounds(Value subject, Optional<Value> scale, Set<String> refinements) {
-        Deci step = scale.map(this::readAStepMoneyRoundsTo).orElse(Deci.ONE);
+        Deci step = scale.map(this::readStepMoneyRoundsTo).orElse(Deci.ONE);
         Deci rounded = roundBy(MONEY.asDeci(subject), step, refinements);
         if (subject instanceof MoneyValue && scale.isPresent()) {
             return switch (scale.get()) {
@@ -69,7 +69,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
         return new MoneyValue(rounded);
     }
 
-    private Deci readAStepMoneyRoundsTo(Value given) {
+    private Deci readStepMoneyRoundsTo(Value given) {
         if (!(given instanceof MoneyValue || given instanceof IntegerValue || given instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }

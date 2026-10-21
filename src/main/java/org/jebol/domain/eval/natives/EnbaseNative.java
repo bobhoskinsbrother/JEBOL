@@ -41,7 +41,7 @@ public class EnbaseNative extends BinaryBaseNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int base = readAKnownBase(arguments);
+            int base = readKnownBase(arguments);
             Value value = arguments.getFirst();
             byte[] octets = readOctetsToEncode(value, arguments, refinements);
             String encoded = encodeOrRefuse(value, octets, base, refinements.contains("url"));

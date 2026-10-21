@@ -301,7 +301,7 @@ public final class Evaluator {
         return laidOut;
     }
 
-    public Value readASimpleValue(Value given, Context where) {
+    public Value readSimpleValue(Value given, Context where) {
         if (given instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             return readTheValueOfWordIn(word, where);
         }

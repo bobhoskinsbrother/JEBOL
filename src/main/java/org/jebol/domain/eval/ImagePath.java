@@ -96,7 +96,7 @@ final class ImagePath {
         }
         int[] parts = written instanceof TupleValue colour
                 ? colour.segments()
-                : makeGreyParts(readAByteOrRefuse(written), order.length);
+                : makeGreyParts(readByteOrRefuse(written), order.length);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setColourAt(pixel,
                     partOr(parts, 0, 0), partOr(parts, 1, 0), partOr(parts, 2, 0));
@@ -126,7 +126,7 @@ final class ImagePath {
             }
             return;
         }
-        int grey = readAByteOrRefuse(written);
+        int grey = readByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setColourAt(pixel, grey, grey, grey);
             image.storage().setAlphaAt(pixel, grey);
@@ -143,7 +143,7 @@ final class ImagePath {
             }
             return;
         }
-        int octet = readAByteOrRefuse(written);
+        int octet = readByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setAlphaAt(pixel, convertTheAlphaToOpacity(octet));
         }
@@ -158,7 +158,7 @@ final class ImagePath {
             }
             return;
         }
-        int octet = readAByteOrRefuse(written);
+        int octet = readByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setChannelAt(pixel, channel, octet);
         }
@@ -196,7 +196,7 @@ final class ImagePath {
         return null;
     }
 
-    private static int readAByteOrRefuse(Value written) {
+    private static int readByteOrRefuse(Value written) {
         if (!(written instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "a whole picture is filled from a tuple or a number");

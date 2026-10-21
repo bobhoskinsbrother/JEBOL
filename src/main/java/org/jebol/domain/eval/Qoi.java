@@ -49,8 +49,8 @@ final class Qoi {
         if (!identifies(bytes) || isHeaderWithNothingAfterIt(bytes)) {
             return null;
         }
-        int wide = readAWholeNumberAt(bytes, 4);
-        int high = readAWholeNumberAt(bytes, 8);
+        int wide = readWholeNumberAt(bytes, 4);
+        int high = readWholeNumberAt(bytes, 8);
         if (wide <= 0 || high <= 0) {
             return null;
         }
@@ -112,7 +112,7 @@ final class Qoi {
         return pixels;
     }
 
-    private static int readAWholeNumberAt(byte[] bytes, int at) {
+    private static int readWholeNumberAt(byte[] bytes, int at) {
         return (bytes[at] & 0xFF) << 24 | (bytes[at + 1] & 0xFF) << 16
                 | (bytes[at + 2] & 0xFF) << 8 | (bytes[at + 3] & 0xFF);
     }

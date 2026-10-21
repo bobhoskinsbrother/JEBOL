@@ -211,7 +211,7 @@ public final class Ports {
             case "console" -> lineReadFromTheConsole(evaluator);
             case "clipboard" -> readWhatTheOperatorLastCopied(port, evaluator, asked);
             case "bundled" -> readTheSourceOfABundledModule(port, evaluator);
-            case "tcp" -> readBytesFromTheConnection(port, evaluator);
+            case "tcp" -> readBytesFromConnection(port, evaluator);
             case "udp" -> readOneDatagramInto(port, evaluator);
             case "dns" -> answerWhatTheDnsUrlAsks(port, evaluator);
             case "checksum" -> checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
@@ -284,7 +284,7 @@ public final class Ports {
         return host.text().isEmpty() ? Optional.empty() : Optional.of(host.text());
     }
 
-    private Value readBytesFromTheConnection(PortValue port, Evaluator evaluator) {
+    private Value readBytesFromConnection(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
         NetworkPort.Connection connection = findTheConnectionBehind(port);
         return runThroughTheNetwork(() -> {
@@ -338,7 +338,7 @@ public final class Ports {
                 Set.of(), EventValue.Model.PORT, 0, port));
     }
 
-    public Value readFromTheFileBehind(PortValue port, Evaluator evaluator, PortRequest asked) {
+    public Value readFromFileBehind(PortValue port, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
         SeekableFilePort seekable = new SeekableFilePort(port);
         if (port.schemeName().equals("dir")) {
@@ -468,14 +468,14 @@ public final class Ports {
         RebolSeries written = (RebolSeries) data;
         byte[] whole = written.head().asOctets();
         long from = checksumPort.seekFrom(whole, written.index() - 1,
-                readAWholeNumberIn(asked.seek()).orElse(0L));
-        readAWholeNumberIn(asked.part()).ifPresentOrElse(
+                readWholeNumberIn(asked.seek()).orElse(0L));
+        readWholeNumberIn(asked.part()).ifPresentOrElse(
                 wanted -> checksumPort.addPart(port, whole, from, wanted),
                 () -> checksumPort.add(port, whole, from));
         return port;
     }
 
-    private Optional<Long> readAWholeNumberIn(Optional<Value> asked) {
+    private Optional<Long> readWholeNumberIn(Optional<Value> asked) {
         return asked.filter(Comparison::isNumeric).map(number -> (long) Comparison.asDouble(number));
     }
 

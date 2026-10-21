@@ -41,7 +41,7 @@ public class CompressNative extends CompressionNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String method = readAKnownCompression(arguments.get(1));
+            String method = readKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
             int level = readTheArgumentOf("level", 0, arguments, refinements)
                     .map(asked -> (int) ((IntegerValue) asked).magnitude())

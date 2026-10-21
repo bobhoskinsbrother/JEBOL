@@ -527,12 +527,12 @@ final class BrotliDecoder {
         private Huffman readHuffmanCode(int alphabetSize) {
             int kind = bits.take(2);
             if (kind == 1) {
-                return readASimpleCode(alphabetSize);
+                return readSimpleCode(alphabetSize);
             }
-            return readAComplexCode(alphabetSize, kind);
+            return readComplexCode(alphabetSize, kind);
         }
 
-        private Huffman readASimpleCode(int alphabetSize) {
+        private Huffman readSimpleCode(int alphabetSize) {
             int maxBits = 32 - Integer.numberOfLeadingZeros(alphabetSize - 1);
             int howMany = bits.take(2) + 1;
             int[] symbols = new int[4];
@@ -593,7 +593,7 @@ final class BrotliDecoder {
                     "Brotli code-length code names nothing at all");
         }
 
-        private Huffman readAComplexCode(int alphabetSize, int skip) {
+        private Huffman readComplexCode(int alphabetSize, int skip) {
             int[] codeLengthLengths = new int[CODE_LENGTH_CODES];
             int space = 32;
             int symbolsUsed = 0;

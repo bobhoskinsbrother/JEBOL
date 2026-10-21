@@ -130,12 +130,12 @@ public record DateValue(
                 case DecimalValue seconds -> DateFactory.fromTimestamp(
                         (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
                 case AnyBlockValue parts -> DateFactory.fromParts(parts.remaining());
-                case AnyStringValue written -> readADateFrom(written, maker);
+                case AnyStringValue written -> readDateFrom(written, maker);
                 default -> throw refuse(from);
             };
         }
 
-        private Value readADateFrom(AnyStringValue written, Maker maker) {
+        private Value readDateFrom(AnyStringValue written, Maker maker) {
             String token = new WrittenText(written.text())
                     .findOneToken(MOST_DATE_CHARACTERS);
             return maker.readTheValuesFrom(token)

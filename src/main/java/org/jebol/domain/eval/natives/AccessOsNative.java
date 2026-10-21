@@ -90,12 +90,12 @@ public class AccessOsNative extends DefaultNative {
         if (pair.size() != A_PROCESS_AND_A_SIGNAL) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
-        long process = readAWholeNumberOrRefuse(pair.get(0));
-        int signal = (int) readAWholeNumberOrRefuse(pair.get(1));
+        long process = readWholeNumberOrRefuse(pair.get(0));
+        int signal = (int) readWholeNumberOrRefuse(pair.get(1));
         return end(process, signal, processes);
     }
 
-    private long readAWholeNumberOrRefuse(Value given) {
+    private long readWholeNumberOrRefuse(Value given) {
         if (given instanceof IntegerValue(long magnitude)) {
             return magnitude;
         }

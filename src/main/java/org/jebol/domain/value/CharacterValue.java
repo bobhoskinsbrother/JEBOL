@@ -92,10 +92,10 @@ public record CharacterValue(int codepoint) implements Value {
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
         return CharacterValue.of(
-                (int) operation.onWholeElements(codepoint, readAWholeNumberFrom(right)));
+                (int) operation.onWholeElements(codepoint, readWholeNumberFrom(right)));
     }
 
-    private long readAWholeNumberFrom(Value right) {
+    private long readWholeNumberFrom(Value right) {
         return switch (right) {
             case CharacterValue(int other) -> other;
             case IntegerValue(long magnitude) -> magnitude;
