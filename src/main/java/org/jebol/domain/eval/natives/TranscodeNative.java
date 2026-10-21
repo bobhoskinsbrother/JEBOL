@@ -49,7 +49,7 @@ public class TranscodeNative extends DefaultNative {
         Value source = arguments.getFirst();
         String whole = textOf(source);
         String readable = readTheArgumentOf("part", 0, arguments, refinements)
-                .map(asked -> boundTo(whole, countTheCharactersPermittedBy(asked)))
+                .map(asked -> boundTo(whole, countCharactersPermittedBy(asked)))
                 .orElse(whole);
         return new Reading(whole, readable,
                 readFirstLineNumberIn(readTheArgumentOf("line", 0, arguments, refinements)),
@@ -167,7 +167,7 @@ public class TranscodeNative extends DefaultNative {
         return asked;
     }
 
-    private int countTheCharactersPermittedBy(Value part) {
+    private int countCharactersPermittedBy(Value part) {
         long asked = (long) Arithmetic.asMagnitude(part);
         if (asked < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);

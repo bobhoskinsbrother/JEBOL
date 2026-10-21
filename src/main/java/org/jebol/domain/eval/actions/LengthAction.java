@@ -45,7 +45,7 @@ public class LengthAction extends SeriesOrFileAction {
             case AnyWordValue word -> IntegerValue.of(
                     word.spelling().codePointCount(0, word.spelling().length()));
             case Value kind when Actions.of(kind).isPresent() ->
-                    IntegerValue.of(Actions.of(kind).orElseThrow().measureTheLength());
+                    IntegerValue.of(Actions.of(kind).orElseThrow().measureLength());
             case RebolSeries series -> IntegerValue.of(series.lengthFromHere());
             case ModuleValue module -> IntegerValue.of(module.context().fieldCount());
             case StructValue struct -> IntegerValue.of(struct.size());
@@ -63,7 +63,7 @@ public class LengthAction extends SeriesOrFileAction {
             case "udp" -> IntegerValue.of(port.readFieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);
-            case "file", "dir" -> findFileBehind(port, evaluator).measureTheLengthLeft();
+            case "file", "dir" -> findFileBehind(port, evaluator).measureLengthLeft();
             default -> IntegerValue.of(port.context().fieldCount());
         };
     }

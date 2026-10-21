@@ -36,7 +36,7 @@ public final class BitsetActions implements Actions {
     }
 
     @Override
-    public int measureTheLength() {
+    public int measureLength() {
         return bitsReachedOver();
     }
 
@@ -70,7 +70,7 @@ public final class BitsetActions implements Actions {
         if (asked instanceof IntegerValue(long magnitude)) {
             return members.holds(findBitAsked(magnitude));
         }
-        return holdsEachOf(collectTheCodePointsAskedAboutBy(asked), anyWillDo);
+        return holdsEachOf(collectCodePointsAskedAboutBy(asked), anyWillDo);
     }
 
     public boolean holds(Value asked) {
@@ -125,7 +125,7 @@ public final class BitsetActions implements Actions {
         return members.octets().length * 8;
     }
 
-    public boolean isTheEmptySet() {
+    public boolean isEmptySet() {
         byte held = (byte) (members.isComplemented() ? 0xFF : 0);
         for (byte octet : members.octets()) {
             if (octet != held) {
@@ -187,11 +187,11 @@ public final class BitsetActions implements Actions {
                 && items.getFirst() instanceof AnyWordValue word
                 && word.canonical().equals("not");
         AnyBlockValue rest = complemented ? written.atIndex(written.index() + 1) : written;
-        BitsetValue set = BitsetValue.of(collectTheOctetsNamedBy(rest.remaining(), written));
+        BitsetValue set = BitsetValue.of(collectOctetsNamedBy(rest.remaining(), written));
         return complemented ? set.complement() : set;
     }
 
-    private static byte[] collectTheOctetsNamedBy(List<Value> specs, AnyBlockValue whole) {
+    private static byte[] collectOctetsNamedBy(List<Value> specs, AnyBlockValue whole) {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
             Value spec = specs.get(at);
@@ -238,7 +238,7 @@ public final class BitsetActions implements Actions {
         return closing;
     }
 
-    private static int[] collectTheCodePointsAskedAboutBy(Value asked) {
+    private static int[] collectCodePointsAskedAboutBy(Value asked) {
         if (asked instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
@@ -251,7 +251,7 @@ public final class BitsetActions implements Actions {
             return points;
         }
         if (asked instanceof AnyBlockValue specs) {
-            int[] points = collectTheCodePointsIn(specs);
+            int[] points = collectCodePointsIn(specs);
             for (int point : points) {
                 findBitAsked(point);
             }
@@ -260,7 +260,7 @@ public final class BitsetActions implements Actions {
         throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
     }
 
-    private static int[] collectTheCodePointsIn(AnyBlockValue written) {
+    private static int[] collectCodePointsIn(AnyBlockValue written) {
         List<Value> items = written.remaining();
         List<Integer> points = new ArrayList<>();
         for (int at = 0; at < items.size(); at++) {
@@ -328,7 +328,7 @@ public final class BitsetActions implements Actions {
         return grown;
     }
 
-    public static BitsetValue collectTheCharactersIn(String characters) {
+    public static BitsetValue collectCharactersIn(String characters) {
         return BitsetValue.ofCharacters(characters.chars().toArray());
     }
 
@@ -344,14 +344,14 @@ public final class BitsetActions implements Actions {
         return join(makeARangeOfCharacters('a', 'z'), makeARangeOfCharacters('A', 'Z'));
     }
 
-    public static BitsetValue listTheQuotedPrintableOctets() {
+    public static BitsetValue listQuotedPrintableOctets() {
         StringBuilder allowed = new StringBuilder();
         for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
             if (character != '=') {
                 allowed.append((char) character);
             }
         }
-        return collectTheCharactersIn(allowed.toString());
+        return collectCharactersIn(allowed.toString());
     }
 
     private static final int LAST_ASCII_CHARACTER = 127;

@@ -128,7 +128,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
     private static EllipticCurveKey makeOnACurveThisBuildComputes(
             String curveName, WeierstrassCurve curve) {
 
-        BigInteger privateNumber = curve.drawAPrivateNumber(RANDOMLY);
+        BigInteger privateNumber = curve.drawPrivateNumber(RANDOMLY);
         return new EllipticCurveKey(curve, privateNumber,
                 curve.multiplyTheGenerator(privateNumber), curveName);
     }

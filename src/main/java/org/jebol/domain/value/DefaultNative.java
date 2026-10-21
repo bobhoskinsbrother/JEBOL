@@ -36,7 +36,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
 
     @Override
     public String toString() {
-        return "native " + nativeName() + "/" + countTheArity();
+        return "native " + nativeName() + "/" + countArity();
     }
 
     protected List<Parameter> acceptsAnyType(String... names) {

@@ -206,14 +206,14 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
             StructField mine = fields.get(at);
             StructField theirs = other.fields.get(at);
             if (mine.dimension() != theirs.dimension()
-                    || !isTheSameType(mine.type(), theirs.type())) {
+                    || !isSameType(mine.type(), theirs.type())) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean isTheSameType(StructFieldType mine, StructFieldType theirs) {
+    private static boolean isSameType(StructFieldType mine, StructFieldType theirs) {
         if (mine instanceof StructFieldType.Nested(StructSpec spec1)
                 && theirs instanceof StructFieldType.Nested(StructSpec spec)) {
             return spec1.describesTheSameBytesAs(spec);

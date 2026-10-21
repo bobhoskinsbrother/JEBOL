@@ -33,7 +33,7 @@ public sealed interface NativeValue extends DeclaresParameters
         return refinementsDeclaredApart().contains(refinement);
     }
 
-    default int countTheArity() {
+    default int countArity() {
         long base = parameters().stream()
                 .filter(parameter -> parameter.owningRefinement().isEmpty())
                 .filter(Parameter::consumesAnArgument)

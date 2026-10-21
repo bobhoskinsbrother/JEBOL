@@ -7,7 +7,7 @@ interface DateField {
 
     Value readFrom(DateValue date);
 
-    default boolean needsAClock() {
+    default boolean needsClock() {
         return false;
     }
 }

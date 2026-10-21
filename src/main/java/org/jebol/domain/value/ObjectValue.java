@@ -81,7 +81,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         fields.pointItsOwnSelfAt(duplicate);
         context.slots()
                 .forEach(slot -> fields.register(slot.spelling(),
-                        slot.value().copyAsAMember(deeply, kinds)));
+                        slot.value().copyAsMember(deeply, kinds)));
         return duplicate;
     }
 

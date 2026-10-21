@@ -318,10 +318,10 @@ final class BrotliMetaBlockWriter {
 
         OneAlphabet(int alphabetLength, BrotliBlockSplit split) {
             this.alphabetLength = alphabetLength;
-            this.howManyTypes = split.countTheTypes();
+            this.howManyTypes = split.countTypes();
             this.split = split;
             this.leftInTheBlock =
-                    split.countTheBlocks() == 0 ? 0 : split.readLengthAt(0);
+                    split.countBlocks() == 0 ? 0 : split.readLengthAt(0);
         }
 
         private int findNextTypeCode(int type) {
@@ -335,7 +335,7 @@ final class BrotliMetaBlockWriter {
             int[] typeHistogram = new int[howManyTypes + 2];
             int[] lengthHistogram = new int[BLOCK_LENGTH_SYMBOLS];
             OneAlphabet counting = new OneAlphabet(alphabetLength, split);
-            for (int block = 0; block < split.countTheBlocks(); block++) {
+            for (int block = 0; block < split.countBlocks(); block++) {
                 int code = counting.findNextTypeCode(split.readTypeAt(block));
                 if (block != 0) {
                     typeHistogram[code]++;
@@ -456,7 +456,7 @@ final class BrotliMetaBlockWriter {
 
         into.write(2, distances.postfixBits());
         into.write(4, distances.directCodes() >> distances.postfixBits());
-        for (int type = 0; type < split.literals.countTheTypes(); type++) {
+        for (int type = 0; type < split.literals.countTypes(); type++) {
             into.write(2, contextMode);
         }
 

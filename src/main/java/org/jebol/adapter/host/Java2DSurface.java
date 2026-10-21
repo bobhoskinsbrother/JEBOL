@@ -215,7 +215,7 @@ public final class Java2DSurface implements Surface {
             return new RadialGradientPaint(
                     new Point2D.Double(
                             gradient.acrossOffset(), gradient.downOffset()),
-                    (float) gradient.measureTheRadius(), stops, colours);
+                    (float) gradient.measureRadius(), stops, colours);
         }
         return new LinearGradientPaint(
                 new Point2D.Double(

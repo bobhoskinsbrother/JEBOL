@@ -17,7 +17,7 @@ public sealed interface RebolSeries extends Value
 
     RebolSeries reverseTheFront(int howMany);
 
-    Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds);
+    Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds);
 
     default RebolSeries reversedFromHere() {
         return reverseTheFront(lengthFromHere());

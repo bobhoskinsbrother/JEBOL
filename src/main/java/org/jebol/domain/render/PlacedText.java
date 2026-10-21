@@ -41,7 +41,7 @@ public record PlacedText(
     public static PlacedText of(PaintInstruction.Writing written, TextMeasurement measure) {
         Placement where = written.where();
         TextLayout layout = written.layout();
-        TextLines lines = new TextLines(written.runs(), measure, layout.measureTheRoomForEachLine(where));
+        TextLines lines = new TextLines(written.runs(), measure, layout.measureRoomForEachLine(where));
         return new PlacedText(
                 placeTheLinesOf(lines, layout, where),
                 findTheSelectionIn(written.caret(), lines, layout, where),

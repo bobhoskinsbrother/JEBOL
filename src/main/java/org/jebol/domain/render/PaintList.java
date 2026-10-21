@@ -76,7 +76,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         List<DrawingCommand> calls = new ArrayList<>();
         for (PaintInstruction instruction : instructions) {
             switch (instruction) {
-                case PaintInstruction.Fill filled -> calls.add(asARectangleCall(filled));
+                case PaintInstruction.Fill filled -> calls.add(asRectangleCall(filled));
                 case PaintInstruction.Writing written -> calls.add(
                         new DrawingCommand.Text(written.where(), PlacedText.of(written, measure)));
                 case PaintInstruction.Picture shown -> calls.add(new DrawingCommand.Picture(
@@ -91,7 +91,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         calls(measure).forEach(surface::execute);
     }
 
-    private static DrawingCommand asARectangleCall(PaintInstruction.Fill filled) {
+    private static DrawingCommand asRectangleCall(PaintInstruction.Fill filled) {
         Placement where = filled.where();
         double left = where.across();
         double top = where.down();

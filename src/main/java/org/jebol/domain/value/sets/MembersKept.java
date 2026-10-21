@@ -41,10 +41,10 @@ public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value
     }
 
     private boolean holds(List<List<Value>> records, List<Value> candidate) {
-        return records.stream().anyMatch(each -> isTheSameRecord(each, candidate));
+        return records.stream().anyMatch(each -> isSameRecord(each, candidate));
     }
 
-    private boolean isTheSameRecord(List<Value> ours, List<Value> theirs) {
+    private boolean isSameRecord(List<Value> ours, List<Value> theirs) {
         if (ours.isEmpty() || theirs.isEmpty()) {
             return ours.isEmpty() && theirs.isEmpty();
         }

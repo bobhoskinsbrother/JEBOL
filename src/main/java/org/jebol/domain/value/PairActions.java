@@ -13,9 +13,9 @@ public final class PairActions {
     public Value combineWith(Value right, ArithmeticOperation operation) {
         refuseWhatIsNotAPairOrAPlainNumber(left);
         refuseWhatIsNotAPairOrAPlainNumber(right);
-        if (operation.needsANonZeroDivisor()) {
-            operation.requireANonZeroDivisor(readTheFirstHalfOf(right));
-            operation.requireANonZeroDivisor(readTheSecondHalfOf(right));
+        if (operation.needsNonZeroDivisor()) {
+            operation.requireNonZeroDivisor(readTheFirstHalfOf(right));
+            operation.requireNonZeroDivisor(readTheSecondHalfOf(right));
         }
         return PairValue.of(
                 combineAHalf(readTheFirstHalfOf(left), readTheFirstHalfOf(right), operation),

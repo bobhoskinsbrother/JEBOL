@@ -31,7 +31,7 @@ final class WedgesAndRings {
                 Math.abs(covering.down() + covering.high() - gradient.downOffset());
         double corner = Math.hypot(Math.max(acrossOne, acrossOther),
                 Math.max(downOne, downOther));
-        return Math.max(corner, gradient.measureTheRadius());
+        return Math.max(corner, gradient.measureRadius());
     }
 
     private static List<Piece> makeAFanOfWedges(Gradient gradient, double reach) {

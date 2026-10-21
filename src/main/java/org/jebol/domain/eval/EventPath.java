@@ -166,7 +166,7 @@ public final class EventPath {
                     EventCatalogue.findTheKeyIndexOf(keyWord.canonical());
             return at.map(position ->
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
-                            keepANamedKeyApartFromCharacters(position),
+                            keepNamedKeyApartFromCharacters(position),
                             EventValue.Flag.HAS_CODE));
         }
         return java.util.Optional.empty();
@@ -179,7 +179,7 @@ public final class EventPath {
                 : withTheModelSet;
     }
 
-    private static int keepANamedKeyApartFromCharacters(int position) {
+    private static int keepNamedKeyApartFromCharacters(int position) {
         return (position + 1) << 16;
     }
 

@@ -46,7 +46,7 @@ final class Qoi {
     }
 
     static Decoded decode(byte[] bytes) {
-        if (!identifies(bytes) || isAHeaderWithNothingAfterIt(bytes)) {
+        if (!identifies(bytes) || isHeaderWithNothingAfterIt(bytes)) {
             return null;
         }
         int wide = readAWholeNumberAt(bytes, 4);
@@ -60,7 +60,7 @@ final class Qoi {
     record Decoded(int wide, int high, byte[] pixels) {
     }
 
-    private static boolean isAHeaderWithNothingAfterIt(byte[] bytes) {
+    private static boolean isHeaderWithNothingAfterIt(byte[] bytes) {
         return bytes.length < HEADER_LENGTH + END_MARKER.length;
     }
 

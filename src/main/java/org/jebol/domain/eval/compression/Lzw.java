@@ -11,7 +11,7 @@ public final class Lzw {
 
     private static final int COUNTER_SEED = 65536;
 
-    private int countTheCodeBits(int number) {
+    private int countCodeBits(int number) {
         return 31 - Integer.numberOfLeadingZeros(number);
     }
 
@@ -197,7 +197,7 @@ public final class Lzw {
             Octets into, ShifterLowBitsFirst shifter, int code, int highest,
             int outputBytes) {
 
-        int width = countTheCodeBits(highest);
+        int width = countCodeBits(highest);
         int extras = (2 << width) - highest - 1;
         int written = outputBytes;
         if (code < extras) {
@@ -250,7 +250,7 @@ public final class Lzw {
         boolean dictionaryFull = false;
 
         while (true) {
-            int width = countTheCodeBits(highestSoFar);
+            int width = countCodeBits(highestSoFar);
             int extras = (2 << width) - highestSoFar - 1;
             while (shifter.bits < width) {
                 if (reading >= source.length) {

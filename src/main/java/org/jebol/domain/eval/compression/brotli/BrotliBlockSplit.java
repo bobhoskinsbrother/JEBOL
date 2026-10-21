@@ -37,7 +37,7 @@ final class BrotliBlockSplit {
         lengths[which] += by;
     }
 
-    int countTheBlocks() {
+    int countBlocks() {
         return howManyBlocks;
     }
 
@@ -45,11 +45,11 @@ final class BrotliBlockSplit {
         howManyBlocks = howMany;
     }
 
-    int countTheTypes() {
+    int countTypes() {
         return howManyTypes;
     }
 
-    void addAType() {
+    void addType() {
         howManyTypes++;
     }
 

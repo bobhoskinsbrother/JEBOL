@@ -199,7 +199,7 @@ public record ErrorValue(
         Map<String, Value> fields = new LinkedHashMap<>();
         for (String name : FIELDS) {
             readTheField(name).ifPresent(held ->
-                    fields.put(name, held.copyAsAMember(deeply, kinds)));
+                    fields.put(name, held.copyAsMember(deeply, kinds)));
         }
         return new ErrorValue(category, errorId, message, subject, secondArgument,
                 thirdArgument, near, whereChain, fields, wording);

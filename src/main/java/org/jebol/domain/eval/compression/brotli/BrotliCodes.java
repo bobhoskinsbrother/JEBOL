@@ -60,7 +60,7 @@ final class BrotliCodes {
                 }
                 run.reverseFrom(start);
             }
-            ZERO_RUN_WIDTH[reps] = run.measureTheTotalWidth();
+            ZERO_RUN_WIDTH[reps] = run.measureTotalWidth();
             ZERO_RUN_BITS[reps] = run.pack();
         }
         for (int reps = 0; reps < COMMAND_SYMBOLS; reps++) {
@@ -75,7 +75,7 @@ final class BrotliCodes {
                 remaining--;
             }
             run.reverseFrom(0);
-            OTHER_RUN_WIDTH[reps] = run.measureTheTotalWidth();
+            OTHER_RUN_WIDTH[reps] = run.measureTotalWidth();
             OTHER_RUN_BITS[reps] = run.pack();
         }
     }
@@ -108,7 +108,7 @@ final class BrotliCodes {
             }
         }
 
-        int measureTheTotalWidth() {
+        int measureTotalWidth() {
             int total = 0;
             for (int each = 0; each < count; each++) {
                 total += FIXED_CODE_LENGTH_DEPTH[symbols[each]] + extraWidth[each];
@@ -204,7 +204,7 @@ final class BrotliCodes {
         return BrotliLog2.of(value);
     }
 
-    static double measureTheBitsEntropy(int[] population, int size) {
+    static double measureBitsEntropy(int[] population, int size) {
         long sum = 0;
         double answer = 0;
         for (int each = 0; each < size; each++) {

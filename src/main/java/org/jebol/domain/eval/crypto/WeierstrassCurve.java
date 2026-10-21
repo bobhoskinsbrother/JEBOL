@@ -107,7 +107,7 @@ final class WeierstrassCurve {
         return multiply(generator, by);
     }
 
-    BigInteger drawAPrivateNumber(SecureRandom randomly) {
+    BigInteger drawPrivateNumber(SecureRandom randomly) {
         BigInteger chosen;
         do {
             chosen = new BigInteger(order.bitLength(), randomly);
@@ -120,7 +120,7 @@ final class WeierstrassCurve {
 
         BigInteger digest = takeTheLeftmostBitsOf(hash);
         while (true) {
-            BigInteger chosen = drawAPrivateNumber(randomly);
+            BigInteger chosen = drawPrivateNumber(randomly);
             Point marker = multiplyTheGenerator(chosen);
             BigInteger first = marker.x().mod(order);
             if (first.signum() == 0) {
@@ -178,13 +178,13 @@ final class WeierstrassCurve {
     }
 
     private static final Map<String, WeierstrassCurve> THE_ONES_THE_JDK_DROPPED =
-            listTheOnesTheJdkDropped();
+            listOnesJdkDropped();
 
     static Optional<WeierstrassCurve> findTheCurveNamed(String curve) {
         return Optional.ofNullable(THE_ONES_THE_JDK_DROPPED.get(curve));
     }
 
-    private static Map<String, WeierstrassCurve> listTheOnesTheJdkDropped() {
+    private static Map<String, WeierstrassCurve> listOnesJdkDropped() {
         Map<String, WeierstrassCurve> carried = new LinkedHashMap<>();
         carried.put("secp192r1", new WeierstrassCurve(
                 "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF",

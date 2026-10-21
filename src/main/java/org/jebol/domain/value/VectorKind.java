@@ -214,9 +214,9 @@ public enum VectorKind {
         return measuring ? gathered : store(gathered);
     }
 
-    public List<Value> collectTheNumbersContributedBy(Value value) {
+    public List<Value> collectNumbersContributedBy(Value value) {
         return switch (value) {
-            case VectorValue source -> source.listTheRemaining();
+            case VectorValue source -> source.listRemaining();
             case AnyBlockValue block -> block.remaining();
             case BinaryValue bytes -> readNumbersSpeltBy(bytes, bytes.lengthFromHere());
             default -> List.of(value);
@@ -225,14 +225,14 @@ public enum VectorKind {
 
     public List<Value> collectTheNumbersOfferedBy(Value value, int limit) {
         if (!(value instanceof RebolSeries source)) {
-            return collectTheNumbersContributedBy(value);
+            return collectNumbersContributedBy(value);
         }
         RebolSeries run = source.reachBackIfNegative(limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
             return readNumbersSpeltBy(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
         }
-        List<Value> offered = collectTheNumbersContributedBy(run);
+        List<Value> offered = collectNumbersContributedBy(run);
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 

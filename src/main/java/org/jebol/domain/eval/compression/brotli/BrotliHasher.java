@@ -3,7 +3,7 @@ package org.jebol.domain.eval.compression.brotli;
 sealed interface BrotliHasher
         permits BrotliQuickHasher, BrotliFullHasher {
 
-    int countTheBytesItLooksAhead();
+    int countBytesItLooksAhead();
 
     void prepareFor(byte[] data, int inputSize, boolean theWholeInputAtOnce);
 

@@ -17,10 +17,10 @@ public record CharacterValue(int codepoint) implements Value {
 
     @Override
     public Value randomise(RandomDraw draw) {
-        return codepoint == 0 ? this : CharacterValue.of(drawAValidCodepoint(draw));
+        return codepoint == 0 ? this : CharacterValue.of(drawValidCodepoint(draw));
     }
 
-    private int drawAValidCodepoint(RandomDraw draw) {
+    private int drawValidCodepoint(RandomDraw draw) {
         while (true) {
             int picked = 1 + draw.below(codepoint);
             boolean surrogate = picked >= FIRST_SURROGATE && picked <= LAST_SURROGATE;
@@ -184,7 +184,7 @@ public record CharacterValue(int codepoint) implements Value {
             if (lead <= 0x80) {
                 return CharacterValue.of(lead);
             }
-            int continuations = countTheContinuationBytes(lead);
+            int continuations = countContinuationBytes(lead);
             if (continuations == 0 || bytes.length <= continuations) {
                 throw refuse(octets);
             }
@@ -202,7 +202,7 @@ public record CharacterValue(int codepoint) implements Value {
             return CharacterValue.of(decoded);
         }
 
-        private int countTheContinuationBytes(int lead) {
+        private int countContinuationBytes(int lead) {
             if ((lead & 0xE0) == 0xC0) {
                 return 1;
             }

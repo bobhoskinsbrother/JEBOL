@@ -54,7 +54,7 @@ final class FileReading {
         if (wildcard.isPresent()) {
             return wildcard.isInTheDirectory()
                     ? BlockValue.of(List.of())
-                    : listTheNamesMatchingThePattern(wildcard, files);
+                    : listNamesMatchingPattern(wildcard, files);
         }
         if (path.endsWith("/") || files.isDirectory(path)) {
             return asFiles(files.listFileNames(path));
@@ -69,7 +69,7 @@ final class FileReading {
         return new BinaryValue(new BinaryStorage(chosen), 1);
     }
 
-    private Value listTheNamesMatchingThePattern(Wildcard wildcard, FilePort files) {
+    private Value listNamesMatchingPattern(Wildcard wildcard, FilePort files) {
         try {
             return asFiles(wildcard.listTheNamesMatchingIn(files));
         } catch (RuntimeException nothingThere) {

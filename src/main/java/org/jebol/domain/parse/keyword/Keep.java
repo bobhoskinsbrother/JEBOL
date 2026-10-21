@@ -30,8 +30,8 @@ final class Keep extends DeclaredKeyword {
         if (saysOneAtATime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
-        if (isTheWord(kept, THE_WHOLE_SLICE)) {
-            return keepTheCapture(walk, rules, at + 1);
+        if (isWord(kept, THE_WHOLE_SLICE)) {
+            return keepCapture(walk, rules, at + 1);
         }
         return keepWhatTheRuleMatched(walk, rules, at);
     }
@@ -47,7 +47,7 @@ final class Keep extends DeclaredKeyword {
         if (saysOneAtATime(kept)) {
             return spreadWhatTheRuleMatched(walk, rules, at);
         }
-        boolean wholeSlice = isTheWord(kept, THE_WHOLE_SLICE);
+        boolean wholeSlice = isWord(kept, THE_WHOLE_SLICE);
         int before = walk.position();
         if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
@@ -92,7 +92,7 @@ final class Keep extends DeclaredKeyword {
         return 2 + walk.ruleSpan(rules, ruleAt);
     }
 
-    private static int keepTheCapture(ParseWalk walk, List<Value> rules, int at) {
+    private static int keepCapture(ParseWalk walk, List<Value> rules, int at) {
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -117,10 +117,10 @@ final class Keep extends DeclaredKeyword {
     }
 
     private static boolean saysOneAtATime(Value kept) {
-        return isTheWord(kept, ONE_AT_A_TIME);
+        return isWord(kept, ONE_AT_A_TIME);
     }
 
-    private static boolean isTheWord(Value kept, String spelling) {
+    private static boolean isWord(Value kept, String spelling) {
         return kept instanceof WordValue word
                 && word.canonical().equals(spelling);
     }

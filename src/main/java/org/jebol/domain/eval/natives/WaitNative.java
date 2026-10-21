@@ -101,10 +101,10 @@ public class WaitNative extends PortWakingNative {
                         || each instanceof AnyDecimalValue
                         || each instanceof TimeValue)
                 .findFirst()
-                .map(this::countTheMillisecondsIn);
+                .map(this::countMillisecondsIn);
     }
 
-    private long countTheMillisecondsIn(Value duration) {
+    private long countMillisecondsIn(Value duration) {
         return duration instanceof TimeValue(long nanoseconds)
                 ? nanoseconds / NANOSECONDS_IN_A_MILLISECOND
                 : (long) (MILLISECONDS_IN_A_SECOND * Comparison.asDouble(duration));

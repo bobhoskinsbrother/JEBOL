@@ -40,7 +40,7 @@ public class DifferenceNative extends DefaultNative {
             Value first = arguments.getFirst();
             Value second = arguments.get(1);
             if (first instanceof DateValue from && second instanceof DateValue to) {
-                return from.measureTheSpanTo(to);
+                return from.measureSpanTo(to);
             }
             int stride = hasNoRecords(first)
                     ? EVERY_MEMBER_ON_ITS_OWN

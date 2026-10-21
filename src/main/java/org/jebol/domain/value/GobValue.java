@@ -91,7 +91,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         throw Raised.cannotUseTheAction(this, "copy");
     }
 

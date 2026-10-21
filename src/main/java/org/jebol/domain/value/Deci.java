@@ -77,7 +77,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         if (higher.signum() == 0) {
             return putInOrder(thisIsHigher, higher, EXACT, lower, EXACT, lowerExponent);
         }
-        int shiftedLeft = Math.min(SIGNIFICANDS.measureTheMaxShiftLeft(higher) + 1, higherExponent - lowerExponent);
+        int shiftedLeft = Math.min(SIGNIFICANDS.measureMaxShiftLeft(higher) + 1, higherExponent - lowerExponent);
         higher = higher.multiply(BigInteger.TEN.pow(shiftedLeft));
         higherExponent -= shiftedLeft;
         int stillApart = higherExponent - lowerExponent;
@@ -129,7 +129,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         return negative ? compared >= 0 : compared <= 0;
     }
 
-    public boolean isTheSameAs(Deci other) {
+    public boolean isSameAs(Deci other) {
         if (isZero()) {
             return other.isZero();
         }
@@ -140,11 +140,11 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
     public Deci plus(Deci other) {
         Comparable made = makeComparableWith(other);
         return negative == other.negative
-                ? addTheMagnitudes(made)
+                ? addMagnitudes(made)
                 : subtractTheMagnitudes(made, other.negative);
     }
 
-    private Deci addTheMagnitudes(Comparable made) {
+    private Deci addMagnitudes(Comparable made) {
         BigInteger sum = made.left().add(made.right());
         int truncation = made.leftTruncation() + made.rightTruncation();
         int raised = made.exponent();
@@ -189,7 +189,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
 
     public Deci times(Deci other) {
         BigInteger product = significand.multiply(other.significand);
-        int shift = SIGNIFICANDS.measureTheMinShiftRight(product);
+        int shift = SIGNIFICANDS.measureMinShiftRight(product);
         int raised = exponent + other.exponent + shift;
         int truncation = EXACT;
         if (shift > 0) {
@@ -222,9 +222,9 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         int lowered = exponent - other.exponent - shift;
         BigInteger[] quotientAndRemainder = widened.divideAndRemainder(other.significand);
         Shifted normalised = SIGNIFICANDS.shiftRight(quotientAndRemainder[0],
-                SIGNIFICANDS.measureTheMinShiftRight(quotientAndRemainder[0]),
+                SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]),
                 truncateADivision(quotientAndRemainder[1], other.significand));
-        lowered += SIGNIFICANDS.measureTheMinShiftRight(quotientAndRemainder[0]);
+        lowered += SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]);
         BigInteger quotient = lowered >= THE_SMALLEST_EXPONENT
                 ? SIGNIFICANDS.roundUpWhenTheTruncationSays(normalised)
                 : normalised.value();
@@ -253,7 +253,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
         int divisorExponent = other.exponent;
         int apart = exponent - divisorExponent;
         if (apart < 0) {
-            if (SIGNIFICANDS.measureTheMaxShiftLeft(divisor) < -apart) {
+            if (SIGNIFICANDS.measureMaxShiftLeft(divisor) < -apart) {
                 return this;
             }
             divisor = divisor.multiply(BigInteger.TEN.pow(-apart));

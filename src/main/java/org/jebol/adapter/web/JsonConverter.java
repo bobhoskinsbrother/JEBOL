@@ -205,7 +205,7 @@ final class JsonConverter {
                 writeNumberField("down-start", gradient.downStart()),
                 writeNumberField("across-end", gradient.acrossEnd()),
                 writeNumberField("down-end", gradient.downEnd()),
-                writeNumberField("radius", gradient.measureTheRadius()),
+                writeNumberField("radius", gradient.measureRadius()),
                 writeNestedField("stops", stops.append("]").toString()));
     }
 

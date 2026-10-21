@@ -7,7 +7,7 @@ import org.jebol.domain.value.Value;
 final class Hour implements WritableDateField {
 
     @Override
-    public boolean needsAClock() {
+    public boolean needsClock() {
         return true;
     }
 

@@ -240,10 +240,10 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return checksumOfTheOctets.applyAsLong(listTheShownOctets());
+        return checksumOfTheOctets.applyAsLong(listShownOctets());
     }
 
-    private byte[] listTheShownOctets() {
+    private byte[] listShownOctets() {
         byte[] octets = new byte[shownCount()];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) readOctetAt(at + 1);

@@ -154,7 +154,7 @@ public class BinaryNative extends DefaultNative {
         BinaryValue reading = findCursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
                 listTheOctetsOfTheBuffer(reading.head()), reading.index() - 1,
-                countTheBitsAlreadyTakenIn(held));
+                countBitsAlreadyTakenIn(held));
         Value theBlockItself = lookedUp.apply(asked);
         if (theBlockItself instanceof IntegerValue howMany) {
             return readTheseManyBytes(held, reading, cursor, howMany, into);
@@ -199,7 +199,7 @@ public class BinaryNative extends DefaultNative {
                 shortened.atIndex(Math.max(1, writingWas - cursor.cropped())));
     }
 
-    private int countTheBitsAlreadyTakenIn(ObjectValue held) {
+    private int countBitsAlreadyTakenIn(ObjectValue held) {
         return held.context().contains("r-mask")
                 && held.context().findSlotFor("r-mask").value() instanceof IntegerValue(long magnitude)
                 ? (int) magnitude

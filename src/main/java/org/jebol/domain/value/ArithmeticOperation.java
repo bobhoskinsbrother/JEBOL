@@ -31,13 +31,13 @@ public interface ArithmeticOperation extends ValueOperation {
 
     boolean canSubtractOneFromOther();
 
-    boolean needsANonZeroDivisor();
+    boolean needsNonZeroDivisor();
 
     default Value onFractions(double left, double right) {
         return onFractions(left, right, false);
     }
 
-    default void requireANonZeroDivisor(double divisor) {
+    default void requireNonZeroDivisor(double divisor) {
         if (divisor == 0.0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }

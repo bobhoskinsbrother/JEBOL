@@ -26,7 +26,7 @@ final class FunctionSpec {
             if (item instanceof AnyBlockValue) {
                 continue;
             }
-            if (isADatatypeTestsOwnTypeNumber(item)) {
+            if (isDatatypeTestsOwnTypeNumber(item)) {
                 continue;
             }
             if (!(item instanceof AnyWordValue word)
@@ -55,7 +55,7 @@ final class FunctionSpec {
         return List.copyOf(parameters);
     }
 
-    private static boolean isADatatypeTestsOwnTypeNumber(Value item) {
+    private static boolean isDatatypeTestsOwnTypeNumber(Value item) {
         return item instanceof IntegerValue;
     }
 

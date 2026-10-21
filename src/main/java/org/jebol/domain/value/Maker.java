@@ -17,9 +17,9 @@ public interface Maker {
 
     ObjectValue evaluateAnObject(AnyBlockValue body);
 
-    FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body);
+    FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body);
 
-    Value applyASystemFunction(String name, Value argument);
+    Value applySystemFunction(String name, Value argument);
 
     Value readASimpleValue(Value piece);
 

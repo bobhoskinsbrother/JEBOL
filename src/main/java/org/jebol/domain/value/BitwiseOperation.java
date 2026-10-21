@@ -32,7 +32,7 @@ public interface BitwiseOperation extends ValueOperation {
     }
 
     @Override
-    default boolean needsANonZeroDivisor() {
+    default boolean needsNonZeroDivisor() {
         return false;
     }
 

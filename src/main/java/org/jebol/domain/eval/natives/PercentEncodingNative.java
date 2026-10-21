@@ -24,7 +24,7 @@ public abstract class PercentEncodingNative extends EncodingNative {
                 .orElse(ESCAPE_UNLESS_ASKED);
     }
 
-    protected Value asTheSameKindAs(Value original, byte[] octets) {
+    protected Value asSameKindAs(Value original, byte[] octets) {
         return original instanceof AnyStringValue text
                 ? text.wrap(new String(octets, StandardCharsets.UTF_8))
                 : BinaryValue.ofBytes(octets);

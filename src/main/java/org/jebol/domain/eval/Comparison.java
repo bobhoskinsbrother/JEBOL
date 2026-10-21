@@ -244,7 +244,7 @@ public final class Comparison {
             return false;
         }
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
-            return first.isTheSameHandleAs(second);
+            return first.isSameHandleAs(second);
         }
         if (left instanceof RebolSeries first && right instanceof RebolSeries second) {
             return first.sharesStorageWith(second) && first.index() == second.index();
@@ -257,7 +257,7 @@ public final class Comparison {
                     == Double.doubleToRawLongBits(second.quantity());
         }
         if (left instanceof MoneyValue first && right instanceof MoneyValue second) {
-            return first.asDeci().isTheSameAs(second.asDeci());
+            return first.asDeci().isSameAs(second.asDeci());
         }
         if (left instanceof ObjectValue(Context context1) && right instanceof ObjectValue(Context context)) {
             return context1 == context;

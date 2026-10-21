@@ -103,8 +103,8 @@ public final class VectorQuery {
         }
         VectorKind kind = vector.kind();
         return Optional.of(switch (field) {
-            case "sum" -> asTheVectorCounts(kind, spread.sum);
-            case "range" -> asTheVectorCounts(kind,
+            case "sum" -> asVectorCounts(kind, spread.sum);
+            case "range" -> asVectorCounts(kind,
                     spread.largest - spread.smallest);
             case "mean", "average" -> DecimalValue.of(spread.mean);
             case "median" -> DecimalValue.of(findTheMedianOf(vector));
@@ -120,7 +120,7 @@ public final class VectorQuery {
         });
     }
 
-    private static Value asTheVectorCounts(VectorKind kind, double answer) {
+    private static Value asVectorCounts(VectorKind kind, double answer) {
         return kind.measures() ? DecimalValue.of(answer) : IntegerValue.of((long) answer);
     }
 

@@ -70,7 +70,7 @@ public final class SeriesChange {
     }
 
     private Value overwrite(BinaryValue bytes, Value replacing) {
-        int[] octets = SeriesContents.collectTheOctetsContributedBy(replacing);
+        int[] octets = SeriesContents.collectOctetsContributedBy(replacing);
         for (int at = 0; at < octets.length; at++) {
             int where = bytes.index() + at;
             if (where > bytes.storage().length()) {
@@ -154,14 +154,14 @@ public final class SeriesChange {
             case GobValue gob -> new GobActions(gob)
                     .takeTheChildrenOf(value, gob.findPositionWithinPane());
             case VectorValue vector -> {
-                List<Value> numbers = vector.kind().collectTheNumbersContributedBy(value);
+                List<Value> numbers = vector.kind().collectNumbersContributedBy(value);
                 for (int at = numbers.size(); at > 0; at--) {
                     vector.storage().insertAt(vector.index(),
                             VectorPath.encodeForStorage(vector.kind(), numbers.get(at - 1)));
                 }
             }
             case BinaryValue bytes -> {
-                int[] octets = SeriesContents.collectTheOctetsContributedBy(value);
+                int[] octets = SeriesContents.collectOctetsContributedBy(value);
                 for (int at = octets.length; at > 0; at--) {
                     bytes.storage().insertAt(bytes.index(), octets[at - 1]);
                 }
@@ -195,7 +195,7 @@ public final class SeriesChange {
     }
 
     private List<Value> collectTheNumbersAdded(VectorValue vector) {
-        List<Value> once = vector.kind().collectTheNumbersContributedBy(replacement);
+        List<Value> once = vector.kind().collectNumbersContributedBy(replacement);
         long rounds = refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? magnitude

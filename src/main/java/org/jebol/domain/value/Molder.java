@@ -84,7 +84,7 @@ public final class Molder {
         }
     }
 
-    private static int countThePixelsTheLimitAllows(int pixels, int alreadyWritten) {
+    private static int countPixelsLimitAllows(int pixels, int alreadyWritten) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT
                 ? pixels
@@ -258,10 +258,10 @@ public final class Molder {
                     ? "#(" + datatype.literalSpelling() + ")"
                     : datatype.literalSpelling();
             case TypesetValue typeset -> !forReading
-                    ? listTheNamesInTheTypeset(typeset)
+                    ? listNamesInTypeset(typeset)
                     : WRITING_EVERYTHING_OUT.get()
-                            ? "#(typeset! [" + listTheNamesInTheTypeset(typeset) + "])"
-                            : "make typeset! [" + listTheNamesInTheTypeset(typeset) + "]";
+                            ? "#(typeset! [" + listNamesInTypeset(typeset) + "])"
+                            : "make typeset! [" + listNamesInTypeset(typeset) + "]";
             case NativeValue built -> renderNative(built);
             case DefinedFunctionValue function -> renderFunction(function, forReading);
             case OperatorValue operator -> renderOperator(operator);
@@ -541,7 +541,7 @@ public final class Molder {
         ImageValue shown = asAConstruct ? image.head() : image;
         String opens = asAConstruct ? "#(image! " : "make image! [";
         String shuts = asAConstruct ? moldThePositionOf(image) + ")" : "]";
-        int pixels = countThePixelsTheLimitAllows(
+        int pixels = countPixelsLimitAllows(
                 shown.lengthFromHere(), opens.length() + size.length() + " #{".length());
         if (pixels == 0) {
             return opens + size + " #{}" + shuts;
@@ -577,7 +577,7 @@ public final class Molder {
         return forReading ? moldTheBytes(octets) : writeTheHexOf(octets);
     }
 
-    private static int countTheBytesTheLimitAllows(int bytes) {
+    private static int countBytesLimitAllows(int bytes) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT ? bytes : Math.min(bytes, Math.max(0, limit));
     }
@@ -598,7 +598,7 @@ public final class Molder {
 
     private static String moldTheBytes(byte[] whole) {
         byte[] octets = Arrays.copyOf(whole,
-                countTheBytesTheLimitAllows(whole.length));
+                countBytesLimitAllows(whole.length));
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
         return switch (BINARY_BASE.get()) {
             case 2 -> "2#{" + writeBase2Digits(
@@ -926,7 +926,7 @@ public final class Molder {
                 + closedAfterATypeName();
     }
 
-    private static String listTheNamesInTheTypeset(TypesetValue typeset) {
+    private static String listNamesInTypeset(TypesetValue typeset) {
         return typeset.members().stream()
                 .sorted()
                 .map(Datatype::literalSpelling)

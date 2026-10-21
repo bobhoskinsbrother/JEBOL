@@ -10,7 +10,7 @@ import org.jebol.domain.value.Value;
 final class Clock implements WritableDateField {
 
     @Override
-    public boolean needsAClock() {
+    public boolean needsClock() {
         return true;
     }
 
@@ -25,8 +25,8 @@ final class Clock implements WritableDateField {
             case NoneValue _ -> date.asJustTheDay();
             case TimeValue clock -> date.atTheTime(clock);
             case DateValue other -> date.atTheTime(other.clock());
-            case IntegerValue _ -> date.atTheTime(given.asAClock());
-            case AnyDecimalValue _ -> date.atTheTime(given.asAClock());
+            case IntegerValue _ -> date.atTheTime(given.asClock());
+            case AnyDecimalValue _ -> date.atTheTime(given.asClock());
             default -> throw given.refusal();
         };
     }

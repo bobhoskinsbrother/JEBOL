@@ -36,7 +36,7 @@ public class MoldNative extends DefaultNative {
                     writeInTheSystemBase(evaluator, moldAsAsked(arguments.getFirst(), refinements)));
             return readTheArgumentOf("part", 0, arguments, refinements)
                     .map(limit -> StringValue.of(Molder.moldWithin(arguments.getFirst(),
-                            countTheCharactersWithin(((IntegerValue) limit).magnitude()), how)))
+                            countCharactersWithin(((IntegerValue) limit).magnitude()), how)))
                     .orElseGet(() -> StringValue.of(how.apply(arguments.getFirst())));
         };
     }
@@ -61,7 +61,7 @@ public class MoldNative extends DefaultNative {
                 : how;
     }
 
-    private int countTheCharactersWithin(long limit) {
+    private int countCharactersWithin(long limit) {
         return Math.clamp(limit, 0, Integer.MAX_VALUE);
     }
 

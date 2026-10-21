@@ -14,6 +14,6 @@ final class Break extends SameForABlockAndAString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        throw BlockEnded.asAMatch();
+        throw BlockEnded.asMatch();
     }
 }

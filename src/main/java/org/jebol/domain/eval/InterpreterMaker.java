@@ -48,12 +48,12 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+    public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
         return Binder.bindTheFunctionsBody(spec, body, context);
     }
 
     @Override
-    public Value applyASystemFunction(String name, Value argument) {
+    public Value applySystemFunction(String name, Value argument) {
         return evaluator.applyFunction(context.findSystemFunctionNamed(name), List.of(argument));
     }
 
@@ -84,7 +84,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
-        return evaluator.evaluateInto(copyTheObject(prototype), body);
+        return evaluator.evaluateInto(copyObject(prototype), body);
     }
 
     @Override
@@ -92,7 +92,7 @@ public final class InterpreterMaker implements Maker {
         return mergeTheObjects(prototype, other);
     }
 
-    private ObjectValue copyTheObject(ObjectValue prototype) {
+    private ObjectValue copyObject(ObjectValue prototype) {
         ObjectValue built = evaluator.makeFreshObjectWithin(context);
         Context fields = built.context();
         prototype.context().slots().forEach(slot -> fields.register(
@@ -135,8 +135,8 @@ public final class InterpreterMaker implements Maker {
         }
         return switch (prototype) {
             case DefinedFunctionValue written -> Binder.bindTheFunctionsBody(
-                    newSpecification.orElseGet(() -> asABlock(written.spec())),
-                    newBody.map(this::asABlock).orElseGet(() -> asABlock(written.body())),
+                    newSpecification.orElseGet(() -> asBlock(written.spec())),
+                    newBody.map(this::asBlock).orElseGet(() -> asBlock(written.body())),
                     written.closedOver());
             case NativeValue built -> newSpecification
                     .<AnyFunctionValue>map(given -> built.deriveWith(given, FunctionSpec.readTheParametersIn(given)))
@@ -185,7 +185,7 @@ public final class InterpreterMaker implements Maker {
                 makeFunctionFrom(operator.underlying(), BlockValue.of(List.of(specification))));
     }
 
-    private AnyBlockValue asABlock(Value half) {
+    private AnyBlockValue asBlock(Value half) {
         return half instanceof AnyBlockValue block
                 ? block
                 : BlockValue.of(List.of());

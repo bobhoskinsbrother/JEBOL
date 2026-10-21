@@ -185,7 +185,7 @@ class DesktopScreenFromTheSourceTest {
             DesktopScreen screen = DesktopScreen.onThisMachine(new ClasspathFiles());
 
             for (ScreenMetric metric : ScreenMetric.values()) {
-                if (metric.isACount()) {
+                if (metric.isCount()) {
                     continue;
                 }
         assertThat(screen.measure(metric, 0))

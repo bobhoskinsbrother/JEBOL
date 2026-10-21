@@ -231,7 +231,7 @@ public final class Delect {
             Value written = input.storage().at(position);
             return switch (written) {
                 case WordValue word ->
-                        isAWordTheDialectLeavesAlone(word)
+                        isWordDialectLeavesAlone(word)
                                 ? Optional.of(word)
                                 : readWhatTheWordHolds(word);
                 case LitWordValue quoted -> Optional.of(WordValue.of(quoted.spelling()));
@@ -241,7 +241,7 @@ public final class Delect {
             };
         }
 
-        private boolean isAWordTheDialectLeavesAlone(AnyWordValue word) {
+        private boolean isWordDialectLeavesAlone(AnyWordValue word) {
             return findTheIndexOfCommand(word) != 0;
         }
 

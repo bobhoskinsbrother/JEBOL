@@ -143,9 +143,9 @@ final class BlockEncoder {
 
     void flushBlock(BitWriter out, byte[] input, int begin, int length, BlockContent content, boolean finalBlock) {
         precomputeHuffmanHeader();
-        long dynamicCost = priceTheDynamicBlock();
-        long staticCost = priceTheStaticBlock();
-        long storedCost = priceTheStoredBlock(out.pendingCount(), length);
+        long dynamicCost = priceDynamicBlock();
+        long staticCost = priceStaticBlock();
+        long storedCost = priceStoredBlock(out.pendingCount(), length);
         long cheapest = Math.min(dynamicCost, Math.min(staticCost, storedCost));
         if (cheapest == storedCost) {
             writeStoredBlocks(out, input, begin, length, finalBlock);
@@ -165,8 +165,8 @@ final class BlockEncoder {
         out.add(chosen.litlenCodewords[END_OF_BLOCK], chosen.readLitlenLength(END_OF_BLOCK));
     }
 
-    private long priceTheDynamicBlock() {
-        long cost = BLOCK_HEADER_BITS + priceTheHeader();
+    private long priceDynamicBlock() {
+        long cost = BLOCK_HEADER_BITS + priceHeader();
         for (int symbol = 0; symbol < FIRST_LENGTH_SYMBOL; symbol++) {
             cost += (long) litlenFrequencies[symbol] * codes.readLitlenLength(symbol);
         }
@@ -180,7 +180,7 @@ final class BlockEncoder {
         return cost;
     }
 
-    private long priceTheHeader() {
+    private long priceHeader() {
         long cost = CODE_COUNT_FIELD_BITS + (long) PRECODE_LENGTH_BITS * explicitPrecodeLengths;
         for (int symbol = 0; symbol < PRECODE_SYMBOL_COUNT; symbol++) {
             cost += (long) precodeFrequencies[symbol] * (EXTRA_PRECODE_BITS[symbol] + precodeLengths[symbol]);
@@ -188,7 +188,7 @@ final class BlockEncoder {
         return cost;
     }
 
-    private long priceTheStaticBlock() {
+    private long priceStaticBlock() {
         long cost = BLOCK_HEADER_BITS + STATIC_END_OF_BLOCK_BITS;
         for (int symbol = 0; symbol < END_OF_BLOCK; symbol++) {
             cost += (long) litlenFrequencies[symbol]
@@ -204,7 +204,7 @@ final class BlockEncoder {
         return cost;
     }
 
-    private long priceTheStoredBlock(int pendingBits, int length) {
+    private long priceStoredBlock(int pendingBits, int length) {
         long blocks = (length + (long) LONGEST_STORED_BLOCK - 1) / LONGEST_STORED_BLOCK;
         return BLOCK_HEADER_BITS + (-(pendingBits + BLOCK_HEADER_BITS) & 7) + STORED_LENGTH_FIELDS_BITS
                 + STORED_BLOCK_OVERHEAD_BITS * (blocks - 1) + 8L * length;
@@ -264,7 +264,7 @@ final class BlockEncoder {
     long trueCost() {
         precomputeHuffmanHeader();
         Arrays.fill(codes.lengths, litlenSymbolsSent, LITLEN_SYMBOL_COUNT, 0);
-        long cost = priceTheHeader();
+        long cost = priceHeader();
         for (int symbol = 0; symbol < FIRST_LENGTH_SYMBOL; symbol++) {
             cost += (long) litlenFrequencies[symbol] * codes.readLitlenLength(symbol);
         }

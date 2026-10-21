@@ -86,7 +86,7 @@ public final class Divide implements ArithmeticOperation {
     }
 
     @Override
-    public boolean needsANonZeroDivisor() {
+    public boolean needsNonZeroDivisor() {
         return true;
     }
 }

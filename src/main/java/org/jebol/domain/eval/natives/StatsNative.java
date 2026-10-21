@@ -41,7 +41,7 @@ public class StatsNative extends DefaultNative {
             if (refinements.contains("profile")) {
                 return fillInTheProfile(evaluator);
             }
-            return IntegerValue.of(SeriesMemory.countTheBytesHeld());
+            return IntegerValue.of(SeriesMemory.countBytesHeld());
         };
     }
 

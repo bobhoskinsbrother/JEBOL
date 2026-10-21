@@ -51,7 +51,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     @Override
     public List<Value> listTheItems() {
-        return listTheRemaining();
+        return listRemaining();
     }
 
     @Override
@@ -107,7 +107,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(howMany);
     }
 
@@ -123,7 +123,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return this;
     }
 
-    public List<Value> listTheRemaining() {
+    public List<Value> listRemaining() {
         List<Value> found = new ArrayList<>();
         for (int at = index; at <= storage.length(); at++) {
             found.add(readItemAt(at));

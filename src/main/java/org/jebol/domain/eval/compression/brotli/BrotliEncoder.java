@@ -64,7 +64,7 @@ final class BrotliEncoder {
             1, 1, 1, 1, 0, 0, 0, 0,
     };
 
-    private static int chooseTheQualityFor(int level) {
+    private static int chooseQualityFor(int level) {
         int asked = level == NOBODY_ASKED ? DEFAULT_QUALITY : level;
         return Integer.compareUnsigned(asked, HIGHEST_QUALITY) > 0
                 ? HIGHEST_QUALITY
@@ -78,7 +78,7 @@ final class BrotliEncoder {
     private static final int TWO_PASS_QUALITY = 1;
 
     static byte[] encode(byte[] source, int level) {
-        int quality = chooseTheQualityFor(level);
+        int quality = chooseQualityFor(level);
         if (quality == ONE_PASS_QUALITY) {
             return new Fragment(source).run();
         }

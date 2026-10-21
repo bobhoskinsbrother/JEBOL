@@ -64,7 +64,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirstWholeRows(howMany);
     }
 
@@ -373,7 +373,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return atIndex(at);
     }
 
-    public ImageValue copyARectangle(int wanted, int tall) {
+    public ImageValue copyRectangle(int wanted, int tall) {
         int from = Math.min(index - 1, storage.length());
         int column = storage.wide() == 0 ? 0 : from % storage.wide();
         int row = storage.wide() == 0 ? 0 : from / storage.wide();

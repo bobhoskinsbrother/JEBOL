@@ -64,12 +64,12 @@ public interface MakerSource {
         }
 
         @Override
-        public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
-        public Value applyASystemFunction(String name, Value argument) {
+        public Value applySystemFunction(String name, Value argument) {
             throw Raised.cannotUseTheAction(argument, "make");
         }
 

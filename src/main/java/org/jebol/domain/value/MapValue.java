@@ -51,7 +51,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     @Override
-    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+    public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
         return combineWith(theirs, keeping.how(), mindingCase);
     }
@@ -270,7 +270,7 @@ public final class MapValue implements Value, PathTarget {
         for (int at = 0; at < flattened.size(); at++) {
             boolean isAValueRatherThanAKey = at % 2 == 1;
             copiedPairs.add(isAValueRatherThanAKey
-                    ? flattened.get(at).copyAsAMember(deeply, kinds)
+                    ? flattened.get(at).copyAsMember(deeply, kinds)
                     : flattened.get(at));
         }
         return MapValue.of(copiedPairs);

@@ -24,12 +24,12 @@ public class ColorDistanceNative extends ColourNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> DecimalValue.of(measureThePerceptionDistance(
+        return (arguments, evaluator, context, refinements) -> DecimalValue.of(measurePerceptionDistance(
                 readThreeParts((TupleValue) arguments.get(0)),
                 readThreeParts((TupleValue) arguments.get(1))));
     }
 
-    private double measureThePerceptionDistance(int[] one, int[] other) {
+    private double measurePerceptionDistance(int[] one, int[] other) {
         long red = one[0] - other[0];
         long green = one[1] - other[1];
         long blue = one[2] - other[2];

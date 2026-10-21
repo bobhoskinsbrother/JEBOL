@@ -17,9 +17,9 @@ final class BlockPath {
 
     static Optional<Integer> findThePositionOf(AnyBlockValue block, Value selector) {
         int at = switch (selector) {
-            case IntegerValue position -> countThePositionFrom(position.magnitude(), block.index());
+            case IntegerValue position -> countPositionFrom(position.magnitude(), block.index());
             case AnyDecimalValue fraction ->
-                    countThePositionFrom((long) fraction.quantity(), block.index());
+                    countPositionFrom((long) fraction.quantity(), block.index());
             case AnyWordValue name -> findAfterTheFirstMatch(
                     block, item ->
                     item instanceof AnyWordValue held
@@ -39,7 +39,7 @@ final class BlockPath {
         };
     }
 
-    private static int countThePositionFrom(long wanted, int here) {
+    private static int countPositionFrom(long wanted, int here) {
         if (wanted == 0) {
             return 0;
         }

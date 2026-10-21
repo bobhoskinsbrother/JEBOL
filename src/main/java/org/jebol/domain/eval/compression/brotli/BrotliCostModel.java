@@ -22,15 +22,15 @@ final class BrotliCostModel {
         this.literalCostUpTo = new float[howManyBytes + 2];
     }
 
-    float priceTheCommand(int symbol) {
+    float priceCommand(int symbol) {
         return commandCost[symbol];
     }
 
-    float priceTheDistance(int symbol) {
+    float priceDistance(int symbol) {
         return distanceCost[symbol];
     }
 
-    float priceTheLiterals(int from, int to) {
+    float priceLiterals(int from, int to) {
         return literalCostUpTo[to] - literalCostUpTo[from];
     }
 

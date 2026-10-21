@@ -40,7 +40,7 @@ final class ChecksumPort {
         String algorithm = Optional.ofNullable(Encodings.DIGESTS.get(method))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, method));
         if (DIGESTS_THAT_KEEP_THE_BYTES.contains(algorithm)) {
-            return keepTheBytes(method);
+            return keepBytes(method);
         }
         DigestPort.RunningDigest running = encodings.startARunningDigest(method);
         return new RunningSumThatAReadDoesNotEnd() {
@@ -57,7 +57,7 @@ final class ChecksumPort {
         };
     }
 
-    private RunningSumThatAReadDoesNotEnd keepTheBytes(String method) {
+    private RunningSumThatAReadDoesNotEnd keepBytes(String method) {
         return new RunningSumThatAReadDoesNotEnd() {
 
             private byte[] kept = new byte[0];
@@ -98,16 +98,16 @@ final class ChecksumPort {
     }
 
     void add(PortValue port, byte[] whole, long from) {
-        addTheWindow(port, whole, from, whole.length - from);
+        addWindow(port, whole, from, whole.length - from);
     }
 
     void addPart(PortValue port, byte[] whole, long from, long wanted) {
         long length = measureTheWindowCountingBackwardsWhenNegative(
                 wanted, from, whole.length - from);
-        addTheWindow(port, whole, wanted < 0 ? Math.max(0, from + wanted) : from, length);
+        addWindow(port, whole, wanted < 0 ? Math.max(0, from + wanted) : from, length);
     }
 
-    private void addTheWindow(PortValue port, byte[] whole, long from, long length) {
+    private void addWindow(PortValue port, byte[] whole, long from, long length) {
         if (length > 0) {
             findTheSumInProgress(port).ifPresent(sum -> sum.add(
                     whole, (int) from, (int) Math.min(length, whole.length - from)));

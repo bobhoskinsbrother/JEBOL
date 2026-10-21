@@ -83,14 +83,14 @@ public final class SeekableFilePort {
         return file.text();
     }
 
-    private long measureTheSizeIn(FilePort files) {
+    private long measureSizeIn(FilePort files) {
         return files.describe(path())
                 .flatMap(FileInformation::size)
                 .orElse(0L);
     }
 
     public Value readFrom(FilePort files, Optional<Long> howMany) {
-        long size = measureTheSizeIn(files);
+        long size = measureSizeIn(files);
         long at = Math.min(position(), size);
         long wanted = howMany.orElse(size - at);
         if (wanted < 0) {
@@ -117,18 +117,18 @@ public final class SeekableFilePort {
         if (namesARunOfNamesRatherThanBytes()) {
             return IntegerValue.of(files.listFileNames(path()).size());
         }
-        return IntegerValue.of(Math.max(0, measureTheSizeIn(files) - position()));
+        return IntegerValue.of(Math.max(0, measureSizeIn(files) - position()));
     }
 
     public Value measureTheWholeSize(FilePort files) {
-        return IntegerValue.of(measureTheSizeIn(files));
+        return IntegerValue.of(measureSizeIn(files));
     }
 
     public boolean atTail(FilePort files) {
         if (namesARunOfNamesRatherThanBytes()) {
             return files.listFileNames(path()).isEmpty();
         }
-        return position() >= measureTheSizeIn(files);
+        return position() >= measureSizeIn(files);
     }
 
     private boolean namesARunOfNamesRatherThanBytes() {

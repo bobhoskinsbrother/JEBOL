@@ -35,7 +35,7 @@ public final class Bincode {
         };
     }
 
-    private static boolean isAFloatMostSignificantFirst(String code) {
+    private static boolean isFloatMostSignificantFirst(String code) {
         return code.endsWith("be");
     }
 
@@ -441,7 +441,7 @@ public final class Bincode {
             default -> Double.doubleToLongBits(value);
         };
         for (int byteAt = 0; byteAt < width; byteAt++) {
-            int shift = isAFloatMostSignificantFirst(code)
+            int shift = isFloatMostSignificantFirst(code)
                     ? (width - 1 - byteAt) * 8
                     : byteAt * 8;
             put(cursor, cursor.at + byteAt, (int) ((bits >> shift) & 0xFF));
@@ -454,7 +454,7 @@ public final class Bincode {
         refuseReadPastEnd(cursor, width);
         long bits = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {
-            int shift = isAFloatMostSignificantFirst(code)
+            int shift = isFloatMostSignificantFirst(code)
                     ? (width - 1 - byteAt) * 8
                     : byteAt * 8;
             bits |= ((long) readOctetAt(cursor, cursor.at + byteAt)) << shift;

@@ -75,12 +75,12 @@ final class DeciSignificands {
         return built;
     }
 
-    int measureTheMaxShiftLeft(BigInteger value) {
+    int measureMaxShiftLeft(BigInteger value) {
         int digits = (int) (Math.log10(asTheCDoubleOf(value, 3)) + 0.5);
         return BigInteger.TEN.pow(digits).compareTo(value) <= 0 ? 25 - digits : 26 - digits;
     }
 
-    int measureTheMinShiftRight(BigInteger value) {
+    int measureMinShiftRight(BigInteger value) {
         if (value.compareTo(TEN_TO_THE_26) < 0) {
             return 0;
         }

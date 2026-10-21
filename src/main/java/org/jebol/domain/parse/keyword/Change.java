@@ -76,7 +76,7 @@ final class Change extends DeclaredKeyword {
 
         boolean wholeBlock = saysToPutTheBlockInWhole(rules, replacementSlot);
         int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
-        Value replacement = walk.chooseTheValueToInsert(rules.get(lastRuleAt));
+        Value replacement = walk.chooseValueToInsert(rules.get(lastRuleAt));
         List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(replacement);

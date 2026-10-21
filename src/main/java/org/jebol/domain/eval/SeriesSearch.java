@@ -88,7 +88,7 @@ public final class SeriesSearch {
                 : (int) Math.min(items.size(), (long) series.index() - 1 + limit);
     }
 
-    public int measureTheLengthMatchedAt(int found) {
+    public int measureLengthMatchedAt(int found) {
         if (series instanceof AnyStringValue patterned && refinements.contains("any")) {
             int from = found - 1;
             int reached = wildcards.findPatternEnd(patterned.head().text(), from, end(),
@@ -109,7 +109,7 @@ public final class SeriesSearch {
             return listTheRunOfValues().size();
         }
         return series instanceof AnyStringValue && !refinements.contains("only")
-                ? countTheCharactersIn(Molder.form(wanted))
+                ? countCharactersIn(Molder.form(wanted))
                 : 1;
     }
 
@@ -327,7 +327,7 @@ public final class SeriesSearch {
                 : Comparison.areLooselyEqual(item, sought);
     }
 
-    private int countTheCharactersIn(String text) {
+    private int countCharactersIn(String text) {
         return text.codePointCount(0, text.length());
     }
 }

@@ -32,7 +32,7 @@ public final class BinaryActions extends SeriesActions {
 
     private int readOctetPokedFrom(Value written) {
         return switch (written) {
-            case IntegerValue number -> asAnOctet(number.magnitude());
+            case IntegerValue number -> asOctet(number.magnitude());
             case CharacterValue(int codepoint) when codepoint > 0xFF ->
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                             codepoint + " does not fit in a byte");
@@ -41,7 +41,7 @@ public final class BinaryActions extends SeriesActions {
         };
     }
 
-    private int asAnOctet(long wanted) {
+    private int asOctet(long wanted) {
         if (wanted < 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     wanted + " is not a byte: a binary holds 0 to 255");
@@ -81,7 +81,7 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value append(Asked asked) {
-        for (int octet : collectTheOctetsContributedBy(asked)) {
+        for (int octet : collectOctetsContributedBy(asked)) {
             bytes.storage().append(octet);
         }
         return bytes.head();
@@ -90,15 +90,15 @@ public final class BinaryActions extends SeriesActions {
     @Override
     public Value insert(Asked asked) {
         BinaryValue held = (BinaryValue) bytes.clampToTail();
-        int[] octets = collectTheOctetsContributedBy(asked);
+        int[] octets = collectOctetsContributedBy(asked);
         for (int at = octets.length; at > 0; at--) {
             held.storage().insertAt(held.index(), octets[at - 1]);
         }
         return held.atIndex(held.index() + octets.length);
     }
 
-    private static int[] collectTheOctetsContributedBy(Asked asked) {
-        return SeriesContents.collectTheOctetsContributedBy(
-                asked.duplicated(), asked.countTheOctetsWanted());
+    private static int[] collectOctetsContributedBy(Asked asked) {
+        return SeriesContents.collectOctetsContributedBy(
+                asked.duplicated(), asked.countOctetsWanted());
     }
 }

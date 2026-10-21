@@ -21,7 +21,7 @@ public final class Combining {
     public static Value sets(
             Value first, Value second, SetOperation how, boolean mindingCase, int stride) {
 
-        return first.asASetWith(second, keep(how, mindingCase, stride), mindingCase);
+        return first.asSetWith(second, keep(how, mindingCase, stride), mindingCase);
     }
 
     private static MembersKept keep(

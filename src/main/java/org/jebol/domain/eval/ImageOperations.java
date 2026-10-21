@@ -152,13 +152,13 @@ public final class ImageOperations {
         }
     }
 
-    private static int measureTheRoomTheBlurRunsInto(int wide) {
+    private static int measureRoomBlurRunsInto(int wide) {
         return (wide * CHANNELS) + CHANNELS;
     }
 
     private static byte[] readTheChannelsOf(ImageStorage storage, int wide, int high) {
         byte[] channels = new byte[(wide * high * CHANNELS)
-                + measureTheRoomTheBlurRunsInto(wide)];
+                + measureRoomBlurRunsInto(wide)];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
             int[] rgba = storage.readPixelAt(pixel);
             for (int channel = 0; channel < CHANNELS; channel++) {
@@ -209,15 +209,15 @@ public final class ImageOperations {
                 + (column * from.wide() / wide) + 1);
     }
 
-    public static double measureTheDifferenceBetween(ImageValue first, ImageValue second) {
+    public static double measureDifferenceBetween(ImageValue first, ImageValue second) {
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
-        int wide = measureTheOverlap(left.wide(), right.wide());
-        int high = measureTheOverlap(left.high(), right.high());
+        int wide = measureOverlap(left.wide(), right.wide());
+        int high = measureOverlap(left.high(), right.high());
         return measureHowFarApart(left, right, 0, 0, wide, high);
     }
 
-    private static int measureTheOverlap(int ours, int theirs) {
+    private static int measureOverlap(int ours, int theirs) {
         return Math.min(ours, theirs);
     }
 
@@ -276,7 +276,7 @@ public final class ImageOperations {
             leftCursor += fromX;
             rightCursor += fromX;
             for (int column = 0; column < wide; column++) {
-                apart += measureTheRedmeanDistance(
+                apart += measureRedmeanDistance(
                         left.readPixelAt((int) leftCursor + 1),
                         right.readPixelAt((int) rightCursor + 1));
                 leftCursor++;
@@ -299,7 +299,7 @@ public final class ImageOperations {
 
     private static final double WIDEST_DISTANCE_IN_PICOUNITS = 764_833_315_173_967.0;
 
-    private static double measureTheRedmeanDistance(int[] left, int[] right) {
+    private static double measureRedmeanDistance(int[] left, int[] right) {
         long red = left[0] - right[0];
         long green = left[1] - right[1];
         long blue = left[2] - right[2];

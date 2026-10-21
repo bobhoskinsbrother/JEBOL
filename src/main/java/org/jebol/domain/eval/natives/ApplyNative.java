@@ -103,7 +103,7 @@ public class ApplyNative extends DefaultNative {
         }
         NativeValue refined = builtIn.askFor(asked);
         return evaluator.applyFunction(refined,
-                listTheArgumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
+                listArgumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
     }
 
     private List<Value> listTheWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
@@ -114,8 +114,8 @@ public class ApplyNative extends DefaultNative {
                 : List.of();
     }
 
-    private List<Value> listTheArgumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
-                                                        List<Value> beforeAnyRefinement, Map<String, List<Value>> belongingTo) {
+    private List<Value> listArgumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
+                                                     List<Value> beforeAnyRefinement, Map<String, List<Value>> belongingTo) {
 
         Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);
         Map<String, Deque<Value>> refinementArguments = new LinkedHashMap<>();

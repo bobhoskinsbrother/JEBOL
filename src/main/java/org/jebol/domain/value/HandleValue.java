@@ -118,7 +118,7 @@ public record HandleValue(
      * of different kinds cannot share an identity anyway, because the identity is
      * where the payload lives.
      */
-    public boolean isTheSameHandleAs(HandleValue other) {
+    public boolean isSameHandleAs(HandleValue other) {
         return other.kind == kind && other.identity == identity;
     }
 

@@ -254,7 +254,7 @@ public final class Evaluator {
         Optional<ObjectValue> writtenInRebol = port.actorWrittenInRebol();
         if (writtenInRebol.isPresent()) {
             return writtenInRebol.map(actor ->
-                    askTheActor(actor, action, arguments, refinements));
+                    askActor(actor, action, arguments, refinements));
         }
         Value actor = port.readFieldValue("actor");
         if (actor instanceof ServesPortActions serves) {
@@ -263,8 +263,8 @@ public final class Evaluator {
         return Optional.empty();
     }
 
-    public Value askTheActor(ObjectValue actor, String action,
-            List<Value> arguments, Set<String> refinements) {
+    public Value askActor(ObjectValue actor, String action,
+                          List<Value> arguments, Set<String> refinements) {
 
         Value theFunction = actor.context().holds(action)
                 ? actor.context().ownSlotFor(action).value()

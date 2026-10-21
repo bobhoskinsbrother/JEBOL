@@ -8,7 +8,7 @@ public class ArcsineNative extends InverseTrigonometryNative {
     }
 
     @Override
-    protected double measureTheRadiansFor(double ratio) {
+    protected double measureRadiansFor(double ratio) {
         return Math.asin(ratio);
     }
 }

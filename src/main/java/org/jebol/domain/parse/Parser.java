@@ -153,12 +153,12 @@ public final class Parser implements ParseWalk {
             if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
-            return ParseKeyword.findTheKeywordNamed(word.canonical()).map(keyword -> countTheSlotsTakenBy(keyword, rules, at)).orElse(1);
+            return ParseKeyword.findTheKeywordNamed(word.canonical()).map(keyword -> countSlotsTakenBy(keyword, rules, at)).orElse(1);
         }
         return 1;
     }
 
-    private int countTheSlotsTakenBy(ParseKeyword keyword, List<Value> rules, int at) {
+    private int countSlotsTakenBy(ParseKeyword keyword, List<Value> rules, int at) {
         int fixed = keyword.slotsBeforeTheRuleSpan();
         return keyword.ownsTheRuleAfterIt() ? fixed + ruleSpan(rules, at + fixed) : fixed;
     }
@@ -210,7 +210,7 @@ public final class Parser implements ParseWalk {
     @Override
     public int negate(List<Value> rules, int at) {
         int negations = 1;
-        while (isTheWordNot(rules, at + negations)) {
+        while (isWordNot(rules, at + negations)) {
             negations++;
         }
         int ruleAt = at + negations;
@@ -224,7 +224,7 @@ public final class Parser implements ParseWalk {
         return negating && matched ? NO_MATCH : negations + ruleSpan(rules, ruleAt);
     }
 
-    private static boolean isTheWordNot(List<Value> rules, int at) {
+    private static boolean isWordNot(List<Value> rules, int at) {
         return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findTheKeywordNamed(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
     }
 
@@ -365,7 +365,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public int putValueIntoTheTextAt(int where, Value added) {
-        int[] units = chooseTheUnitsToLayIn(added);
+        int[] units = chooseUnitsToLayIn(added);
         for (int step = 0; step < units.length; step++) {
             insertIntoSource(source.index() + where + step, units[step]);
         }
@@ -602,7 +602,7 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public Value chooseTheValueToInsert(Value written) {
+    public Value chooseValueToInsert(Value written) {
         if (written instanceof ParenValue paren) {
             return evaluator.evaluateOrRaise(paren.asBlock(), context);
         }
@@ -698,7 +698,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private boolean isTheSamePath(AnyBlockValue here, AnyBlockValue wanted) {
+    private boolean isSamePath(AnyBlockValue here, AnyBlockValue wanted) {
         List<Value> ours = here.remaining();
         List<Value> theirs = wanted.remaining();
         if (ours.size() != theirs.size()) {
@@ -729,7 +729,7 @@ public final class Parser implements ParseWalk {
         if (wanted instanceof IntegerValue count && !(current() instanceof IntegerValue)) {
             return false;
         }
-        boolean fits = wanted instanceof PathValue path && current() instanceof PathValue here ? isTheSamePath(here, path) : mindingCase ? current().equals(wanted) : areLooselyEqual(current(), wanted);
+        boolean fits = wanted instanceof PathValue path && current() instanceof PathValue here ? isSamePath(here, path) : mindingCase ? current().equals(wanted) : areLooselyEqual(current(), wanted);
         if (!fits) {
             return false;
         }
@@ -1007,8 +1007,8 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private int[] chooseTheUnitsToLayIn(Value value) {
-        return source instanceof BinaryValue ? SeriesContents.collectTheOctetsContributedBy(value) : SeriesContents.collectTheCharactersContributedBy(value);
+    private int[] chooseUnitsToLayIn(Value value) {
+        return source instanceof BinaryValue ? SeriesContents.collectOctetsContributedBy(value) : SeriesContents.collectCharactersContributedBy(value);
     }
 
 
@@ -1049,14 +1049,14 @@ public final class Parser implements ParseWalk {
             return false;
         }
         for (int at = 0; at < wanted.length; at++) {
-            if (!isTheSameLetter(codePoints[from + at], wanted[at])) {
+            if (!isSameLetter(codePoints[from + at], wanted[at])) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean isTheSameLetter(int one, int other) {
+    private boolean isSameLetter(int one, int other) {
         return one == other || !mindingCase && Character.toLowerCase(one) == Character.toLowerCase(other);
     }
 

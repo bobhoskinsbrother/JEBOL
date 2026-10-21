@@ -12,7 +12,7 @@ public sealed interface DeclaresParameters extends AnyFunctionValue
 
     Set<String> refinementsDeclaredApart();
 
-    default AnyBlockValue listTheTypesets() {
+    default AnyBlockValue listTypesets() {
         List<Value> types = new ArrayList<>();
         Set<String> woven = new LinkedHashSet<>();
         for (Parameter parameter : parameters()) {

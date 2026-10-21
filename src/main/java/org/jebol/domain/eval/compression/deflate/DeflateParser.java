@@ -88,7 +88,7 @@ abstract class DeflateParser {
         return blockBegin + softMaxLength;
     }
 
-    int chooseTheMinMatchLengthFor(int literalsUsed) {
+    int chooseMinMatchLengthFor(int literalsUsed) {
         if (literalsUsed >= MIN_LENGTH_BY_LITERALS_USED.length) {
             return MIN_MATCH_LENGTH;
         }
@@ -105,7 +105,7 @@ abstract class DeflateParser {
         return minLength;
     }
 
-    int chooseTheMinMatchLengthByScanning(byte[] input, int from, int length) {
+    int chooseMinMatchLengthByScanning(byte[] input, int from, int length) {
         if (length < SHORT_ENOUGH_FOR_ANY_MATCH) {
             return MIN_MATCH_LENGTH;
         }
@@ -118,10 +118,10 @@ abstract class DeflateParser {
         for (boolean each : used) {
             literalsUsed += each ? 1 : 0;
         }
-        return chooseTheMinMatchLengthFor(literalsUsed);
+        return chooseMinMatchLengthFor(literalsUsed);
     }
 
-    int chooseTheMinMatchLengthFromTheFrequencies() {
+    int chooseMinMatchLengthFromFrequencies() {
         int literalFrequency = 0;
         for (int literal = 0; literal < LITERAL_COUNT; literal++) {
             literalFrequency += encoder.litlenFrequencies[literal];
@@ -133,6 +133,6 @@ abstract class DeflateParser {
                 literalsUsed++;
             }
         }
-        return chooseTheMinMatchLengthFor(literalsUsed);
+        return chooseMinMatchLengthFor(literalsUsed);
     }
 }

@@ -47,7 +47,7 @@ public final class TimeActions {
 
     private Value againstAnotherTime(TimeValue other, ArithmeticOperation operation) {
         if (operation.divides()) {
-            operation.requireANonZeroDivisor(other.nanoseconds());
+            operation.requireNonZeroDivisor(other.nanoseconds());
             return DecimalValue.of(
                     (double) span.nanoseconds() / (double) other.nanoseconds());
         }
@@ -79,14 +79,14 @@ public final class TimeActions {
         if (!(right instanceof IntegerValue(long divisor))) {
             throw refuseAsNotRelatedToTime(operation);
         }
-        operation.requireANonZeroDivisor(divisor);
+        operation.requireNonZeroDivisor(divisor);
         return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
     }
 
     private Value scaleByAPlainNumber(Value right, ArithmeticOperation operation) {
         double by = Comparison.asDouble(right);
         if (operation.divides()) {
-            operation.requireANonZeroDivisor(by);
+            operation.requireNonZeroDivisor(by);
             return TimeValue.ofNanoseconds((long) (span.nanoseconds() / by));
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * by));
@@ -105,10 +105,10 @@ public final class TimeActions {
         if (operation.canSubtractOneFromOther()) {
             return ours - theirs;
         }
-        if (!operation.needsANonZeroDivisor()) {
+        if (!operation.needsNonZeroDivisor()) {
             return ours + theirs;
         }
-        operation.requireANonZeroDivisor(theirs);
+        operation.requireNonZeroDivisor(theirs);
         return operation.keepsTheSignOfTheDividend()
                 ? ours % theirs
                 : Math.floorMod(ours, theirs);

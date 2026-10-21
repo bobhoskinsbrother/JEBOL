@@ -40,7 +40,7 @@ public record TextLayout(
 
     public double findWhereTheStackStarts(Placement box, double stackHigh) {
         double roomDown = box.high() - originDown - marginDown;
-        return box.down() + originDown + measureTheSpaceAboveTheLine(roomDown, stackHigh);
+        return box.down() + originDown + measureSpaceAboveLine(roomDown, stackHigh);
     }
 
     private double shareTheSpareRoomBefore(double spareRoom) {
@@ -51,7 +51,7 @@ public record TextLayout(
         };
     }
 
-    private double measureTheSpaceAboveTheLine(double roomDown, double lineHigh) {
+    private double measureSpaceAboveLine(double roomDown, double lineHigh) {
         double spareRoom = roomDown - lineHigh;
         return switch (valign) {
             case TOP -> 0;
@@ -60,7 +60,7 @@ public record TextLayout(
         };
     }
 
-    public double measureTheRoomForEachLine(Placement box) {
+    public double measureRoomForEachLine(Placement box) {
         return wraps ? box.wide() - originAcross - marginAcross : Double.POSITIVE_INFINITY;
     }
 

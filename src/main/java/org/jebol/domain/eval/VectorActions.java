@@ -64,8 +64,8 @@ public final class VectorActions extends SeriesActions {
 
     private List<Value> collectTheNumbersAddedBy(Asked asked) {
         List<Value> once = asked.refinementsAsked().contains("part")
-                ? vector.kind().collectTheNumbersOfferedBy(asked.given(), asked.countTheOctetsWanted())
-                : vector.kind().collectTheNumbersContributedBy(asked.given());
+                ? vector.kind().collectTheNumbersOfferedBy(asked.given(), asked.countOctetsWanted())
+                : vector.kind().collectNumbersContributedBy(asked.given());
         List<Value> added = new ArrayList<>();
         for (long round = 0; round < asked.howManyTimes(); round++) {
             added.addAll(once);

@@ -9,13 +9,13 @@ final class BrotliBackwardReferences {
     private BrotliBackwardReferences() {
     }
 
-    static int measureTheFurthestBack(int windowBits) {
+    static int measureFurthestBack(int windowBits) {
         return (1 << windowBits) - SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED;
     }
 
     private static final int SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED = 16;
 
-    private static int measureTheSparseSearchDistance(int quality) {
+    private static int measureSparseSearchDistance(int quality) {
         return quality < 9 ? 64 : 512;
     }
 
@@ -31,15 +31,15 @@ final class BrotliBackwardReferences {
             int[] recentDistances, int insertLengthCarriedIn,
             BrotliCommand commands) {
 
-        int furthestBack = measureTheFurthestBack(windowBits);
+        int furthestBack = measureFurthestBack(windowBits);
         int insertLength = insertLengthCarriedIn;
         int end = position + howManyBytes;
-        int lookahead = hasher.countTheBytesItLooksAhead();
+        int lookahead = hasher.countBytesItLooksAhead();
         int rememberUntil = howManyBytes >= lookahead
                 ? position + howManyBytes - lookahead + 1
                 : position;
 
-        int searchSparselyAfter = measureTheSparseSearchDistance(quality);
+        int searchSparselyAfter = measureSparseSearchDistance(quality);
         int giveUpLookingAfter = position + searchSparselyAfter;
 
         BrotliMatch best = new BrotliMatch();

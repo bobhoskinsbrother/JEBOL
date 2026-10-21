@@ -265,7 +265,7 @@ public final class Repl {
 
         private void tellItWhatWasAsked(Interpreter interpreter) {
             tellItWhereItStarted(interpreter);
-            interpreter.setSystemValue("flags", listTheFlagsGiven());
+            interpreter.setSystemValue("flags", listFlagsGiven());
             if (arguments.has(RebolArguments.Flag.QUIET)) {
                 interpreter.setSystemValue("quiet", LogicValue.yes());
             }
@@ -278,7 +278,7 @@ public final class Repl {
                             : FileValue.of(script)));
             arguments.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
                     interpreter.setSystemValue("boot-level", WordValue.of(level)));
-            interpreter.setSystemValue("args", listTheArgumentsForTheScript());
+            interpreter.setSystemValue("args", listArgumentsForScript());
             tellAsText(interpreter, "do-arg", RebolArguments.Flag.DO);
             tellAsText(interpreter, "debug", RebolArguments.Flag.DEBUG);
             tellAsText(interpreter, "version", RebolArguments.Flag.VERSION);
@@ -294,24 +294,24 @@ public final class Repl {
 
         private void tellItWhereItStarted(Interpreter interpreter) {
             interpreter.setSystemValue("path", FileValue.of(
-                    dirize(asTheScriptSeesIt(Path.of(startedIn)))));
+                    dirize(asScriptSeesIt(Path.of(startedIn)))));
             interpreter.run("change-dir system/options/path");
         }
 
-        private AnyBlockValue listTheArgumentsForTheScript() {
+        private AnyBlockValue listArgumentsForScript() {
             List<Value> given = new ArrayList<>();
             arguments.listTheArgumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
             return BlockValue.of(given);
         }
 
-        private AnyBlockValue listTheFlagsGiven() {
+        private AnyBlockValue listFlagsGiven() {
             List<Value> given = new ArrayList<>();
             arguments.flags().forEach(flag -> given.add(WordValue.of(flag.spelling())));
             given.add(LogicValue.yes());
             return BlockValue.of(given);
         }
 
-        private String asTheScriptSeesIt(Path host) {
+        private String asScriptSeesIt(Path host) {
             Path absolute = findTheRealPathOf(host);
             Path realRoot = findTheRealPathOf(root);
             if (!absolute.startsWith(realRoot)) {

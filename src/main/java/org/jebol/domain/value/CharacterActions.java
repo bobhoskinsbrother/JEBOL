@@ -15,12 +15,12 @@ public final class CharacterActions {
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
         if (operation.canSubtractOneFromOther() && right instanceof CharacterValue) {
-            return IntegerValue.of(asAnUnsignedWord(answered));
+            return IntegerValue.of(asUnsignedWord(answered));
         }
-        return CharacterValue.of(requireACodepoint(answered));
+        return CharacterValue.of(requireCodepoint(answered));
     }
 
-    private static long asAnUnsignedWord(long answered) {
+    private static long asUnsignedWord(long answered) {
         return answered < 0
                 ? answered + PAST_THE_WIDEST_CODEPOINT_COUNT
                 : answered;
@@ -50,7 +50,7 @@ public final class CharacterActions {
         return codepoint % other;
     }
 
-    static int requireACodepoint(long wanted) {
+    static int requireCodepoint(long wanted) {
         boolean surrogate = wanted >= 0xD800 && wanted <= 0xDFFF;
         if (wanted < 0 || wanted > CharacterValue.MAXIMUM_CODEPOINT || surrogate) {
             throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(wanted));

@@ -28,7 +28,7 @@ public class IsZeroNative extends DefaultNative {
 
     private boolean isTheZeroOfItsDatatype(Value value) {
         return switch (value) {
-            case BitsetValue members -> new BitsetActions(members).isTheEmptySet();
+            case BitsetValue members -> new BitsetActions(members).isEmptySet();
             case PairValue(double x, double y) -> x == 0 && y == 0;
             case TupleValue segments -> Arrays.stream(segments.segments())
                     .allMatch(part -> part == 0);

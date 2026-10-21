@@ -46,7 +46,7 @@ final class JulianDay {
         return julian + hours / 24.0 + minutes / 1440.0 + wholeSeconds / 86400.0;
     }
 
-    static DateValue asADate(double julian) {
+    static DateValue asDate(double julian) {
         double fraction = julian - Math.floor(julian);
         int wholeDays = (int) Math.floor(julian);
         int leapYearsSince4713bc = (int) ((wholeDays - 1867216.25) / 36524.25);

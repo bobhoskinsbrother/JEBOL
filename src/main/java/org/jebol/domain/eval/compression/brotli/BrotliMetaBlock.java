@@ -235,22 +235,22 @@ final class BrotliMetaBlock {
         if (howManyContexts == 1) {
             plainLiterals.finishBlock(true);
             built.literalHistograms = plainLiterals.histograms();
-            built.howManyLiteralHistograms = plainLiterals.countTheHistogramsUsed();
+            built.howManyLiteralHistograms = plainLiterals.countHistogramsUsed();
         } else {
             literalsByContext.finishBlock(true);
             built.literalHistograms = literalsByContext.histograms();
             built.howManyLiteralHistograms =
-                    literalsByContext.countTheHistogramsUsed();
+                    literalsByContext.countHistogramsUsed();
             built.literalContextMap = spreadOverBlockTypes(contextMap,
-                    howManyContexts, built.literals.countTheTypes());
+                    howManyContexts, built.literals.countTypes());
         }
         commandSymbols.finishBlock(true);
         built.commandHistograms = commandSymbols.histograms();
-        built.howManyCommandHistograms = commandSymbols.countTheHistogramsUsed();
+        built.howManyCommandHistograms = commandSymbols.countHistogramsUsed();
         distanceSymbols.finishBlock(true);
         built.distanceHistograms = distanceSymbols.histograms();
         built.howManyDistanceHistograms =
-                distanceSymbols.countTheHistogramsUsed();
+                distanceSymbols.countHistogramsUsed();
 
         optimiseHistogramsForRuns(built, distances.alphabetSize());
         return built;

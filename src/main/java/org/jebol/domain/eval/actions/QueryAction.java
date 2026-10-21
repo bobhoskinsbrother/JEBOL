@@ -90,28 +90,28 @@ public class QueryAction extends PortAction {
                         new TheMeasurementsOfTheConsole().answer(field, evaluator);
                 default -> field instanceof NoneValue
                         ? listTheNamesThatPortMayBeAskedFor(target, evaluator, context)
-                        : askAFileOrARoutedPort(target, field, evaluator, context);
+                        : askFileOrRoutedPort(target, field, evaluator, context);
             };
         };
     }
 
-    private Value askAFileOrARoutedPort(Value target, Value field, Evaluator evaluator, Context context) {
+    private Value askFileOrRoutedPort(Value target, Value field, Evaluator evaluator, Context context) {
         if (target instanceof FileValue file) {
-            return askAFile(file.text(), field, evaluator);
+            return askFile(file.text(), field, evaluator);
         }
         PortValue port = ports.makePortFor(target, evaluator, context);
         return evaluator.askTheRebolActor(nativeName(), List.of(port, field), Set.of())
-                .orElseGet(() -> askANativelyServedPort(port, field, evaluator));
+                .orElseGet(() -> askNativelyServedPort(port, field, evaluator));
     }
 
-    private Value askANativelyServedPort(PortValue port, Value field, Evaluator evaluator) {
+    private Value askNativelyServedPort(PortValue port, Value field, Evaluator evaluator) {
         if (!port.isAFile()) {
             throw ports.refuseWithNoActionFor(nativeName());
         }
-        return askAFile(ports.readThePathOf(port), field, evaluator);
+        return askFile(ports.readThePathOf(port), field, evaluator);
     }
 
-    private Value askAFile(String path, Value field, Evaluator evaluator) {
+    private Value askFile(String path, Value field, Evaluator evaluator) {
         granted.require(HostService.FILES);
         if (path.isEmpty()) {
             return NoneValue.none();
@@ -130,7 +130,7 @@ public class QueryAction extends PortAction {
     private Value listTheNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
         PortValue port = ports.makePortFor(target, evaluator, context);
         return listTheNamesItsJavaActorGives(port, evaluator)
-                .orElseGet(() -> listTheNamesInTheSchemesInfo(port));
+                .orElseGet(() -> listNamesInSchemesInfo(port));
     }
 
     private Optional<Value> listTheNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
@@ -140,7 +140,7 @@ public class QueryAction extends PortAction {
         return served.answers(nativeName(), List.of(port, NoneValue.none()), Set.of(), evaluator);
     }
 
-    private Value listTheNamesInTheSchemesInfo(PortValue port) {
+    private Value listNamesInSchemesInfo(PortValue port) {
         Value described = port.context().readValueAt("scheme", "info");
         if (!(described instanceof ObjectValue(Context info))) {
             return BlockValue.of(List.of());
@@ -177,7 +177,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, VectorValue.TYPE);
         }
     }
@@ -203,12 +203,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             return UnsetValue.unset();
         }
 
         @Override
-        protected Value answerAnUnknownInABlock(AnyWordValue asked) {
+        protected Value answerUnknownInBlock(AnyWordValue asked) {
             return NoneValue.none();
         }
 
@@ -237,7 +237,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, HandleValue.TYPE);
         }
 
@@ -272,7 +272,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
@@ -306,7 +306,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
 

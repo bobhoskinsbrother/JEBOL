@@ -55,7 +55,7 @@ public record DateValue(
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("month out of range: " + month);
         }
-        if (day < 1 || day > countTheDaysIn(month, year)) {
+        if (day < 1 || day > countDaysIn(month, year)) {
             throw new IllegalArgumentException("day out of range: " + day);
         }
         if (zoneMinutes.isPresent() && timeOfDay.isEmpty()) {
@@ -64,7 +64,7 @@ public record DateValue(
         }
     }
 
-    private static int countTheDaysIn(int month, int year) {
+    private static int countDaysIn(int month, int year) {
         if (month != 2) {
             return LENGTH_OF_MONTH[month - 1];
         }
@@ -147,24 +147,24 @@ public record DateValue(
 
     @Override
     public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
-        return Optional.of(countInHundredths(wanted, countTheSecondsSinceTheEpoch()));
+        return Optional.of(countInHundredths(wanted, countSecondsSinceEpoch()));
     }
 
-    public double countTheSecondsSinceTheEpoch() {
+    public double countSecondsSinceEpoch() {
         Moment instant = moment();
         return (double) instant.dayNumber() * SECONDS_A_DAY
                 + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
 
     public long wholeSecondsSinceTheEpoch() {
-        return Math.round(countTheSecondsSinceTheEpoch());
+        return Math.round(countSecondsSinceEpoch());
     }
 
     public long dayNumber() {
         return java.time.LocalDate.of(year, month, day).toEpochDay();
     }
 
-    public TimeValue measureTheSpanTo(DateValue other) {
+    public TimeValue measureSpanTo(DateValue other) {
         Moment here = moment();
         Moment there = other.moment();
         return TimeValue.ofNanoseconds(

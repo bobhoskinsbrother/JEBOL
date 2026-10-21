@@ -37,7 +37,7 @@ public class DehexNative extends PercentEncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value value = arguments.getFirst();
-            return asTheSameKindAs(value, encodings.percentDecode(
+            return asSameKindAs(value, encodings.percentDecode(
                     textOf(value),
                     escapeCharacterIn(arguments, refinements),
                     refinements.contains("uri")));

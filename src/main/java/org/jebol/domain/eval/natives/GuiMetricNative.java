@@ -77,7 +77,7 @@ public class GuiMetricNative extends ScreenNative {
     }
 
     private Value measure(ScreenPort screen, ScreenMetric metric, int display) {
-        if (metric.isACount()) {
+        if (metric.isCount()) {
             return IntegerValue.of(screen.displayCount());
         }
         if (!screen.hasDisplay()) {

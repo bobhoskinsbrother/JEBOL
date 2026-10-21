@@ -50,7 +50,7 @@ public record Gradient(
     }
 
     /** The radius a radial gradient reaches, which is never zero or less. */
-    public double measureTheRadius() {
+    public double measureRadius() {
         double reach = Math.abs(to - from);
         return reach > 0 ? reach : 1;
     }

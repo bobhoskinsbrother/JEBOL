@@ -6,7 +6,7 @@ import org.jebol.domain.value.Value;
 final class Timezone implements WritableDateField {
 
     @Override
-    public boolean needsAClock() {
+    public boolean needsClock() {
         return true;
     }
 

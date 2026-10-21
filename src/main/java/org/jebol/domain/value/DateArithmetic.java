@@ -14,7 +14,7 @@ public final class DateArithmetic {
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
         if (right instanceof DateValue to) {
-            return countTheDaysSince(to, operation);
+            return countDaysSince(to, operation);
         }
         return moveBy(right, operation);
     }
@@ -28,7 +28,7 @@ public final class DateArithmetic {
         return moveBy(left, operation);
     }
 
-    private Value countTheDaysSince(DateValue to, ArithmeticOperation operation) {
+    private Value countDaysSince(DateValue to, ArithmeticOperation operation) {
         if (!operation.canSubtractOneFromOther()) {
             throw Raised.cannotUse(moment, "date arithmetic");
         }

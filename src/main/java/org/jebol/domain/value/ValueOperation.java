@@ -12,7 +12,7 @@ public interface ValueOperation {
 
     boolean keepsTheSignOfTheDividend();
 
-    boolean needsANonZeroDivisor();
+    boolean needsNonZeroDivisor();
 
     long onWholeElements(long ours, long theirs);
 

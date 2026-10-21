@@ -30,14 +30,14 @@ public final class TypesetActions {
     public static Set<Datatype> listTheDatatypesNamedIn(AnyBlockValue spec) {
         Set<Datatype> found = new LinkedHashSet<>();
         for (Value item : spec.remaining()) {
-            if (!addTheTypesNamedBy(item, found)) {
+            if (!addTypesNamedBy(item, found)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
             }
         }
         return found;
     }
 
-    public static boolean addTheTypesNamedBy(Value item, Set<Datatype> found) {
+    public static boolean addTypesNamedBy(Value item, Set<Datatype> found) {
         if (item instanceof Datatype datatype) {
             found.add(datatype);
             return true;

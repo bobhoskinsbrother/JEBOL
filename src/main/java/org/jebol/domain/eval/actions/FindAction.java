@@ -91,7 +91,7 @@ public class FindAction extends SeriesSearchAction {
             return NoneValue.none();
         }
         return series.atIndex(refinements.contains("tail")
-                ? found + search.measureTheLengthMatchedAt(found)
+                ? found + search.measureLengthMatchedAt(found)
                 : found);
     }
 }

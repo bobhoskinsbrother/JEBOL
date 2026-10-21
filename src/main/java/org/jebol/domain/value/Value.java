@@ -69,7 +69,7 @@ public sealed interface Value permits
         return this;
     }
 
-    default Value copyAsAMember(boolean deeply, Set<Datatype> kinds) {
+    default Value copyAsMember(boolean deeply, Set<Datatype> kinds) {
         if (!kinds.contains(datatype())) {
             return this;
         }
@@ -207,7 +207,7 @@ public sealed interface Value permits
         throw Raised.ofUnrelated(this, right);
     }
 
-    default Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+    default Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         throw Raised.cannotUse(this, "a set operation");
     }
 

@@ -184,7 +184,7 @@ final class ImagePath {
             return octets;
         }
         if (written instanceof VectorValue vector && vector.kind().bytes() == 1) {
-            java.util.List<Value> numbers = vector.listTheRemaining();
+            java.util.List<Value> numbers = vector.listRemaining();
             int[] octets = new int[numbers.size()];
             for (int at = 0; at < octets.length; at++) {
                 octets[at] = numbers.get(at) instanceof IntegerValue(long magnitude)

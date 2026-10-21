@@ -57,10 +57,10 @@ final class ShapeSubDialect {
                 case "vline" -> lineTo(across,
                         read.findNumberIn(arguments, relative ? down : 0)
                                 + (relative ? down : 0));
-                case "curve" -> drawACubicThrough(points, relative);
-                case "curv" -> drawACubicThrough(points, relative);
-                case "qcurve" -> drawAQuadraticThrough(points, relative);
-                case "qcurv" -> drawAQuadraticThrough(points, relative);
+                case "curve" -> drawCubicThrough(points, relative);
+                case "curv" -> drawCubicThrough(points, relative);
+                case "qcurve" -> drawQuadraticThrough(points, relative);
+                case "qcurv" -> drawQuadraticThrough(points, relative);
                 case "arc" -> drawAnArcThrough(points, arguments, relative);
                 case "close" -> close();
                 default -> {
@@ -93,7 +93,7 @@ final class ShapeSubDialect {
             path.add(new PathStep.LineTo(across, down));
         }
 
-        private void drawAQuadraticThrough(List<PairValue> points, boolean relative) {
+        private void drawQuadraticThrough(List<PairValue> points, boolean relative) {
             if (points.size() < 2) {
                 return;
             }
@@ -105,9 +105,9 @@ final class ShapeSubDialect {
                     controlAcross, controlDown, across, down));
         }
 
-        private void drawACubicThrough(List<PairValue> points, boolean relative) {
+        private void drawCubicThrough(List<PairValue> points, boolean relative) {
             if (points.size() < 3) {
-                drawAQuadraticThrough(points, relative);
+                drawQuadraticThrough(points, relative);
                 return;
             }
             double firstAcross = pointAcross(points.get(0), relative);

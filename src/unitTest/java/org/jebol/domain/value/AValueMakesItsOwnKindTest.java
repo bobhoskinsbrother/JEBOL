@@ -62,13 +62,13 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
             asked.add("function bound");
             return aBoundFunction;
         }
 
         @Override
-        public Value applyASystemFunction(String name, Value argument) {
+        public Value applySystemFunction(String name, Value argument) {
             asked.add("applied " + name);
             return whatAPrototypeMade;
         }

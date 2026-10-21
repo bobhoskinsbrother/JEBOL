@@ -115,7 +115,7 @@ public final class DeflateCompressor {
             return;
         }
         byte[] padded = Arrays.copyOf(input, input.length + READ_AHEAD_PADDING);
-        chooseTheParserFor(input.length).compress(padded, input.length, out);
+        chooseParserFor(input.length).compress(padded, input.length, out);
         out.finish();
     }
 
@@ -136,7 +136,7 @@ public final class DeflateCompressor {
         } while (at != input.length);
     }
 
-    private DeflateParser chooseTheParserFor(int inputLength) {
+    private DeflateParser chooseParserFor(int inputLength) {
         BlockEncoder encoder = new BlockEncoder();
         return switch (level) {
             case 1 -> new FastestParser(encoder, 32);

@@ -42,8 +42,8 @@ class WeierstrassCurveFromTheSourceTest {
     void obeysTheGroupLaws(String name) {
         WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
-        BigInteger first = curve.drawAPrivateNumber(randomly);
-        BigInteger second = curve.drawAPrivateNumber(randomly);
+        BigInteger first = curve.drawPrivateNumber(randomly);
+        BigInteger second = curve.drawPrivateNumber(randomly);
 
         WeierstrassCurve.Point onePoint = curve.multiplyTheGenerator(first);
         WeierstrassCurve.Point another = curve.multiplyTheGenerator(second);
@@ -67,8 +67,8 @@ class WeierstrassCurveFromTheSourceTest {
     void agreesFromEitherSide(String name) {
         WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
-        BigInteger hers = curve.drawAPrivateNumber(randomly);
-        BigInteger his = curve.drawAPrivateNumber(randomly);
+        BigInteger hers = curve.drawPrivateNumber(randomly);
+        BigInteger his = curve.drawPrivateNumber(randomly);
 
         assertThat(curve.multiply(curve.multiplyTheGenerator(his), hers))
                 .as("%s", name)
@@ -81,7 +81,7 @@ class WeierstrassCurveFromTheSourceTest {
     void carriesAPointThroughTheWireForm(String name) {
         WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         WeierstrassCurve.Point point =
-                curve.multiplyTheGenerator(curve.drawAPrivateNumber(new SecureRandom()));
+                curve.multiplyTheGenerator(curve.drawPrivateNumber(new SecureRandom()));
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;

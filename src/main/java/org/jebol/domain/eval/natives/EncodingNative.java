@@ -41,10 +41,10 @@ public abstract class EncodingNative extends DefaultNative {
     protected Optional<Long> countHowManyWanted(Value source, List<Value> arguments, Set<String> refinements) {
         return readTheArgumentOf("part", 0, arguments, refinements)
                 .filter(count -> !(count instanceof NoneValue))
-                .map(count -> countTheUnitsBy(source, count));
+                .map(count -> countUnitsBy(source, count));
     }
 
-    private long countTheUnitsBy(Value source, Value count) {
+    private long countUnitsBy(Value source, Value count) {
         return switch (count) {
             case IntegerValue whole when whole.magnitude() > Integer.MAX_VALUE
                     || whole.magnitude() < Integer.MIN_VALUE ->
@@ -52,12 +52,12 @@ public abstract class EncodingNative extends DefaultNative {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
-            case RebolSeries upTo -> measureTheDistanceFrom(source, upTo);
+            case RebolSeries upTo -> measureDistanceFrom(source, upTo);
             default -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
         };
     }
 
-    private long measureTheDistanceFrom(Value source, RebolSeries upTo) {
+    private long measureDistanceFrom(Value source, RebolSeries upTo) {
         if (!(source instanceof RebolSeries from)
                 || from.datatype() != upTo.datatype()
                 || !from.sharesStorageWith(upTo)) {
@@ -90,7 +90,7 @@ public abstract class EncodingNative extends DefaultNative {
             return readUnitsBehind(value, -asked.get());
         }
         int howMany = asked.map(Long::intValue).orElse(SeriesContents.EVERY_ONE);
-        return asBytes(SeriesContents.collectTheOctetsContributedBy(value, howMany));
+        return asBytes(SeriesContents.collectOctetsContributedBy(value, howMany));
     }
 
     private byte[] readUnitsBehind(Value value, long count) {
@@ -98,7 +98,7 @@ public abstract class EncodingNative extends DefaultNative {
             return new byte[0];
         }
         int reachedBack = (int) Math.min(count, positioned.index() - 1);
-        return asBytes(SeriesContents.collectTheOctetsContributedBy(
+        return asBytes(SeriesContents.collectOctetsContributedBy(
                 positioned.atIndex(positioned.index() - reachedBack), reachedBack));
     }
 

@@ -383,7 +383,7 @@ final class BrotliTwoPassEncoder {
                     each += ONE_BYTE_IN_THIS_MANY_IS_SAMPLED) {
                 literalHistogram[input[at + each] & 0xFF]++;
             }
-            return BrotliCodes.measureTheBitsEntropy(literalHistogram, 256)
+            return BrotliCodes.measureBitsEntropy(literalHistogram, 256)
                     < mostTheSampledBytesMayCost;
         }
 

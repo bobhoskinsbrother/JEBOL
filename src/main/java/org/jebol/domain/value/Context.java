@@ -38,7 +38,7 @@ public final class Context {
         return new Context(parent, false);
     }
 
-    public static Context collectTheWordsAFunctionDeclares() {
+    public static Context collectWordsFunctionDeclares() {
         Context declared = new Context(null, false);
         declared.onlyThroughACallThatIsRunning = true;
         return declared;
@@ -258,7 +258,7 @@ public final class Context {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
         }
         Value held = sys.findSlotFor(name).value();
-        if (!isAFunctionTheInterpreterCanCall(held)) {
+        if (!isFunctionInterpreterCanCall(held)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, held);
         }
         return held;
@@ -361,7 +361,7 @@ public final class Context {
         return onlyThroughACallThatIsRunning && supersededBy == null;
     }
 
-    private boolean isAFunctionTheInterpreterCanCall(Value held) {
+    private boolean isFunctionInterpreterCanCall(Value held) {
         return held instanceof DefinedFunctionValue || held instanceof NativeValue || held instanceof OperatorValue;
     }
 }

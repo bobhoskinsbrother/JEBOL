@@ -88,7 +88,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
             if (!(spec instanceof AnyBlockValue)) {
                 throw refuse(spec);
             }
-            if (!(maker.applyASystemFunction("make-module*", spec) instanceof ModuleValue module)) {
+            if (!(maker.applySystemFunction("make-module*", spec) instanceof ModuleValue module)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, "module!");
             }
             return module;

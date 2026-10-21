@@ -73,7 +73,7 @@ public final class Add implements ArithmeticOperation {
     }
 
     @Override
-    public boolean needsANonZeroDivisor() {
+    public boolean needsNonZeroDivisor() {
         return false;
     }
 }

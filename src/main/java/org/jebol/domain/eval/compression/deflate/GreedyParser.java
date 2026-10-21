@@ -26,7 +26,7 @@ final class GreedyParser extends DeflateParser {
             int sequence = 0;
             splitStatistics.reset();
             beginSequences(sequences);
-            int minLength = chooseTheMinMatchLengthByScanning(input, next, blockEnd - next);
+            int minLength = chooseMinMatchLengthByScanning(input, next, blockEnd - next);
             do {
                 adjustMaxAndNiceLength(length - next);
                 int matched = finder.findLongestMatch(input, next, minLength - 1, maxLength, niceLength, maxSearchDepth);

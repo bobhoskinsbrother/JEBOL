@@ -84,7 +84,7 @@ public class ComposeNative extends DefaultNative {
         if (goingDeep && item instanceof MapValue nested) {
             return composeAMap(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
         }
-        return goingDeep ? copyABlockShapeWhole(item) : item;
+        return goingDeep ? copyBlockShapeWhole(item) : item;
     }
 
     private void spliceWhatTheParenProduces(BlockStorage built, ParenValue paren,
@@ -102,7 +102,7 @@ public class ComposeNative extends DefaultNative {
         }
     }
 
-    private Value copyABlockShapeWhole(Value item) {
+    private Value copyBlockShapeWhole(Value item) {
         return item instanceof AnyBlockValue shaped
                 ? shaped.wrap(new BlockStorage(shaped.remaining()))
                 : item;

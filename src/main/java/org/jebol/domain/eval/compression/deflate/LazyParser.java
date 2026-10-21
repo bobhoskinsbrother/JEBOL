@@ -34,10 +34,10 @@ final class LazyParser extends DeflateParser {
             int sequence = 0;
             splitStatistics.reset();
             beginSequences(sequences);
-            int minLength = chooseTheMinMatchLengthByScanning(input, next, blockEnd - next);
+            int minLength = chooseMinMatchLengthByScanning(input, next, blockEnd - next);
             do {
                 if (next >= nextRecalculation) {
-                    minLength = chooseTheMinMatchLengthFromTheFrequencies();
+                    minLength = chooseMinMatchLengthFromFrequencies();
                     nextRecalculation += Math.min(length - nextRecalculation, next - blockBegin);
                 }
                 adjustMaxAndNiceLength(length - next);

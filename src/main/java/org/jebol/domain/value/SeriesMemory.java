@@ -84,7 +84,7 @@ public final class SeriesMemory {
     }
 
     /** The bytes every live series buffer is holding between them. */
-    public static long countTheBytesHeld() {
+    public static long countBytesHeld() {
         giveBackWhatTheCollectorTook();
         return HELD.get();
     }
@@ -118,7 +118,7 @@ public final class SeriesMemory {
      * otherwise wait for something that is never going to happen.
      */
     public static long collectNow() {
-        long before = countTheBytesHeld();
+        long before = countBytesHeld();
         long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_A_COLLECTION * 1_000_000_000L;
         long heldBeforeTheCycle = Long.MAX_VALUE;
         while (System.nanoTime() < giveUpAt && heldBeforeTheCycle != HELD.get()) {

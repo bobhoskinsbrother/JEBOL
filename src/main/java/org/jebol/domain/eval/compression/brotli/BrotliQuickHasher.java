@@ -44,7 +44,7 @@ final class BrotliQuickHasher implements BrotliHasher {
     }
 
     @Override
-    public int countTheBytesItLooksAhead() {
+    public int countBytesItLooksAhead() {
         return 8;
     }
 
@@ -92,7 +92,7 @@ final class BrotliQuickHasher implements BrotliHasher {
     public void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position) {
 
-        if (howManyBytes >= countTheBytesItLooksAhead() - 1 && position >= 3) {
+        if (howManyBytes >= countBytesItLooksAhead() - 1 && position >= 3) {
             remember(data, mask, position - 3);
             remember(data, mask, position - 2);
             remember(data, mask, position - 1);

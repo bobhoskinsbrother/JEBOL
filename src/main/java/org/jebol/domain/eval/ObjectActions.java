@@ -18,7 +18,7 @@ public final class ObjectActions implements Actions {
     }
 
     @Override
-    public int measureTheLength() {
+    public int measureLength() {
         return object.context().fieldCount();
     }
 

@@ -92,10 +92,10 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
-            return allocateWithinTheHost(() -> buildABlock(asking, from, maker));
+            return allocateWithinTheHost(() -> buildBlock(asking, from, maker));
         }
 
-        private Value buildABlock(Conversion asking, Value from, Maker maker) {
+        private Value buildBlock(Conversion asking, Value from, Maker maker) {
             if (from instanceof AnyBlockValue given) {
                 BlockStorage built = new BlockStorage(given.remaining());
                 built.takeLineBreaksFrom(given.storage(), given.index());
@@ -108,7 +108,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 return as(from.fieldsAsAContext().orElseThrow().setWordsAndValuesOnLines());
             }
             if (from instanceof VectorValue numbers) {
-                return wrap(numbers.listTheRemaining());
+                return wrap(numbers.listRemaining());
             }
             if (asking.builds()) {
                 if (from instanceof IntegerValue || from instanceof DecimalValue) {
@@ -201,7 +201,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         List<Value> items = remaining();
         List<Value> members = new ArrayList<>(items.size());
         for (Value item : items) {
-            members.add(item.copyAsAMember(deeply, kinds));
+            members.add(item.copyAsMember(deeply, kinds));
         }
         BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
@@ -214,7 +214,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         List<Value> taken = remaining().subList(0, howMany);
         List<Value> members = new ArrayList<>(taken.size());
         for (Value item : taken) {
@@ -310,7 +310,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+    public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return switch (other) {
             case AnyStringValue ignored -> StringValue.of(AnyStringValue.textOf(
                     keeping.from(AnyStringValue.listTheCharactersOf(this),

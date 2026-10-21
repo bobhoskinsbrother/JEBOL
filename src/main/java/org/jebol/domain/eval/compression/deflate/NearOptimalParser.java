@@ -143,7 +143,7 @@ final class NearOptimalParser extends DeflateParser {
             int nextObservation = next;
             int minLength = previousBlockUsedOnlyLiterals
                     ? MAX_MATCH_LENGTH + 1
-                    : chooseTheMinMatchLengthByScanning(input, blockBegin, blockEnd - blockBegin);
+                    : chooseMinMatchLengthByScanning(input, blockBegin, blockEnd - blockBegin);
             while (true) {
                 int remaining = length - next;
                 if (next == nextSlide) {
@@ -409,7 +409,7 @@ final class NearOptimalParser extends DeflateParser {
             literalsUsed = 1;
         }
         int matchFrequency = 0;
-        for (int length = chooseTheMinMatchLengthFor(literalsUsed); length < matchLengthFrequencies.length; length++) {
+        for (int length = chooseMinMatchLengthFor(literalsUsed); length < matchLengthFrequencies.length; length++) {
             matchFrequency += matchLengthFrequencies[length];
             literalFrequency -= length * matchLengthFrequencies[length];
         }
@@ -428,7 +428,7 @@ final class NearOptimalParser extends DeflateParser {
         defaultLengthSymbolCost = DEFAULT_LENGTH_SYMBOL_COSTS[matchiness];
     }
 
-    private int priceTheLengthByDefault(int length) {
+    private int priceLengthByDefault(int length) {
         return defaultLengthSymbolCost + EXTRA_LENGTH_BITS[LENGTH_SLOT[length]] * BIT_COST;
     }
 
@@ -439,7 +439,7 @@ final class NearOptimalParser extends DeflateParser {
     private void setDefaultCosts() {
         Arrays.fill(literalCosts, defaultLiteralCost);
         for (int length = MIN_MATCH_LENGTH; length <= MAX_MATCH_LENGTH; length++) {
-            lengthCosts[length] = priceTheLengthByDefault(length);
+            lengthCosts[length] = priceLengthByDefault(length);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
             offsetSlotCosts[slot] = priceTheOffsetSlotByDefault(slot);
@@ -460,7 +460,7 @@ final class NearOptimalParser extends DeflateParser {
             literalCosts[literal] = adjust(literalCosts[literal], defaultLiteralCost, changeAmount);
         }
         for (int length = MIN_MATCH_LENGTH; length <= MAX_MATCH_LENGTH; length++) {
-            lengthCosts[length] = adjust(lengthCosts[length], priceTheLengthByDefault(length), changeAmount);
+            lengthCosts[length] = adjust(lengthCosts[length], priceLengthByDefault(length), changeAmount);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
             offsetSlotCosts[slot] = adjust(offsetSlotCosts[slot], priceTheOffsetSlotByDefault(slot), changeAmount);

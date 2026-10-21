@@ -29,7 +29,7 @@ public abstract class TabbingNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             String aTabsWorthOfSpaces = writeATabsWorthOf(readTheArgumentOf("size", 0, arguments, refinements)
-                    .map(this::countTheSpacesATabStandsFor)
+                    .map(this::countSpacesTabStandsFor)
                     .orElse(SPACES_A_TAB_STANDS_FOR));
             return switch (arguments.getFirst()) {
                 case BinaryValue octets -> BinaryValue.ofBytes(tab(
@@ -45,7 +45,7 @@ public abstract class TabbingNative extends DefaultNative {
         return " ".repeat(spaces);
     }
 
-    private int countTheSpacesATabStandsFor(Value asked) {
+    private int countSpacesTabStandsFor(Value asked) {
         long spaces = ((IntegerValue) asked).magnitude();
         if (spaces <= 0 || spaces > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked);

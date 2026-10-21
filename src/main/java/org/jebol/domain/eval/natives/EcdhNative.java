@@ -60,7 +60,7 @@ public class EcdhNative extends CipherNative {
                 return BinaryValue.ofBytes(key.get().publishThePoint());
             }
             if (refinements.contains("secret")) {
-                return agreeASecretBetween(key.get(), ((BinaryValue) readTheArgumentOf(
+                return agreeSecretBetween(key.get(), ((BinaryValue) readTheArgumentOf(
                         "secret", 0, arguments, refinements).orElseThrow()).octetsFromHere());
             }
             return UnsetValue.unset();
@@ -84,7 +84,7 @@ public class EcdhNative extends CipherNative {
                 .orElseGet(NoneValue::none);
     }
 
-    private Value agreeASecretBetween(EllipticCurveKey key, byte[] peersPoint) {
+    private Value agreeSecretBetween(EllipticCurveKey key, byte[] peersPoint) {
         return key.agreeWith(peersPoint)
                 .<Value>map(BinaryValue::ofBytes)
                 .orElseGet(NoneValue::none);

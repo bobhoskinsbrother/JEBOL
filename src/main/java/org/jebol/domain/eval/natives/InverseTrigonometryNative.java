@@ -11,7 +11,7 @@ import java.util.Set;
 
 public abstract class InverseTrigonometryNative extends ArithmeticNative {
 
-    protected abstract double measureTheRadiansFor(double ratio);
+    protected abstract double measureRadiansFor(double ratio);
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -26,7 +26,7 @@ public abstract class InverseTrigonometryNative extends ArithmeticNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            double angle = measureTheRadiansFor(Comparison.asDouble(arguments.getFirst()));
+            double angle = measureRadiansFor(Comparison.asDouble(arguments.getFirst()));
             return DecimalValue.of(refinements.contains("radians")
                     ? angle
                     : Math.toDegrees(angle));

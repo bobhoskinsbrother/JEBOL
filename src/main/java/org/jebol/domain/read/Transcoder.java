@@ -85,7 +85,7 @@ public final class Transcoder {
             int lineEndedOn,
             Set<Integer> positionsThatBeginALine) {
 
-        public AnyBlockValue asABlock() {
+        public AnyBlockValue asBlock() {
             AnyBlockValue block = BlockValue.of(valuesReadBeforeStopping);
             for (int position : positionsThatBeginALine) {
                 block.storage().setLineBreakAt(position, true);
@@ -106,7 +106,7 @@ public final class Transcoder {
         Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE, construction);
         return reading.whyItStopped()
                 .<TranscodeResult>map(failure -> failure)
-                .orElseGet(() -> new TranscodeResult.Success(reading.asABlock()));
+                .orElseGet(() -> new TranscodeResult.Success(reading.asBlock()));
     }
 
     private final SourceScanner scanner;

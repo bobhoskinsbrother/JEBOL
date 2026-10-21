@@ -10,7 +10,7 @@ public final class IssueValue extends AnyWordValue {
         }
 
         @Override
-        String asTheScannerReadsIt(String spelling) {
+        String asScannerReadsIt(String spelling) {
             return "#" + spelling;
         }
 

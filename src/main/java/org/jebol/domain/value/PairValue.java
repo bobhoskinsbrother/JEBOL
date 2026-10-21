@@ -69,7 +69,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 : Math.hypot(across, down));
     }
 
-    public Value measureTheAngleFromTheOrigin(boolean inRadians) {
+    public Value measureAngleFromOrigin(boolean inRadians) {
         double angle = Math.atan2(y, x);
         return DecimalValue.of(inRadians ? angle : Math.toDegrees(angle));
     }

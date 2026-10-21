@@ -39,7 +39,7 @@ final class BrotliBlockSplitting {
         }
     }
 
-    private static double priceTheBits(int count) {
+    private static double priceBits(int count) {
         return count == 0 ? -2.0 : BrotliCodes.computeLog2Quickly(count);
     }
 
@@ -102,15 +102,15 @@ final class BrotliBlockSplitting {
         int howManyHistograms = Math.min(howMany / symbolsPerHistogram + 1,
                 mostHistograms);
         if (howMany == 0) {
-            split.addAType();
+            split.addType();
             return;
         }
         if (howMany < SHORTEST_WORTH_SPLITTING) {
-            split.makeRoomFor(split.countTheBlocks() + 1);
-            split.addAType();
-            split.setTheType(split.countTheBlocks(), 0);
-            split.setTheLength(split.countTheBlocks(), howMany);
-            split.setTheBlockCount(split.countTheBlocks() + 1);
+            split.makeRoomFor(split.countBlocks() + 1);
+            split.addType();
+            split.setTheType(split.countBlocks(), 0);
+            split.setTheLength(split.countBlocks(), howMany);
+            split.setTheBlockCount(split.countBlocks() + 1);
             return;
         }
 
@@ -199,7 +199,7 @@ final class BrotliBlockSplitting {
             for (int which = 0; which < howManyHistograms; which++) {
                 costOfASymbol[symbol * howManyHistograms + which] =
                         costOfASymbol[which]
-                                - priceTheBits(
+                                - priceBits(
                                         histograms[which].counts()[symbol]);
             }
         }

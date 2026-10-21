@@ -1402,7 +1402,7 @@ final class SourceScanner {
         Value value;
         boolean startsAPath = (token == TOKEN_WORD || token == TOKEN_LIT || token == TOKEN_GET) && at(ep) == '/';
         if ((token == TOKEN_PATH || startsAPath) && modeChar != '/') {
-            value = buildThePath(token, scanBlock('/').values(), bp);
+            value = buildPath(token, scanBlock('/').values(), bp);
         } else {
             begin = end;
             switch (token) {
@@ -1450,7 +1450,7 @@ final class SourceScanner {
         return scanError(SyntaxFailure.MISSING_CLOSE, token, String.valueOf((char) modeChar));
     }
 
-    private Value buildThePath(int token, List<Value> segments, int bp) {
+    private Value buildPath(int token, List<Value> segments, int bp) {
         List<Value> parts = new ArrayList<>(segments);
         AnyPathValue.AnyPathDatatype kind;
         if (token == TOKEN_LIT) {

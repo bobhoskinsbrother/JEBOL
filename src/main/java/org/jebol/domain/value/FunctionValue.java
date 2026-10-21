@@ -15,7 +15,7 @@ public final class FunctionValue extends DefinedFunctionValue {
     public FunctionValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
             List<String> localNames, Context closedOver) {
-        super(spec, body, parameters, localNames, closedOver, Context.collectTheWordsAFunctionDeclares());
+        super(spec, body, parameters, localNames, closedOver, Context.collectWordsFunctionDeclares());
     }
 
     @Override

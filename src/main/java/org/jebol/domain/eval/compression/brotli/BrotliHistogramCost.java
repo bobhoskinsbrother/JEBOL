@@ -34,7 +34,7 @@ final class BrotliHistogramCost {
             return priceTheShortForm(counts, whichAreUsed, howManyAreUsed,
                     histogram.total());
         }
-        return priceTheEntropyAndTheCode(
+        return priceEntropyAndCode(
                 counts, alphabetSize, histogram.total());
     }
 
@@ -72,7 +72,7 @@ final class BrotliHistogramCost {
         return FOUR_SYMBOLS + 3 * twoSmallest + 2L * (four[0] + four[1]) - largest;
     }
 
-    private static double priceTheEntropyAndTheCode(int[] counts, int alphabetSize, long total) {
+    private static double priceEntropyAndCode(int[] counts, int alphabetSize, long total) {
         double bits = 0.0;
         int deepest = 1;
         int[] howManyAtEachDepth = new int[CODE_LENGTH_CODES];
@@ -114,7 +114,7 @@ final class BrotliHistogramCost {
             }
         }
         bits += 18 + 2 * deepest;
-        bits += BrotliCodes.measureTheBitsEntropy(howManyAtEachDepth, CODE_LENGTH_CODES);
+        bits += BrotliCodes.measureBitsEntropy(howManyAtEachDepth, CODE_LENGTH_CODES);
         return bits;
     }
 }

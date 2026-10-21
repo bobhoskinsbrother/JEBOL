@@ -29,6 +29,6 @@ public class ArctangentOfAPointNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 ((PairValue) arguments.getFirst())
-                        .measureTheAngleFromTheOrigin(refinements.contains("radians"));
+                        .measureAngleFromOrigin(refinements.contains("radians"));
     }
 }

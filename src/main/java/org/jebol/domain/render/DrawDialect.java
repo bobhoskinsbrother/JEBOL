@@ -143,7 +143,7 @@ public final class DrawDialect {
                 case "rotate" -> read.readTheNumberAt(arguments, 0).ifPresent(degrees ->
                         transform = transform.combineWith(Transform.turnBy(degrees)));
                 case "skew" -> skewBy(arguments);
-                case "matrix" -> applyTheMatrixFrom(arguments);
+                case "matrix" -> applyMatrixFrom(arguments);
                 case "reset-matrix" -> transform = Transform.NONE;
                 case "push" -> drawAndPutEverythingBack(arguments);
                 default -> {
@@ -205,7 +205,7 @@ public final class DrawDialect {
             }
             PaintState wasStanding = state;
             for (WedgesAndRings.Piece piece
-                    : WedgesAndRings.of(awkward.orElseThrow(), measureTheAreaCovered(path))) {
+                    : WedgesAndRings.of(awkward.orElseThrow(), measureAreaCovered(path))) {
                 state = wasStanding
                         .withStroke(Optional.empty())
                         .withFillGradient(Optional.empty())
@@ -217,13 +217,13 @@ public final class DrawDialect {
         }
 
         private Placement clipToTheShapeItFills(List<PathStep> path) {
-            ClipRectangle area = measureTheAreaCovered(path);
+            ClipRectangle area = measureAreaCovered(path);
             return new Placement(where.across(), where.down(),
                     where.wide(), where.high(), clip.overlapWith(area),
                     where.opacity()).fitInsideTheShape(path);
         }
 
-        private ClipRectangle measureTheAreaCovered(List<PathStep> path) {
+        private ClipRectangle measureAreaCovered(List<PathStep> path) {
             double left = Double.MAX_VALUE;
             double top = Double.MAX_VALUE;
             double right = -Double.MAX_VALUE;
@@ -391,7 +391,7 @@ public final class DrawDialect {
                     ? PairValue.of(corners.get(1).x() - at.x(),
                             corners.get(1).y() - at.y())
                     : pixels.size();
-            addThePicture(pixels, at.x(), at.y(), size.x(), size.y());
+            addPicture(pixels, at.x(), at.y(), size.x(), size.y());
         }
 
         private void showTheImagePulledOntoItsCorners(
@@ -415,13 +415,13 @@ public final class DrawDialect {
             if (boxWide <= 0 || boxHigh <= 0) {
                 return;
             }
-            addThePicture(PicturesWorkedOutHere.pullOntoFourCorners(
+            addPicture(PicturesWorkedOutHere.pullOntoFourCorners(
                             pixels, four, boxWide, boxHigh,
                             (int) Math.round(left), (int) Math.round(top)),
                     left, top, boxWide, boxHigh);
         }
 
-        private void addThePicture(
+        private void addPicture(
                 ImageValue pixels, double at, double down, double sizeAcross,
                 double sizeDown) {
 
@@ -514,7 +514,7 @@ public final class DrawDialect {
             transform = transform.combineWith(Transform.skewBy(across, 0));
         }
 
-        private void applyTheMatrixFrom(List<Value> arguments) {
+        private void applyMatrixFrom(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof AnyBlockValue six)) {
                 return;

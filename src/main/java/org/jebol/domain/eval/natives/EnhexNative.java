@@ -41,7 +41,7 @@ public class EnhexNative extends PercentEncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value value = arguments.getFirst();
-            return asTheSameKindAs(value, encodings.percentEncode(
+            return asSameKindAs(value, encodings.percentEncode(
                     value.asOctets(),
                     chooseWhatIsLeftUnescaped(value, arguments, refinements),
                     escapeCharacterIn(arguments, refinements),

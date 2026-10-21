@@ -53,7 +53,7 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
                     ? makeFunctionFrom(parts, maker)
                     : spec;
             if (!(offered instanceof AnyFunctionValue dispatching)
-                    || countTheArgumentsBeforeAnyRefinement(dispatching)
+                    || countArgumentsBeforeAnyRefinement(dispatching)
                             != THE_ARGUMENTS_AN_OPERATOR_TAKES) {
                 throw refuse(spec);
             }
@@ -67,10 +67,10 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
                     || !(items.get(1) instanceof AnyBlockValue body)) {
                 throw refuse(parts);
             }
-            return maker.bindAFunction(functionSpec, body);
+            return maker.bindFunction(functionSpec, body);
         }
 
-        private int countTheArgumentsBeforeAnyRefinement(AnyFunctionValue dispatching) {
+        private int countArgumentsBeforeAnyRefinement(AnyFunctionValue dispatching) {
             List<Parameter> declared = switch (dispatching) {
                 case DeclaresParameters function -> function.parameters();
                 case OperatorValue operator ->

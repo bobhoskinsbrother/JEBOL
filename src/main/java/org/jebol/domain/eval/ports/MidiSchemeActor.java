@@ -86,7 +86,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             case "close" -> close(port, evaluator);
             case "read" -> collectWhatHasArrived(port);
             case "write" -> send(port, arguments.get(1));
-            case "query" -> answerTheQuery(arguments.get(1), evaluator);
+            case "query" -> answerQuery(arguments.get(1), evaluator);
             case "open?" -> LogicValue.of(findTheConnectionBehind(port).isPresent());
             case "update" -> NoneValue.none();
             default -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(action));
@@ -188,7 +188,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         return port;
     }
 
-    private Value answerTheQuery(Value field, Evaluator evaluator) {
+    private Value answerQuery(Value field, Evaluator evaluator) {
         if (!(field instanceof NoneValue)) {
             granted.require(HostService.MIDI);
         }
@@ -252,7 +252,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         }
 
         @Override
-        protected Value answerAnUnknownAlone(AnyWordValue asked) {
+        protected Value answerUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, PortValue.TYPE);
         }
 

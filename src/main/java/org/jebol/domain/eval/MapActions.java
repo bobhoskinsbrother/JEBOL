@@ -33,7 +33,7 @@ public final class MapActions implements Actions {
     }
 
     @Override
-    public int measureTheLength() {
+    public int measureLength() {
         return pairs.pairCount();
     }
 

@@ -56,7 +56,7 @@ public interface ParseWalk {
 
     Value readWhatTheWordHolds(Value wanted);
 
-    Value chooseTheValueToInsert(Value written);
+    Value chooseValueToInsert(Value written);
 
     Value replacementFor(Value replacement);
 

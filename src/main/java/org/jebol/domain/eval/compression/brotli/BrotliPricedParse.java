@@ -168,11 +168,11 @@ final class BrotliPricedParse {
         float itsCost = costAt(position);
         costThenShortcutThenNext[position] =
                 shortcutFor(blockStart, position, furthestBack);
-        if (itsCost <= model.priceTheLiterals(0, position)) {
+        if (itsCost <= model.priceLiterals(0, position)) {
             int[] distances = new int[4];
             findRecentDistancesAt(position, startingDistances, distances);
             starts.push(position, itsCost,
-                    itsCost - model.priceTheLiterals(0, position), distances);
+                    itsCost - model.priceLiterals(0, position), distances);
         }
     }
 
@@ -218,7 +218,7 @@ final class BrotliPricedParse {
         {
             int slot = starts.findSlotFor(0);
             float floor = starts.cost[slot] + model.cheapestCommand()
-                    + model.priceTheLiterals(starts.position[slot], position);
+                    + model.priceLiterals(starts.position[slot], position);
             shortestWorthTrying = shortestCopyWorthTrying(floor, position);
         }
 
@@ -230,7 +230,7 @@ final class BrotliPricedParse {
             float startDifference = starts.savedAgainstLiterals[slot];
             float baseCost = startDifference
                     + (float) BrotliCommand.insertExtra(insertCode)
-                    + model.priceTheLiterals(0, position);
+                    + model.priceLiterals(0, position);
 
             int bestLength = shortestWorthTrying - 1;
             for (int code = 0; code < BrotliCommand.DISTANCE_SHORT_CODES
@@ -252,7 +252,7 @@ final class BrotliPricedParse {
                 }
                 int length = matchingBytes.count(data, previous, hereMasked,
                         mostLeft);
-                float distanceCost = baseCost + model.priceTheDistance(code);
+                float distanceCost = baseCost + model.priceDistance(code);
                 for (int copyLength = bestLength + 1; copyLength <= length;
                         copyLength++) {
                     int copyCode = BrotliCommand.copyLengthCode(copyLength);
@@ -260,7 +260,7 @@ final class BrotliPricedParse {
                             insertCode, copyCode, code == 0);
                     float cost = (commandCode < 128 ? baseCost : distanceCost)
                             + (float) BrotliCommand.copyExtra(copyCode)
-                            + model.priceTheCommand(commandCode);
+                            + model.priceCommand(commandCode);
                     if (cost < costAt(position + copyLength)) {
                         record(position, start, copyLength, copyLength, backward,
                                 code + 1, cost);
@@ -283,7 +283,7 @@ final class BrotliPricedParse {
                 int distanceSymbol = (int) (encoded >>> 32);
                 int howManyExtraBits = distanceSymbol >>> 10;
                 float distanceCost = baseCost + (float) howManyExtraBits
-                        + model.priceTheDistance(distanceSymbol & 0x3FF);
+                        + model.priceDistance(distanceSymbol & 0x3FF);
 
                 int longestHere = matches.readLengthAt(match);
                 if (copyLength < longestHere
@@ -298,7 +298,7 @@ final class BrotliPricedParse {
                             insertCode, copyCode, false);
                     float cost = distanceCost
                             + (float) BrotliCommand.copyExtra(copyCode)
-                            + model.priceTheCommand(commandCode);
+                            + model.priceCommand(commandCode);
                     if (cost < costAt(position + copyLength)) {
                         record(position, start, copyLength, lengthCode, howFarBack,
                                 0, cost);
@@ -328,7 +328,7 @@ final class BrotliPricedParse {
             BrotliDistances distances, BrotliCommand commands,
             long[] howManyLiterals) {
 
-        int furthestBack = BrotliBackwardReferences.measureTheFurthestBack(windowBits);
+        int furthestBack = BrotliBackwardReferences.measureFurthestBack(windowBits);
         int at = 0;
         int step = costThenShortcutThenNext[0];
         for (int which = 0; step != -1; which++) {
@@ -375,7 +375,7 @@ final class BrotliPricedParse {
                 new BrotliCostModel(howManyBytes, distances.alphabetSize());
         model.guessFromTheDataAlone(data, blockStart, mask);
 
-        int furthestBack = BrotliBackwardReferences.measureTheFurthestBack(windowBits);
+        int furthestBack = BrotliBackwardReferences.measureFurthestBack(windowBits);
         int rememberUntil = howManyBytes >= BrotliBinaryTreeHasher.LONGEST_COMPARED
                 ? blockStart + howManyBytes - BrotliBinaryTreeHasher.LONGEST_COMPARED + 1
                 : blockStart;
@@ -433,7 +433,7 @@ final class BrotliPricedParse {
             BrotliDistances distances, BrotliCommand commands,
             long[] howManyLiterals) {
 
-        int furthestBack = BrotliBackwardReferences.measureTheFurthestBack(windowBits);
+        int furthestBack = BrotliBackwardReferences.measureFurthestBack(windowBits);
         int rememberUntil = howManyBytes >= BrotliBinaryTreeHasher.LONGEST_COMPARED
                 ? blockStart + howManyBytes - BrotliBinaryTreeHasher.LONGEST_COMPARED + 1
                 : blockStart;

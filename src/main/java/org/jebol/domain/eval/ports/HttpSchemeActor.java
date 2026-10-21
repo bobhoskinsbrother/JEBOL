@@ -215,7 +215,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         if (asked.length().isEmpty()) {
             return from;
         }
-        return from.copyTheFront((int) Math.min(asked.length().orElseThrow(), from.lengthFromHere()),
+        return from.copyFront((int) Math.min(asked.length().orElseThrow(), from.lengthFromHere()),
                 false, Set.of());
     }
 

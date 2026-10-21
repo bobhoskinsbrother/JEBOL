@@ -14,6 +14,6 @@ final class Reject extends SameForABlockAndAString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        throw BlockEnded.asAFailure();
+        throw BlockEnded.asFailure();
     }
 }

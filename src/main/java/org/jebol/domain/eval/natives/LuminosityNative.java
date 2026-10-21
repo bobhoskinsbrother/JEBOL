@@ -29,12 +29,12 @@ public class LuminosityNative extends ColourNative {
         return (arguments, evaluator, context, refinements) -> {
             boolean luma = refinements.contains("luma");
             return recolourEveryColour(arguments.getFirst(),
-                    colour -> IntegerValue.of(measureTheLuminosityTruncated(readThreeParts(colour), luma)),
-                    parts -> setAllThreeTo(measureTheLuminosityTruncated(parts, luma)));
+                    colour -> IntegerValue.of(measureLuminosityTruncated(readThreeParts(colour), luma)),
+                    parts -> setAllThreeTo(measureLuminosityTruncated(parts, luma)));
         };
     }
 
-    private int measureTheLuminosityTruncated(int[] parts, boolean luma) {
+    private int measureLuminosityTruncated(int[] parts, boolean luma) {
         return luma
                 ? (int) ((0.299 * parts[0]) + (0.587 * parts[1]) + (0.114 * parts[2]))
                 : (int) ((0.2126 * parts[0]) + (0.7152 * parts[1]) + (0.0722 * parts[2]));

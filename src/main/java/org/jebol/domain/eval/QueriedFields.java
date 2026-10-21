@@ -25,9 +25,9 @@ public abstract class QueriedFields {
 
     protected abstract Optional<Value> findFieldNamed(String asked);
 
-    protected abstract Value answerAnUnknownAlone(AnyWordValue asked);
+    protected abstract Value answerUnknownAlone(AnyWordValue asked);
 
-    protected Value answerAnUnknownInABlock(AnyWordValue asked) {
+    protected Value answerUnknownInBlock(AnyWordValue asked) {
         throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
     }
 
@@ -42,15 +42,15 @@ public abstract class QueriedFields {
     public Value answer(Value field, Evaluator evaluator) {
         return switch (field) {
             case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
-                    && answersItsNames() -> listTheNames();
-            case AnyWordValue asked -> findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownAlone(asked));
+                    && answersItsNames() -> listNames();
+            case AnyWordValue asked -> findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerUnknownAlone(asked));
             case AnyBlockValue several -> answerEachOf(several);
-            case NoneValue nothing -> listTheNames();
+            case NoneValue nothing -> listNames();
             default -> gatherEveryFieldIntoAnObject(evaluator);
         };
     }
 
-    private Value listTheNames() {
+    private Value listNames() {
         return BlockValue.of(names().stream().<Value>map(WordValue::of).toList());
     }
 
@@ -65,7 +65,7 @@ public abstract class QueriedFields {
                 answer.add(asked.asSetWord());
                 whereEachLabelStartsALine.add(answer.size());
             }
-            answer.add(findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownInABlock(asked)));
+            answer.add(findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerUnknownInBlock(asked)));
         }
         BlockValue answered = BlockValue.of(answer);
         whereEachLabelStartsALine.forEach(position -> answered.storage().setLineBreakAt(position, true));

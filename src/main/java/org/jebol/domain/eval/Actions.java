@@ -35,7 +35,7 @@ public interface Actions {
         throw Raised.cannotUseTheAction(subject(), "clear");
     }
 
-    default int measureTheLength() {
+    default int measureLength() {
         throw Raised.cannotUseTheAction(subject(), "length?");
     }
 

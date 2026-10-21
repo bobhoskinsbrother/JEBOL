@@ -118,7 +118,7 @@ public final class TypesetValue implements Value {
     }
 
     @Override
-    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+    public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         if (!(other instanceof TypesetValue theirs)) {
             throw Raised.cannotUse(this, "a set operation");
         }

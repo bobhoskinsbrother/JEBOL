@@ -21,21 +21,21 @@ public abstract class MinOrMaxNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                chooseTheOneWanted(arguments.get(0), arguments.get(1));
+                chooseOneWanted(arguments.get(0), arguments.get(1));
     }
 
-    private Value chooseTheOneWanted(Value left, Value right) {
+    private Value chooseOneWanted(Value left, Value right) {
         if (left instanceof PairValue(double ourX, double ourY)
                 && right instanceof PairValue(double theirX, double theirY)) {
             return PairValue.of(
-                    chooseTheHalfWanted(ourX, theirX), chooseTheHalfWanted(ourY, theirY));
+                    chooseHalfWanted(ourX, theirX), chooseHalfWanted(ourY, theirY));
         }
         boolean theFirstIsAtLeastTheSecond =
                 Comparison.holds(left, right, Comparison.Strictness.GREATER_OR_EQUAL);
         return theFirstIsAtLeastTheSecond == wantsTheLarger() ? left : right;
     }
 
-    private double chooseTheHalfWanted(double ours, double theirs) {
+    private double chooseHalfWanted(double ours, double theirs) {
         return wantsTheLarger() ? Math.max(ours, theirs) : Math.min(ours, theirs);
     }
 }

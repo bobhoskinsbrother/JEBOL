@@ -17,11 +17,11 @@ public final class UrlValue extends AnyStringValue {
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
             return from instanceof AnyBlockValue parts
-                    ? buildAUrlFrom(parts)
+                    ? buildUrlFrom(parts)
                     : super.build(asking, from, maker);
         }
 
-        private Value buildAUrlFrom(AnyBlockValue parts) {
+        private Value buildUrlFrom(AnyBlockValue parts) {
             List<Value> written = parts.remaining();
             if (written.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,

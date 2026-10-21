@@ -67,12 +67,12 @@ public class CopyAction extends DefaultNative implements ActionValue {
         }
         Value limit = readTheArgumentOf("part", 0, arguments, refinements).orElseThrow();
         if (series instanceof ImageValue picture && limit instanceof PairValue(double x, double y)) {
-            return picture.copyARectangle((int) x, (int) y);
+            return picture.copyRectangle((int) x, (int) y);
         }
-        return copyTheFront(series, limit, deeply, kinds);
+        return copyFront(series, limit, deeply, kinds);
     }
 
-    private Value copyTheFront(
+    private Value copyFront(
             RebolSeries series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = series.countUpTo(limit);
         RebolSeries from = limit instanceof RebolSeries upTo ? series.pickTheEarlierOf(upTo) : series;
@@ -82,7 +82,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
             wanted = reaching;
         }
         int taking = (int) Math.max(0, Math.min(wanted, from.lengthFromHere()));
-        return from.copyTheFront(taking, deeply, kinds);
+        return from.copyFront(taking, deeply, kinds);
     }
 
     private Set<Datatype> chooseWhichDatatypesToCopy(List<Value> arguments, Set<String> refinements) {

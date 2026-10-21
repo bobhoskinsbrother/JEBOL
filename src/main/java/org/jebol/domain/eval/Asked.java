@@ -19,7 +19,7 @@ public record Asked(
         Evaluator evaluator,
         Context context) {
 
-    public int countTheOctetsWanted() {
+    public int countOctetsWanted() {
         return howManyOctets;
     }
 

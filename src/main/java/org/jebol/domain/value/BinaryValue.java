@@ -67,7 +67,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(howMany);
     }
 
@@ -172,7 +172,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public byte[] octetsFromHere() {
-        return copyTheOctetsUpTo(storageLength() + 1);
+        return copyOctetsUpTo(storageLength() + 1);
     }
 
     @Override
@@ -250,7 +250,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         int end = storageLength() + 1;
         int at = index;
         while (at < end) {
-            int width = measureTheUtf8Sequence(readOctetAt(at));
+            int width = measureUtf8Sequence(readOctetAt(at));
             if (width > 0 && at + width <= end && continuesCorrectly(at, width)) {
                 at += width;
                 continue;
@@ -269,7 +269,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return storage.at(position) & 0xFF;
     }
 
-    private int measureTheUtf8Sequence(int lead) {
+    private int measureUtf8Sequence(int lead) {
         if (lead < 0x80) {
             return 1;
         }
@@ -324,10 +324,10 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public String asStrictTextUpTo(int endIndex) {
-        return decodeStrictlyAsUtf8(copyTheOctetsUpTo(endIndex));
+        return decodeStrictlyAsUtf8(copyOctetsUpTo(endIndex));
     }
 
-    private byte[] copyTheOctetsUpTo(int endIndex) {
+    private byte[] copyOctetsUpTo(int endIndex) {
         byte[] octets = new byte[Math.max(0, endIndex - index)];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) storage.at(index + at);

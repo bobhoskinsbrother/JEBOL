@@ -103,13 +103,13 @@ public final class Ports {
             if (rows.get(at) instanceof AnyWordValue heading
                     && heading.canonical().equals(THE_CONSOLE_MODE_HEADING)
                     && rows.get(at + 1) instanceof AnyBlockValue listed) {
-                return listTheWordsIn(listed);
+                return listWordsIn(listed);
             }
         }
         return new LinkedHashSet<>();
     }
 
-    private SequencedSet<String> listTheWordsIn(AnyBlockValue listed) {
+    private SequencedSet<String> listWordsIn(AnyBlockValue listed) {
         SequencedSet<String> named = new LinkedHashSet<>();
         for (Value each : listed.remaining()) {
             if (each instanceof AnyWordValue word) {
@@ -240,7 +240,7 @@ public final class Ports {
 
     private Value readWhatTheOperatorLastCopied(PortValue port, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.CLIPBOARD);
-        String whole = askTheClipboard(evaluator);
+        String whole = askClipboard(evaluator);
         String copied = asked.part()
                 .filter(IntegerValue.class::isInstance)
                 .map(wanted -> whole.substring(0, Math.clamp(
@@ -253,7 +253,7 @@ public final class Ports {
         return StringValue.of(copied);
     }
 
-    private String askTheClipboard(Evaluator evaluator) {
+    private String askClipboard(Evaluator evaluator) {
         try {
             return evaluator.ports().clipboard().read();
         } catch (ClipboardPort.Unreachable unreachable) {
@@ -317,7 +317,7 @@ public final class Ports {
                 return lookUpTheNameAtAnAddressOfFourParts(host, network);
             }
             return network.resolveTheFirstIpv4Address(host)
-                    .<Value>map(this::asATuple)
+                    .<Value>map(this::asTuple)
                     .orElseGet(NoneValue::none);
         });
     }
@@ -329,7 +329,7 @@ public final class Ports {
         return network.resolveHostName(address).<Value>map(StringValue::of).orElseGet(NoneValue::none);
     }
 
-    private Value asATuple(String dotted) {
+    private Value asTuple(String dotted) {
         return TupleValue.of(Arrays.stream(dotted.split("\\.")).mapToInt(Integer::parseInt).toArray());
     }
 
@@ -343,7 +343,7 @@ public final class Ports {
         SeekableFilePort seekable = new SeekableFilePort(port);
         if (port.schemeName().equals("dir")) {
             requireTheFilePolicy(seekable.path(), evaluator, Set.of(PolicyAccess.READ));
-            return runThroughTheFileSystem(() -> listTheNamesIn(evaluator.ports().files(), seekable.path()));
+            return runThroughTheFileSystem(() -> listNamesIn(evaluator.ports().files(), seekable.path()));
         }
         boolean wasClosed = !port.isOpen();
         if (wasClosed) {
@@ -366,7 +366,7 @@ public final class Ports {
         return asTextWhereAskedFor(read, asked.refinements());
     }
 
-    private Value listTheNamesIn(FilePort files, String path) {
+    private Value listNamesIn(FilePort files, String path) {
         return BlockValue.of(files.listFileNames(path).stream()
                 .<Value>map(FileValue::of)
                 .toList());
@@ -497,7 +497,7 @@ public final class Ports {
             return connectOrLeaveClosed(port, evaluator);
         }
         switch (port.schemeName()) {
-            case "udp" -> bindTheDatagramPort(port, evaluator);
+            case "udp" -> bindDatagramPort(port, evaluator);
             case "crypt" -> startTheCipherBehindBlankingTheKeyInTheSpec(port);
             case "checksum" -> checksumPort.startEvenOnAnAlreadyOpenPort(port, checksumPort.readTheMethodOf(port));
             default -> refuseToReachOutside();
@@ -640,7 +640,7 @@ public final class Ports {
         return port;
     }
 
-    private void bindTheDatagramPort(PortValue port, Evaluator evaluator) {
+    private void bindDatagramPort(PortValue port, Evaluator evaluator) {
         int number = findHostToSendTo(port).isEmpty()
                 ? readThePortNumberOf(port)
                 : WHATEVER_NUMBER_THE_MACHINE_HAS_FREE;

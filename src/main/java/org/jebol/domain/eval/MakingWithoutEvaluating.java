@@ -37,7 +37,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
 
     @Override
     public Value makeFunction(AnyBlockValue spec, AnyBlockValue body) {
-        return bindAFunction(spec, body);
+        return bindFunction(spec, body);
     }
 
     @Override
@@ -71,12 +71,12 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+    public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
         return Binder.bindTheFunctionsBody(spec, body, Context.root());
     }
 
     @Override
-    public Value applyASystemFunction(String name, Value argument) {
+    public Value applySystemFunction(String name, Value argument) {
         throw Raised.cannotUseTheAction(argument, "make");
     }
 

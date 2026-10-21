@@ -33,7 +33,7 @@ final class BrotliBinaryTreeHasher {
                 nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt);
     }
 
-    static int countTheBytesItLooksAhead() {
+    static int countBytesItLooksAhead() {
         return LONGEST_COMPARED;
     }
 

@@ -49,14 +49,14 @@ public class DhNative extends CipherNative {
                 return BinaryValue.ofBytes(key.get().publishedPaddedToTheWidthOfThePrime());
             }
             if (refinements.contains("secret")) {
-                return agreeASecretBetween(key.get(),
+                return agreeSecretBetween(key.get(),
                         ((BinaryValue) arguments.get(1)).octetsFromHere());
             }
             return NoneValue.none();
         };
     }
 
-    private Value agreeASecretBetween(DiffieHellmanKey key, byte[] peersValue) {
+    private Value agreeSecretBetween(DiffieHellmanKey key, byte[] peersValue) {
         return key.agreeWith(peersValue)
                 .<Value>map(BinaryValue::ofBytes)
                 .orElseGet(NoneValue::none);

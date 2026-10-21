@@ -11,11 +11,11 @@ public final class BlockEnded extends RuntimeException {
         this.asAMatch = asAMatch;
     }
 
-    public static BlockEnded asAMatch() {
+    public static BlockEnded asMatch() {
         return new BlockEnded(true);
     }
 
-    public static BlockEnded asAFailure() {
+    public static BlockEnded asFailure() {
         return new BlockEnded(false);
     }
 

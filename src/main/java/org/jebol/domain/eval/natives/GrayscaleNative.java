@@ -21,11 +21,11 @@ public class GrayscaleNative extends ColourNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> recolourEveryColour(arguments.getFirst(),
-                colour -> IntegerValue.of(measureTheGrey(readThreeParts(colour))),
-                parts -> setAllThreeTo(measureTheGrey(parts)));
+                colour -> IntegerValue.of(measureGrey(readThreeParts(colour))),
+                parts -> setAllThreeTo(measureGrey(parts)));
     }
 
-    private int measureTheGrey(int[] parts) {
+    private int measureGrey(int[] parts) {
         return (parts[0] + parts[1] + parts[2]) / 3;
     }
 }

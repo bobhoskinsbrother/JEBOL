@@ -22,7 +22,7 @@ abstract class SeriesActions implements Actions {
     }
 
     @Override
-    public int measureTheLength() {
+    public int measureLength() {
         return held().lengthFromHere();
     }
 

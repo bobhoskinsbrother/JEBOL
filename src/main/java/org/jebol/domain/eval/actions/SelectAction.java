@@ -71,7 +71,7 @@ public class SelectAction extends SeriesSearchAction {
         if (found < 0) {
             return NoneValue.none();
         }
-        int after = found - 1 + search.measureTheLengthMatchedAt(found);
+        int after = found - 1 + search.measureLengthMatchedAt(found);
         return after >= search.end()
                 ? NoneValue.none()
                 : series.head().listTheItems().get(after);

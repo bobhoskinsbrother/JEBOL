@@ -128,7 +128,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
             if (!canNameAScheme(spec)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
             }
-            if (!(maker.applyASystemFunction("make-port*", spec) instanceof PortValue port)) {
+            if (!(maker.applySystemFunction("make-port*", spec) instanceof PortValue port)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
             }
             return port;

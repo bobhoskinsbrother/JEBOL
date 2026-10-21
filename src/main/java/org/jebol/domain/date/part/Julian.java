@@ -13,6 +13,6 @@ final class Julian implements WritableDateField {
 
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
-        return JulianDay.asADate(given.asAJulianDayCount());
+        return JulianDay.asDate(given.asJulianDayCount());
     }
 }

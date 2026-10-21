@@ -71,27 +71,27 @@ public final class DesktopScreen extends GobScreen {
             return PairValue.of(0, 0);
         }
         try {
-            return measureTheMetric(metric, display);
+            return measureMetric(metric, display);
         } catch (HeadlessException noScreen) {
             return PairValue.of(0, 0);
         }
     }
 
-    private PairValue measureTheMetric(ScreenMetric metric, int display) {
+    private PairValue measureMetric(ScreenMetric metric, int display) {
         Rectangle whole = displayDimensions(display);
         Rectangle usable = workAreaOfDisplay(display);
         Insets furniture = furnitureOfAResizableWindow();
         return switch (metric) {
             case SCREEN_SIZE -> PairValue.of(whole.width, whole.height);
             case SCREEN_ORIGIN -> PairValue.of(whole.x, whole.y);
-            case SCREEN_DPI -> measureTheDotsPerInch();
+            case SCREEN_DPI -> measureDotsPerInch();
             case WORK_ORIGIN -> PairValue.of(usable.x, usable.y);
             case WORK_SIZE -> PairValue.of(usable.width, usable.height);
             case TITLE_SIZE -> PairValue.of(0, furniture.top);
             case BORDER_SIZE -> PairValue.of(furniture.left, furniture.bottom);
             case BORDER_FIXED -> PairValue.of(
                     measureTheFurnitureOfAFixedWindow().left, measureTheFurnitureOfAFixedWindow().bottom);
-            case WINDOW_MIN_SIZE -> measureTheSmallestWindowSwingLaysOut();
+            case WINDOW_MIN_SIZE -> measureSmallestWindowSwingLaysOut();
             case LOG_SIZE, PHYS_SIZE -> PairValue.of(1, 1);
             case SCREENS -> PairValue.of(displayCount(), displayCount());
         };
@@ -117,7 +117,7 @@ public final class DesktopScreen extends GobScreen {
                 whole.height - taken.top - taken.bottom);
     }
 
-    private PairValue measureTheDotsPerInch() {
+    private PairValue measureDotsPerInch() {
         int resolution = Toolkit.getDefaultToolkit().getScreenResolution();
         return PairValue.of(resolution, resolution);
     }
@@ -142,7 +142,7 @@ public final class DesktopScreen extends GobScreen {
         }
     }
 
-    private PairValue measureTheSmallestWindowSwingLaysOut() {
+    private PairValue measureSmallestWindowSwingLaysOut() {
         JFrame measured = new JFrame();
         try {
             measured.pack();

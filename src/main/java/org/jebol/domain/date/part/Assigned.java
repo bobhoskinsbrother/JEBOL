@@ -31,18 +31,18 @@ record Assigned(Value value, AnyWordValue part) {
                 : (long) asWholeNumber() * TimeValue.NANOSECONDS_PER_SECOND;
     }
 
-    TimeValue asAClock() {
+    TimeValue asClock() {
         return TimeValue.ofNanoseconds(asSecondsInNanoseconds());
     }
 
-    DateValue asADate() {
+    DateValue asDate() {
         if (value instanceof DateValue other) {
             return other;
         }
         throw refusal();
     }
 
-    double asAJulianDayCount() {
+    double asJulianDayCount() {
         if (value instanceof AnyDecimalValue counted) {
             return counted.quantity();
         }

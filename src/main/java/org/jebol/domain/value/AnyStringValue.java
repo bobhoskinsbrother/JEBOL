@@ -153,7 +153,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         String whole = text();
         int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
         return wrap(whole.substring(0, whole.offsetByCodePoints(0, taking)));
@@ -326,7 +326,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+    public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return wrap(textOf(keeping.from(listTheCharactersOf(this), listTheCharactersOf(other))));
     }
 

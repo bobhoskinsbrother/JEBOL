@@ -92,7 +92,7 @@ public final class VectorMath {
     }
 
     private static void refuseElementByZero(ValueOperation operation, boolean isZero) {
-        boolean guarded = operation.needsANonZeroDivisor()
+        boolean guarded = operation.needsNonZeroDivisor()
                 && !operation.isBitwise();
         if (guarded && isZero) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");

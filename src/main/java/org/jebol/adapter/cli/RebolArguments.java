@@ -133,7 +133,7 @@ final class RebolArguments {
         }
         String value = arguments.get(at + 1);
         flags.addAll(option.flags());
-        if (isTheSecondCharacterADash(value)) {
+        if (isSecondCharacterDash(value)) {
             return at;
         }
         option.flags().forEach(flag -> values.put(flag, value));
@@ -143,7 +143,7 @@ final class RebolArguments {
         return at + 1;
     }
 
-    private boolean isTheSecondCharacterADash(String value) {
+    private boolean isSecondCharacterDash(String value) {
         return value.length() > 1 && value.charAt(1) == '-';
     }
 

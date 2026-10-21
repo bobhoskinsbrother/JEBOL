@@ -38,13 +38,13 @@ public enum DatePart implements DateField {
     }
 
     @Override
-    public boolean needsAClock() {
-        return field.needsAClock();
+    public boolean needsClock() {
+        return field.needsClock();
     }
 
     @Override
     public Value readFrom(DateValue date) {
-        return needsAClock() && date.timeOfDay().isEmpty()
+        return needsClock() && date.timeOfDay().isEmpty()
                 ? NoneValue.none()
                 : field.readFrom(date);
     }

@@ -27,16 +27,16 @@ final class BrotliClusteredMetaBlock {
                 built.literals, built.commands, built.distances);
 
         int literalHistograms =
-                built.literals.countTheTypes() << LITERAL_CONTEXT_BITS;
+                built.literals.countTypes() << LITERAL_CONTEXT_BITS;
         int distanceHistograms =
-                built.distances.countTheTypes() << DISTANCE_CONTEXT_BITS;
+                built.distances.countTypes() << DISTANCE_CONTEXT_BITS;
         BrotliHistogram[] byContext =
                 BrotliHistogram.makeFreshRow(literalHistograms, LITERAL_SYMBOLS);
         BrotliHistogram[] distanceByContext = BrotliHistogram.makeFreshRow(
                 distanceHistograms, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS);
         built.commandHistograms = BrotliHistogram.makeFreshRow(
-                built.commands.countTheTypes(), BrotliCodes.COMMAND_SYMBOLS);
-        built.howManyCommandHistograms = built.commands.countTheTypes();
+                built.commands.countTypes(), BrotliCodes.COMMAND_SYMBOLS);
+        built.howManyCommandHistograms = built.commands.countTypes();
 
         countEverything(commands, data, from, mask, previousByte,
                 theByteBeforeThat, contextMode, built, byContext,

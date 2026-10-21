@@ -44,7 +44,7 @@ public enum ScreenMetric {
     }
 
     /** Whether this one counts rather than measures. */
-    public boolean isACount() {
+    public boolean isCount() {
         return this == SCREENS;
     }
 

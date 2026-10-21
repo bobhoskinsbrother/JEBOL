@@ -50,7 +50,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
                     || !(items.get(1) instanceof AnyBlockValue body)) {
                 throw refuse(spec);
             }
-            return fromTheFunction(maker.bindAFunction(functionSpec, body));
+            return fromTheFunction(maker.bindFunction(functionSpec, body));
         }
 
         @Override
@@ -109,7 +109,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
             case "spec" -> spec;
             case "body" -> body.copy(true);
             case "words" -> spec.declaredParameters();
-            case "types" -> listTheTypesets();
+            case "types" -> listTypesets();
             default -> NoneValue.none();
         };
     }

@@ -26,7 +26,7 @@ public final class ClosureValue extends DefinedFunctionValue {
     @Override
     public ClosureValue makeSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
         return new ClosureValue(spec(), anotherBody, parameters(), localNames(), closedOverInstead,
-                Context.collectTheWordsAFunctionDeclares());
+                Context.collectWordsFunctionDeclares());
     }
 
     @Override

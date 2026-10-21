@@ -1552,7 +1552,7 @@ ranked actions of goal 19, in the order decision 37 measured them:
   which streamed the open-call stack on every function call, is a loop.
 - `MapValue`'s case-insensitive match walks its keys instead of streaming
   them.
-- `AnyBlockValue.copied` and `copyTheFront` copy with loops, and the per-boot
+- `AnyBlockValue.copied` and `copyFront` copy with loops, and the per-boot
   copies of the whole library go through them.
 - `SeriesMemory`'s outstanding set is a plain `HashSet`; the class's own
   claim is one writer at a time, and a `ConcurrentHashMap` was paying a lock
