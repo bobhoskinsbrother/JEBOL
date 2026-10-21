@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 
 public abstract non-sealed class Datatype implements Value, Comparable<Datatype> {
 
-    public static final Datatype TYPE = new TheDatatypeOfDatatypes();
+    public static final Datatype TYPE = new DatatypeDatatype();
 
     private final String spelling;
 
@@ -121,9 +121,9 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         return literalSpelling();
     }
 
-    private static final class TheDatatypeOfDatatypes extends Datatype {
+    private static final class DatatypeDatatype extends Datatype {
 
-        TheDatatypeOfDatatypes() {
+        DatatypeDatatype() {
             super("datatype");
         }
 

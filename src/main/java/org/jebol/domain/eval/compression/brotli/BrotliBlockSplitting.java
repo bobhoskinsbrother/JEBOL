@@ -30,7 +30,7 @@ final class BrotliBlockSplitting {
     private BrotliBlockSplitting() {
     }
 
-    private static final class TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn {
+    private static final class CsRandomGenerator {
         private int seed = 7;
 
         int next() {
@@ -135,8 +135,8 @@ final class BrotliBlockSplitting {
     private static void seedFromSamples(int[] symbols, int howMany, int stride,
             int howManyHistograms, BrotliHistogram[] histograms) {
 
-        TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn rolling =
-                new TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn();
+        CsRandomGenerator rolling =
+                new CsRandomGenerator();
         int blockLength = howMany / howManyHistograms;
         for (int which = 0; which < howManyHistograms; which++) {
             histograms[which].clear();
@@ -160,8 +160,8 @@ final class BrotliBlockSplitting {
                 / stride + FEWEST_SAMPLES;
         howManySamples = (howManySamples + howManyHistograms - 1)
                 / howManyHistograms * howManyHistograms;
-        TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn rolling =
-                new TheCsOwnGeneratorWhoseSequenceTheAnswerDependsOn();
+        CsRandomGenerator rolling =
+                new CsRandomGenerator();
         BrotliHistogram sample = histograms[howManyHistograms];
         for (long each = 0; each < howManySamples; each++) {
             sample.clear();

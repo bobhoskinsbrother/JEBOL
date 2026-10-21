@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.crypto.AKeyThatCanBeReleased;
+import org.jebol.domain.eval.crypto.ReleasableKey;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 
@@ -25,9 +25,9 @@ public class ReleaseNative extends DefaultNative {
             HandleValue handle = (HandleValue) arguments.getFirst();
             if (handle.payload() instanceof JavaObjectValue carried) {
                 carried.held()
-                        .filter(AKeyThatCanBeReleased.class::isInstance)
-                        .map(AKeyThatCanBeReleased.class::cast)
-                        .ifPresent(AKeyThatCanBeReleased::release);
+                        .filter(ReleasableKey.class::isInstance)
+                        .map(ReleasableKey.class::cast)
+                        .ifPresent(ReleasableKey::release);
             }
             return LogicValue.of(handle.isContext());
         };

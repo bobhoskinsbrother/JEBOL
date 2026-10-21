@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.crypto;
 
-public interface AKeyThatCanBeReleased {
+public interface ReleasableKey {
 
     void release();
 

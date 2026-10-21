@@ -8,7 +8,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
 
-public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
+public final class DiffieHellmanKey implements ReleasableKey {
 
     private boolean handedBack;
 

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class EllipticCurveKey implements AKeyThatCanBeReleased {
+public final class EllipticCurveKey implements ReleasableKey {
 
     private boolean handedBack;
 

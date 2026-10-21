@@ -83,11 +83,11 @@ public class QueryAction extends PortAction {
             Value target = arguments.getFirst();
             Value field = arguments.get(1);
             return switch (target) {
-                case VectorValue vector -> new TheFieldsOfAVector(vector).answer(field, evaluator);
-                case DateValue date -> new TheFieldsOfADate(date).answer(field, evaluator);
-                case HandleValue handle -> new TheFieldsOfAHandle(handle).answer(field, evaluator);
+                case VectorValue vector -> new VectorFields(vector).answer(field, evaluator);
+                case DateValue date -> new DateFields(date).answer(field, evaluator);
+                case HandleValue handle -> new HandleFields(handle).answer(field, evaluator);
                 case PortValue console when console.schemeName().equals("console") ->
-                        new TheMeasurementsOfTheConsole().answer(field, evaluator);
+                        new ConsoleMeasurements().answer(field, evaluator);
                 default -> field instanceof NoneValue
                         ? portFieldNames(target, evaluator, context)
                         : askFileOrRoutedPort(target, field, evaluator, context);
@@ -121,7 +121,7 @@ public class QueryAction extends PortAction {
         }
         FilePort files = evaluator.ports().files();
         return ports.runThroughFileSystem(() -> files.describe(path)
-                .<Value>map(about -> new TheFieldsOfAFile(about,
+                .<Value>map(about -> new FileFields(about,
                                 files.locationFor(path))
                         .answer(field, evaluator))
                 .orElseGet(NoneValue::none));
@@ -150,7 +150,7 @@ public class QueryAction extends PortAction {
                 .toList());
     }
 
-    private abstract static class TheFieldsOfAnObjectWithoutASelf extends QueriedFields {
+    private abstract static class ObjectFieldsWithoutSelf extends QueriedFields {
 
         @Override
         protected Value gatherEveryFieldIntoObject(Evaluator evaluator) {
@@ -158,11 +158,11 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheFieldsOfAVector extends QueriedFields {
+    private static final class VectorFields extends QueriedFields {
 
         private final VectorValue vector;
 
-        TheFieldsOfAVector(VectorValue vector) {
+        VectorFields(VectorValue vector) {
             this.vector = vector;
         }
 
@@ -182,11 +182,11 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheFieldsOfADate extends QueriedFields {
+    private static final class DateFields extends QueriedFields {
 
         private final DateValue date;
 
-        TheFieldsOfADate(DateValue date) {
+        DateFields(DateValue date) {
             this.date = date;
         }
 
@@ -218,11 +218,11 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheFieldsOfAHandle extends QueriedFields {
+    private static final class HandleFields extends QueriedFields {
 
         private final HandleValue handle;
 
-        TheFieldsOfAHandle(HandleValue handle) {
+        HandleFields(HandleValue handle) {
             this.handle = handle;
         }
 
@@ -247,7 +247,7 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheMeasurementsOfTheConsole extends TheFieldsOfAnObjectWithoutASelf {
+    private static final class ConsoleMeasurements extends ObjectFieldsWithoutSelf {
 
         private static final int MEASURE_HOST_DOES_NOT_REPORT = 0;
 
@@ -277,12 +277,12 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheFieldsOfAFile extends TheFieldsOfAnObjectWithoutASelf {
+    private static final class FileFields extends ObjectFieldsWithoutSelf {
 
         private final FileInformation about;
         private final String wholePath;
 
-        TheFieldsOfAFile(FileInformation about, String wholePath) {
+        FileFields(FileInformation about, String wholePath) {
             this.about = about;
             this.wholePath = wholePath;
         }
