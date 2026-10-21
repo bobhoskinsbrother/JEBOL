@@ -46,7 +46,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
     }
 
     private Value removeFrom(Value subject, List<Value> arguments, Set<String> refinements) {
-        Optional<Value> key = readTheArgumentOf("key", 0, arguments, refinements);
+        Optional<Value> key = refinementArgument("key", 0, arguments, refinements);
         return switch (subject) {
             case PortValue queue when queue.findTheEventQueue().isPresent() ->
                     throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
@@ -58,11 +58,11 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             case BitsetValue members -> {
                 members.requireChangeable();
                 yield new BitsetActions(members).remove(refinements,
-                        refinement -> readTheArgumentOf(refinement, 0, arguments, refinements)
+                        refinement -> refinementArgument(refinement, 0, arguments, refinements)
                                 .orElseGet(NoneValue::none));
             }
             case RebolSeries series -> removeFromTheSeries(series, key,
-                    readTheArgumentOf("part", 0, arguments, refinements));
+                    refinementArgument("part", 0, arguments, refinements));
             case Value anythingElse -> refuseArgument(anythingElse, "series");
         };
     }

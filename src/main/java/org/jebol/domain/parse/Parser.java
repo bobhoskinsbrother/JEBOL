@@ -294,7 +294,7 @@ public final class Parser implements ParseWalk {
         } else {
             this.source = (RebolSeries) given;
             this.walkingBytes = given instanceof BinaryValue;
-            this.codePoints = readTheCodePointsOf((RebolSeries) given);
+            this.codePoints = codepointsFrom((RebolSeries) given);
         }
     }
 
@@ -350,7 +350,7 @@ public final class Parser implements ParseWalk {
         for (int taken = from + howMany; taken > from; taken--) {
             removeFromSource(source.index() + taken - 1);
         }
-        codePoints = readTheCodePointsOf(source);
+        codePoints = codepointsFrom(source);
     }
 
     @Override
@@ -369,7 +369,7 @@ public final class Parser implements ParseWalk {
         for (int step = 0; step < units.length; step++) {
             insertIntoSource(source.index() + where + step, units[step]);
         }
-        codePoints = readTheCodePointsOf(source);
+        codePoints = codepointsFrom(source);
         return units.length;
     }
 
@@ -760,7 +760,7 @@ public final class Parser implements ParseWalk {
     private void adoptInput(RebolSeries newInput) {
         this.source = newInput;
         this.walkingBytes = newInput instanceof BinaryValue;
-        this.codePoints = readTheCodePointsOf(newInput);
+        this.codePoints = codepointsFrom(newInput);
         this.position = 0;
     }
 
@@ -782,7 +782,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private static int[] readTheCodePointsOf(RebolSeries series) {
+    private static int[] codepointsFrom(RebolSeries series) {
         if (series instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
@@ -1018,7 +1018,7 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof ParenValue nested) {
             evaluator.evaluateOrRaise(nested.asBlock(), context);
-            codePoints = readTheCodePointsOf(source);
+            codePoints = codepointsFrom(source);
             position = Math.min(position, codePoints.length);
             return true;
         }
@@ -1083,7 +1083,7 @@ public final class Parser implements ParseWalk {
             return text.text();
         }
         if (value instanceof BinaryValue bytes) {
-            return new String(readTheCodePointsOf(bytes), 0, bytes.lengthFromHere());
+            return new String(codepointsFrom(bytes), 0, bytes.lengthFromHere());
         }
         return Molder.form(value);
     }

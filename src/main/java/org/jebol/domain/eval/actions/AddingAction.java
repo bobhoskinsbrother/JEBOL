@@ -39,8 +39,8 @@ public abstract class AddingAction extends SeriesOrFileAction {
     protected Asked readWhatIsAskedOf(Value subject, List<Value> arguments, Set<String> refinements,
                                       Evaluator evaluator, Context context) {
         return Asked.read(subject, arguments.get(1), refinements,
-                readTheArgumentOf("dup", 0, arguments, refinements),
-                readTheArgumentOf("part", 0, arguments, refinements),
+                refinementArgument("dup", 0, arguments, refinements),
+                refinementArgument("part", 0, arguments, refinements),
                 evaluator, context);
     }
 }

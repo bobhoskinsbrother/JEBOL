@@ -23,7 +23,7 @@ final class PicturesWorkedOutHere {
             copied[pixel * CHANNELS] = parts[0];
             copied[pixel * CHANNELS + 1] = parts[1];
             copied[pixel * CHANNELS + 2] = parts[2];
-            copied[pixel * CHANNELS + 3] = matches ? SEE_THROUGH : readTheAlphaOf(parts);
+            copied[pixel * CHANNELS + 3] = matches ? SEE_THROUGH : alphaIn(parts);
         }
         return imageFromChannels(copied, wide, high);
     }
@@ -51,7 +51,7 @@ final class PicturesWorkedOutHere {
                 made[at] = parts[0];
                 made[at + 1] = parts[1];
                 made[at + 2] = parts[2];
-                made[at + 3] = readTheAlphaOf(parts);
+                made[at + 3] = alphaIn(parts);
             }
         }
         return imageFromChannels(made, wide, high);
@@ -106,7 +106,7 @@ final class PicturesWorkedOutHere {
                 downTheTop + (downTheBottom - downTheTop) * downTheSide};
     }
 
-    private static int readTheAlphaOf(int[] parts) {
+    private static int alphaIn(int[] parts) {
         return parts.length >= 4 ? parts[3] : OPAQUE;
     }
 

@@ -21,10 +21,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return (readTheBitsOfTheHalf(y) << BITS_IN_HALF) | readTheBitsOfTheHalf(x);
+        return (halfBits(y) << BITS_IN_HALF) | halfBits(x);
     }
 
-    private long readTheBitsOfTheHalf(double half) {
+    private long halfBits(double half) {
         return Integer.toUnsignedLong(Float.floatToRawIntBits((float) half));
     }
 

@@ -55,7 +55,7 @@ public class AccessOsNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             AnyWordValue field = (AnyWordValue) arguments.getFirst();
-            Optional<Value> setTo = readTheArgumentOf("set", 0, arguments, refinements);
+            Optional<Value> setTo = refinementArgument("set", 0, arguments, refinements);
             if (PROCESS_NUMBER.equals(field.canonical())) {
                 return setTo.map(asked -> signal(asked, evaluator.ports().processes()))
                         .orElseGet(() -> IntegerValue.of(evaluator.ports().machine().processNumber()));

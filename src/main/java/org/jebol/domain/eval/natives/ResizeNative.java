@@ -37,7 +37,7 @@ public class ResizeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            readTheArgumentOf("filter", 0, arguments, refinements)
+            refinementArgument("filter", 0, arguments, refinements)
                     .ifPresent(this::refuseFilterCatalogueHasNot);
             return resize((ImageValue) arguments.getFirst(), arguments.get(1));
         };

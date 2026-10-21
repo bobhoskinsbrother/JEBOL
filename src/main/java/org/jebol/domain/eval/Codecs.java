@@ -58,8 +58,8 @@ public final class Codecs {
     private Answer handleQoi(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkAnswer(
-                    Qoi.identifies(readTheBytesOf(data)) ? YES : NO);
-            case DECODE -> decodeImageIn(readTheBytesOf(data));
+                    Qoi.identifies(binaryAsBytes(data)) ? YES : NO);
+            case DECODE -> decodeImageIn(binaryAsBytes(data));
             case ENCODE -> Answer.answerWithBinary(writeBytesBlueFirst((ImageValue) data));
         };
     }
@@ -108,7 +108,7 @@ public final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.checkAnswer(YES);
             case DECODE -> Answer.string(StringValue.of(
-                    encodings.textBehindAnyMark(readTheBytesOf(data))));
+                    encodings.textBehindAnyMark(binaryAsBytes(data))));
             case ENCODE -> Answer.answerWithBinary(BinaryValue.of());
         };
     }
@@ -117,12 +117,12 @@ public final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.checkAnswer(NO);
             case DECODE -> Answer.answerWithBlock(BlockValue.of(
-                    parseMarkup(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
+                    parseMarkup(new String(binaryAsBytes(data), StandardCharsets.UTF_8))));
             case ENCODE -> Answer.answerNotAvailable();
         };
     }
 
-    private byte[] readTheBytesOf(Value data) {
+    private byte[] binaryAsBytes(Value data) {
         BinaryValue binary = (BinaryValue) data;
         byte[] bytes = new byte[binary.lengthFromHere()];
         for (int at = 0; at < bytes.length; at++) {

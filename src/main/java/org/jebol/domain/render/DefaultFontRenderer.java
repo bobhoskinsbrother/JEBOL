@@ -34,7 +34,7 @@ public final class DefaultFontRenderer {
         int glyphs = tables.readUint16("maxp", 4);
         int[] advances = advancesOf(tables, metrics, glyphs);
         return new DefaultFontRenderer(unitsPerEm, ascender, descender, advances,
-                ReadingOfCharacters.readFrom(tables), readTheFamilyOf(tables));
+                ReadingOfCharacters.readFrom(tables), fontFamily(tables));
     }
 
     public String familyName() {
@@ -75,7 +75,7 @@ public final class DefaultFontRenderer {
         return advances;
     }
 
-    private static String readTheFamilyOf(Tables tables) {
+    private static String fontFamily(Tables tables) {
         int at = tables.tableStart("name");
         int count = tables.readUint16(at, 2);
         int storage = at + tables.readUint16(at, 4);

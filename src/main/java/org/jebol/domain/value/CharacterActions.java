@@ -11,7 +11,7 @@ public final class CharacterActions {
     private static final long PAST_WIDEST_CODEPOINT_COUNT = 1L << 32;
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
-        long other = readTheCodepointOfferedBy(right);
+        long other = offeredCodepoint(right);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
         if (operation.canSubtractOneFromOther() && right instanceof CharacterValue) {
@@ -26,7 +26,7 @@ public final class CharacterActions {
                 : answered;
     }
 
-    private long readTheCodepointOfferedBy(Value right) {
+    private long offeredCodepoint(Value right) {
         return switch (right) {
             case CharacterValue another -> another.codepoint();
             case IntegerValue whole -> whole.magnitude();

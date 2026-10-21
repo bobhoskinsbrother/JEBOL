@@ -90,7 +90,7 @@ final class ImagePath {
     private static void fillEveryPixel(
             ImageValue image, Value written, int... order) {
 
-        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
+        if (octetsFromValue(written) instanceof int[] laid) {
             layOver(image, laid, order);
             return;
         }
@@ -117,7 +117,7 @@ final class ImagePath {
     }
 
     private static void fillSameByteEverywhere(ImageValue image, Value written) {
-        if (readAPicturesWorthOfBytes(written) instanceof int[] greys) {
+        if (octetsFromValue(written) instanceof int[] greys) {
             int pixels = stopAtWhicheverRunsOutFirst(
                     greys.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
@@ -134,7 +134,7 @@ final class ImagePath {
     }
 
     private static void fillOpacity(ImageValue image, Value written) {
-        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
+        if (octetsFromValue(written) instanceof int[] laid) {
             int pixels = stopAtWhicheverRunsOutFirst(
                     laid.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
@@ -150,7 +150,7 @@ final class ImagePath {
     }
 
     private static void fillOneChannel(ImageValue image, Value written, int channel) {
-        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
+        if (octetsFromValue(written) instanceof int[] laid) {
             int pixels = stopAtWhicheverRunsOutFirst(
                     laid.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
@@ -175,7 +175,7 @@ final class ImagePath {
         }
     }
 
-    private static int[] readAPicturesWorthOfBytes(Value written) {
+    private static int[] octetsFromValue(Value written) {
         if (written instanceof BinaryValue binary) {
             int[] octets = new int[binary.lengthFromHere()];
             for (int at = 0; at < octets.length; at++) {

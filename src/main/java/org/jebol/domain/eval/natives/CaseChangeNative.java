@@ -28,7 +28,7 @@ public abstract class CaseChangeNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case CharacterValue letter -> CharacterValue.of(change(letter.codepoint()));
             case AnyStringValue text when refinements.contains("part") -> partChanged(text,
-                    readTheArgumentOf("part", 0, arguments, refinements).orElseThrow());
+                    refinementArgument("part", 0, arguments, refinements).orElseThrow());
             case AnyStringValue text -> text.rewriteFromHere(this::changeText);
             case Value anythingElse -> refuseDatatype(anythingElse);
         };

@@ -104,11 +104,11 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         if (asked.all()) {
             return BlockValue.of(List.of(
                     IntegerValue.of(answer.status()),
-                    readTheHeadersOf(answer),
-                    readTheBodyOf(answer, asked)));
+                    headersAsBlock(answer),
+                    answerBody(answer, asked)));
         }
         requireAnswerRatherThanErrorPage(answer, evaluator);
-        return readTheBodyOf(answer, asked);
+        return answerBody(answer, asked);
     }
 
     private HttpPort.Answer fetch(PortValue port, WhatWasAsked asked) {
@@ -117,7 +117,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                 readTheMethodOf(port),
                 listTheHeaderNamesOf(port, asked),
                 listTheHeaderValuesOf(port, asked),
-                readTheContentOf(port),
+                contentBytes(port),
                 followsRedirects(port),
                 readTheTimeoutOf(port));
         try {
@@ -138,7 +138,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                 "protocol", phrase, StringValue.of(phrase)));
     }
 
-    private Value readTheBodyOf(HttpPort.Answer answer, WhatWasAsked asked) {
+    private Value answerBody(HttpPort.Answer answer, WhatWasAsked asked) {
         if (asked.binary()) {
             return trimOf(BinaryValue.ofBytes(answer.body()), asked, answer);
         }
@@ -219,7 +219,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                 false, Set.of());
     }
 
-    private Value readTheHeadersOf(HttpPort.Answer answer) {
+    private Value headersAsBlock(HttpPort.Answer answer) {
         List<Value> flat = new ArrayList<>();
         for (int at = 0; at < answer.headerNames().size(); at++) {
             flat.add(StringValue.of(answer.headerNames().get(at)));
@@ -293,7 +293,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return flat;
     }
 
-    private byte[] readTheContentOf(PortValue port) {
+    private byte[] contentBytes(PortValue port) {
         Value content = port.readFieldValue("spec").readFieldValue("content");
         return switch (content) {
             case AnyStringValue written -> written.asOctets();

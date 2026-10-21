@@ -214,12 +214,12 @@ public final class BitsetValue implements Value {
     private byte[] takeSomeBitsFrom(Value right) {
         return switch (right) {
             case BitsetValue members -> members.octets();
-            case BinaryValue given -> readTheBytesOf(given);
+            case BinaryValue given -> binaryAsBytes(given);
             default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
-    private byte[] readTheBytesOf(BinaryValue given) {
+    private byte[] binaryAsBytes(BinaryValue given) {
         byte[] read = new byte[given.lengthFromHere()];
         for (int at = 0; at < read.length; at++) {
             read[at] = (byte) given.storage().at(given.index() + at);

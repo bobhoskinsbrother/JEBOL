@@ -16,7 +16,7 @@ public final class Bincode {
     }
 
     private static int readTheWidthOf(String code) {
-        return switch (readTheBaseOf(code)) {
+        return switch (baseCode(code)) {
             case "ui8", "si8" -> 1;
             case "ui16", "si16" -> 2;
             case "ui24", "si24" -> 3;
@@ -26,7 +26,7 @@ public final class Bincode {
         };
     }
 
-    private static int readTheFloatWidthOf(String code) {
+    private static int floatWidth(String code) {
         return switch (code) {
             case "float16", "f16", "f16be", "f16le" -> 2;
             case "float", "f32", "f32be", "f32le" -> 4;
@@ -39,7 +39,7 @@ public final class Bincode {
         return code.endsWith("be");
     }
 
-    private static String readTheBaseOf(String code) {
+    private static String baseCode(String code) {
         if (code.endsWith("be") || code.endsWith("le")) {
             return code.substring(0, code.length() - 2);
         }
@@ -51,13 +51,13 @@ public final class Bincode {
     }
 
     private static boolean isSigned(String code) {
-        return readTheBaseOf(code).startsWith("si");
+        return baseCode(code).startsWith("si");
     }
 
     static boolean knows(String code) {
-        return readTheWidthOf(code) > 0 || readTheFloatWidthOf(code) > 0
-                || POSITIONS.contains(readTheBaseOf(code))
-                || DATA.contains(readTheBaseOf(code))
+        return readTheWidthOf(code) > 0 || floatWidth(code) > 0
+                || POSITIONS.contains(baseCode(code))
+                || DATA.contains(baseCode(code))
                 || VARIABLE_WIDTH.contains(code)
                 || code.equals("skipbits")
                 || BITS.contains(code)
@@ -171,7 +171,7 @@ public final class Bincode {
                         writeWholeNumber(readItemAt(dialect, step, code)));
                 continue;
             }
-            if (readTheFloatWidthOf(code) > 0) {
+            if (floatWidth(code) > 0) {
                 step++;
                 writeFloat(cursor, code,
                         writeAnyNumber(readItemAt(dialect, step, code)));
@@ -200,7 +200,7 @@ public final class Bincode {
         if (MOMENTS.contains(code)) {
             return writeMoment(cursor, dialect, step, code, secondsSinceTheEpoch);
         }
-        switch (readTheBaseOf(code)) {
+        switch (baseCode(code)) {
             case "at" -> moveTo(cursor, writeWholeNumber(readItemAt(dialect, ++step, code)) - 1);
             case "atz" -> moveTo(cursor, writeWholeNumber(readItemAt(dialect, ++step, code)));
             case "bytes" -> writeBytes(cursor, readItemAt(dialect, ++step, code));
@@ -237,7 +237,7 @@ public final class Bincode {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
                 continue;
             }
-            if (readTheFloatWidthOf(code) > 0) {
+            if (floatWidth(code) > 0) {
                 read.add(readFloat(cursor, code));
                 continue;
             }
@@ -282,7 +282,7 @@ public final class Bincode {
             return step;
         }
         Value command = dialect.asWritten(step);
-        switch (readTheBaseOf(code)) {
+        switch (baseCode(code)) {
             case "at" -> moveTo(cursor,
                     readWholeNumberAfter(dialect, ++step, command) - 1);
             case "atz" -> moveTo(cursor,
@@ -328,7 +328,7 @@ public final class Bincode {
             case "bitset32" -> read.add(readBitset(cursor, 4));
             case "bytes", "octal-bytes", "string-bytes" -> {
                 boolean aCountFollows = step + 1 < dialect.size();
-                read.add(runOfBytesRead(cursor, readTheBaseOf(code), aCountFollows
+                read.add(runOfBytesRead(cursor, baseCode(code), aCountFollows
                         ? countOfBytesAt(dialect, step + 1)
                         : cursor.octets.size() - cursor.at));
                 if (aCountFollows) {
@@ -352,7 +352,7 @@ public final class Bincode {
         int from = cursor.at;
         cursor.at += wanted;
         if (code.equals("bytes")) {
-            return readTheBinaryOf(cursor, from, wanted);
+            return binaryAt(cursor, from, wanted);
         }
         StringBuilder digits = new StringBuilder();
         for (int at = from; at < from + wanted && readOctetAt(cursor, at) != 0; at++) {
@@ -371,12 +371,12 @@ public final class Bincode {
     private static Value readBytesAfterTheirLength(Cursor cursor, String lengthCode) {
         int wanted = (int) readWholeNumber(cursor, lengthCode);
         refuseReadPastEnd(cursor, wanted);
-        Value taken = readTheBinaryOf(cursor, cursor.at, wanted);
+        Value taken = binaryAt(cursor, cursor.at, wanted);
         cursor.at += wanted;
         return taken;
     }
 
-    private static Value readTheBinaryOf(Cursor cursor, int from, int length) {
+    private static Value binaryAt(Cursor cursor, int from, int length) {
         int[] octets = new int[Math.max(0, length)];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = readOctetAt(cursor, from + at);
@@ -394,7 +394,7 @@ public final class Bincode {
     }
 
     private static void refuseNumberTooWide(String code, long value) {
-        String base = readTheBaseOf(code);
+        String base = baseCode(code);
         long ceiling = largestValueFor(base);
         if (value > ceiling || value < smallestValueFor(base, ceiling)) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(value));
@@ -434,7 +434,7 @@ public final class Bincode {
     }
 
     private static void writeFloat(Cursor cursor, String code, double value) {
-        int width = readTheFloatWidthOf(code);
+        int width = floatWidth(code);
         long bits = switch (width) {
             case 2 -> HalfFloats.of((float) value) & 0xFFFFL;
             case 4 -> Float.floatToIntBits((float) value) & 0xFFFFFFFFL;
@@ -450,7 +450,7 @@ public final class Bincode {
     }
 
     private static Value readFloat(Cursor cursor, String code) {
-        int width = readTheFloatWidthOf(code);
+        int width = floatWidth(code);
         refuseReadPastEnd(cursor, width);
         long bits = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {

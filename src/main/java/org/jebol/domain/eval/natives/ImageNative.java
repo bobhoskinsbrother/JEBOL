@@ -53,7 +53,7 @@ public class ImageNative extends DefaultNative {
     private String readTheCodecName(List<Value> arguments, Evaluator evaluator,
                                     Set<String> refinements) {
 
-        Optional<Value> asked = readTheArgumentOf("as", 0, arguments, refinements);
+        Optional<Value> asked = refinementArgument("as", 0, arguments, refinements);
         String type = asked.filter(AnyWordValue.class::isInstance)
                 .map(word -> ((AnyWordValue) word).canonical())
                 .orElse("");
@@ -68,9 +68,9 @@ public class ImageNative extends DefaultNative {
                             Set<String> refinements) {
 
         String type = readTheCodecName(arguments, evaluator, refinements);
-        Value source = readTheArgumentOf("load", 0, arguments, refinements)
+        Value source = refinementArgument("load", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
-        int which = readTheArgumentOf("frame", 0, arguments, refinements)
+        int which = refinementArgument("frame", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(frame -> (int) ((IntegerValue) frame).magnitude())
                 .orElse(FIRST_FRAME);
@@ -113,9 +113,9 @@ public class ImageNative extends DefaultNative {
         String type = Optional.of(readTheCodecName(arguments, evaluator, refinements))
                 .filter(named -> !named.isEmpty())
                 .orElse(CODEC_NOBODY_NAMED_IS);
-        Value destination = readTheArgumentOf("save", 0, arguments, refinements)
+        Value destination = refinementArgument("save", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
-        Value given = readTheArgumentOf("save", 1, arguments, refinements)
+        Value given = refinementArgument("save", 1, arguments, refinements)
                 .orElseGet(NoneValue::none);
         if (!(given instanceof ImageValue image)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));

@@ -93,14 +93,14 @@ public class RsaNative extends CipherNative {
     }
 
     private String digestNamedIn(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("hash", 0, arguments, refinements)
+        return refinementArgument("hash", 0, arguments, refinements)
                 .filter(AnyWordValue.class::isInstance)
                 .map(digest -> ((AnyWordValue) digest).canonical())
                 .orElse(DIGEST_WHEN_NONE_IS_NAMED);
     }
 
     private byte[] readSignatureGivenTo(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("verify", 0, arguments, refinements)
+        return refinementArgument("verify", 0, arguments, refinements)
                 .filter(BinaryValue.class::isInstance)
                 .map(signature -> ((BinaryValue) signature).octetsFromHere())
                 .orElseGet(() -> new byte[0]);

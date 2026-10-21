@@ -58,7 +58,7 @@ public class DifferenceNative extends DefaultNative {
     }
 
     private int recordWidth(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("skip", 0, arguments, refinements)
+        return refinementArgument("skip", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(size -> (int) Math.max(EVERY_MEMBER_ON_ITS_OWN,
                         ((IntegerValue) size).magnitude()))

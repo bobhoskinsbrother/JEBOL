@@ -65,7 +65,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
         if (!(original instanceof RebolSeries series)) {
             return refuseDatatype(original);
         }
-        Value limit = readTheArgumentOf("part", 0, arguments, refinements).orElseThrow();
+        Value limit = refinementArgument("part", 0, arguments, refinements).orElseThrow();
         if (series instanceof ImageValue picture && limit instanceof PairValue(double x, double y)) {
             return picture.copyRectangle((int) x, (int) y);
         }
@@ -86,7 +86,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
     }
 
     private Set<Datatype> chooseWhichDatatypesToCopy(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("types", 0, arguments, refinements)
+        return refinementArgument("types", 0, arguments, refinements)
                 .<Set<Datatype>>map(kinds -> switch (kinds) {
                     case Datatype one -> Set.of(one);
                     case TypesetValue several -> several.members();

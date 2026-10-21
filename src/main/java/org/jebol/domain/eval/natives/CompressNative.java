@@ -43,7 +43,7 @@ public class CompressNative extends CompressionNative {
         return (arguments, evaluator, context, refinements) -> {
             String method = readKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
-            int level = readTheArgumentOf("level", 0, arguments, refinements)
+            int level = refinementArgument("level", 0, arguments, refinements)
                     .map(asked -> (int) ((IntegerValue) asked).magnitude())
                     .orElse(Deflater.DEFAULT_COMPRESSION);
             return BinaryValue.ofBytes(encodings.compress(

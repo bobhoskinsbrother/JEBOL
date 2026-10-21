@@ -27,7 +27,7 @@ public class QuitNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            throw new QuitRequested(readTheArgumentOf("return", 0, arguments, refinements)
+            throw new QuitRequested(refinementArgument("return", 0, arguments, refinements)
                     .filter(this::isSomethingOtherThanNone)
                     .orElse(UnsetValue.unset()));
         };

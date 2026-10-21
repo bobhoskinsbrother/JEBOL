@@ -54,7 +54,7 @@ public class IconvNative extends EncodingNative {
         return (arguments, evaluator, context, refinements) -> {
             byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
             String text = encodings.textDecodedAs(octets, findCharacterSetFor(arguments.get(1)));
-            return readTheArgumentOf("to", 0, arguments, refinements)
+            return refinementArgument("to", 0, arguments, refinements)
                     .map(this::findCharacterSetFor)
                     .<Value>map(into -> StandardCharsets.UTF_8.equals(into)
                             ? StringValue.of(text)

@@ -37,9 +37,9 @@ public class Rc4Native extends CipherNative {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("stream")) {
                 return encipherThroughStreamInPlace(
-                        (HandleValue) readTheArgumentOf("stream", 0, arguments, refinements)
+                        (HandleValue) refinementArgument("stream", 0, arguments, refinements)
                                 .orElseThrow(),
-                        (BinaryValue) readTheArgumentOf("stream", 1, arguments, refinements)
+                        (BinaryValue) refinementArgument("stream", 1, arguments, refinements)
                                 .orElseThrow());
             }
             if (refinements.contains("key")) {

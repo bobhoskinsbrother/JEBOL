@@ -110,7 +110,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * That is {@code get_scalar} testing {@code *(REBINT *)data == 0} before
      * it builds either.
      */
-    public Value readTheElementOf(StructField field, int element) {
+    public Value elementAt(StructField field, int element) {
         int at = addressOf(field, element);
         return switch (field.type()) {
             case StructFieldType.Numeric number ->
@@ -133,7 +133,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      */
     public Value valueOf(StructField field) {
         if (!field.isArray()) {
-            return readTheElementOf(field, 0);
+            return elementAt(field, 0);
         }
         if (field.type() instanceof StructFieldType.Numeric(VectorKind kind)) {
             long[] stored = new long[field.dimension()];
@@ -149,7 +149,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     public List<Value> readTheElementsOf(StructField field) {
         List<Value> found = new ArrayList<>(field.dimension());
         for (int element = 0; element < field.dimension(); element++) {
-            found.add(readTheElementOf(field, element));
+            found.add(elementAt(field, element));
         }
         return found;
     }
@@ -166,7 +166,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     public Value reflectTheValueOf(StructField field) {
         return field.dimension() > 1
                 ? BlockValue.of(readTheElementsOf(field))
-                : readTheElementOf(field, 0);
+                : elementAt(field, 0);
     }
 
     /**

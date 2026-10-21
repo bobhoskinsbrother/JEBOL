@@ -34,7 +34,7 @@ public final class EventPath {
             case "code" -> event.has(EventValue.Flag.HAS_CODE)
                     ? IntegerValue.of(event.data())
                     : NoneValue.none();
-            case "data" -> readTheDroppedFileOf(event);
+            case "data" -> droppedFile(event);
             default -> throw Raised.of(
                     EvaluationFailure.INVALID_PATH, asked.spelling());
         };
@@ -70,7 +70,7 @@ public final class EventPath {
         return event.has(EventValue.Flag.HAS_DATA);
     }
 
-    private static Value readTheDroppedFileOf(EventValue event) {
+    private static Value droppedFile(EventValue event) {
         if (!event.has(EventValue.Flag.HAS_DATA)
                 || event.typeIndex() != EventCatalogue.DROP_FILE) {
             return NoneValue.none();

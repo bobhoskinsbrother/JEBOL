@@ -61,9 +61,9 @@ public class CallNative extends HostNative {
             evaluator.policies().require(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             ProgramCalling calling = new ProgramCalling(
                     readTheCommandWordsOf(arguments.getFirst(), evaluator, context), refinements,
-                    readTheArgumentOf("input", 0, arguments, refinements),
-                    readTheArgumentOf("output", 0, arguments, refinements),
-                    readTheArgumentOf("error", 0, arguments, refinements));
+                    refinementArgument("input", 0, arguments, refinements),
+                    refinementArgument("output", 0, arguments, refinements),
+                    refinementArgument("error", 0, arguments, refinements));
             return runThroughFileSystem(() -> calling.answerThrough(evaluator.ports().processes(), evaluator));
         };
     }
@@ -76,10 +76,10 @@ public class CallNative extends HostNative {
         if (items.isEmpty()) {
             throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
-        return items.stream().map(item -> readTheCommandWordOf(item, evaluator, context)).toList();
+        return items.stream().map(item -> commandWord(item, evaluator, context)).toList();
     }
 
-    private String readTheCommandWordOf(Value item, Evaluator evaluator, Context context) {
+    private String commandWord(Value item, Evaluator evaluator, Context context) {
         Value resolved = item;
         if (item instanceof GetWordValue word) {
             resolved = word.findBoundSlot().value();

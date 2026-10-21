@@ -34,8 +34,8 @@ public class ChangeAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> new SeriesChange(
                 arguments.get(1), refinements,
-                readTheArgumentOf("part", 0, arguments, refinements),
-                readTheArgumentOf("dup", 0, arguments, refinements))
+                refinementArgument("part", 0, arguments, refinements),
+                refinementArgument("dup", 0, arguments, refinements))
                 .change(arguments.getFirst());
     }
 }

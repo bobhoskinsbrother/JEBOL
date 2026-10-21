@@ -21,8 +21,8 @@ public abstract class PortAction extends HostNative implements ActionValue {
 
     protected PortRequest readRequest(List<Value> arguments, Set<String> refinements) {
         return new PortRequest(
-                readTheArgumentOf("part", 0, arguments, refinements),
-                readTheArgumentOf("seek", 0, arguments, refinements),
+                refinementArgument("part", 0, arguments, refinements),
+                refinementArgument("seek", 0, arguments, refinements),
                 refinements);
     }
 }

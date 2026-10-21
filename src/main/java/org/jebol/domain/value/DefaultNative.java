@@ -62,8 +62,8 @@ public abstract non-sealed class DefaultNative implements NativeValue {
         return parameters;
     }
 
-    protected Optional<Value> readTheArgumentOf(String refinement, int which,
-                                                List<Value> arguments, Set<String> asked) {
+    protected Optional<Value> refinementArgument(String refinement, int which,
+                                                 List<Value> arguments, Set<String> asked) {
 
         if (!asked.contains(refinement)) {
             return Optional.empty();

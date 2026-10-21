@@ -54,7 +54,7 @@ public class TakeAction extends DefaultNative implements ActionValue {
         if (!refinements.contains("part")) {
             return deepenIfAsked(takeOne(series, refinements.contains("last")), refinements);
         }
-        Optional<Value> howMuch = readTheArgumentOf("part", 0, arguments, refinements);
+        Optional<Value> howMuch = refinementArgument("part", 0, arguments, refinements);
         if (howMuch.isPresent() && howMuch.get() instanceof RebolSeries upTo) {
             return deepenIfAsked(takeSeveral(series.earlierSeries(upTo),
                     Math.abs(upTo.index() - series.index())), refinements);

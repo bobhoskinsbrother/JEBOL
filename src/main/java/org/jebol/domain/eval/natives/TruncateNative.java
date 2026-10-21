@@ -30,7 +30,7 @@ public class TruncateNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case RebolSeries series -> truncate(series,
-                    readTheArgumentOf("part", 0, arguments, refinements)
+                    refinementArgument("part", 0, arguments, refinements)
                             .map(count -> ((IntegerValue) count).magnitude()));
             case Value anythingElse -> refuseDatatype(anythingElse);
         };

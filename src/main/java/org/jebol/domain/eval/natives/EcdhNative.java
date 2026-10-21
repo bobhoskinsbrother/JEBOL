@@ -60,7 +60,7 @@ public class EcdhNative extends CipherNative {
                 return BinaryValue.ofBytes(key.get().publishPoint());
             }
             if (refinements.contains("secret")) {
-                return agreeSecretBetween(key.get(), ((BinaryValue) readTheArgumentOf(
+                return agreeSecretBetween(key.get(), ((BinaryValue) refinementArgument(
                         "secret", 0, arguments, refinements).orElseThrow()).octetsFromHere());
             }
             return UnsetValue.unset();

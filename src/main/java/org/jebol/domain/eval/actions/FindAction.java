@@ -74,9 +74,9 @@ public class FindAction extends SeriesSearchAction {
     private Value findMatch(RebolSeries series, Value wanted, List<Value> arguments,
                             Set<String> refinements) {
         SeriesSearch search = new SeriesSearch(series, wanted, refinements,
-                readTheArgumentOf("part", 0, arguments, refinements),
-                readTheArgumentOf("skip", 0, arguments, refinements),
-                readTheArgumentOf("with", 0, arguments, refinements));
+                refinementArgument("part", 0, arguments, refinements),
+                refinementArgument("skip", 0, arguments, refinements),
+                refinementArgument("with", 0, arguments, refinements));
         series.refuseNeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
             if (series instanceof AnyBlockValue) {

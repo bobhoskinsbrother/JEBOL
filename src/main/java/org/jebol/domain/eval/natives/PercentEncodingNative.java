@@ -19,7 +19,7 @@ public abstract class PercentEncodingNative extends EncodingNative {
     }
 
     protected char escapeCharacterIn(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("escape", 0, arguments, refinements)
+        return refinementArgument("escape", 0, arguments, refinements)
                 .map(asked -> (char) ((CharacterValue) asked).codepoint())
                 .orElse(ESCAPE_UNLESS_ASKED);
     }

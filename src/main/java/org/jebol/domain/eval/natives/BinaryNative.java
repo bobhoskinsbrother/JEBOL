@@ -43,23 +43,23 @@ public class BinaryNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             UnaryOperator<Value> lookedUp = item -> fetchIfItAsksToBe(item, evaluator, context);
             ObjectValue held = dialectContextFor(arguments.getFirst());
-            readTheArgumentOf("init", 0, arguments, refinements)
+            refinementArgument("init", 0, arguments, refinements)
                     .ifPresent(replacement -> restartWith(held, replacement));
             if (refinements.contains("write")) {
                 arguments.getFirst().requireChangeable();
                 writeThroughTheDialect(held, readTheCodesWrittenIn(
-                        readTheArgumentOf("write", 0, arguments, refinements).orElseThrow()), lookedUp);
+                        refinementArgument("write", 0, arguments, refinements).orElseThrow()), lookedUp);
                 if (arguments.getFirst() instanceof BinaryValue given) {
                     layBackInto(given, findCursorNamed(held, "buffer").head());
                 }
             }
             if (refinements.contains("read")) {
                 return readThroughTheDialect(held,
-                        readTheArgumentOf("read", 0, arguments, refinements).orElseThrow(),
+                        refinementArgument("read", 0, arguments, refinements).orElseThrow(),
                         lookedUp,
-                        readTheArgumentOf("with", 0, arguments, refinements)
+                        refinementArgument("with", 0, arguments, refinements)
                                 .orElseGet(NoneValue::none),
-                        readTheArgumentOf("into", 0, arguments, refinements)
+                        refinementArgument("into", 0, arguments, refinements)
                                 .filter(into -> !(into instanceof NoneValue)));
             }
             return held;

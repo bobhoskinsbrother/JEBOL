@@ -37,7 +37,7 @@ public class RequestColorNative extends WindowNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            Optional<int[]> suggested = readTheArgumentOf("default", 0, arguments, refinements)
+            Optional<int[]> suggested = refinementArgument("default", 0, arguments, refinements)
                     .filter(TupleValue.class::isInstance)
                     .map(given -> ((TupleValue) given).segments());
             return runThroughWindows(() -> evaluator.ports().windows().chooseColour(suggested)

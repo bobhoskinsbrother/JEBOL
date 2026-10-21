@@ -38,7 +38,7 @@ public class ComposeNative extends DefaultNative {
             if (template instanceof MapValue map) {
                 return composeMap(map, evaluator, context, keepingBlocksWhole, goingDeep);
             }
-            Optional<Value> target = readTheArgumentOf("into", 0, arguments, refinements);
+            Optional<Value> target = refinementArgument("into", 0, arguments, refinements);
             if (!(template instanceof AnyBlockValue block)) {
                 return target.isEmpty()
                         ? template

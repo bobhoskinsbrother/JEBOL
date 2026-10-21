@@ -37,7 +37,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value subject = arguments.getFirst();
-            Optional<Value> scale = readTheArgumentOf("to", 0, arguments, refinements);
+            Optional<Value> scale = refinementArgument("to", 0, arguments, refinements);
             if (subject instanceof TimeValue time) {
                 return roundTime(time, scale);
             }

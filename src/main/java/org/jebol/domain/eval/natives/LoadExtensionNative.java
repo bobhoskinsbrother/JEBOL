@@ -50,7 +50,7 @@ public class LoadExtensionNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value name = arguments.getFirst();
-            Optional<Value> dispatcher = readTheArgumentOf("dispatch", 0, arguments, refinements);
+            Optional<Value> dispatcher = refinementArgument("dispatch", 0, arguments, refinements);
             if (dispatcher.isEmpty()) {
                 throw refuseNativeCode(name, evaluator);
             }

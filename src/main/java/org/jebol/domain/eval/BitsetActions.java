@@ -209,12 +209,12 @@ public final class BitsetActions implements Actions {
                     octets = withBitSet(octets, point);
                 }
             } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
-                int from = findBitAsked(readTheCodePointOf(spec));
+                int from = findBitAsked(codepointFrom(spec));
                 int to = from;
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
-                    to = findBitAsked(readTheCodePointOf(runEndAt(spec, specs, at + 2)));
+                    to = findBitAsked(codepointFrom(runEndAt(spec, specs, at + 2)));
                     at += 2;
                 }
                 if (to < from) {
@@ -268,8 +268,8 @@ public final class BitsetActions implements Actions {
                     && items.get(at + 1) instanceof AnyWordValue dash
                     && dash.spelling().equals("-");
             if (isRange) {
-                int from = readTheCodePointOf(items.get(at));
-                int to = readTheCodePointOf(items.get(at + 2));
+                int from = codepointFrom(items.get(at));
+                int to = codepointFrom(items.get(at + 2));
                 for (int point = from; point <= to; point++) {
                     points.add(point);
                 }
@@ -278,7 +278,7 @@ public final class BitsetActions implements Actions {
             }
             if (items.get(at) instanceof CharacterValue
                     || items.get(at) instanceof IntegerValue) {
-                points.add(readTheCodePointOf(items.get(at)));
+                points.add(codepointFrom(items.get(at)));
             } else if (items.get(at) instanceof AnyStringValue text) {
                 text.text().codePoints().forEach(points::add);
             }
@@ -286,7 +286,7 @@ public final class BitsetActions implements Actions {
         return points.stream().mapToInt(Integer::intValue).toArray();
     }
 
-    private static int readTheCodePointOf(Value value) {
+    private static int codepointFrom(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
                 : (int) Comparison.asDouble(value);

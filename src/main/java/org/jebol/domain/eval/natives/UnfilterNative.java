@@ -46,7 +46,7 @@ public class UnfilterNative extends PngFilterNative {
             boolean filterGiven = refinements.contains("as");
             requireLinesFit(filterGiven ? width : width + BYTE_NAMING_FILTER,
                     data.length, arguments, refinements);
-            int filter = readTheArgumentOf("as", 0, arguments, refinements)
+            int filter = refinementArgument("as", 0, arguments, refinements)
                     .map(this::readFilterNamedBy)
                     .orElse(EACH_LINE_NAMES_ITS_OWN_FILTER);
             return BinaryValue.ofBytes(encodings.pngUnfilter(

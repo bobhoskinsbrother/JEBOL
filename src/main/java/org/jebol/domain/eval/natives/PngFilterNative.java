@@ -59,7 +59,7 @@ public abstract class PngFilterNative extends EncodingNative {
     }
 
     private Optional<Value> findBytesPerPixelAsked(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("skip", 0, arguments, refinements);
+        return refinementArgument("skip", 0, arguments, refinements);
     }
 
     protected void requireLinesFit(int lineLength, int length, List<Value> arguments,

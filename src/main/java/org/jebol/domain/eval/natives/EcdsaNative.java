@@ -43,7 +43,7 @@ public class EcdsaNative extends CipherNative {
                     && arguments.getFirst() instanceof BinaryValue published) {
                 return trueOrNone(EllipticCurveKey.verifiesWithAPublishedPoint(
                         published.octetsFromHere(),
-                        ((AnyWordValue) readTheArgumentOf("curve", 0, arguments, refinements)
+                        ((AnyWordValue) refinementArgument("curve", 0, arguments, refinements)
                                 .orElseThrow()).canonical(),
                         hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere()));

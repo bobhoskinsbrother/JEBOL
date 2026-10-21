@@ -33,7 +33,7 @@ public class TrimAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> arguments.getFirst().trim(
-                new Trimming(refinements, readTheArgumentOf("with", 0, arguments, refinements)
+                new Trimming(refinements, refinementArgument("with", 0, arguments, refinements)
                         .map(this::collectTheUnwantedCodePoints)
                         .orElseGet(Set::of)));
     }

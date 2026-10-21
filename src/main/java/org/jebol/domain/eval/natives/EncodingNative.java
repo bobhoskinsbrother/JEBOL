@@ -39,7 +39,7 @@ public abstract class EncodingNative extends DefaultNative {
     }
 
     protected Optional<Long> countHowManyWanted(Value source, List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("part", 0, arguments, refinements)
+        return refinementArgument("part", 0, arguments, refinements)
                 .filter(count -> !(count instanceof NoneValue))
                 .map(count -> countUnitsBy(source, count));
     }

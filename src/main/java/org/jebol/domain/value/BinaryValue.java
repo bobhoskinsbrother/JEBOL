@@ -351,7 +351,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     @Override
     public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
         return Optional.of(countInHundredths(
-                wanted, Double.longBitsToDouble(readTheBitsOfTheLastEightOctets())));
+                wanted, Double.longBitsToDouble(trailingBits())));
     }
 
     public String decodeAsText() {
@@ -507,7 +507,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         }
     }
 
-    public long readTheBitsOfTheLastEightOctets() {
+    public long trailingBits() {
         int howMany = lengthFromHere();
         long bits = 0;
         for (int at = Math.max(0, howMany - Long.BYTES); at < howMany; at++) {

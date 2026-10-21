@@ -186,7 +186,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
                 case IssueValue issue -> readHexNumberIn(issue);
                 case AnyStringValue text -> readWholeNumberFromText(text);
                 case CharacterValue character -> IntegerValue.of(character.codepoint());
-                case BinaryValue bytes -> IntegerValue.of(bytes.readTheBitsOfTheLastEightOctets());
+                case BinaryValue bytes -> IntegerValue.of(bytes.trailingBits());
                 case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceEpoch());
                 case AnyDecimalValue number -> makeWholeNumberWithinRange(number.quantity());
                 case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());

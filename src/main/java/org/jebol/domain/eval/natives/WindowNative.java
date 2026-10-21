@@ -37,7 +37,7 @@ public abstract class WindowNative extends HostNative {
     }
 
     protected Optional<String> textGivenFor(String refinement, List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf(refinement, 0, arguments, refinements)
+        return refinementArgument(refinement, 0, arguments, refinements)
                 .filter(AnyStringValue.class::isInstance)
                 .map(given -> ((AnyStringValue) given).text());
     }

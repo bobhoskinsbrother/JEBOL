@@ -62,7 +62,7 @@ public record CharacterValue(int codepoint) implements Value {
     @Override
     public boolean isEqualTo(Value other, Sameness how) {
         if (other instanceof CharacterValue || how.theyWereBroughtTogetherFirst()) {
-            return fold(codepoint) == fold(readTheCodepointOf(other));
+            return fold(codepoint) == fold(codepointFrom(other));
         }
         return false;
     }
@@ -71,7 +71,7 @@ public record CharacterValue(int codepoint) implements Value {
         return Character.toLowerCase(codepoint);
     }
 
-    private static int readTheCodepointOf(Value value) {
+    private static int codepointFrom(Value value) {
         return value instanceof CharacterValue(int theirs)
                 ? theirs
                 : (int) ((IntegerValue) value).magnitude();

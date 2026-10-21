@@ -36,8 +36,8 @@ public class SortAction extends DefaultNative implements ActionValue {
             if (!(arguments.getFirst() instanceof RebolSeries series)) {
                 return refuseDatatype(arguments.getFirst());
             }
-            Optional<Value> comparator = readTheArgumentOf("compare", 0, arguments, refinements);
-            Optional<Value> partCount = readTheArgumentOf("part", 0, arguments, refinements);
+            Optional<Value> comparator = refinementArgument("compare", 0, arguments, refinements);
+            Optional<Value> partCount = refinementArgument("part", 0, arguments, refinements);
             SeriesSorting sorting = new SeriesSorting(evaluator, comparator,
                     refinements.contains("case"), refinements.contains("reverse"),
                     refinements.contains("all"),
@@ -50,7 +50,7 @@ public class SortAction extends DefaultNative implements ActionValue {
             if (howMany <= 1) {
                 return series;
             }
-            int stride = readTheArgumentOf("skip", 0, arguments, refinements)
+            int stride = refinementArgument("skip", 0, arguments, refinements)
                     .map(size -> (int) ((IntegerValue) size).magnitude())
                     .orElse(EACH_ITEM_ON_ITS_OWN);
             refuseWhatCannotBeSorted(refinements, howMany, stride, comparator);

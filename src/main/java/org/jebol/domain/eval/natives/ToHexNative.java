@@ -29,7 +29,7 @@ public class ToHexNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            HexWidth width = new HexWidth(readTheArgumentOf("size", 0, arguments, refinements)
+            HexWidth width = new HexWidth(refinementArgument("size", 0, arguments, refinements)
                     .map(asked -> OptionalLong.of(((IntegerValue) asked).magnitude()))
                     .orElseGet(OptionalLong::empty));
             return IssueValue.of(arguments.getFirst().writeInHex(width));

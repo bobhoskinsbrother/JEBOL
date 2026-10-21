@@ -33,9 +33,9 @@ public class ReduceNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value source = arguments.getFirst();
-            Optional<Value> target = readTheArgumentOf("into", 0, arguments, refinements);
+            Optional<Value> target = refinementArgument("into", 0, arguments, refinements);
             Optional<AnyBlockValue> reduced = reduceFrom(source, evaluator,
-                    readTheArgumentOf("only", 0, arguments, refinements), refinements);
+                    refinementArgument("only", 0, arguments, refinements), refinements);
             if (reduced.isEmpty() && target.isEmpty()) {
                 return source;
             }

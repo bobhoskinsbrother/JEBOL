@@ -38,7 +38,7 @@ public final class ImageOperations {
         int wide = storage.wide();
         int high = storage.high();
         int spread = limitToHalfShorterSide(radius, wide, high);
-        byte[] picture = readTheChannelsOf(storage, wide, high);
+        byte[] picture = flattenChannels(storage, wide, high);
         byte[] working = new byte[picture.length];
         for (int boxWidth : findBoxWidthsMatching(spread)) {
             blurWithBoxes(picture, working, wide, high, (boxWidth - 1) / 2);
@@ -156,7 +156,7 @@ public final class ImageOperations {
         return (wide * CHANNELS) + CHANNELS;
     }
 
-    private static byte[] readTheChannelsOf(ImageStorage storage, int wide, int high) {
+    private static byte[] flattenChannels(ImageStorage storage, int wide, int high) {
         byte[] channels = new byte[(wide * high * CHANNELS)
                 + measureRoomBlurRunsInto(wide)];
         for (int pixel = 1; pixel <= wide * high; pixel++) {

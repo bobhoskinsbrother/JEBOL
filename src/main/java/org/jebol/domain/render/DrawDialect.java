@@ -68,13 +68,13 @@ public final class DrawDialect {
 
         void walk(AnyBlockValue block) {
             try {
-                readEveryCommandOfOneAtATime(block);
+                walkCommands(block);
             } catch (Raised
                     malformedSoWhatWasPaintedStandsRatherThanTakingTheWindowDown) {
             }
         }
 
-        private void readEveryCommandOfOneAtATime(AnyBlockValue block) {
+        private void walkCommands(AnyBlockValue block) {
             AnyBlockValue left = block;
             AnyBlockValue answer = BlockValue.of();
             while (Delect.read(dialect, left, answer, false, null, Context.unbound())

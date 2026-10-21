@@ -30,7 +30,7 @@ public class AjoinNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             List<Value> all = evaluator.evaluateEachOrRaise(
                     (AnyBlockValue) arguments.getFirst(), context);
-            String separator = readTheArgumentOf("with", 0, arguments, refinements)
+            String separator = refinementArgument("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");
             return chooseTheKindOf(all).wrap(all.stream()

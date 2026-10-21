@@ -64,7 +64,7 @@ public class RequestFileNative extends WindowNative {
     }
 
     private List<String> filterPairsIn(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("filter", 0, arguments, refinements)
+        return refinementArgument("filter", 0, arguments, refinements)
                 .map(listed -> ((AnyBlockValue) listed).remaining())
                 .map(this::pairUp)
                 .orElse(List.of());

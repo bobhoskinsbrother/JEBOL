@@ -34,7 +34,7 @@ public abstract class SetOperationNative extends DefaultNative {
                 arguments.getFirst(), arguments.get(1),
                 SetOperation.findTheOperationNamed(nativeName()).orElseThrow(),
                 refinements.contains("case"),
-                recordWidthOf(readTheArgumentOf("skip", 0, arguments, refinements)));
+                recordWidthOf(refinementArgument("skip", 0, arguments, refinements)));
     }
 
     private int recordWidthOf(Optional<Value> width) {

@@ -44,10 +44,10 @@ public class SwapEndianNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             BinaryValue bytes = (BinaryValue) arguments.getFirst();
-            int width = readWidthItSwaps(readTheArgumentOf("width", 0, arguments, refinements)
+            int width = readWidthItSwaps(refinementArgument("width", 0, arguments, refinements)
                     .orElse(TWO_BYTES_UNLESS_ASKED));
             byte[] octets = bytes.octetsFromHere();
-            int reach = readTheArgumentOf("part", 0, arguments, refinements)
+            int reach = refinementArgument("part", 0, arguments, refinements)
                     .map(asked -> (int) Math.max(0, Math.min(octets.length, bytes.countUpTo(asked))))
                     .orElse(octets.length);
             encodings.swapEndian(octets, reach - reach % width, width);

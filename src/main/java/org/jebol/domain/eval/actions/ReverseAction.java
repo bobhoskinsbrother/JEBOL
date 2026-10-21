@@ -30,7 +30,7 @@ public class ReverseAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> limit = readTheArgumentOf("part", 0, arguments, refinements);
+            Optional<Value> limit = refinementArgument("part", 0, arguments, refinements);
             return switch (arguments.getFirst()) {
                 case RebolSeries series when refinements.contains("part") ->
                         series.reverseFront(frontLength(series, limit));

@@ -46,7 +46,7 @@ public enum Resampling {
                 || (wide == fromWide && high == fromHigh)) {
             return picture;
         }
-        int[] source = readTheChannelsOf(picture, fromWide, fromHigh);
+        int[] source = flattenChannels(picture, fromWide, fromHigh);
         int[] read = this == GAUSSIAN ? soften(source, fromWide, fromHigh) : source;
         int[] made = new int[wide * high * CHANNELS];
         for (int down = 0; down < high; down++) {
@@ -128,7 +128,7 @@ public enum Resampling {
         return new int[] {source[at], source[at + 1], source[at + 2], source[at + 3]};
     }
 
-    private static int[] readTheChannelsOf(ImageValue picture, int wide, int high) {
+    private static int[] flattenChannels(ImageValue picture, int wide, int high) {
         int[] channels = new int[wide * high * CHANNELS];
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int[] parts = picture.readPixelAt(pixel + 1);

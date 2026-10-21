@@ -48,11 +48,11 @@ public class TranscodeNative extends DefaultNative {
     private Reading readReadingAskedFor(List<Value> arguments, Set<String> refinements) {
         Value source = arguments.getFirst();
         String whole = textOf(source);
-        String readable = readTheArgumentOf("part", 0, arguments, refinements)
+        String readable = refinementArgument("part", 0, arguments, refinements)
                 .map(asked -> boundTo(whole, countCharactersPermittedBy(asked)))
                 .orElse(whole);
         return new Reading(whole, readable,
-                readFirstLineNumberIn(readTheArgumentOf("line", 0, arguments, refinements)),
+                readFirstLineNumberIn(refinementArgument("line", 0, arguments, refinements)),
                 readTheExtentAskedFor(refinements),
                 refinements.contains("line"),
                 refinements.contains("error"),

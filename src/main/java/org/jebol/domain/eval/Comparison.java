@@ -304,7 +304,7 @@ public final class Comparison {
             return compareBlocks(leftBlock, rightBlock);
         }
         if (left instanceof CharacterValue) {
-            return Integer.compare(readTheCodepointOf(left), readTheCodepointOf(right));
+            return Integer.compare(codepointFrom(left), codepointFrom(right));
         }
         if (left instanceof IntegerValue(long magnitude1) && right instanceof IntegerValue(long magnitude)) {
             return Long.compare(magnitude1, magnitude);
@@ -441,7 +441,7 @@ public final class Comparison {
         return bits < 0 ? Long.MIN_VALUE - bits : bits;
     }
 
-    private static int readTheCodepointOf(Value value) {
+    private static int codepointFrom(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
                 : (int) ((IntegerValue) value).magnitude();

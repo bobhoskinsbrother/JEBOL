@@ -34,7 +34,7 @@ public class MoldNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             Function<Value, String> how = flattenWhenAsked(refinements,
                     writeInSystemBase(evaluator, moldAsAsked(arguments.getFirst(), refinements)));
-            return readTheArgumentOf("part", 0, arguments, refinements)
+            return refinementArgument("part", 0, arguments, refinements)
                     .map(limit -> StringValue.of(Molder.moldWithin(arguments.getFirst(),
                             countCharactersWithin(((IntegerValue) limit).magnitude()), how)))
                     .orElseGet(() -> StringValue.of(how.apply(arguments.getFirst())));

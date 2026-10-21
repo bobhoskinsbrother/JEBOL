@@ -50,7 +50,7 @@ public class EnhexNative extends PercentEncodingNative {
     }
 
     private IntPredicate chooseWhatIsLeftUnescaped(Value value, List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("except", 0, arguments, refinements)
+        return refinementArgument("except", 0, arguments, refinements)
                 .<IntPredicate>map(asked -> octet -> encodings.setHolds((BitsetValue) asked, octet))
                 .orElseGet(() -> keepsItsSeparators(value)
                         ? encodings::isKeptByUri

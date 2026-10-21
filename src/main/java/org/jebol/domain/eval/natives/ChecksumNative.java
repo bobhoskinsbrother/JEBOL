@@ -65,7 +65,7 @@ public class ChecksumNative extends EncodingNative {
                       List<Value> arguments, Set<String> refinements) {
 
         String asked = method.canonical();
-        Optional<Value> spec = readTheArgumentOf("with", 0, arguments, refinements);
+        Optional<Value> spec = refinementArgument("with", 0, arguments, refinements);
         if (encodings.canDigest(asked)) {
             return BinaryValue.ofBytes(spec
                     .map(key -> digestWithKey(octets, asked, key))

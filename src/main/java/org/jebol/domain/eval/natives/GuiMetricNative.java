@@ -63,7 +63,7 @@ public class GuiMetricNative extends ScreenNative {
     }
 
     private int displayAskedFor(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("display", 0, arguments, refinements)
+        return refinementArgument("display", 0, arguments, refinements)
                 .map(this::displayNumberedBy)
                 .orElse(FIRST_DISPLAY);
     }

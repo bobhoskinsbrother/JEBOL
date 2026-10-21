@@ -33,7 +33,7 @@ final class WritingIntoText {
         if (oneBased < 1 || oneBased > text.storageLength()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE);
         }
-        int replacement = readTheCodepointOf(written);
+        int replacement = codepointFrom(written);
         text.requireChangeable();
         switch (text) {
             case BinaryValue octets -> octets.storage().set(oneBased, replacement & GREATEST_OCTET);
@@ -42,7 +42,7 @@ final class WritingIntoText {
         }
     }
 
-    private int readTheCodepointOf(Value written) {
+    private int codepointFrom(Value written) {
         return switch (written) {
             case CharacterValue(int codepoint) when codepoint > GREATEST_CODEPOINT ->
                     throw Raised.of(EvaluationFailure.BAD_PATH_SET);
@@ -55,12 +55,12 @@ final class WritingIntoText {
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE, written);
             case IntegerValue whole -> (int) whole.magnitude();
             case RebolSeries other when other instanceof AnyStringValue || other instanceof BinaryValue ->
-                    readTheFirstCodepointOf(other);
+                    firstCodepoint(other);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         };
     }
 
-    private int readTheFirstCodepointOf(RebolSeries source) {
+    private int firstCodepoint(RebolSeries source) {
         if (source.atTail()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }

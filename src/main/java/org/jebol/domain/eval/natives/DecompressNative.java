@@ -71,7 +71,7 @@ public class DecompressNative extends CompressionNative {
         return (arguments, evaluator, context, refinements) -> {
             String method = readKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
-            int wanted = readTheArgumentOf("size", 0, arguments, refinements)
+            int wanted = refinementArgument("size", 0, arguments, refinements)
                     .map(this::readSizeAboveNothing)
                     .orElse(AS_MUCH_AS_IT_HOLDS);
             byte[] compressed = readOctetsWithinAnyPart(data, arguments, refinements);

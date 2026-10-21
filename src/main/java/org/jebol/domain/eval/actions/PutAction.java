@@ -88,7 +88,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     }
 
     private int recordWidth(List<Value> arguments, Set<String> refinements) {
-        return readTheArgumentOf("skip", 0, arguments, refinements)
+        return refinementArgument("skip", 0, arguments, refinements)
                 .map(size -> Math.max(1, (int) ((IntegerValue) size).magnitude()))
                 .orElse(1);
     }

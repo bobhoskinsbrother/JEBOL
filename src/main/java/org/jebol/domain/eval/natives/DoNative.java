@@ -123,7 +123,7 @@ public class DoNative extends DefaultNative {
         }
         List<Value> parts = ((AnyBlockValue) read).remaining();
         refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
-        return evaluateSource(readTheBodyOf(parts), evaluator);
+        return evaluateSource(scriptBody(parts), evaluator);
     }
 
     private void refuseAScriptThatNeedsANewerInterpreter(
@@ -139,7 +139,7 @@ public class DoNative extends DefaultNative {
         }
     }
 
-    private String readTheBodyOf(List<Value> parts) {
+    private String scriptBody(List<Value> parts) {
         return parts.get(1) instanceof BinaryValue mark
                 && parts.get(2) instanceof BinaryValue remaining
                 && mark.sharesStorageWith(remaining)
