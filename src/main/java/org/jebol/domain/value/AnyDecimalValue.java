@@ -57,7 +57,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
 
     @Override
     public Value combineWithNumber(Value right, ArithmeticOperation operation) {
-        return operation.onFractions(quantity, Numbers.measureTheQuantityOfANumber(right), true);
+        return operation.onFractions(quantity, Numbers.numberOrCharacterAsDouble(right), true);
     }
 
     @Override

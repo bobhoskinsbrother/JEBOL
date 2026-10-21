@@ -30,8 +30,8 @@ final class Numbers {
         if (MONEY.meetsMoney(one, other)) {
             return MONEY.asDeci(one).isEqualTo(MONEY.asDeci(other));
         }
-        double ours = measureTheQuantityOf(one);
-        double theirs = measureTheQuantityOf(other);
+        double ours = numberAsDouble(one);
+        double theirs = numberAsDouble(other);
         if (Double.isNaN(ours) || Double.isNaN(theirs)) {
             return Double.isNaN(ours) && Double.isNaN(theirs) && how.stepsAllowed() > 0;
         }
@@ -41,13 +41,13 @@ final class Numbers {
         return ours == theirs;
     }
 
-    static double measureTheQuantityOfANumber(Value value) {
+    static double numberOrCharacterAsDouble(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
-                : measureTheQuantityOf(value);
+                : numberAsDouble(value);
     }
 
-    static double measureTheQuantityOf(Value value) {
+    static double numberAsDouble(Value value) {
         return switch (value) {
             case IntegerValue(long magnitude) -> magnitude;
             case TimeValue time -> time.asSeconds().quantity();

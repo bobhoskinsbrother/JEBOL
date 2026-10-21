@@ -190,11 +190,11 @@ public final class Repl {
                     arguments, out, anythingWasAsked, ports.carriedFiles()));
         }
         Interpreter interpreter = Interpreter.createOn(ports, new StreamOutput(out), bounds);
-        putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
+        applyDataSwitch(interpreter, environment, arguments);
         return interpreter;
     }
 
-    private static void putTheApplicationDataWhereTheParentKeepsIt(
+    private static void applyDataSwitch(
             Interpreter interpreter, ProcessEnvironment environment, String[] arguments) {
 
         String written = readTrailingArgument(DATA_SWITCH, arguments);

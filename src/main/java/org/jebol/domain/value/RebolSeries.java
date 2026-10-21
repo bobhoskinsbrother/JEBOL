@@ -108,7 +108,7 @@ public sealed interface RebolSeries extends Value
     default void refuseNeedleItCannotHold(Value needle, String nativeName) {
     }
 
-    default RebolSeries pickTheEarlierOf(RebolSeries other) {
+    default RebolSeries earlierSeries(RebolSeries other) {
         return other.index() < index() ? other : this;
     }
 

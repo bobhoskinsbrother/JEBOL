@@ -219,7 +219,7 @@ public record DateValue(
         return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 3600);
     }
 
-    public int minuteOfTheHour() {
+    public int minuteOnClock() {
         return (int) (nanosecondsOnClock() / NANOSECONDS_SECOND / 60 % 60);
     }
 
@@ -259,11 +259,11 @@ public record DateValue(
                 .plusDays(wantedDay - 1L));
     }
 
-    public DateValue onTheDayOfTheYear(int dayOfTheYear) {
+    public DateValue onDayOfYear(int dayOfTheYear) {
         return onDay(java.time.LocalDate.of(year, 1, 1).plusDays(dayOfTheYear - 1L));
     }
 
-    public DateValue onTheDayOf(DateValue other) {
+    public DateValue onDayFrom(DateValue other) {
         return new DateValue(other.year, other.month, other.day,
                 timeOfDay, other.zoneMinutes);
     }

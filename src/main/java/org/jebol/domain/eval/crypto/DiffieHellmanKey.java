@@ -53,7 +53,7 @@ public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
         }
     }
 
-    public byte[] publishedPaddedToTheWidthOfThePrime() {
+    public byte[] paddedPublicValue() {
         return padToFixedWidth(((javax.crypto.interfaces.DHPublicKey) pair.getPublic())
                 .getY());
     }

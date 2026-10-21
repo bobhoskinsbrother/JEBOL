@@ -125,7 +125,7 @@ public final class SeriesSearch {
         if (lookingBehind || takingTheLast) {
             step = -1;
             if (takingTheLast) {
-                at = end - measureTheWidthOfNeedle();
+                at = end - needleWidth();
             } else {
                 start = 0;
                 at = here - 1;
@@ -142,7 +142,7 @@ public final class SeriesSearch {
         return -1;
     }
 
-    private int measureTheWidthOfNeedle() {
+    private int needleWidth() {
         if (refinements.contains("only")) {
             return 1;
         }

@@ -13,7 +13,7 @@ final class Minute implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return IntegerValue.of(date.minuteOfTheHour());
+        return IntegerValue.of(date.minuteOnClock());
     }
 
     @Override

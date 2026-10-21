@@ -114,7 +114,7 @@ public final class SeekableFilePort {
     }
 
     public Value measureLengthLeft(FilePort files) {
-        if (namesARunOfNamesRatherThanBytes()) {
+        if (namesFiles()) {
             return IntegerValue.of(files.listFileNames(path()).size());
         }
         return IntegerValue.of(Math.max(0, measureSizeIn(files) - position()));
@@ -125,13 +125,13 @@ public final class SeekableFilePort {
     }
 
     public boolean atTail(FilePort files) {
-        if (namesARunOfNamesRatherThanBytes()) {
+        if (namesFiles()) {
             return files.listFileNames(path()).isEmpty();
         }
         return position() >= measureSizeIn(files);
     }
 
-    private boolean namesARunOfNamesRatherThanBytes() {
+    private boolean namesFiles() {
         return port.schemeName().equals("dir");
     }
 }

@@ -75,7 +75,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
     private Value copyFront(
             RebolSeries series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = series.countUpTo(limit);
-        RebolSeries from = limit instanceof RebolSeries upTo ? series.pickTheEarlierOf(upTo) : series;
+        RebolSeries from = limit instanceof RebolSeries upTo ? series.earlierSeries(upTo) : series;
         if (wanted < 0) {
             int reaching = (int) Math.min(-wanted, from.index() - 1);
             from = from.atIndex(from.index() - reaching);

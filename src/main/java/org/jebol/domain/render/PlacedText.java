@@ -46,7 +46,7 @@ public record PlacedText(
                 placeTheLinesOf(lines, layout, where),
                 findTheSelectionIn(written.caret(), lines, layout, where),
                 findTheCaretIn(written, lines, layout, where),
-                placeTheShadowOf(layout));
+                placedShadowFor(layout));
     }
 
     private static List<PlacedLine> placeTheLinesOf(
@@ -109,7 +109,7 @@ public record PlacedText(
                 THE_WIDTH_OF_A_CARET, placed.high(), inked));
     }
 
-    private static Optional<PlacedShadow> placeTheShadowOf(TextLayout layout) {
+    private static Optional<PlacedShadow> placedShadowFor(TextLayout layout) {
         return layout.castsShadow()
                 ? Optional.of(new PlacedShadow(layout.shadowAcross(), layout.shadowDown(), Colour.BLACK))
                 : Optional.empty();

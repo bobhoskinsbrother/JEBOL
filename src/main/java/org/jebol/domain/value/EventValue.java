@@ -150,7 +150,7 @@ public record EventValue(
     }
 
     /** {@code SET_EVENT_XY(v,x,y)}: {@code ((y << 16) | (x & 0xffff))}. */
-    public static int packTheOffset(int x, int y) {
+    public static int packedOffset(int x, int y) {
         return (y << 16) | (x & 0xFFFF);
     }
 

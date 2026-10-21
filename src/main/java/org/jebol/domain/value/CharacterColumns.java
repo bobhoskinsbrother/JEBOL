@@ -11,7 +11,7 @@ public final class CharacterColumns {
     private CharacterColumns() {
     }
 
-    public static int measureTheWidthOf(int codepoint) {
+    public static int columnWidth(int codepoint) {
         if (codepoint > 0x1F && codepoint < 0x7F) {
             return 1;
         }
@@ -34,7 +34,7 @@ public final class CharacterColumns {
     }
 
     /** The UTF-8 byte count, {@code UTF8_Codepoint_Size} in the C. */
-    public static int measureTheUtf8SizeOf(int codepoint) {
+    public static int utf8Size(int codepoint) {
         if (codepoint < 0x80) {
             return 1;
         }

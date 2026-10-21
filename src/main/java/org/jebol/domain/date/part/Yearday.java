@@ -13,6 +13,6 @@ final class Yearday implements WritableDateField {
 
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
-        return date.onTheDayOfTheYear(given.asWholeNumber());
+        return date.onDayOfYear(given.asWholeNumber());
     }
 }

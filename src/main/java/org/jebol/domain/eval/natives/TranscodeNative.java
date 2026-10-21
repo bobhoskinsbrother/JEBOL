@@ -88,7 +88,7 @@ public class TranscodeNative extends DefaultNative {
         switch (read) {
             case ErrorValue error -> {
                 error.subject().ifPresent(inside -> bindCallLocations(inside, evaluator));
-                return evaluator.placeWhereTheCallIs(error);
+                return evaluator.withCallLocation(error);
             }
             case AnyBlockValue block -> {
                 for (int at = 1; at <= block.storageLength(); at++) {
@@ -114,7 +114,7 @@ public class TranscodeNative extends DefaultNative {
         String left = skipCodePoints(whole, reading.endedAtCodePoint());
         answer.add(switch (asked.source()) {
             case BinaryValue bytes -> bytes.atIndex(bytes.index()
-                    + measureTheUtf8LengthOf(whole) - measureTheUtf8LengthOf(left));
+                    + utf8Length(whole) - utf8Length(left));
             case AnyStringValue text -> text.atIndex(text.index() + whole.length() - left.length());
             default -> StringValue.of(left);
         });
@@ -185,7 +185,7 @@ public class TranscodeNative extends DefaultNative {
         return new String(codepoints, taken, codepoints.length - taken);
     }
 
-    private int measureTheUtf8LengthOf(String text) {
+    private int utf8Length(String text) {
         return text.getBytes(StandardCharsets.UTF_8).length;
     }
 }

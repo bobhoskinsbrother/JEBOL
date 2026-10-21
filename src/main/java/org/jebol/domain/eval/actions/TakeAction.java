@@ -56,7 +56,7 @@ public class TakeAction extends DefaultNative implements ActionValue {
         }
         Optional<Value> howMuch = readTheArgumentOf("part", 0, arguments, refinements);
         if (howMuch.isPresent() && howMuch.get() instanceof RebolSeries upTo) {
-            return deepenIfAsked(takeSeveral(series.pickTheEarlierOf(upTo),
+            return deepenIfAsked(takeSeveral(series.earlierSeries(upTo),
                     Math.abs(upTo.index() - series.index())), refinements);
         }
         long wanted = howMuch.map(series::countUpTo).orElse(1L);

@@ -75,7 +75,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             case CharacterValue(int codepoint) ->
                     operation.onWholeNumbers(magnitude, codepoint);
             default -> operation.onFractions(
-                    magnitude, Numbers.measureTheQuantityOfANumber(right), true);
+                    magnitude, Numbers.numberOrCharacterAsDouble(right), true);
         };
     }
 

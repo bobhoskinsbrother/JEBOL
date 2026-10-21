@@ -46,7 +46,7 @@ public class DhNative extends CipherNative {
                 return NoneValue.none();
             }
             if (refinements.contains("public")) {
-                return BinaryValue.ofBytes(key.get().publishedPaddedToTheWidthOfThePrime());
+                return BinaryValue.ofBytes(key.get().paddedPublicValue());
             }
             if (refinements.contains("secret")) {
                 return agreeSecretBetween(key.get(),

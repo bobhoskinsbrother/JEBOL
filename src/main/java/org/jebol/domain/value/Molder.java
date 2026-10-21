@@ -540,7 +540,7 @@ public final class Molder {
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
         ImageValue shown = asAConstruct ? image.head() : image;
         String opens = asAConstruct ? "#(image! " : "make image! [";
-        String shuts = asAConstruct ? moldThePositionOf(image) + ")" : "]";
+        String shuts = asAConstruct ? moldedPosition(image) + ")" : "]";
         int pixels = countPixelsLimitAllows(
                 shown.lengthFromHere(), opens.length() + size.length() + " #{".length());
         if (pixels == 0) {
@@ -565,7 +565,7 @@ public final class Molder {
                 + closing + shuts;
     }
 
-    private static String moldThePositionOf(RebolSeries series) {
+    private static String moldedPosition(RebolSeries series) {
         return series.index() > 1 ? " " + series.index() : "";
     }
 

@@ -136,7 +136,7 @@ public final class EventPath {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(event.withData(
-                EventValue.packTheOffset(
+                EventValue.packedOffset(
                         asShortRaisingRatherThanTruncating(x),
                         asShortRaisingRatherThanTruncating(y)),
                 EventValue.Flag.HAS_XY));

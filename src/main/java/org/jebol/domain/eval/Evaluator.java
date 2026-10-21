@@ -351,7 +351,7 @@ public final class Evaluator {
         }
     }
 
-    public ErrorValue placeWhereTheCallIs(ErrorValue error) {
+    public ErrorValue withCallLocation(ErrorValue error) {
         if (walksInProgress.isEmpty()) {
             return speakHere(error);
         }
@@ -1633,7 +1633,7 @@ public final class Evaluator {
             return steppedInto.stepIntoBy(selector);
         }
         if (target instanceof TimeValue time) {
-            return partOfATime(time, selector);
+            return timePart(time, selector);
         }
         if (target instanceof BitsetValue set && selector instanceof CharacterValue(int codepoint1)) {
             return LogicValue.of(set.holds(codepoint1));
@@ -1650,7 +1650,7 @@ public final class Evaluator {
                 case "length" -> IntegerValue.of(text.lengthFromHere());
                 case "size" -> IntegerValue.of(
                         text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
-                case "width" -> IntegerValue.of(measureTheTerminalWidthOf(text.text()));
+                case "width" -> IntegerValue.of(terminalWidth(text.text()));
                 case "user" -> findEmailNamedBy(text, field).user();
                 case "host" -> findEmailNamedBy(text, field).host();
                 default -> throw Raised.of(
@@ -1712,11 +1712,11 @@ public final class Evaluator {
             switch (asked.canonical()) {
                 case "width" -> {
                     return IntegerValue.of(
-                            CharacterColumns.measureTheWidthOf(codepoint));
+                            CharacterColumns.columnWidth(codepoint));
                 }
                 case "size" -> {
                     return IntegerValue.of(
-                            CharacterColumns.measureTheUtf8SizeOf(codepoint));
+                            CharacterColumns.utf8Size(codepoint));
                 }
                 default -> { }
             }
@@ -1745,7 +1745,7 @@ public final class Evaluator {
         return context.ownSlotFor(scheme).value();
     }
 
-    private static Value partOfATime(TimeValue time, Value selector) {
+    private static Value timePart(TimeValue time, Value selector) {
         long seconds = Math.abs(time.nanoseconds()) / NANOSECONDS_IN_SECOND;
         long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_SECOND;
         int which = switch (selector) {
@@ -1835,7 +1835,7 @@ public final class Evaluator {
         return path.wrap(built.toString());
     }
 
-    private static int measureTheTerminalWidthOf(String text) {
+    private static int terminalWidth(String text) {
         return TerminalWidth.of(text.codePoints().toArray());
     }
 

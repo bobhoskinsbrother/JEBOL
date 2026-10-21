@@ -197,9 +197,9 @@ public sealed interface Value permits
         if (!Numbers.isANumber(destination)) {
             throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
         }
-        double from = Numbers.measureTheQuantityOf(this);
+        double from = Numbers.numberAsDouble(this);
         return DecimalValue.of(
-                from + (Numbers.measureTheQuantityOf(destination) - from) * fraction);
+                from + (Numbers.numberAsDouble(destination) - from) * fraction);
     }
 
 

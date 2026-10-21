@@ -63,7 +63,7 @@ public final class ValueHash {
     private int hash(Value value) {
         return switch (value) {
             case AnyWordValue word -> symbols.canonicalIndexFor(word.spelling());
-            case AnyStringValue text -> ofText(text) ^ numberTheTypeOf(text);
+            case AnyStringValue text -> ofText(text) ^ typeNumber(text);
             case BinaryValue bytes -> hashWithMurmur(bytes.octetsFromHere());
             case AnyBlockValue block -> ofBlock(block);
             case LogicValue logic -> LOGIC_BASE + (logic.truth() ? 1 : 0);
@@ -78,11 +78,11 @@ public final class ValueHash {
             case PairValue pair -> Float.floatToRawIntBits((float) pair.x())
                     ^ Float.floatToRawIntBits((float) pair.y());
             case Datatype datatype -> crcForWord(datatype.literalSpelling());
-            default -> mixFinally(numberTheTypeOf(value));
+            default -> mixFinally(typeNumber(value));
         };
     }
 
-    private int numberTheTypeOf(Value value) {
+    private int typeNumber(Value value) {
         return value.datatype().numberCGivesIt();
     }
 
@@ -96,7 +96,7 @@ public final class ValueHash {
     }
 
     private int ofBlock(AnyBlockValue block) {
-        int hash = mixBlock(0, numberTheTypeOf(block));
+        int hash = mixBlock(0, typeNumber(block));
         int length = 0;
         for (Value item : block.remaining()) {
             hash = mixBlock(hash, hash(item));

@@ -31,7 +31,7 @@ final class BrotliClustering {
         }
     }
 
-    private static double measureWhatTheMapSaves(int firstSize, int secondSize) {
+    private static double mergingSaves(int firstSize, int secondSize) {
         int together = firstSize + secondSize;
         return firstSize * BrotliCodes.computeLog2Quickly(firstSize)
                 + secondSize * BrotliCodes.computeLog2Quickly(secondSize)
@@ -68,7 +68,7 @@ final class BrotliClustering {
             candidate.second = second;
             candidate.costOfTheMerged = 0;
             candidate.whatMergingSaves =
-                    0.5 * measureWhatTheMapSaves(clusterSize[first], clusterSize[second])
+                    0.5 * mergingSaves(clusterSize[first], clusterSize[second])
                             - costOf(histograms[first])
                             - costOf(histograms[second]);
 

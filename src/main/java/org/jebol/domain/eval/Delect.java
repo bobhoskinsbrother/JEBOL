@@ -274,14 +274,14 @@ public final class Delect {
             for (int position = 0; position < fields.size(); position++) {
                 if (fields.get(position).canonical().equals(word.canonical())) {
                     return fields.get(position).value() instanceof NoneValue
-                            ? negateForAKeywordThatTakesNothing(position)
+                            ? negatedKeywordIndex(position)
                             : position + 1;
                 }
             }
             return 0;
         }
 
-        private static int negateForAKeywordThatTakesNothing(int position) {
+        private static int negatedKeywordIndex(int position) {
             return -(position + 1);
         }
     }

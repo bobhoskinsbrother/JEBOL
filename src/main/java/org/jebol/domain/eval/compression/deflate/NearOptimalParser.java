@@ -432,7 +432,7 @@ final class NearOptimalParser extends DeflateParser {
         return defaultLengthSymbolCost + EXTRA_LENGTH_BITS[LENGTH_SLOT[length]] * BIT_COST;
     }
 
-    private int priceTheOffsetSlotByDefault(int slot) {
+    private int defaultOffsetSlotCost(int slot) {
         return OFFSET_SYMBOL_COST + EXTRA_OFFSET_BITS[slot] * BIT_COST;
     }
 
@@ -442,7 +442,7 @@ final class NearOptimalParser extends DeflateParser {
             lengthCosts[length] = priceLengthByDefault(length);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
-            offsetSlotCosts[slot] = priceTheOffsetSlotByDefault(slot);
+            offsetSlotCosts[slot] = defaultOffsetSlotCost(slot);
         }
     }
 
@@ -463,7 +463,7 @@ final class NearOptimalParser extends DeflateParser {
             lengthCosts[length] = adjust(lengthCosts[length], priceLengthByDefault(length), changeAmount);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
-            offsetSlotCosts[slot] = adjust(offsetSlotCosts[slot], priceTheOffsetSlotByDefault(slot), changeAmount);
+            offsetSlotCosts[slot] = adjust(offsetSlotCosts[slot], defaultOffsetSlotCost(slot), changeAmount);
         }
     }
 

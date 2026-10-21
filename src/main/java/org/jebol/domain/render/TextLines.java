@@ -87,7 +87,7 @@ public final class TextLines {
             for (Piece piece : lines.get(index).pieces()) {
                 if (piece.holds(caret)) {
                     return new CaretPlace(
-                            across + measureTheWidthOf(piece, caret.character() - piece.from()),
+                            across + prefixWidth(piece, caret.character() - piece.from()),
                             findTheTopOfLine(index, layout, box),
                             lines.get(index).high());
                 }
@@ -109,7 +109,7 @@ public final class TextLines {
         double along = startOfLine(index, layout, box);
         for (Piece piece : lines.get(index).pieces()) {
             for (int within = 0; within <= piece.length(); within++) {
-                double distance = Math.abs(across - (along + measureTheWidthOf(piece, within)));
+                double distance = Math.abs(across - (along + prefixWidth(piece, within)));
                 if (distance <= nearestDistance) {
                     nearestDistance = distance;
                     nearest = new RunAndCharacter(piece.run(), piece.from() + within);
@@ -137,7 +137,7 @@ public final class TextLines {
         return new RunAndCharacter(run, Math.clamp(character, 0, length));
     }
 
-    private double measureTheWidthOf(Piece piece, int characters) {
+    private double prefixWidth(Piece piece, int characters) {
         if (characters <= 0) {
             return 0;
         }
@@ -240,7 +240,7 @@ public final class TextLines {
     }
 
     private boolean fits(List<Letter> letters) {
-        return measureTheWidthOfThePieces(gatherIntoPieces(letters)) <= roomForEachLine;
+        return piecesWidth(gatherIntoPieces(letters)) <= roomForEachLine;
     }
 
     private Line makeLineFromLetters(List<Letter> letters) {
@@ -248,10 +248,10 @@ public final class TextLines {
         while (printed > 0 && letters.get(printed - 1).isASpace()) {
             printed--;
         }
-        return makeLine(gatherIntoPieces(letters), measureTheWidthOfThePieces(gatherIntoPieces(letters.subList(0, printed))));
+        return makeLine(gatherIntoPieces(letters), piecesWidth(gatherIntoPieces(letters.subList(0, printed))));
     }
 
-    private double measureTheWidthOfThePieces(List<Piece> pieces) {
+    private double piecesWidth(List<Piece> pieces) {
         return pieces.stream().mapToDouble(Piece::wide).sum();
     }
 
@@ -310,7 +310,7 @@ public final class TextLines {
     }
 
     private Line makeALineOf(List<Piece> pieces) {
-        return makeLine(pieces, measureTheWidthOfThePieces(pieces));
+        return makeLine(pieces, piecesWidth(pieces));
     }
 
     private Line makeLine(List<Piece> pieces, double wide) {

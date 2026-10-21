@@ -598,7 +598,7 @@ final class BrotliDecoder {
             int space = 32;
             int symbolsUsed = 0;
             for (int each = skip; each < CODE_LENGTH_CODES; each++) {
-                int peeked = bits.peekFourPaddingWithZerosPastTheEndOfTheData();
+                int peeked = bits.peekFourBits();
                 int width = CODE_LENGTH_PREFIX_LENGTH[peeked];
                 bits.drop(width);
                 int value = CODE_LENGTH_PREFIX_VALUE[peeked];
@@ -782,7 +782,7 @@ final class BrotliDecoder {
             return taken;
         }
 
-        int peekFourPaddingWithZerosPastTheEndOfTheData() {
+        int peekFourBits() {
             while (held < 4 && at < end) {
                 window |= (long) (data[at++] & 0xFF) << held;
                 held += 8;

@@ -38,7 +38,7 @@ public class MapEventNative extends GobMappingNative {
         PairValue inside = (PairValue) gobAndPoint.get(1);
         return event
                 .withAttached(EventValue.Model.GUI, gobAndPoint.getFirst())
-                .withData(EventValue.packTheOffset(
+                .withData(EventValue.packedOffset(
                                 (int) Math.round(inside.x()), (int) Math.round(inside.y())),
                         EventValue.Flag.HAS_XY);
     }

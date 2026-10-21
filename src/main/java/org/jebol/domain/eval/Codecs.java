@@ -117,7 +117,7 @@ public final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.checkAnswer(NO);
             case DECODE -> Answer.answerWithBlock(BlockValue.of(
-                    parseTheMarkupOf(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
+                    parseMarkup(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
             case ENCODE -> Answer.answerNotAvailable();
         };
     }
@@ -131,7 +131,7 @@ public final class Codecs {
         return bytes;
     }
 
-    private List<Value> parseTheMarkupOf(String source) {
+    private List<Value> parseMarkup(String source) {
         List<Value> parts = new ArrayList<>();
         int textFrom = 0;
         int at = 0;
