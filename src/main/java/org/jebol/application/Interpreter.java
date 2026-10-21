@@ -346,7 +346,7 @@ public final class Interpreter {
     }
 
     private void handFilesystemAndScreenTheirWork() {
-        if (theHostGaveAFileSystem()) {
+        if (theHostGaveFileSystem()) {
             setSharedRootForChildInterpreters(ports.files());
             followApplicationDataDirectory();
         }
@@ -354,7 +354,7 @@ public final class Interpreter {
         dispatchDrawDialectTo(ports.screen());
     }
 
-    private boolean theHostGaveAFileSystem() {
+    private boolean theHostGaveFileSystem() {
         try {
             ports.files().workingDirectory();
             return true;

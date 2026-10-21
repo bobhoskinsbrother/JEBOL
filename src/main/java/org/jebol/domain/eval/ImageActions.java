@@ -45,7 +45,7 @@ public final class ImageActions extends SeriesActions {
 
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         ImageValue made = ImageValue.of(items.size(), items.isEmpty() ? 0 : 1);
         for (int at = 1; at <= items.size(); at++) {
             ImagePath.write(made, at, items.get(at - 1));

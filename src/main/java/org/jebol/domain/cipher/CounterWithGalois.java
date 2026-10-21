@@ -121,7 +121,7 @@ public final class CounterWithGalois {
                 }
             }
             boolean fellOff = (running[BLOCK - 1] & 1) != 0;
-            shiftTowardsTheTop(running);
+            shiftTowardsTop(running);
             if (fellOff) {
                 running[0] ^= THE_FIELDS_OWN_CONSTANT;
             }
@@ -129,7 +129,7 @@ public final class CounterWithGalois {
         return product;
     }
 
-    private static void shiftTowardsTheTop(byte[] octets) {
+    private static void shiftTowardsTop(byte[] octets) {
         for (int at = BLOCK - 1; at > 0; at--) {
             octets[at] = (byte) ((octets[at] & 0xFF) >>> 1
                     | (octets[at - 1] & 1) << 7);

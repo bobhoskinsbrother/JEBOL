@@ -31,7 +31,7 @@ public final class BlockActions extends SeriesActions {
     }
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         return block.wrap(items);
     }
 

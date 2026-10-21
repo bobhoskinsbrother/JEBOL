@@ -85,7 +85,7 @@ class ConsoleContinuationTest {
     void forgetsOnceTheInputIsTaken() {
         ConsoleContinuation continuation = read("[[[");
 
-        continuation.takeTheInput();
+        continuation.takeInput();
 
         assertThat(continuation.isWaitingForMore()).isFalse();
     }

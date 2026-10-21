@@ -366,7 +366,7 @@ final class BrotliGenericEncoder {
         long asFarAsThisCopyCouldReach =
                 Math.min(lastProcessedAt - (long) copyLength, furthestBack);
         long distance = Integer.toUnsignedLong(recentDistances[0]);
-        int distanceCode = commands.restoreTheDistanceCodeAt(which,
+        int distanceCode = commands.restoreDistanceCodeAt(which,
                 distances.directCodes(), distances.postfixBits());
 
         boolean thisCopyUsedThatDistance =
@@ -382,7 +382,7 @@ final class BrotliGenericEncoder {
             commands.copyLengthGrows(which);
             at++;
         }
-        commands.setTheCommandPrefix(which, BrotliCommand.codeTheLength(
+        commands.setCommandPrefix(which, BrotliCommand.codeTheLength(
                 commands.insertLengthAt(which),
                 commands.copyLengthPlusItsModifierReadPlainlyAsCReadsIt(which),
                 (commands.readDistancePrefixAt(which) & 0x3FF) == 0));

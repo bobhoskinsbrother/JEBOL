@@ -13,7 +13,7 @@ public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value
         List<List<Value>> theirs = groupIntoRecords(theirMembers);
         List<List<Value>> kept = new ArrayList<>();
         for (List<Value> candidate : ours) {
-            if (how.keepsFromTheFirstSet(holds(theirs, candidate)) && isNew(kept, candidate)) {
+            if (how.keepsFromFirstSet(holds(theirs, candidate)) && isNew(kept, candidate)) {
                 kept.add(candidate);
             }
         }

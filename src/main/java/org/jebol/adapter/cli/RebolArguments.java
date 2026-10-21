@@ -163,7 +163,7 @@ final class RebolArguments {
         return script;
     }
 
-    void nameTheScript(String path) {
+    void nameScript(String path) {
         script = Optional.of(path);
         values.put(Flag.SCRIPT, path);
     }

@@ -18,7 +18,7 @@ class ThePageConsoleFromTheSourceTest {
     @DisplayName("a line the page posted is a line the script reads")
     void readsAPostedLine() {
         WebConsole console = new WebConsole(() -> { });
-        console.takeATypedLine("typed here");
+        console.takeTypedLine("typed here");
 
         assertThat(console.readLine()).isEqualTo("typed here");
     }
@@ -27,8 +27,8 @@ class ThePageConsoleFromTheSourceTest {
     @DisplayName("lines are read in the order they were typed")
     void linesKeepTheirOrder() {
         WebConsole console = new WebConsole(() -> { });
-        console.takeATypedLine("first");
-        console.takeATypedLine("second");
+        console.takeTypedLine("first");
+        console.takeTypedLine("second");
 
         assertThat(console.readLine()).isEqualTo("first");
         assertThat(console.readLine()).isEqualTo("second");
@@ -38,7 +38,7 @@ class ThePageConsoleFromTheSourceTest {
     @DisplayName("an empty line is a line, and none of the ending")
     void readsAnEmptyLineAsALine() {
         WebConsole console = new WebConsole(() -> { });
-        console.takeATypedLine("");
+        console.takeTypedLine("");
 
         assertThat(console.readLine()).isEmpty();
     }
@@ -51,7 +51,7 @@ class ThePageConsoleFromTheSourceTest {
         WebConsole console = new WebConsole(taken::countDown);
         Thread typist = new Thread(() -> {
             awaitCountdown(taken);
-            console.takeATypedLine("arrived");
+            console.takeTypedLine("arrived");
         });
         typist.start();
 

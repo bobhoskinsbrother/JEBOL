@@ -50,7 +50,7 @@ public final class StringActions extends SeriesActions {
     }
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         return text.wrap(items.stream()
                 .map(Molder::form).collect(Collectors.joining()));
     }

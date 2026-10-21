@@ -37,7 +37,7 @@ final class BrotliBinaryTreeHasher {
         return LONGEST_COMPARED;
     }
 
-    private int hashTheSlotFor(byte[] data, int at) {
+    private int hashSlotFor(byte[] data, int at) {
         int fourBytes = (data[at] & 0xFF)
                 | ((data[at + 1] & 0xFF) << 8)
                 | ((data[at + 2] & 0xFF) << 16)
@@ -60,7 +60,7 @@ final class BrotliBinaryTreeHasher {
         int here = at & mask;
         int mostToCompare = Math.min(maxLength, LONGEST_COMPARED);
         boolean shouldReRoot = maxLength >= LONGEST_COMPARED;
-        int slot = hashTheSlotFor(data, here);
+        int slot = hashSlotFor(data, here);
         int previousAt = buckets[slot];
         int nodeLeft = findTheLeftChildOf(at);
         int nodeRight = findTheRightChildOf(at);

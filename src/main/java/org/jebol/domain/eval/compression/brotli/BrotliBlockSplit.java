@@ -25,11 +25,11 @@ final class BrotliBlockSplit {
         return lengths[which];
     }
 
-    void setTheType(int which, int type) {
+    void setType(int which, int type) {
         types[which] = type;
     }
 
-    void setTheLength(int which, int length) {
+    void setLength(int which, int length) {
         lengths[which] = length;
     }
 
@@ -41,7 +41,7 @@ final class BrotliBlockSplit {
         return howManyBlocks;
     }
 
-    void setTheBlockCount(int howMany) {
+    void setBlockCount(int howMany) {
         howManyBlocks = howMany;
     }
 
@@ -53,7 +53,7 @@ final class BrotliBlockSplit {
         howManyTypes++;
     }
 
-    void setTheTypeCount(int howMany) {
+    void setTypeCount(int howMany) {
         howManyTypes = howMany;
     }
 }

@@ -8,7 +8,7 @@ final class Intersect implements SetOperation {
     }
 
     @Override
-    public boolean keepsFromTheFirstSet(boolean inTheirs) {
+    public boolean keepsFromFirstSet(boolean inTheirs) {
         return inTheirs;
     }
 

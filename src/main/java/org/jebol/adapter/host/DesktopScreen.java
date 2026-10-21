@@ -173,19 +173,19 @@ public final class DesktopScreen extends GobScreen {
 
     @Override
     protected void openWindowFor(GobValue gob) {
-        onTheToolkitThreadAndWaitedFor(() -> windows.put(gob, showAWindow(gob)));
+        onToolkitThreadAndWaitedFor(() -> windows.put(gob, showWindow(gob)));
     }
 
     @Override
     protected void repaintWindowFor(GobValue gob) {
-        findWindowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
+        findWindowFor(gob).ifPresent(standing -> onToolkitThreadAndWaitedFor(standing::repaint));
     }
 
     @Override
     protected void closeWindowFor(GobValue gob) {
         findWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
-            onTheToolkitThreadAndWaitedFor(standing::dispose);
+            onToolkitThreadAndWaitedFor(standing::dispose);
         });
     }
 
@@ -196,11 +196,11 @@ public final class DesktopScreen extends GobScreen {
                 .findFirst();
     }
 
-    private JFrame showAWindow(GobValue gob) {
+    private JFrame showWindow(GobValue gob) {
         JFrame frame = new JFrame(readTheTitleOf(gob));
         showJebolIcon(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        frame.setContentPane(paintASurface(gob));
+        frame.setContentPane(paintSurface(gob));
         frame.pack();
         frame.setLocationRelativeTo(null);
         attachListenersThatOnlyQueue(frame, gob);
@@ -216,12 +216,12 @@ public final class DesktopScreen extends GobScreen {
                 : "REBOL: untitled";
     }
 
-    private JPanel paintASurface(GobValue gob) {
+    private JPanel paintSurface(GobValue gob) {
         org.jebol.domain.value.ObjectValue reading = drawDialect;
-        return paintASurface(gob, reading);
+        return paintSurface(gob, reading);
     }
 
-    private JPanel paintASurface(
+    private JPanel paintSurface(
             GobValue gob, org.jebol.domain.value.ObjectValue drawDialect) {
         DesktopScreen onThisScreen = this;
         JPanel surface = new JPanel() {
@@ -273,24 +273,24 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void keyPressed(KeyEvent down) {
-                queueTheKey(down, ScreenEventType.KEY, ScreenEventType.CONTROL, gob);
+                queueKey(down, ScreenEventType.KEY, ScreenEventType.CONTROL, gob);
             }
 
             @Override
             public void keyReleased(KeyEvent up) {
-                queueTheKey(up, ScreenEventType.KEY_UP, ScreenEventType.CONTROL_UP, gob);
+                queueKey(up, ScreenEventType.KEY_UP, ScreenEventType.CONTROL_UP, gob);
             }
         });
         frame.getContentPane().addMouseListener(new MouseListener() {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                post(ScreenEventType.DOWN, gob, locateThePointer(down));
+                post(ScreenEventType.DOWN, gob, locatePointer(down));
             }
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                post(ScreenEventType.UP, gob, locateThePointer(up));
+                post(ScreenEventType.UP, gob, locatePointer(up));
             }
 
             @Override
@@ -309,12 +309,12 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseMoved(MouseEvent moved) {
-                post(ScreenEventType.MOVE, gob, locateThePointer(moved));
+                post(ScreenEventType.MOVE, gob, locatePointer(moved));
             }
 
             @Override
             public void mouseDragged(MouseEvent dragged) {
-                post(ScreenEventType.MOVE, gob, locateThePointer(dragged));
+                post(ScreenEventType.MOVE, gob, locatePointer(dragged));
             }
         });
         frame.getContentPane().addMouseWheelListener(new MouseWheelListener() {
@@ -333,12 +333,12 @@ public final class DesktopScreen extends GobScreen {
         });
     }
 
-    private ScreenEventDetail locateThePointer(MouseEvent pointer) {
+    private ScreenEventDetail locatePointer(MouseEvent pointer) {
         return new ScreenEventDetail.At(pointer.getX(), pointer.getY());
     }
 
-    private void queueTheKey(KeyEvent pressed, ScreenEventType typing, ScreenEventType naming,
-                             GobValue window) {
+    private void queueKey(KeyEvent pressed, ScreenEventType typing, ScreenEventType naming,
+                          GobValue window) {
 
         Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(pressed.getKeyCode()));
         if (named.isPresent()) {
@@ -378,7 +378,7 @@ public final class DesktopScreen extends GobScreen {
             Map.entry(KeyEvent.VK_PAUSE, "pause"),
             Map.entry(KeyEvent.VK_CAPS_LOCK, "capital"));
 
-    private static void onTheToolkitThreadAndWaitedFor(Runnable work) {
+    private static void onToolkitThreadAndWaitedFor(Runnable work) {
         if (SwingUtilities.isEventDispatchThread()) {
             work.run();
             return;

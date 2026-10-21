@@ -40,7 +40,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         this.clock = Clock.systemUTC();
     }
 
-    public static JavaCertificateAuthority trustingTheMachineAnd(Path supplied) {
+    public static JavaCertificateAuthority trustingMachineAnd(Path supplied) {
         return new JavaCertificateAuthority(
                 JavaTrustAnchors.fromThisMachineAnd(supplied), Clock.systemUTC());
     }
@@ -64,7 +64,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
             if (!isLinksInOrder(certificates)) {
                 return new ChainVerdict.Mistrusted(CertificateMistrust.BROKEN_CHAIN);
             }
-            return reachAVerdict(trimAtTrustedRoot(certificates));
+            return reachVerdict(trimAtTrustedRoot(certificates));
         } catch (CertificateException unreadable) {
             return new ChainVerdict.Mistrusted(CertificateMistrust.BROKEN_CHAIN);
         }
@@ -80,7 +80,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         return true;
     }
 
-    private ChainVerdict reachAVerdict(List<X509Certificate> certificates) {
+    private ChainVerdict reachVerdict(List<X509Certificate> certificates) {
         try {
             validate(certificates);
             return new ChainVerdict.Trusted(readTheVouchedNames(certificates.getFirst()));

@@ -11,7 +11,7 @@ public interface SetOperation {
 
     String spelling();
 
-    boolean keepsFromTheFirstSet(boolean inTheirs);
+    boolean keepsFromFirstSet(boolean inTheirs);
 
     boolean takesFromTheSecondSet();
 

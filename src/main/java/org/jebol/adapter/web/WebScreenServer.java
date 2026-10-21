@@ -37,7 +37,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     public static WebScreenServer on(int port, FilePort files) throws IOException {
         HttpServer listening = HttpServer.create(new InetSocketAddress(findLoopbackAddress(), port), 0);
         WebScreenServer serving = new WebScreenServer(listening, DefaultFont.readFrom(files));
-        listening.setExecutor(Executors.newCachedThreadPool(WebScreenServer::startADaemonConnection));
+        listening.setExecutor(Executors.newCachedThreadPool(WebScreenServer::startDaemonConnection));
         listening.createContext("/", serving::servePage);
         listening.createContext("/paint", serving::openPaintStreamThatTheBrowserCloses);
         listening.createContext("/event", serving::receiveEvent);
@@ -50,7 +50,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         return InetAddress.getLoopbackAddress();
     }
 
-    private static Thread startADaemonConnection(Runnable work) {
+    private static Thread startDaemonConnection(Runnable work) {
         Thread serving = new Thread(work, "browser-connection-" + CONNECTIONS.incrementAndGet());
         serving.setDaemon(true);
         return serving;

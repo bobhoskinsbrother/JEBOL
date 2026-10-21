@@ -111,15 +111,15 @@ public final class Repl {
     static int runCommandLine(String[] arguments, BufferedReader typed,
                               PrintStream out, PrintStream errors, String startedIn) {
 
-        ChosenScreen.setHeadlessBasedOnWhetherAScreenIsNeeded(arguments);
+        ChosenScreen.setHeadlessBasedOnWhetherScreenIsNeeded(arguments);
 
         Path root = readRoot(arguments);
         RebolArguments asked = new RebolArguments(List.of(
-                argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutTheSwitch(arguments))));
-        asked.script().ifPresent(script -> asked.nameTheScript(findAppsEntry(script)));
+                argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutSwitch(arguments))));
+        asked.script().ifPresent(script -> asked.nameScript(findAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = buildInterpreter(arguments, out, anythingWasAsked, root);
-        return new TheCommandLine(asked, startedIn, root)
+        return new CommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
     }
 
@@ -172,7 +172,7 @@ public final class Repl {
     }
 
     private static Interpreter buildInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
-        Bounds bounds = grantEveryHostService().withoutATimeLimit();
+        Bounds bounds = grantEveryHostService().withoutTimeLimit();
         ProcessEnvironment environment = new ProcessEnvironment();
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
         HostPorts ports = useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(new JavaHost().ports()
@@ -184,7 +184,7 @@ public final class Repl {
                 .withNetwork(new JavaSocket())
                 .withCertificateAuthority(cafile.isEmpty()
                         ? new JavaCertificateAuthority()
-                        : JavaCertificateAuthority.trustingTheMachineAnd(Path.of(cafile))));
+                        : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));
         if (ChosenScreen.isAskedFor(arguments)) {
             ports = ports.withScreen(ChosenScreen.aScreenFor(
                     arguments, out, anythingWasAsked, ports.carriedFiles()));
@@ -218,7 +218,7 @@ public final class Repl {
         return everything;
     }
 
-    private record TheCommandLine(RebolArguments arguments, String startedIn, Path root) {
+    private record CommandLine(RebolArguments arguments, String startedIn, Path root) {
 
         private int runThrough(Interpreter interpreter, BufferedReader typed, PrintStream out, PrintStream errors) {
             tellItWhatWasAsked(interpreter);
@@ -315,10 +315,10 @@ public final class Repl {
             Path absolute = findTheRealPathOf(host);
             Path realRoot = findTheRealPathOf(root);
             if (!absolute.startsWith(realRoot)) {
-                return nameTheRoot();
+                return nameRoot();
             }
             String inside = realRoot.relativize(absolute).toString().replace('\\', '/');
-            return inside.isEmpty() ? nameTheRoot() : "/" + inside;
+            return inside.isEmpty() ? nameRoot() : "/" + inside;
         }
 
         private Path findTheRealPathOf(Path host) {
@@ -329,7 +329,7 @@ public final class Repl {
             }
         }
 
-        private static String nameTheRoot() {
+        private static String nameRoot() {
             return "/";
         }
 
@@ -365,7 +365,7 @@ public final class Repl {
                 if (!continuation.isWaitingForMore()) {
                     return;
                 }
-                continuation.takeTheInput();
+                continuation.takeInput();
                 pending.setLength(0);
                 continue;
             }
@@ -377,7 +377,7 @@ public final class Repl {
             }
             String source = pending.toString();
             pending.setLength(0);
-            continuation.takeTheInput();
+            continuation.takeInput();
             ScriptOutcome outcome = evaluate(source);
             if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
                 return;

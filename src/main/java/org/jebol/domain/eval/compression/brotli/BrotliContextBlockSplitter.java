@@ -39,7 +39,7 @@ final class BrotliContextBlockSplitter {
         int mostBlocks = howManySymbols / smallestBlock + 1;
         int mostTypes = Math.min(mostBlocks, mostTypesAllowed + 1);
         split.makeRoomFor(mostBlocks);
-        split.setTheBlockCount(mostBlocks);
+        split.setBlockCount(mostBlocks);
         this.howManyHistogramsAreUsed = mostTypes * howManyContexts;
         this.histograms = BrotliHistogram.makeFreshRow(
                 howManyHistogramsAreUsed, alphabetSize);
@@ -66,19 +66,19 @@ final class BrotliContextBlockSplitter {
             blockSize = smallestBlock;
         }
         if (howManyBlocks == 0) {
-            startTheFirstBlock();
+            startFirstBlock();
         } else if (blockSize > 0) {
             decideWhatToDoWithTheBatch();
         }
         if (isFinal) {
             howManyHistogramsAreUsed = split.countTypes() * howManyContexts;
-            split.setTheBlockCount(howManyBlocks);
+            split.setBlockCount(howManyBlocks);
         }
     }
 
-    private void startTheFirstBlock() {
-        split.setTheLength(0, blockSize);
-        split.setTheType(0, 0);
+    private void startFirstBlock() {
+        split.setLength(0, blockSize);
+        split.setType(0, 0);
         for (int context = 0; context < howManyContexts; context++) {
             lastEntropy[context] = BrotliCodes.measureBitsEntropy(
                     histograms[context].counts(), alphabetSize);
@@ -122,7 +122,7 @@ final class BrotliContextBlockSplitter {
         if (split.countTypes() < mostTypesAllowed
                 && costOfMerging[0] > splitThreshold
                 && costOfMerging[1] > splitThreshold) {
-            startANewType(onItsOwn);
+            startNewType(onItsOwn);
         } else if (costOfMerging[1]
                 < costOfMerging[0] - SECOND_LAST_MUST_BEAT_LAST_BY) {
             giveTheBatchToTheTypeBeforeLast(mergedEntropy);
@@ -131,9 +131,9 @@ final class BrotliContextBlockSplitter {
         }
     }
 
-    private void startANewType(double[] onItsOwn) {
-        split.setTheLength(howManyBlocks, blockSize);
-        split.setTheType(howManyBlocks, split.countTypes());
+    private void startNewType(double[] onItsOwn) {
+        split.setLength(howManyBlocks, blockSize);
+        split.setType(howManyBlocks, split.countTypes());
         lastHistogram[1] = lastHistogram[0];
         lastHistogram[0] = split.countTypes() * howManyContexts;
         for (int context = 0; context < howManyContexts; context++) {
@@ -150,8 +150,8 @@ final class BrotliContextBlockSplitter {
     }
 
     private void giveTheBatchToTheTypeBeforeLast(double[] mergedEntropy) {
-        split.setTheLength(howManyBlocks, blockSize);
-        split.setTheType(howManyBlocks, split.readTypeAt(howManyBlocks - 2));
+        split.setLength(howManyBlocks, blockSize);
+        split.setType(howManyBlocks, split.readTypeAt(howManyBlocks - 2));
         int swapped = lastHistogram[0];
         lastHistogram[0] = lastHistogram[1];
         lastHistogram[1] = swapped;

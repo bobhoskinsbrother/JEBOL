@@ -27,7 +27,7 @@ public interface TaskPort {
      * @param bodyAsWritten the body block as it molds, ready to be evaluated
      * @param output where the body's own writing goes
      */
-    void runTheBody(String bodyAsWritten, OutputPort output);
+    void runBody(String bodyAsWritten, OutputPort output);
 
     /** The port every interpreter starts with: DO of a task starts nothing. */
     static TaskPort none() {

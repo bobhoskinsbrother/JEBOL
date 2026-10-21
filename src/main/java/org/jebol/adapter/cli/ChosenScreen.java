@@ -27,7 +27,7 @@ final class ChosenScreen {
     private ChosenScreen() {
     }
 
-    static void setHeadlessBasedOnWhetherAScreenIsNeeded(String[] arguments) {
+    static void setHeadlessBasedOnWhetherScreenIsNeeded(String[] arguments) {
         boolean isWindow = switchValue(arguments)
                 .filter(WINDOW::equalsIgnoreCase)
                 .isPresent();
@@ -38,7 +38,7 @@ final class ChosenScreen {
         return switchValue(arguments).isPresent();
     }
 
-    static String[] withoutTheSwitch(String[] arguments) {
+    static String[] withoutSwitch(String[] arguments) {
         return Arrays.stream(arguments)
                 .filter(each -> !each.startsWith(SWITCH))
                 .toArray(String[]::new);
@@ -70,7 +70,7 @@ final class ChosenScreen {
             if (forAScript) {
                 out.println("Screen: a page at " + serving.address()
                         + " -- the script starts once it is open.");
-                waitForABrowser(screen);
+                waitForBrowser(screen);
                 return screen;
             }
             out.println("Screen: a page at " + serving.address()
@@ -83,7 +83,7 @@ final class ChosenScreen {
         }
     }
 
-    private static void waitForABrowser(BrowserScreen screen) {
+    private static void waitForBrowser(BrowserScreen screen) {
         while (!screen.hasDisplay()) {
             try {
                 Thread.sleep(BROWSER_POLLING_WAIT_MILLISECONDS);

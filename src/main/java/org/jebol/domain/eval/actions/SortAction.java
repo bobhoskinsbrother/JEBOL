@@ -43,7 +43,7 @@ public class SortAction extends DefaultNative implements ActionValue {
                     refinements.contains("all"),
                     refinements.contains("unstable") || series instanceof BinaryValue);
             if (series instanceof VectorValue vector) {
-                refuseRecordsInAVector(refinements);
+                refuseRecordsInVector(refinements);
                 return sorting.sortTheFront(vector, countHowManyOf(vector, partCount));
             }
             int howMany = Math.max(0, countHowManyOf(series, partCount));
@@ -65,7 +65,7 @@ public class SortAction extends DefaultNative implements ActionValue {
                 .orElse(series.lengthFromHere());
     }
 
-    private void refuseRecordsInAVector(Set<String> refinements) {
+    private void refuseRecordsInVector(Set<String> refinements) {
         if (refinements.contains("skip") || refinements.contains("compare")) {
             throw Raised.of(EvaluationFailure.FEATURE_NA,
                     "sort/skip and sort/compare on a vector!");

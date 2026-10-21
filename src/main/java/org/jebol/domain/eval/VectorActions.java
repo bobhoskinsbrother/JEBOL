@@ -30,7 +30,7 @@ public final class VectorActions extends SeriesActions {
     }
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         VectorStorage made = new VectorStorage(vector.kind(), 0);
         items.forEach(number ->
                 made.append(VectorPath.encodeForStorage(vector.kind(), number)));

@@ -77,7 +77,7 @@ public final class BitsetActions implements Actions {
         return holds(asked, false, false);
     }
 
-    public Value pickForAPath(Value selector) {
+    public Value pickForPath(Value selector) {
         return LogicValue.of(holds(selector));
     }
 

@@ -260,12 +260,12 @@ final class BrotliCodes {
             return false;
         }
         if (smallest < 4 && length - used < 6) {
-            raiseALoneZeroBetweenTwoUsedSymbolsToOne(counts, length);
+            raiseLoneZeroBetweenTwoUsedSymbolsToOne(counts, length);
         }
         return used >= 28;
     }
 
-    private static void raiseALoneZeroBetweenTwoUsedSymbolsToOne(
+    private static void raiseLoneZeroBetweenTwoUsedSymbolsToOne(
             int[] counts, int length) {
         for (int each = 1; each < length - 1; each++) {
             if (counts[each - 1] != 0 && counts[each] == 0
@@ -366,12 +366,12 @@ final class BrotliCodes {
     for (int each = 0; each < length; each++) {
         int width = depth[depthAt + each];
         if (width != 0) {
-            bits[bitsAt + each] = reverseTheBits(width, nextCode[width]++);
+            bits[bitsAt + each] = reverseBits(width, nextCode[width]++);
         }
     }
     }
 
-    private static int reverseTheBits(int howManyBits, int value) {
+    private static int reverseBits(int howManyBits, int value) {
     int reversed = 0;
     for (int each = 0; each < howManyBits; each++) {
         reversed = (reversed << 1) | ((value >> each) & 1);
@@ -649,7 +649,7 @@ final class BrotliCodes {
         int[] lengthBits = new int[CODE_LENGTH_CODES];
         convertBitDepthsToSymbols(lengthDepth, 0, CODE_LENGTH_CODES, lengthBits, 0);
 
-        storeTheCodeOverCodeLengths(distinct, lengthDepth, into);
+        storeCodeOverCodeLengths(distinct, lengthDepth, into);
         if (distinct == 1) {
             lengthDepth[onlyCode] = 0;
         }
@@ -664,8 +664,8 @@ final class BrotliCodes {
         }
     }
 
-    private static void storeTheCodeOverCodeLengths(int distinct,
-            int[] lengthDepth, BrotliBits into) {
+    private static void storeCodeOverCodeLengths(int distinct,
+                                                 int[] lengthDepth, BrotliBits into) {
 
         int toStore = CODE_LENGTH_CODES;
         if (distinct > 1) {

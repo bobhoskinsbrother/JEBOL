@@ -50,7 +50,7 @@ public class WorkerInterpreter {
 
     private static Bounds boundAWorkerToTheScreen() {
         return Bounds.standard()
-                .withoutATimeLimit()
+                .withoutTimeLimit()
                 .grant(HostService.CONSOLE)
                 .grant(HostService.FILES)
                 .grant(HostService.WINDOWS)
@@ -116,7 +116,7 @@ public class WorkerInterpreter {
                         screen.measure(said.width(), said.height());
                     }
                 } else if (said.isLine()) {
-                    console.takeATypedLine(said.readLine());
+                    console.takeTypedLine(said.readLine());
                 } else if (said.isFile()) {
                     said.readFileName().ifPresent(name -> said.readFileText().ifPresent(text ->
                             putAFileThePageHandedOver(name, text)));

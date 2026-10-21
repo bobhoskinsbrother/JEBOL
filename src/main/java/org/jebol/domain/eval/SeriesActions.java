@@ -14,7 +14,7 @@ abstract class SeriesActions implements Actions {
 
     abstract void takeOneOutAt(int oneBasedIndex);
 
-    abstract Value ofTheSameKindHolding(List<Value> items);
+    abstract Value ofSameKindHolding(List<Value> items);
 
     @Override
     public Value subject() {
@@ -56,7 +56,7 @@ abstract class SeriesActions implements Actions {
         List<Value> taken = List.copyOf(
                 held().head().listTheItems().subList(from - 1, from - 1 + howMany));
         takeOutFrom(from, howMany);
-        return ofTheSameKindHolding(taken);
+        return ofSameKindHolding(taken);
     }
 
     @Override

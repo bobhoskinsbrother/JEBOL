@@ -60,7 +60,7 @@ public final class BinaryActions extends SeriesActions {
 
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         return BinaryValue.of(items.stream()
                 .mapToInt(item -> (int) ((IntegerValue) item).magnitude()).toArray());
     }

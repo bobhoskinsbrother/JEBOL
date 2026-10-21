@@ -59,7 +59,7 @@ public final class MapValue implements Value, PathTarget {
     MapValue combineWith(MapValue theirs, SetOperation how, boolean mindingCase) {
         MapValue kept = MapValue.empty();
         for (Value key : keys()) {
-            if (how.keepsFromTheFirstSet(theirs.holds(key, mindingCase))
+            if (how.keepsFromFirstSet(theirs.holds(key, mindingCase))
                     && !kept.holds(key, mindingCase)) {
                 kept.put(key, select(key, mindingCase), mindingCase);
             }

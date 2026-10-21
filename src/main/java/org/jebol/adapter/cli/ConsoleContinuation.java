@@ -28,7 +28,7 @@ final class ConsoleContinuation {
         return level <= DEEPEST_REMEMBERED ? openedBy[level - 1] : DEEPER_THAN_REMEMBERED;
     }
 
-    void takeTheInput() {
+    void takeInput() {
         level = 0;
         rawStringPercents = 0;
     }

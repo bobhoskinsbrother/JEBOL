@@ -56,19 +56,19 @@ public class ModifyAction extends PortAction {
                     : port;
         }
         if (target instanceof FileValue || target instanceof PortValue port && port.isAFile()) {
-            return modifyAFile(target, field);
+            return modifyFile(target, field);
         }
-        return setAConsoleMode(target, field, given);
+        return setConsoleMode(target, field, given);
     }
 
-    private Value modifyAFile(Value target, Value field) {
+    private Value modifyFile(Value target, Value field) {
         if (field instanceof AnyWordValue mode && !THE_MODES_A_FILE_TAKES.contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, field);
         }
         return target instanceof PortValue ? LogicValue.of(true) : NoneValue.none();
     }
 
-    private Value setAConsoleMode(Value target, Value field, Value given) {
+    private Value setConsoleMode(Value target, Value field, Value given) {
         if (!(field instanceof AnyWordValue mode) || !ports.consoleModes().contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.BAD_FILE_MODE, field);
         }

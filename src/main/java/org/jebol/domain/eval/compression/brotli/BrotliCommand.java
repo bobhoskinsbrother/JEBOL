@@ -78,7 +78,7 @@ final class BrotliCommand {
         return distancePrefixAndItsExtraBitsInTheTopSixBits[which];
     }
 
-    void setTheCommandPrefix(int which, int prefix) {
+    void setCommandPrefix(int which, int prefix) {
         commandPrefix[which] = prefix;
     }
 
@@ -110,11 +110,11 @@ final class BrotliCommand {
         return 3;
     }
 
-    void setTheDistancePrefix(int which, int prefix) {
+    void setDistancePrefix(int which, int prefix) {
         distancePrefixAndItsExtraBitsInTheTopSixBits[which] = prefix;
     }
 
-    void setTheDistanceExtra(int which, int extra) {
+    void setDistanceExtra(int which, int extra) {
         distanceExtra[which] = extra;
     }
 
@@ -145,7 +145,7 @@ final class BrotliCommand {
         count++;
     }
 
-    int restoreTheDistanceCodeAt(int which, int directCodes, int postfixBits) {
+    int restoreDistanceCodeAt(int which, int directCodes, int postfixBits) {
         int code = distancePrefixAndItsExtraBitsInTheTopSixBits[which] & 0x3FF;
         if (code < DISTANCE_SHORT_CODES + directCodes) {
             return code;

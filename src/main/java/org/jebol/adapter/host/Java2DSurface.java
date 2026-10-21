@@ -238,7 +238,7 @@ public final class Java2DSurface implements Surface {
         switch (step) {
             case PathStep.MoveTo to -> path.moveTo(to.across(), to.down());
             case PathStep.LineTo to ->
-                    lineOrMoveToBecauseJava2dRefusesALineOnAnEmptyPath(path, to);
+                    lineOrMoveToBecauseJava2dRefusesLineOnEmptyPath(path, to);
             case PathStep.QuadraticTo to -> path.quadTo(
                     to.controlAcross(), to.controlDown(), to.across(), to.down());
             case PathStep.CubicTo to -> path.curveTo(
@@ -259,7 +259,7 @@ public final class Java2DSurface implements Surface {
         }
     }
 
-    private  void lineOrMoveToBecauseJava2dRefusesALineOnAnEmptyPath(
+    private  void lineOrMoveToBecauseJava2dRefusesLineOnEmptyPath(
             Path2D.Double path, PathStep.LineTo to) {
         if (path.getCurrentPoint() == null) {
             path.moveTo(to.across(), to.down());

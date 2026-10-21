@@ -208,9 +208,9 @@ public final class Bincode {
                     alignUp(cursor.at, writeWholeNumber(readItemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
                     writeWholeNumber(readItemAt(dialect, ++step, code)));
-            case "encodedu32" -> writeSevenBitsAByte(cursor, refuseWiderNumber(
+            case "encodedu32" -> writeSevenBitsByte(cursor, refuseWiderNumber(
                     writeWholeNumber(readItemAt(dialect, ++step, code))));
-            case "encodedu64" -> writeSevenBitsAByte(cursor,
+            case "encodedu64" -> writeSevenBitsByte(cursor,
                     writeWholeNumber(readItemAt(dialect, ++step, code)));
             case "vint" -> writeVariableNumber(cursor,
                     writeWholeNumber(readItemAt(dialect, ++step, code)));
@@ -507,7 +507,7 @@ public final class Bincode {
         return (value ^ signBit) - signBit;
     }
 
-    private static void writeSevenBitsAByte(Cursor cursor, long number) {
+    private static void writeSevenBitsByte(Cursor cursor, long number) {
         long left = number;
         do {
             int octet = (int) (left & 0x7F);

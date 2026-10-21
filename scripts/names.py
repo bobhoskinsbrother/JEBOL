@@ -104,6 +104,14 @@ def suggestion_for(name):
         return None
     if re.match(r"^may[A-Z]", name):
         return "can" + name[3:]
+    if is_constant(name):
+        words = name.split("_")
+        kept = [word for word in words if word not in ("A", "AN", "THE")]
+        if kept == words:
+            return None
+        needs_review = "OF" in kept or any(
+            word in ("WHICH", "THAT", "WHOSE", "HOW", "WHAT") for word in kept)
+        return "_".join(kept) + (" [review]" if needs_review else "")
     words = words_of(name)
     kept = [word for word in words if word not in ("A", "An", "The")]
     if kept == words:

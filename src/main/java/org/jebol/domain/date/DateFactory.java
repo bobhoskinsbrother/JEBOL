@@ -47,7 +47,7 @@ public final class DateFactory {
             long dayNumber, long nanosecondsIntoTheDay, long about) {
         try {
             LocalDate day = LocalDate.ofEpochDay(dayNumber);
-            requireASupportedYear(day.getYear(), about);
+            requireSupportedYear(day.getYear(), about);
             return DateValue.of(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
                     TimeValue.ofNanoseconds(nanosecondsIntoTheDay));
         } catch (DateTimeException outsideTheSupportedYears) {
@@ -55,7 +55,7 @@ public final class DateFactory {
         }
     }
 
-    private static void requireASupportedYear(int year, long about) {
+    private static void requireSupportedYear(int year, long about) {
         if (year < DateValue.EARLIEST_YEAR || year > DateValue.LATEST_YEAR) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(about));
         }
@@ -96,10 +96,10 @@ public final class DateFactory {
         TimeValue clock = readClock(after.subList(0, clockTakes), parts);
         Optional<Integer> zone =
                 readZoneAfterClock(after.subList(clockTakes, after.size()), parts);
-        return withTheClockNormalised(calendar, clock, zone, parts);
+        return withClockNormalised(calendar, clock, zone, parts);
     }
 
-    private static DateValue withTheClockNormalised(
+    private static DateValue withClockNormalised(
             DateValue calendar, TimeValue clock, Optional<Integer> zone, List<Value> parts) {
         long wholeDays = Math.floorDiv(clock.nanoseconds(), TimeValue.NANOSECONDS_PER_DAY);
         long withinTheDay = Math.floorMod(clock.nanoseconds(), TimeValue.NANOSECONDS_PER_DAY);

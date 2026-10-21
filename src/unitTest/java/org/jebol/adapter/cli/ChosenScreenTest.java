@@ -24,7 +24,7 @@ class ChosenScreenTest {
     private static String headlessAfter(String... arguments) {
         String was = System.getProperty("java.awt.headless");
         try {
-            ChosenScreen.setHeadlessBasedOnWhetherAScreenIsNeeded(arguments);
+            ChosenScreen.setHeadlessBasedOnWhetherScreenIsNeeded(arguments);
             return System.getProperty("java.awt.headless");
         } finally {
             if (was == null) {

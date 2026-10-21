@@ -25,7 +25,7 @@ class DoOfATaskFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWritingTo(StringBuffer written) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit())),
+                AnInterpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutTimeLimit())),
                 written::append,
                 Bounds.standard());
     }

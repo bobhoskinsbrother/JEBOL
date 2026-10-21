@@ -59,7 +59,7 @@ public final class MapActions implements Actions {
         MapValue kept = MapValue.empty();
         for (Value key : pairs.keys()) {
             boolean inTheirs = theirs.holds(key, mindingCase);
-            if (how.keepsFromTheFirstSet(inTheirs) && !kept.holds(key, mindingCase)) {
+            if (how.keepsFromFirstSet(inTheirs) && !kept.holds(key, mindingCase)) {
                 kept.put(key, pairs.select(key, mindingCase), mindingCase);
             }
         }

@@ -1727,7 +1727,7 @@ public final class Evaluator {
     }
 
     private Value pickFromABitsetForAPath(BitsetValue members, Value selector) {
-        return new BitsetActions(members).pickForAPath(selector);
+        return new BitsetActions(members).pickForPath(selector);
     }
 
     public Value findHostPort(String scheme) {

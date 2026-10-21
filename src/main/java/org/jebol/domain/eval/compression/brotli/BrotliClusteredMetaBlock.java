@@ -118,7 +118,7 @@ final class BrotliClusteredMetaBlock {
             if (unchanged) {
                 prefix = commands.readDistancePrefixAt(which);
             } else {
-                int code = commands.restoreTheDistanceCodeAt(which,
+                int code = commands.restoreDistanceCodeAt(which,
                         asWritten.directCodes(), asWritten.postfixBits());
                 if (Integer.toUnsignedLong(code) > BrotliDistances.FURTHEST) {
                     return Double.NaN;
@@ -145,12 +145,12 @@ final class BrotliClusteredMetaBlock {
                     || commands.readCommandPrefixAt(which) < 128) {
                 continue;
             }
-            int code = commands.restoreTheDistanceCodeAt(which,
+            int code = commands.restoreDistanceCodeAt(which,
                     asWritten.directCodes(), asWritten.postfixBits());
             long encoded = BrotliCommand.encodeDistance(code,
                     chosen.directCodes(), chosen.postfixBits());
-            commands.setTheDistancePrefix(which, (int) (encoded >>> 32));
-            commands.setTheDistanceExtra(which, (int) encoded);
+            commands.setDistancePrefix(which, (int) (encoded >>> 32));
+            commands.setDistanceExtra(which, (int) encoded);
         }
     }
 

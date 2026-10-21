@@ -73,7 +73,7 @@ final class JulianDay {
         long nanoseconds = (hours + 12) * TimeValue.NANOSECONDS_PER_HOUR
                 + minutes * 60 * TimeValue.NANOSECONDS_PER_SECOND
                 + seconds * TimeValue.NANOSECONDS_PER_SECOND;
-        LocalDate landedOn = rollTheDayOver(year, month, day)
+        LocalDate landedOn = rollDayOver(year, month, day)
                 .plusDays(nanoseconds / TimeValue.NANOSECONDS_PER_DAY);
         return new DateValue(landedOn.getYear(), landedOn.getMonthValue(),
                 landedOn.getDayOfMonth(),
@@ -82,7 +82,7 @@ final class JulianDay {
                 Optional.of(0));
     }
 
-    private static LocalDate rollTheDayOver(int year, int month, int day) {
+    private static LocalDate rollDayOver(int year, int month, int day) {
         if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
             throw refuseUnreachableYear();
         }

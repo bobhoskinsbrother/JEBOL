@@ -108,9 +108,9 @@ final class BrotliBlockSplitting {
         if (howMany < SHORTEST_WORTH_SPLITTING) {
             split.makeRoomFor(split.countBlocks() + 1);
             split.addType();
-            split.setTheType(split.countBlocks(), 0);
-            split.setTheLength(split.countBlocks(), howMany);
-            split.setTheBlockCount(split.countBlocks() + 1);
+            split.setType(split.countBlocks(), 0);
+            split.setLength(split.countBlocks(), howMany);
+            split.setBlockCount(split.countBlocks() + 1);
             return;
         }
 
@@ -389,14 +389,14 @@ final class BrotliBlockSplitting {
             runLength += blockLengths[which];
             if (which + 1 == howManyBlocks || usedBy[which] != usedBy[which + 1]) {
                 int type = newName[usedBy[which]];
-                split.setTheType(written, type);
-                split.setTheLength(written, runLength);
+                split.setType(written, type);
+                split.setLength(written, runLength);
                 highestType = Math.max(highestType, type);
                 runLength = 0;
                 written++;
             }
         }
-        split.setTheBlockCount(written);
-        split.setTheTypeCount(highestType + 1);
+        split.setBlockCount(written);
+        split.setTypeCount(highestType + 1);
     }
 }

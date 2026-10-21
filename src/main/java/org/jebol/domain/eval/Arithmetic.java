@@ -40,12 +40,12 @@ public final class Arithmetic {
         double second = asMagnitude(divisor);
         requireNonZero(second);
         if (definition == Division.SIGN_FOLLOWS_THE_DIVIDEND) {
-            return shapeLikeTheDividend(dividend, first % second);
+            return shapeLikeDividend(dividend, first % second);
         }
         double by = definition == Division.NEVER_NEGATIVE
                 ? Math.abs(second) : second;
         double rest = ((first % by) + by) % by;
-        return shapeLikeTheDividend(dividend, isNegligibleAgainstItsOperands(rest, first, by)
+        return shapeLikeDividend(dividend, isNegligibleAgainstItsOperands(rest, first, by)
                 ? 0.0
                 : rest);
     }
@@ -62,7 +62,7 @@ public final class Arithmetic {
         };
     }
 
-    private static Value shapeLikeTheDividend(Value dividend, double magnitude) {
+    private static Value shapeLikeDividend(Value dividend, double magnitude) {
         return switch (dividend) {
             case CharacterValue ignored -> CharacterValue.of((int) magnitude);
             case TimeValue ignored -> TimeValue.ofNanoseconds((long) magnitude);

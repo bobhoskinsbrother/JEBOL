@@ -235,7 +235,7 @@ public final class JavaImage implements ImagePort {
         try (ImageOutputStream stream = ImageIO.createImageOutputStream(bytes)) {
             writer.setOutput(stream);
             ImageWriteParam asked = writer.getDefaultWriteParam();
-            leaveTheRowsInOrderRatherThanInterlaced(asked);
+            leaveRowsInOrderRatherThanInterlaced(asked);
             writer.write(null, new IIOImage(written, null, null), asked);
             stream.flush();
             return bytes.toByteArray();
@@ -246,7 +246,7 @@ public final class JavaImage implements ImagePort {
         }
     }
 
-    private void leaveTheRowsInOrderRatherThanInterlaced(ImageWriteParam param) {
+    private void leaveRowsInOrderRatherThanInterlaced(ImageWriteParam param) {
         if (param.canWriteProgressive()) {
             param.setProgressiveMode(ImageWriteParam.MODE_DISABLED);
         }
@@ -258,18 +258,18 @@ public final class JavaImage implements ImagePort {
             for (int across = 0; across < picture.getWidth(); across++) {
                 colours.add(picture.getRGB(across, down) | 0xFF000000);
                 if (colours.size() > PALETTE_ENTRIES) {
-                    return leaveToTheWritersOwnQuantiser(picture);
+                    return leaveToWritersOwnQuantiser(picture);
                 }
             }
         }
-        return layOutAgainstThePalette(picture, colours);
+        return layOutAgainstPalette(picture, colours);
     }
 
-    private BufferedImage leaveToTheWritersOwnQuantiser(BufferedImage picture) {
+    private BufferedImage leaveToWritersOwnQuantiser(BufferedImage picture) {
         return picture;
     }
 
-    private BufferedImage layOutAgainstThePalette(
+    private BufferedImage layOutAgainstPalette(
             BufferedImage picture, Collection<Integer> colours) {
 
         byte[] reds = new byte[colours.size()];

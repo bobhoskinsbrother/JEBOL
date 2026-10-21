@@ -93,7 +93,7 @@ class HostPortsTest {
                 .isInstanceOf(MidiDevices.Refused.class);
 
         StringBuilder written = new StringBuilder();
-        none.tasks().runTheBody("print \"never\"", written::append);
+        none.tasks().runBody("print \"never\"", written::append);
         assertThat(written).isEmpty();
     }
 

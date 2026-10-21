@@ -29,7 +29,7 @@ public final class GobActions extends SeriesActions {
     }
 
     @Override
-    Value ofTheSameKindHolding(List<Value> items) {
+    Value ofSameKindHolding(List<Value> items) {
         return BlockValue.of(items);
     }
 

@@ -11,7 +11,7 @@ public abstract class PickingNative extends DefaultNative {
 
     protected Value pickBy(Value subject, Value selector) {
         return switch (subject) {
-            case BitsetValue members -> new BitsetActions(members).pickForAPath(selector);
+            case BitsetValue members -> new BitsetActions(members).pickForPath(selector);
             case DateValue date -> DatePart.readFrom(date, selector);
             case Value anythingElse -> anythingElse.pickBy(selector);
         };

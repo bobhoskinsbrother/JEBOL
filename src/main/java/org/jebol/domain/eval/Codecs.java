@@ -149,7 +149,7 @@ public final class Codecs {
             }
             int closed = endOfTag(source, opened + 1);
             if (closed < 0) {
-                textFrom = treatANeverClosedTagAsText(opened);
+                textFrom = treatNeverClosedTagAsText(opened);
                 at = source.length();
                 break;
             }
@@ -163,7 +163,7 @@ public final class Codecs {
         return parts;
     }
 
-    private int treatANeverClosedTagAsText(int opened) {
+    private int treatNeverClosedTagAsText(int opened) {
         return opened;
     }
 

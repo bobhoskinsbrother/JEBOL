@@ -21,7 +21,7 @@ class TheHostsOwnHttpFromTheSourceTest {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withHttp(port),
                 OutputPort.discard(),
-                Bounds.standard().withoutATimeLimit()
+                Bounds.standard().withoutTimeLimit()
                         .grant(HostService.WEB).grant(HostService.CONSOLE));
     }
 
@@ -194,7 +194,7 @@ class TheHostsOwnHttpFromTheSourceTest {
     @DisplayName("a host that supplies no fetching keeps Rebol's own protocol")
     void keepsTheProtocolWithoutAHostPort() {
         Interpreter interpreter = AnInterpreter.withBounds(
-                Bounds.standard().withoutATimeLimit().grant(HostService.WEB));
+                Bounds.standard().withoutTimeLimit().grant(HostService.WEB));
 
         assertThat(answerTo(interpreter, "type? :system/schemes/http/actor"))
                 .isEqualTo("#(object!)");
@@ -208,7 +208,7 @@ class TheHostsOwnHttpFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts().withHttp(new ACannedHost()),
                 OutputPort.discard(),
-                Bounds.standard().withoutATimeLimit());
+                Bounds.standard().withoutTimeLimit());
 
         assertThat(answerTo(interpreter, "e: try [read http://example.com/a] mold e"))
                 .contains("web is not granted");

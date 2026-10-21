@@ -11,7 +11,7 @@ class ABrowserHostFromTheSourceTest {
 
     private static Bounds measureABrowsersBounds() {
         return Bounds.standard()
-                .withoutATimeLimit()
+                .withoutTimeLimit()
                 .grant(HostService.CONSOLE)
                 .grant(HostService.FILES)
                 .grant(HostService.WINDOWS)

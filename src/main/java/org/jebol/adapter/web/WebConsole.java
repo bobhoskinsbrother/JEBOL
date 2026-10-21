@@ -17,7 +17,7 @@ public final class WebConsole implements ConsolePort {
         this.runnable = runnable;
     }
 
-    public void takeATypedLine(String text) {
+    public void takeTypedLine(String text) {
         typed.add(text);
     }
 
@@ -25,7 +25,7 @@ public final class WebConsole implements ConsolePort {
     public String readLine() {
         while (typed.isEmpty()) {
             runnable.run();
-            letASlicePass();
+            letSlicePass();
         }
         return typed.poll();
     }
@@ -36,7 +36,7 @@ public final class WebConsole implements ConsolePort {
                 "this page has no way to read a line without showing it");
     }
 
-    private static void letASlicePass() {
+    private static void letSlicePass() {
         try {
             Thread.sleep(A_SLICE);
         } catch (InterruptedException stopped) {

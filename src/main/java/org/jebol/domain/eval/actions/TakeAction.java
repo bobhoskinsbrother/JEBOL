@@ -60,10 +60,10 @@ public class TakeAction extends DefaultNative implements ActionValue {
                     Math.abs(upTo.index() - series.index())), refinements);
         }
         long wanted = howMuch.map(series::countUpTo).orElse(1L);
-        return deepenIfAsked(takeACount(series, wanted, refinements), refinements);
+        return deepenIfAsked(takeCount(series, wanted, refinements), refinements);
     }
 
-    private Value takeACount(RebolSeries from, long wanted, Set<String> refinements) {
+    private Value takeCount(RebolSeries from, long wanted, Set<String> refinements) {
         RebolSeries series = from;
         long howMany;
         if (wanted < 0) {

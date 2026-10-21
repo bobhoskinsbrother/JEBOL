@@ -68,7 +68,7 @@ public record Bounds(
                 unavailableServices, hostName, extensions);
     }
 
-    public Bounds withoutATimeLimit() {
+    public Bounds withoutTimeLimit() {
         return withTimeLimit(ChronoUnit.FOREVER.getDuration());
     }
 

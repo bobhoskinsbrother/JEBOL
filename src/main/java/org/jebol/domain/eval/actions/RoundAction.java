@@ -39,7 +39,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
             Value subject = arguments.getFirst();
             Optional<Value> scale = readTheArgumentOf("to", 0, arguments, refinements);
             if (subject instanceof TimeValue time) {
-                return roundTheTime(time, scale);
+                return roundTime(time, scale);
             }
             if (subject instanceof PairValue(double x, double y)) {
                 return PairValue.of(roundHalfAway(x), roundHalfAway(y));
@@ -49,9 +49,9 @@ public class RoundAction extends DefaultNative implements ActionValue {
             }
             double value = Comparison.asDouble(subject);
             if (scale.isEmpty()) {
-                return roundKeepingTheDatatype(subject, roundBy(value, refinements));
+                return roundKeepingDatatype(subject, roundBy(value, refinements));
             }
-            return roundToAMultiple(subject, value, scale.get());
+            return roundToMultiple(subject, value, scale.get());
         };
     }
 
@@ -104,18 +104,18 @@ public class RoundAction extends DefaultNative implements ActionValue {
 
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
-    private Value roundToAMultiple(Value subject, double value, Value step) {
+    private Value roundToMultiple(Value subject, double value, Value step) {
         double multiple = Comparison.asDouble(step);
         if (multiple == 0) {
             if (step.datatype() == IntegerValue.TYPE && subject.datatype() == IntegerValue.TYPE) {
                 throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
             }
-            return roundToTheScalesDatatype(step, value);
+            return roundToScalesDatatype(step, value);
         }
-        return roundToTheScalesDatatype(step, roundHalfAway(value / multiple) * multiple);
+        return roundToScalesDatatype(step, roundHalfAway(value / multiple) * multiple);
     }
 
-    private Value roundTheTime(TimeValue time, Optional<Value> scale) {
+    private Value roundTime(TimeValue time, Optional<Value> scale) {
         if (scale.isEmpty()) {
             return TimeValue.ofNanoseconds(Math.round(
                     (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND)
@@ -136,7 +136,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
                 : DecimalValue.of(rounded);
     }
 
-    private Value roundKeepingTheDatatype(Value subject, double rounded) {
+    private Value roundKeepingDatatype(Value subject, double rounded) {
         return switch (subject) {
             case MoneyValue amount -> amount.amountTo(BigDecimal.valueOf(rounded));
             case PercentValue ignored -> PercentValue.of(rounded);
@@ -145,7 +145,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
         };
     }
 
-    private Value roundToTheScalesDatatype(Value scale, double rounded) {
+    private Value roundToScalesDatatype(Value scale, double rounded) {
         return switch (scale) {
             case MoneyValue amount -> amount.amountTo(BigDecimal.valueOf(rounded));
             case IntegerValue ignored -> IntegerValue.of((long) rounded);

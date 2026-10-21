@@ -51,7 +51,7 @@ public final class Comparison {
             return mode < 0;
         }
 
-        boolean mindsTheDatatype() {
+        boolean mindsDatatype() {
             return mode > 1;
         }
     }
@@ -76,7 +76,7 @@ public final class Comparison {
         Value first = left;
         Value second = right;
         if (left.datatype() != right.datatype()) {
-            if (strictness.mindsTheDatatype()) {
+            if (strictness.mindsDatatype()) {
                 return false;
             }
             Optional<Value[]> brought = bringTogether(left, right);
