@@ -25,7 +25,7 @@ public class WorkerInterpreter {
 
     public static void main(String[] args) {
         ThePageOnTheOtherSide thePage = new ThePageOnTheOtherSide();
-        console = new WebConsole(thePage::takeWhatThePagePosts);
+        console = new WebConsole(thePage::takePostedLines);
         files = new WebFiles(BrowserStore.openForThePage());
         HostPorts ports = new JavaHost().ports()
                 .withDigests(new BrowserDigests())
@@ -107,7 +107,7 @@ public class WorkerInterpreter {
         }
 
         @Override
-        public void takeWhatThePagePosts() {
+        public void takePostedLines() {
             for (String posted = takeWhatThePageSent(); posted != null; posted = takeWhatThePageSent()) {
                 thePageHasSpoken = true;
                 PageEvent said = new PageEvent(posted);

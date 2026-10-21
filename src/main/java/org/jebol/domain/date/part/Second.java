@@ -18,6 +18,6 @@ final class Second implements WritableDateField {
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
         return date.atTime(
-                date.clock().withTheSecondOf(given.asSecondsInNanoseconds()));
+                date.clock().withSecond(given.asSecondsInNanoseconds()));
     }
 }

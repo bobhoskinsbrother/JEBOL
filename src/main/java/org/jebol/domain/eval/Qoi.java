@@ -163,13 +163,13 @@ final class Qoi {
                 written.add(OP_INDEX | where);
             } else {
                 seen[where] = here;
-                writeTheSmallestChunkThatCarriesTheStep(written, before, here);
+                writeStepChunk(written, before, here);
             }
             before = here;
         }
     }
 
-    private static void writeTheSmallestChunkThatCarriesTheStep(
+    private static void writeStepChunk(
             Written written, Colour before, Colour here) {
 
         if (here.alpha() != before.alpha()) {

@@ -169,7 +169,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
 
     public byte[] publishPoint() {
         if (doesArithmeticInThisBuild()) {
-            return writeTheTwoCoordinatesOf(publicPoint.x(), publicPoint.y());
+            return writeCoordinates(publicPoint.x(), publicPoint.y());
         }
         return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
                 ? writeLittleEndianAsRfc7748(
@@ -179,10 +179,10 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
 
     private byte[] writeBothCoordinatesAfterLeadByte() {
         ECPoint point = ((ECPublicKey) pair.getPublic()).getW();
-        return writeTheTwoCoordinatesOf(point.getAffineX(), point.getAffineY());
+        return writeCoordinates(point.getAffineX(), point.getAffineY());
     }
 
-    private byte[] writeTheTwoCoordinatesOf(BigInteger x, BigInteger y) {
+    private byte[] writeCoordinates(BigInteger x, BigInteger y) {
         byte[] written = new byte[1 + (2 * coordinateWidth)];
         written[0] = 0x04;
         writeCoordinate(x, written, 1);
@@ -348,8 +348,8 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
     private static byte[] writeADerSequenceOfTwoIntegers(
             BigInteger first, BigInteger second) {
 
-        byte[] left = writeADerIntegerOf(first);
-        byte[] right = writeADerIntegerOf(second);
+        byte[] left = derInteger(first);
+        byte[] right = derInteger(second);
         int content = left.length + right.length;
         byte[] header = content < 0x80
                 ? new byte[] {(byte) DER_SEQUENCE, (byte) content}
@@ -361,7 +361,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return written;
     }
 
-    private static byte[] writeADerIntegerOf(BigInteger value) {
+    private static byte[] derInteger(BigInteger value) {
         byte[] magnitude = value.toByteArray();
         byte[] written = new byte[2 + magnitude.length];
         written[0] = (byte) DER_INTEGER;

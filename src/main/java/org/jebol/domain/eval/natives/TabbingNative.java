@@ -28,7 +28,7 @@ public abstract class TabbingNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String aTabsWorthOfSpaces = writeATabsWorthOf(refinementArgument("size", 0, arguments, refinements)
+            String aTabsWorthOfSpaces = spacesText(refinementArgument("size", 0, arguments, refinements)
                     .map(this::countSpacesTabStandsFor)
                     .orElse(SPACES_TAB_STANDS_FOR));
             return switch (arguments.getFirst()) {
@@ -41,7 +41,7 @@ public abstract class TabbingNative extends DefaultNative {
         };
     }
 
-    private String writeATabsWorthOf(int spaces) {
+    private String spacesText(int spaces) {
         return " ".repeat(spaces);
     }
 

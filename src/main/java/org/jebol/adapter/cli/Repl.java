@@ -175,7 +175,7 @@ public final class Repl {
         Bounds bounds = grantEveryHostService().withoutTimeLimit();
         ProcessEnvironment environment = new ProcessEnvironment();
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
-        HostPorts ports = useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(new JavaHost().ports()
+        HostPorts ports = attachJavaImagesCodec(new JavaHost().ports()
                 .withTasks(new ThreadTasks(bounds))
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(environment)
@@ -206,7 +206,7 @@ public final class Repl {
         interpreter.followApplicationDataDirectory();
     }
 
-    private static HostPorts useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(HostPorts ports) {
+    private static HostPorts attachJavaImagesCodec(HostPorts ports) {
         return ports.withImages(new JavaImage());
     }
 

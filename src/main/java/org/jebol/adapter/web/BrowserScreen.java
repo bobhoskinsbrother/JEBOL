@@ -114,7 +114,7 @@ public final class BrowserScreen extends GobScreen {
 
     @Override
     public void acceptPendingReports() {
-        viewer.takeWhatThePagePosts();
+        viewer.takePostedLines();
         acceptMeasurements();
     }
 
@@ -192,7 +192,7 @@ public final class BrowserScreen extends GobScreen {
     public interface Viewer {
         boolean isConnected();
         void paint(List<DrawingCommand> painting);
-        default void takeWhatThePagePosts() {
+        default void takePostedLines() {
         }
     }
 

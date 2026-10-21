@@ -387,10 +387,10 @@ public record DateValue(
         if (timeOfDay.isEmpty()) {
             return rendered;
         }
-        return rendered + "/" + timeOfDay.get() + writeTheOffset();
+        return rendered + "/" + timeOfDay.get() + offsetText();
     }
 
-    private String writeTheOffset() {
+    private String offsetText() {
         int minutes = zoneMinutes.orElse(0);
         if (minutes == 0) {
             return "";
@@ -417,7 +417,7 @@ public record DateValue(
         if (timeOfDay.isEmpty()) {
             return calendar;
         }
-        return calendar + "T" + writeIsoClock() + writeTheIsoOffset();
+        return calendar + "T" + writeIsoClock() + isoOffsetText();
     }
 
     private String writeIsoClock() {
@@ -433,7 +433,7 @@ public record DateValue(
         return written + "." + digits;
     }
 
-    private String writeTheIsoOffset() {
+    private String isoOffsetText() {
         int minutes = zoneMinutes.orElse(0);
         if (minutes == 0) {
             return "";

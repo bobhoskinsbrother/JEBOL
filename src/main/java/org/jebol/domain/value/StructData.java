@@ -52,7 +52,7 @@ public final class StructData {
     }
 
     public void writeNumberAt(int offset, VectorKind kind, long stored) {
-        write(offset, kind.writeTheOctetsOf(stored), kind.bytes());
+        write(offset, kind.elementOctets(stored), kind.bytes());
     }
 
     public Optional<Value> liveValueAt(int offset) {

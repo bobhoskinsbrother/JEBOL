@@ -421,8 +421,8 @@ final class BrotliMetaBlockWriter {
         }
     }
 
-    private static void writeTheExtraBitsOfALength(BrotliCommand commands,
-                                                   int which, BrotliBits into) {
+    private static void writeLengthExtraBits(BrotliCommand commands,
+                                             int which, BrotliBits into) {
 
         int copyLengthCode = commands.copyLengthCodeAt(which);
         int insertCode = BrotliCommand.insertLengthCode(
@@ -491,7 +491,7 @@ final class BrotliMetaBlockWriter {
         int beforeThat = theByteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
             commandSymbols.write(commands.readCommandPrefixAt(which), into);
-            writeTheExtraBitsOfALength(commands, which, into);
+            writeLengthExtraBits(commands, which, into);
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = data[at & mask] & 0xFF;
                 if (literalsCarryContext) {
@@ -569,7 +569,7 @@ final class BrotliMetaBlockWriter {
         for (int which = 0; which < commands.count(); which++) {
             int commandCode = commands.readCommandPrefixAt(which);
             into.write(commandDepth[commandCode], commandBits[commandCode]);
-            writeTheExtraBitsOfALength(commands, which, into);
+            writeLengthExtraBits(commands, which, into);
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = data[at & mask] & 0xFF;
                 into.write(literalDepth[literal], literalBits[literal]);

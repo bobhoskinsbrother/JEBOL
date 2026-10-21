@@ -51,11 +51,11 @@ public class ToLocalFileNative extends HostNative {
                 from = ((AnyStringValue) runThroughFileSystem(() ->
                         StringValue.of(evaluator.ports().files().workingDirectory()))).text();
             }
-            return StringValue.of(writeTheLocalPathOf(from + path, resolvingDots, localSeparator.separator()));
+            return StringValue.of(localPath(from + path, resolvingDots, localSeparator.separator()));
         };
     }
 
-    private String writeTheLocalPathOf(String path, boolean resolvingDots, char separator) {
+    private String localPath(String path, boolean resolvingDots, char separator) {
         StringBuilder built = new StringBuilder();
         int at = 0;
         while (at < path.length()) {

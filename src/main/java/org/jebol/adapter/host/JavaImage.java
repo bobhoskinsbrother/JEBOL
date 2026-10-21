@@ -175,7 +175,7 @@ public final class JavaImage implements ImagePort {
         }
         BufferedImage written = bufferFrom(image, HAVE_NO_ALPHA.contains(format));
         if (STORES_INDEX_INTO_PALETTE.contains(format)) {
-            written = withAPaletteOfItsOwnColours(written);
+            written = quantiseToOwnPalette(written);
         }
         return writeBytes(written, format);
     }
@@ -252,7 +252,7 @@ public final class JavaImage implements ImagePort {
         }
     }
 
-    private BufferedImage withAPaletteOfItsOwnColours(BufferedImage picture) {
+    private BufferedImage quantiseToOwnPalette(BufferedImage picture) {
         LinkedHashSet<Integer> colours = new LinkedHashSet<>();
         for (int down = 0; down < picture.getHeight(); down++) {
             for (int across = 0; across < picture.getWidth(); across++) {

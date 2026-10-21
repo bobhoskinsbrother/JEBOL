@@ -525,7 +525,7 @@ public final class Molder {
         };
     }
 
-    private static String writeTheHexOf(byte[] octets) {
+    private static String hexText(byte[] octets) {
         StringBuilder hex = new StringBuilder();
         for (byte octet : octets) {
             hex.append("%02X".formatted(octet & 0xFF));
@@ -574,7 +574,7 @@ public final class Molder {
         for (int offset = 0; offset < octets.length; offset++) {
             octets[offset] = (byte) binary.storage().at(binary.index() + offset);
         }
-        return forReading ? moldBytes(octets) : writeTheHexOf(octets);
+        return forReading ? moldBytes(octets) : hexText(octets);
     }
 
     private static int countBytesLimitAllows(int bytes) {
@@ -629,7 +629,7 @@ public final class Molder {
     }
 
     private static String writeBase16Digits(byte[] octets, boolean mayBreakLines) {
-        String digits = writeTheHexOf(octets);
+        String digits = hexText(octets);
         return mayBreakLines && octets.length > BYTES_TO_HEX_LINE
                 ? breakIntoRuns(digits, BYTES_TO_HEX_LINE * 2)
                 : digits;

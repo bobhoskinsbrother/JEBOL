@@ -860,7 +860,7 @@ public final class Evaluator {
                 }
                 return;
             }
-            refuseWhatTheParameterBeingFilledWouldNot(waiting, carrying);
+            requireParameterAccepts(waiting, carrying);
             waiting.accept(carrying);
             if (!waiting.isSatisfied()) {
                 return;
@@ -877,7 +877,7 @@ public final class Evaluator {
         }
     }
 
-    private void refuseWhatTheParameterBeingFilledWouldNot(PendingCall waiting, Value arriving) {
+    private void requireParameterAccepts(PendingCall waiting, Value arriving) {
         waiting.findTheParameterBeingFilled()
                 .filter(parameter -> isSwitchedOnFor(waiting, parameter))
                 .ifPresent(parameter -> refuseUnlessAccepted(
@@ -1312,7 +1312,7 @@ public final class Evaluator {
         return StepOutcome.waiting();
     }
 
-    private void writeIntoOneStructOfAnArray(
+    private void writeIntoStructAt(
             AnyBlockValue elements, IntegerValue which, StructValue given) {
         List<Value> each = elements.remaining();
         int chosen = (int) which.magnitude();
@@ -1385,7 +1385,7 @@ public final class Evaluator {
                 && lastSegment instanceof IntegerValue which
                 && select(PathValue.of(segments.subList(0, segments.size() - 2)),
                         frame.context).value() instanceof StructValue) {
-            writeIntoOneStructOfAnArray(elements, which, given);
+            writeIntoStructAt(elements, which, given);
             return;
         }
         if (target instanceof AnyBlockValue block) {

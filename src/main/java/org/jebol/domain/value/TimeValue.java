@@ -135,7 +135,7 @@ public record TimeValue(long nanoseconds) implements Value {
                 + minutes * NANOSECONDS_PER_MINUTE);
     }
 
-    public TimeValue withTheSecondOf(long secondsInNanoseconds) {
+    public TimeValue withSecond(long secondsInNanoseconds) {
         long secondsPart = nanoseconds
                 - hoursCountedWithTheirSign() * NANOSECONDS_PER_HOUR
                 - minutesCountedWithTheirSign() * NANOSECONDS_PER_MINUTE;

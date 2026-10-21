@@ -11,8 +11,8 @@ public final class PairActions {
     }
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
-        refuseWhatIsNotAPairOrAPlainNumber(left);
-        refuseWhatIsNotAPairOrAPlainNumber(right);
+        requirePairOrNumber(left);
+        requirePairOrNumber(right);
         if (operation.needsNonZeroDivisor()) {
             operation.requireNonZeroDivisor(firstHalf(right));
             operation.requireNonZeroDivisor(secondHalf(right));
@@ -22,7 +22,7 @@ public final class PairActions {
                 combineHalf(secondHalf(left), secondHalf(right), operation));
     }
 
-    private static void refuseWhatIsNotAPairOrAPlainNumber(Value side) {
+    private static void requirePairOrNumber(Value side) {
         if (side instanceof PairValue
                 || side instanceof IntegerValue
                 || side instanceof AnyDecimalValue) {

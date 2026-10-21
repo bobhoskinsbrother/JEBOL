@@ -125,8 +125,8 @@ public final class Encodings {
 
     public String enbase(byte[] octets, int base, boolean urlSafe) {
         return switch (base) {
-            case 16 -> writeTheHexOf(octets);
-            case 2 -> writeTheBitsOf(octets);
+            case 16 -> hexText(octets);
+            case 2 -> bitsAsText(octets);
             case 64 -> writeBase64Of(octets, urlSafe ? BASE64_URL : BASE64);
             case 36 -> writeBase36Of(octets);
             case 85 -> writeAscii85Of(octets);
@@ -145,7 +145,7 @@ public final class Encodings {
         };
     }
 
-    private String writeTheHexOf(byte[] octets) {
+    private String hexText(byte[] octets) {
         StringBuilder text = new StringBuilder(octets.length * 2);
         for (byte each : octets) {
             text.append("%02X".formatted(each & 0xFF));
@@ -181,7 +181,7 @@ public final class Encodings {
         return decoded.toArray();
     }
 
-    private String writeTheBitsOf(byte[] octets) {
+    private String bitsAsText(byte[] octets) {
         StringBuilder text = new StringBuilder(octets.length * 8);
         for (byte each : octets) {
             for (int bit = 7; bit >= 0; bit--) {
@@ -400,7 +400,7 @@ public final class Encodings {
             }
             group = group * 85 + (letter - ASCII85_FIRST);
             if (++held == 5) {
-                writeTheTopBytesOf(decoded, group, 4);
+                writeTopBytes(decoded, group, 4);
                 group = 0;
                 held = 0;
             }
@@ -412,12 +412,12 @@ public final class Encodings {
             for (int padding = held; padding < 5; padding++) {
                 group = group * 85 + 84;
             }
-            writeTheTopBytesOf(decoded, group, held - 1);
+            writeTopBytes(decoded, group, held - 1);
         }
         return decoded.toArray();
     }
 
-    private void writeTheTopBytesOf(Octets decoded, long group, int wanted) {
+    private void writeTopBytes(Octets decoded, long group, int wanted) {
         if (group > 0xFFFFFFFFL) {
             throw new IllegalArgumentException("an ascii85 group above four bytes");
         }

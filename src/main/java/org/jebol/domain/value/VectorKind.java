@@ -191,7 +191,7 @@ public enum VectorKind {
     }
 
     /** The element's bytes as they sit in memory, least significant first. */
-    public byte[] writeTheOctetsOf(long stored) {
+    public byte[] elementOctets(long stored) {
         byte[] octets = new byte[bytes()];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) (stored >>> (8 * at));

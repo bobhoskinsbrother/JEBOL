@@ -39,7 +39,7 @@ public final class TimeActions {
             throw refuseAsNotRelatedToTime(operation);
         }
         if (operation.canSubtractOneFromOther()) {
-            return TimeValue.ofNanoseconds(withinWhatADurationHolds(
+            return TimeValue.ofNanoseconds(requireWithinDurationRange(
                     wholeNanoseconds(left) - span.nanoseconds()));
         }
         return combineWith(left, operation);
@@ -96,7 +96,7 @@ public final class TimeActions {
         long ours = span.nanoseconds();
         long theirs = wholeNanoseconds(right);
         return TimeValue.ofNanoseconds(
-                withinWhatADurationHolds(combineTheNanoseconds(ours, theirs, operation)));
+                requireWithinDurationRange(combineTheNanoseconds(ours, theirs, operation)));
     }
 
     private static long combineTheNanoseconds(
@@ -130,7 +130,7 @@ public final class TimeActions {
         return Math.round(Comparison.asDouble(value) * TimeValue.NANOSECONDS_PER_SECOND);
     }
 
-    public static long withinWhatADurationHolds(long nanoseconds) {
+    public static long requireWithinDurationRange(long nanoseconds) {
         if (nanoseconds < -TimeValue.LONGEST || nanoseconds > TimeValue.LONGEST) {
             throw Raised.of(EvaluationFailure.TYPE_LIMIT, TimeValue.TYPE);
         }

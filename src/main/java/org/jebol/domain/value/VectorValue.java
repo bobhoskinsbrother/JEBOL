@@ -136,7 +136,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         byte[] octets = new byte[lengthFromHere() * kind.bytes()];
         int written = 0;
         for (int at = index; at <= storage.length(); at++) {
-            byte[] one = kind.writeTheOctetsOf(storage.at(at));
+            byte[] one = kind.elementOctets(storage.at(at));
             System.arraycopy(one, 0, octets, written, one.length);
             written += one.length;
         }

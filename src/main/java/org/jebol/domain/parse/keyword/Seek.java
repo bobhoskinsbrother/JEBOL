@@ -59,7 +59,7 @@ final class Seek extends DeclaredKeyword {
         if (wanted instanceof IntegerValue where) {
             return moveToPlaceItNames(walk, where);
         }
-        refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
+        requirePlaceOrSearchTerm(wanted);
         Value looked = walk.resolveWord(wanted);
         return looked instanceof AnyBlockValue || looked instanceof BitsetValue
                 ? findFirstPlaceRuleMatches(walk, looked)
@@ -79,7 +79,7 @@ final class Seek extends DeclaredKeyword {
         return 2;
     }
 
-    private static void refuseWhatIsNeitherAPlaceNorSomethingToLookFor(Value wanted) {
+    private static void requirePlaceOrSearchTerm(Value wanted) {
         boolean refused = wanted instanceof AnyDecimalValue
                 || wanted instanceof GetWordValue
                 || wanted instanceof SetWordValue

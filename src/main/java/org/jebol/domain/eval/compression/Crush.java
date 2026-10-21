@@ -208,7 +208,7 @@ public final class Crush {
             if (length >= MIN_MATCH) {
                 bits.put(1, 1);
                 writeLength(bits, length - MIN_MATCH);
-                writeTheOffset(bits, offset - 1);
+                writeOffset(bits, offset - 1);
             } else {
                 length = 1;
                 bits.put(9, readOctetAt(source, at) << 1);
@@ -249,7 +249,7 @@ public final class Crush {
         }
     }
 
-    private static void writeTheOffset(Bits bits, int offset) {
+    private static void writeOffset(Bits bits, int offset) {
         int slot = W_BITS - NUM_SLOTS;
         while (offset >= (2 << slot)) {
             slot++;
