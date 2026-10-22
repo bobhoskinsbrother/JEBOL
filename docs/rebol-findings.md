@@ -6857,3 +6857,45 @@ implemented". The `effect` native in `n-graphics.c` is declared nowhere, so
 `value? 'effect` is false, and a gob given `effect: [...]` keeps the block and
 paints nothing. JEBOL does all three the same way, and
 `AnEffectPaintsNothingAsInEveryR3FromTheSourceTest` pins them.
+
+## 233. A closed checksum port can report itself open in a real 3.22.5
+
+**CLOSE frees the port's request handle early, and the port keeps a handle to
+the freed memory.** `Checksum_Actor`'s `A_CLOSE` (`p-checksum.c:505`) clears
+the digest context and calls `Release_Port_State(port)`, which is `Free_Hob`
+on the port's state handle (`c-port.c:443`). The port's `state` field is left
+holding the same handle value, whose context has been freed.
+`Use_Port_State_Handle` (`c-port.c:57`) accepts that handle again on two
+fields alone - the handle's cached type word and the request's `device` - and
+never checks `IS_USED_HOB`, so `OPEN?` reads `RRF_OPEN` from whatever the
+freed request memory now holds.
+
+**When a later checksum port recycles that memory, the closed one answers
+open.** Two ports, p and q:
+
+```rebol
+p: open checksum:md5
+write p #{0bad}
+close p
+q: open checksum:md5
+write q #{0bad}
+open? p        ; true - p is closed, and q's request lives where p's did
+```
+
+`open? p` with no second port made is false: `Free_Hob` clears the request
+before returning it to the allocator (`m-pools.c:782`), so the stale `device`
+reads nought, `Use_Port_State_Handle` makes a fresh handle, and its flags are
+zero.
+
+**Rebol's own suite does not reach it.** `checksum-test.r3`'s
+`--assert not open? close port` closes the port and asks in one expression
+with no port made in between, and answers false. The flake reported against
+this file - thirteen assertions failing in roughly one run in eight - did not
+reproduce on the current binary: 24 runs of the file alone and 16 runs of the
+whole suite, every one green.
+
+**JEBOL keeps a port's openness in a field, so the shape cannot arise.**
+`close` sets the port's `state` field false and clears the running sum
+(`Ports.java:654`); `open?` reads that field (`Ports.java:647`); the sum is
+consulted only while the port is open (`ChecksumPort.java:79`).
+`ChecksumPortFromTheSourceTest`'s "CLOSE shuts the port" pins it.

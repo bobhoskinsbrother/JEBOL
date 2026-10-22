@@ -364,21 +364,3 @@ counterpart before any test.
   `unsaved-work` are JEBOL's own words. Decision 50 and `spec/nav.allium`.
 - **No Java PDF implementation.** The borrowed codec is what Rebol has; more
   than that is a library the caller adds.
-
----
-
-## Open flakes
-
-A flake is a fail. None of these is closed.
-
-- **`SeriesMemoryFromTheSourceTest / Rebol's own assertion, run whole`** failed
-  once under a full gate. It asks a process-wide counter
-  (`SeriesMemory.bytesHeld()`, a static shared by every interpreter) to come
-  back within 2,000 bytes while other tests allocate. Fixing it means a
-  per-interpreter figure or running the class in a JVM of its own.
-- **`./r3-head` fails 13 assertions of `checksum-test.r3` about one run in
-  eight** -- a closed checksum port sometimes reports itself open. Nobody has
-  read the C. Ask `./r3-head` three times when its answer surprises you.
-- **`WebScreenServerFromTheSourceTest`** failed once with 404 where it wanted
-  204, and has passed every time since. The assertion now carries the whole
-  response for next time.
