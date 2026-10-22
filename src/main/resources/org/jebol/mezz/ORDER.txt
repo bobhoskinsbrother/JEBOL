@@ -71,6 +71,11 @@
 #                        than become "module not found". The table is declared
 #                        in JEBOL's sysobj.reb. Read decision 51 before taking
 #                        a newer copy, or every fetched module goes unchecked.
+#   view-funcs.reb       adds LOAD-GUI, which loads bundled://r3-gui.reb once
+#                        and answers the GUI's VIEW, and VIEW hands a layout
+#                        block to it. Rebol 3.22 carries no VID, and this is
+#                        where VIEW would otherwise call a LAYOUT nothing
+#                        defines. Read decision 52 before taking a newer copy.
 #
 # and one outside this directory, because there is nowhere else that records
 # a borrowed file differing from Rebol's:
@@ -85,6 +90,24 @@
 #                        SuiteSelectionTest names this file as the one bundled
 #                        module allowed to differ. Check upstream before taking
 #                        a newer copy.
+#   modules/r3-gui.reb   the 2010 R3 GUI, version 0.2.1, from the body of
+#                        http://www.rebol.com/r3/gui.r. It is not a module and
+#                        is not in system/modules; LOAD-GUI reads it. Edited
+#                        to run on 3.22: a REBOL header replaces the block and
+#                        its A70 version check; the face object's trailing
+#                        set-word is given none; GET-FACET converts a set-word
+#                        before SET, which refuses one; system/view/event-port
+#                        is the word gui-event-port, and a port's LOCALS is
+#                        its EXTRA; the show queue is shown a gob at a time,
+#                        because 3.22's SHOW of a block shows nothing; the
+#                        key dispatcher and the text face take CONTROL events
+#                        as they take KEY, since 3.22 reports named keys that
+#                        way; the eight colours written with four numbers have
+#                        the fourth inverted, 2010's transparency becoming
+#                        3.22's opacity, and SPAN-COLORS scales a transparency
+#                        as 2010 did; RESET with no name resets the panel the
+#                        button is in, which the guide's survey expects.
+#                        TheGuiTheBuildCarriesFromTheSourceTest pins each one.
 #
 # BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
 # of known stops is empty. A file that stops defines nothing below the line

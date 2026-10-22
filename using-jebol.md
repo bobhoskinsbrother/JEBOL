@@ -103,7 +103,16 @@ A script that uses `VIEW` needs a screen. `--screen=window` attaches a native wi
 ./build/install/jebol/bin/jebol --screen=window examples/r3-gui/
 ```
 
-The shipped example is the 2010 R3 GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
+`VIEW` takes a layout block, as the 2010 R3 GUI's guide (https://www.rebol.com/r3/docs/gui/gui.html) writes one. JEBOL carries that GUI, version 0.2.1, and loads it the first time a script views a block, so there is no `load-gui` line to write. A gob, an image or a face object is shown by Rebol's own `VIEW` and loads nothing. A layout the GUI cannot read prints `** GUI ERROR:` and halts the script, as the GUI always has.
+
+```
+view [
+    title "Hello World"
+    button "Close" close
+]
+```
+
+The shipped example uses the same GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
 
 `--screen=window` is also what the dialogs need. `request-color`, `request-file`, `request-dir`, `request-password` and `browse` are refused without a screen, and a run given the native window may use them. The second shipped example opens the machine's colour chooser and prints each colour chosen; cancelling ends it.
 

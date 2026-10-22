@@ -36,6 +36,23 @@ system/standard/para: construct [
 	valign: 'top
 ]
 
+load-gui: use [gui-view] [
+	gui-view: none
+	func [
+		"Loads the R3 GUI this build carries, the first time, and answers the GUI's VIEW."
+		/local gui
+	][
+		any [
+			:gui-view
+			(
+				gui: load bundled://r3-gui.reb
+				do gui
+				gui-view: get bind 'view first find gui [view:]
+			)
+		]
+	]
+]
+
 view: func [
 	"Displays a window view."
 	window [gob! block! object! image!] "Window gob, VID face, or VID layout block"
@@ -48,6 +65,10 @@ view: func [
 		not screen: system/view/screen-gob
 		window = screen
 	][	return none]
+
+	if block? window [
+		return apply load-gui [window options opts false no-wait false false]
+	]
 
 	; Convert option block to a map:
 	opts: make map! any [reduce/no-set opts []]

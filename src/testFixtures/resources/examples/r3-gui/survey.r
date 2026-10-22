@@ -1,5 +1,4 @@
 REBOL [Title: "Opinion Survey"]
-do %gui-322.r
 view [
     title "Opinion Survey"
     text "Do you want programs to be easy to build?"

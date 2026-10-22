@@ -71,7 +71,6 @@
 9	BrotliPricedParse.java:iterateOverMatchesGatheredBeforehand
 9	ChecksumPort.java:sumNamed
 9	Evaluator.java:bindArgumentsPositionally
-9	Layout.java:decorateByDatatypeSoNothingHasToBeNamed
 9	LzmaDecoder.java:decodeLiteral
 9	LzmaEncoder.java:fillDistancePrices
 9	Molder.java:renderEvent
@@ -165,7 +164,6 @@
 6	Evaluator.java:applyFunction
 6	Evaluator.java:writeEmailPart
 6	FileSystemPort.java:makeDirectory
-6	Html.java:escape
 6	Parser.java:matchCountedRule
 6	Parser.java:repeat
 6	StructValue.java:writeField

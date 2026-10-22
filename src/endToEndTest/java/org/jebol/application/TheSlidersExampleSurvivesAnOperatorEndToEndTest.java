@@ -33,9 +33,7 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
 
     private static final String OPEN_THE_EXAMPLE = """
             change-dir %examples/r3-gui/
-            do %gui-322.r
             the-layout: last load %sliders.r
-            gui-view: get bind 'view first find gui first [view:]
             the-middles-of: func [style /local found walk] [
                 found: copy []
                 walk: func [gob at /local here] [
@@ -71,7 +69,7 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
                 walk the-window
                 found
             ]
-            the-window: gui-view/no-wait the-layout
+            the-window: view/no-wait the-layout
             """;
 
     private static final String TAKE_WHAT_IS_WAITING = """

@@ -101,4 +101,47 @@ class AScriptOnTheWebScreenWaitsForABrowserEndToEndTest {
                 .contains("showing 1")
                 .doesNotContain("not present");
     }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("a script that views a layout block, as the 2010 GUI's guide writes it, opens the GUI's window with nothing loaded first")
+    void viewsALayoutBlock(@TempDir Path directory) throws Exception {
+        CompletableFuture<Integer> running = startTheCommandLine(directory, """
+                window: view/no-wait [title "Hello World" button "Close" close]
+                print [{showing} length? system/view/screen-gob {titled} window/text]
+                """);
+        String address = awaitTheAddress();
+
+        InputStream thePictures = openABrowser(address);
+        try {
+            assertThat(running.get()).isZero();
+        } finally {
+            thePictures.close();
+        }
+        assertThat(readWhatHasBeenPrinted())
+                .contains("showing 1 titled Hello World")
+                .doesNotContain("Error");
+    }
+
+    @Test
+    @Timeout(60)
+    @DisplayName("a layout block that names a style the GUI does not have halts the script with the GUI's error, which says which word")
+    void haltsOnALayoutWithAStyleTheGuiHasNot(@TempDir Path directory) throws Exception {
+        CompletableFuture<Integer> running = startTheCommandLine(directory, """
+                view/no-wait [title "Broken" no-such-style "Press"]
+                print {carried on}
+                """);
+        String address = awaitTheAddress();
+
+        InputStream thePictures = openABrowser(address);
+        try {
+            assertThat(running.get()).isEqualTo(15);
+        } finally {
+            thePictures.close();
+        }
+        assertThat(readWhatHasBeenPrinted())
+                .contains("** GUI ERROR: Cannot parse the GUI dialect at:")
+                .contains("no-such-style")
+                .doesNotContain("carried on");
+    }
 }

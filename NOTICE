@@ -20,13 +20,20 @@ source: it is not compiled into JEBOL and does not ship in the jar or the
 distribution archive.
 
 The files under src/main/resources/org/jebol/mezz/ are copies of Rebol's
-own library, taken from src/mezz/ upstream. Two are modified: prot-tls.reb
-carries four edits that make it check a server's certificates, and
-mezz-banner.reb one that names the JEBOL port in the banner. Every other
-file is unmodified. They are loaded
+own library, taken from src/mezz/ upstream. A few are modified, and
+src/main/resources/org/jebol/mezz/ORDER.txt names each one, what was changed
+and why. Every other file is unmodified. They are loaded
 and evaluated at startup, and they are the part of the borrowed code that
 ships: they are inside the jar under org/jebol/mezz/, and thus inside the
 distribution archive. They are the larger part of that jar.
+
+src/main/resources/org/jebol/modules/r3-gui.reb is the R3 GUI, version
+0.2.1, by REBOL Technologies: the body of http://www.rebol.com/r3/gui.r, the
+file Rebol's LOAD-GUI fetched in 2010. Neither the file nor its documentation
+at https://www.rebol.com/r3/docs/gui/gui.html states a licence; JEBOL treats
+it as licensed under the Apache License, Version 2.0, as Rebol's own source
+is. It is modified so that it runs on Rebol 3.22, and ORDER.txt lists each
+edit. It ships inside the jar.
 
 The files under src/testFixtures/resources/rebol-suite/ are unmodified test
 scripts, taken from src/tests/ upstream. They do not ship.

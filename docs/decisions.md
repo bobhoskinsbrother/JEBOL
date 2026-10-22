@@ -282,6 +282,10 @@ fails on a missing `IBM_SEMERU` field; 1.0.0 works. Resolved toolchain is
 
 ## 9. Graphics are in scope, and the target is markup
 
+**Reversed in part by decision 52.** Graphics stay in scope; markup is no
+longer the target. A layout block is read by the 2010 R3 GUI into gobs, and a
+browser is one more screen that paints them.
+
 Reverses an earlier note in this repo that put View and VID permanently
 out of scope. That note assumed the render target had to be a window,
 which would indeed be useless server-side. It does not.
@@ -1295,8 +1299,8 @@ A working directory turned out not to belong in that list. It is the
 interpreter's own -- which directory a relative path counts from -- and costs
 the page nothing, because it lives inside the store the host already has, so
 a browser offers it and grants it. Building the examples with no server is
-what showed it: the 2010 GUI's own files are loaded by name, and a page
-without a working directory cannot `do %gui-322.r` at all.
+what showed it: the examples' layouts are loaded by name, and a page
+without a working directory cannot `load %sliders.r` at all.
 
 **So `Bounds` carries a second set beside the grants.** `markUnavailable(NETWORK)`
 says this host has no such service at all, and `grant` refuses a service
@@ -2170,3 +2174,54 @@ an address is chosen for the script rather than by it.
 
 **All of it is REBOL.** The change is twenty-odd lines in `sys-load.reb`, listed
 in ORDER.txt, and one field in `sysobj.reb`; no Java was added.
+
+## 52. VID is the 2010 R3 GUI, carried in the build and loaded by VIEW
+
+**Rebol 3.22 has no VID.** `view-funcs.reb` calls `layout/background` when
+VIEW is given a block, and nothing in the mezzanine or the boot files defines
+LAYOUT. The VID that did exist for R3 is the 2010 GUI, version 0.2.1, which
+`http://www.rebol.com/r3/gui.r` served and Rebol's own LOAD-GUI fetched; its
+guide is at https://www.rebol.com/r3/docs/gui/gui.html. The rules are under
+"The GUI the build carries" in `spec/screen.allium`.
+
+**It is REBOL from end to end, so it ships as REBOL.** Its styles describe
+themselves in DRAW, its faces are gobs, and its events come off an event
+port: all of that already worked, which is how the examples ran it through a
+loader for weeks. So the file is carried as `bundled://r3-gui.reb` and no
+Java was added for it. The jar grows by the file and nothing else.
+
+**Loaded the first time VIEW is given a block, not at boot.** Seventy-four
+kilobytes of REBOL at every `Interpreter.create()` would be paid by every
+script and every test, and most never open a window. LOAD-GUI, the name the
+guide gives the step, is back in `view-funcs.reb`: it loads the file once,
+into the user context as 2010's LOAD-GUI did, and answers the GUI's VIEW.
+Rebol's VIEW hands a block to it with /OPTIONS and /NO-WAIT, which is what
+the guide meant by "later, this line will not be needed". A gob, an image and
+a face object stay on Rebol's VIEW: the GUI's 0.2.1 VIEW accepts a face and
+then does nothing with it.
+
+**The GUI's words replace Rebol's for the script, not for the library.**
+Once loaded, the script's VIEW, UNVIEW and DO-EVENTS are the GUI's, because
+that is what the guide's scripts call. `system/contexts/lib` keeps Rebol's.
+
+**The edits 3.22 needs are made in the file, not by a program that rewrites
+it as it loads.** The examples' loader made eight rewrites to the loaded
+block every run; each is now an edit listed in ORDER.txt and pinned by
+`TheGuiTheBuildCarriesFromTheSourceTest`. Each was checked against what 3.22
+does, to keep a rewrite from hiding a JEBOL defect: `./r3-head` refuses a
+trailing set-word in an object and a set-word given to SET, its `system/view`
+has no event port, and the C's SHOW has a branch for a gob alone. Making the
+key edit an edit found one the loader had missed: the text face acted only on
+KEY events, so arrow keys reached a field and were dropped, and only the
+"nothing raised" assertions of the examples' tests had been watching.
+
+**A layout the GUI cannot read halts, as the GUI always has.** Its FAIL-GUI
+prints `** GUI ERROR:` and calls HALT, which TRY does not catch and which
+ends a command-line run with status 15, as a real 3.22.5's HALT does. That is
+the GUI's behaviour and is kept.
+
+**Treated as Apache 2.** The file and its documentation state no licence.
+JEBOL treats it as Apache 2, as Rebol's own source is, and NOTICE says so.
+
+**Reverses part of decision 9.** The target is gobs on any screen rather than
+markup, and the Java that read a layout block straight into HTML is deleted.

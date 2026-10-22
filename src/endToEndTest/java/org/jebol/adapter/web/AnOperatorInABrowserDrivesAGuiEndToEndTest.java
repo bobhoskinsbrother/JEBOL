@@ -230,14 +230,44 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     }
 
     @Test
+    @DisplayName("a layout's text that looks like markup is painted as text, so nothing in it runs or joins the page, and the button still answers a click")
+    void paintsMarkupAsText() {
+        String opened = answerTo("""
+                clicked: false
+                the-window: view/no-wait [
+                    title {<script>window.jebolInjected = 'title'</script>}
+                    pressing: button {<img src=x onerror="window.jebolInjected = 'button'">} do [clicked: true]
+                ]
+                pressing: none
+                walk: func [gob at] [
+                    foreach sub any [gob/pane []] [
+                        if all [object? sub/data 'pressing = select sub/data 'name] [
+                            pressing: at + sub/offset + to pair! sub/size / 2
+                        ]
+                        walk sub at + sub/offset
+                    ]
+                ]
+                walk the-window the-window/offset
+                to pair! reduce [to integer! pressing/x to integer! pressing/y]""");
+        String[] middle = opened.split("x");
+
+        placeTheOperatorAt(Integer.parseInt(middle[0]), Integer.parseInt(middle[1])).click().perform();
+
+        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+            answerTo("wait [gui-event-port 0.05]");
+            return "#(true)".equals(answerTo("clicked"));
+        });
+        assertThat(browser.executeScript("return typeof window.jebolInjected")).isEqualTo("undefined");
+        assertThat(browser.findElements(By.tagName("img"))).isEmpty();
+    }
+
+    @Test
     @DisplayName("the sliders example's slider is dragged by a real mouse in a browser, and its value changes")
     void dragsTheSlidersInABrowser() {
         String opened = answerTo("""
                 change-dir %examples/r3-gui/
-                do %gui-322.r
                 the-layout: last load %sliders.r
-                gui-view: get bind 'view first find gui first [view:]
-                the-window: gui-view/no-wait the-layout
+                the-window: view/no-wait the-layout
                 the-middle-of-the-slider: none
                 walk: func [gob at] [
                     foreach sub any [gob/pane []] [
@@ -269,10 +299,8 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     void turnsTheScrollerInABrowser() {
         String opened = answerTo("""
                 change-dir %examples/r3-gui/
-                do %gui-322.r
                 the-layout: last load %sliders.r
-                gui-view: get bind 'view first find gui first [view:]
-                the-window: gui-view/no-wait the-layout
+                the-window: view/no-wait the-layout
                 the-scroller: none
                 the-middle-of-the-scroller: none
                 walk: func [gob at] [
@@ -306,10 +334,8 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     private void openTheSurvey() {
         answerTo("""
                 change-dir %examples/r3-gui/
-                do %gui-322.r
                 the-layout: last load %survey.r
-                gui-view: get bind 'view first find gui first [view:]
-                the-window: gui-view/no-wait the-layout
+                the-window: view/no-wait the-layout
                 the-faces-styled: func [style /local found walk] [
                     found: copy []
                     walk: func [gob at /local here] [

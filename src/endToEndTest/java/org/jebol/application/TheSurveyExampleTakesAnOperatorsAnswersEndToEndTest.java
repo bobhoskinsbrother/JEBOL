@@ -31,9 +31,7 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
 
     private static final String OPEN_THE_EXAMPLE = """
             change-dir %examples/r3-gui/
-            do %gui-322.r
             the-layout: last load %survey.r
-            gui-view: get bind 'view first find gui first [view:]
             the-faces-styled: func [style /local found walk] [
                 found: copy []
                 walk: func [gob at /local here] [
@@ -51,7 +49,7 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
             the-face: func [style index] [pick extract the-faces-styled style 2 index]
             the-middle-of: func [style index] [pick extract next the-faces-styled style 2 index]
             chosen?: func [style index] [true? get-face the-face style index]
-            the-window: gui-view/no-wait the-layout
+            the-window: view/no-wait the-layout
             """;
 
     private static final String TAKE_WHAT_IS_WAITING = """

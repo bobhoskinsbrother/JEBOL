@@ -1,7 +1,6 @@
-[
-if system/version/3 < 70 [
-do make error! "Newer version of R3 required (A70). Type: upgrade"
-] ---: func [s] []
+REBOL [Title: "R3 GUI" Version: 0.2.1]
+gui-event-port: none
+---: func [s] []
 --- "R3 GUI - Misc functions"
 sum-pair: func [pair] [pair/x + pair/y]
 pick1: func [cond a b] [either cond [:a] [:b]]
@@ -141,6 +140,7 @@ facets:
 state:
 gob:
 options:
+none
 ]
 guie/face-state: object [
 mode: 'up
@@ -392,6 +392,22 @@ extend face field make block! 1
 ]
 sub-gob?: func [face] [face/gob/pane/1]
 parent-face?: func [face] [face/gob/parent/data]
+reset-the-faces-in: func [panel] [
+foreach face any [select panel 'faces []] [
+case [
+has-actor? face 'on-reset [do-style face 'on-reset none]
+find [check radio toggle] face/style [set-face face true? get-facet face 'orig-state]
+]
+if select face 'faces [reset-the-faces-in face]
+]
+]
+reset-the-panel-holding: func [face /local outer] [
+while [not select face 'names] [
+unless outer: parent-face? face [break]
+face: outer
+]
+reset-the-faces-in face
+]
 window-face?: funct [face] [
 all [
 gob: map-gob-offset/reverse face/gob 1x1
@@ -438,6 +454,11 @@ return get-facet face 'text-body
 ]
 none
 ]
+scale-as-2010-scaled: func [colour multiplier /local scaled] [
+scaled: colour * multiplier
+if 4 = length? colour [scaled/4: 255 - min 255 to integer! 255 - colour/4 * multiplier]
+scaled
+]
 span-colors: func [
 "Build a gradient color span based on multipliers."
 color [tuple!]
@@ -446,7 +467,7 @@ muls [block!]
 ] [
 out: make block! length? muls
 foreach v muls [
-repend out [color * v]
+repend out [scale-as-2010-scaled color v]
 ]
 out
 ]
@@ -510,7 +531,7 @@ select style/facets field
 ] [
 foreach word field [
 if any-word? :word [
-set :word any [
+set to word! :word any [
 select face/facets to-word word
 all [
 style: select guie/styles face/style
@@ -686,7 +707,7 @@ none! [print mold/all blk]
 ]
 ]
 reset: ["Reset contents to original value(s)." name [word! none!]] [
-do-style either name [get name] [face] 'on-reset none
+either name [do-style get name 'on-reset none] [reset-the-panel-holding face]
 ]
 clear: ["Clear the contents of a face." name [word! none!]] [
 do-style either name [get name] [parent-face? face] 'on-clear none
@@ -1748,7 +1769,7 @@ handler [block!]
 /local sys-hand
 ] [
 handler: make base-handler handler
-sys-hand: system/view/event-port/locals/handlers
+sys-hand: gui-event-port/extra/handlers
 unless foreach [here: hand] sys-hand [
 if handler/priority > hand/priority [
 insert here handler
@@ -1765,14 +1786,14 @@ unhandle-events: func [
 "Removes a handler from the view event system."
 handler [object!]
 ] [
-remove find system/view/event-port/locals/handlers handler
+remove find gui-event-port/extra/handlers handler
 exit
 ]
 handled-events?: func [
 {Returns event handler object matching a given name.}
 name
 ] [
-foreach hand system/view/event-port/locals/handlers [
+foreach hand gui-event-port/extra/handlers [
 if hand/name = name [return hand]
 ]
 none
@@ -1787,17 +1808,17 @@ do-events: func [
 {Waits for window events. Returns when all windows are closed.}
 ] [
 debug-gui 'wait "entered"
-wait system/view/event-port
+wait gui-event-port
 debug-gui 'wait "exited"
 ]
 init-view-system: func [
 "Initialize the View event subsystem."
 /local ep
 ] [
-if system/view/event-port [exit]
+if gui-event-port [exit]
 ep: open [scheme: 'event]
-system/view/event-port: ep
-ep/locals: context [handlers: copy []]
+gui-event-port: ep
+ep/extra: context [handlers: copy []]
 ep/awake: funct [event] [
 either all [
 obj: event/window/data
@@ -1942,7 +1963,7 @@ do-style event/window/data 'on-resize event/offset
 show-later event/window
 ]
 ]
-key: key-up: context [
+key: control: control-up: key-up: context [
 do-event: func [event /local win face] [
 if face: guie/focal-face [
 until [
@@ -2091,7 +2112,7 @@ append guie/shows item
 show-now: has [list] [
 unless empty? list: guie/shows [
 remind-gui/when ["show queue length:" length? list] (length? list) > 2
-show list
+foreach queued-gob list [show queued-gob]
 clear list
 ]
 ]
@@ -2698,7 +2719,7 @@ check: toggle [
 facets: [
 size: 300x10
 max-size: 2000x22
-led-colors: reduce [leaf 50.50.50.200]
+led-colors: reduce [leaf 50.50.50.55]
 text-style: 'radio
 auto-wide: 20x4
 text-body: "Check"
@@ -2915,7 +2936,7 @@ about: "Simple horizontal divider bar."
 facets: [
 size: 20x5
 max-size: 1000x5
-area-color: 0.0.0.200
+area-color: 0.0.0.55
 ]
 ]
 div: bar [
@@ -2931,7 +2952,7 @@ facets: [
 size: 200x22
 max-size: 1000x22
 edge-color: 96.96.96
-area-color: 80.80.80.128
+area-color: 80.80.80.127
 area-fill: span-colors area-color [0.3 0.5 1]
 ]
 options: [
@@ -3051,7 +3072,7 @@ min-size: 22x22
 btn-size: 18x18
 all-over: true
 relay: true
-back-color: 0.0.0.128
+back-color: 0.0.0.127
 area-color: 200.0.0
 edge-color: black
 arrow-color: snow
@@ -3212,8 +3233,8 @@ about: "Boxed text bar for headings."
 facets: [
 size: 100x24
 max-size: 2000x24
-area-color: 255.255.255.100
-edge-color: 80.80.80.100
+area-color: 255.255.255.155
+edge-color: 80.80.80.155
 text-style: 'head-bar
 ]
 options: [
@@ -3325,7 +3346,7 @@ show-later face
 true
 ]
 on-key: [
-if arg/type = 'key [
+if find [key control] arg/type [
 do-text-key face arg arg/key
 update-text-caret face
 see-caret face
@@ -3460,8 +3481,8 @@ min-size: 20x12
 lines: false
 no-edit: true
 text-style: 'info
-edge-color: 100.100.100.200
-area-color: 240.240.240.150
+edge-color: 100.100.100.55
+area-color: 240.240.240.105
 ]
 options: [
 size: [pair!]
@@ -3902,4 +3923,3 @@ get-face face/faces/1
 ]
 ]
 init-view-system
-]

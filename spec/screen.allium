@@ -13,9 +13,12 @@
 --     commands declared in boot/draw.reb, and painting them is a separate
 --     piece of work with a spec of its own. Here a gob paints its colour,
 --     its text and its image, and a draw block paints nothing yet.
---   - VID. There is no VID in REBOL 3: LAYOUT is defined nowhere in the
---     mezzanine or the boot files, and `view-funcs.reb` calls it anyway.
---     Whatever JEBOL grows there is JEBOL's own and is written in REBOL.
+--   - How the 2010 GUI lays out and draws its faces. That is the GUI's own
+--     REBOL, carried in the build and specified by its guide at
+--     https://www.rebol.com/r3/docs/gui/gui.html; this spec covers only how
+--     it is loaded and what VIEW hands it. Rebol 3.22 carries no VID: LAYOUT
+--     is defined nowhere in its mezzanine or boot files, and `view-funcs.reb`
+--     calls it anyway.
 --   - The five dialogs that ask the operator a question. Those are
 --     WindowRequest in embed.allium and share this grant and nothing else.
 --   - Native widgets. GOBT_WIDGET is a content kind and the win32 host
@@ -141,12 +144,7 @@ variant DesktopScreen : ScreenPort {
 
 -- A browser somewhere else, painted by whatever the page runs.
 --
--- The path that existed before this read a layout block straight into markup
--- and never made a gob at all. It worked, and it was a second implementation
--- of the dialect rather than a third renderer of one: the two would drift,
--- and only one of them was what REBOL's own library talks to.
---
--- So a browser implements the same port the desktop does. VIEW, UNVIEW,
+-- A browser implements the same port the desktop does. VIEW, UNVIEW,
 -- DO-EVENTS and the handler list are the same borrowed REBOL either way, and
 -- the only difference is which adapter executes the paint list.
 variant BrowserScreen : ScreenPort {
@@ -1465,6 +1463,139 @@ invariant AMaskedFormNeverShowsWhatWasTyped {
         the_text_painted(form) = one_dot_per_character_of(the_text_typed_into(form))
 }
 
+-- === The GUI the build carries ================================
+--
+-- A layout block is VID, and VID is the 2010 R3 GUI: version 0.2.1, the file
+-- `http://www.rebol.com/r3/gui.r` served and the commented-out LOAD-GUI in
+-- `mezz-help.reb` fetched. The build carries it as `bundled://r3-gui.reb`,
+-- with the edits 3.22 needs made in the file and listed in ORDER.txt, and it
+-- is REBOL from end to end: its styles are draw blocks, its faces are gobs,
+-- and everything beneath them is the port this spec describes.
+--
+-- Its guide opens a window with `load-gui` and then `view [...]`, and says
+-- the first line "will not be needed" later. Here it is not: VIEW given a
+-- layout block loads the GUI itself.
+
+-- A fresh interpreter has not loaded it. About seventy-four kilobytes of
+-- REBOL would otherwise join every boot, and most scripts never open a window.
+rule TheGuiIsNotLoadedAtBoot {
+    when: an_interpreter_is_created()
+
+    ensures: the_gui_is_loaded() = false
+}
+
+-- LOAD-GUI loads it the first time and answers the GUI's own VIEW, and every
+-- later call answers that same function without loading anything again. It
+-- reads the build and nothing else, so it needs no service.
+rule LoadGuiLoadsTheGuiOnce {
+    when: EvaluateCall(load_gui)
+
+    ensures: the_gui_is_loaded() = true
+    ensures: CallResult(value: the_guis_view())
+    ensures: the_gui_was_read_at_most_once() = true
+}
+
+-- The GUI is loaded into the user context, as 2010's LOAD-GUI did with DO, so
+-- a script that has loaded it calls the GUI's VIEW, UNVIEW and DO-EVENTS by
+-- their names. Rebol's own three stay in the library, under the GUI's.
+rule TheGuisWordsAreTheScriptsOnceLoaded {
+    when: EvaluateCall(load_gui)
+
+    ensures: the_user_contexts(view) = the_guis_view()
+    ensures: the_user_contexts(unview) = the_guis_unview()
+    ensures: the_user_contexts(do_events) = the_guis_do_events()
+    ensures: the_librarys(view) = rebols_view()
+}
+
+-- VIEW given a layout block hands it to the GUI, loading the GUI first if it
+-- has to, and answers the window gob the GUI made. /NO-WAIT and /OPTIONS go
+-- with it; /AS-IS means nothing to a block and is dropped, as Rebol's own VIEW
+-- drops it for a block.
+rule ViewOfALayoutBlockIsTheGuis {
+    when: EvaluateCall(view, layout)
+    requires: is_a_block(layout)
+    requires: there_is_a_screen()
+
+    ensures: the_gui_is_loaded() = true
+    ensures: CallResult(value: the_window_the_gui_made_for(layout))
+}
+
+-- A layout the GUI cannot read is the GUI's own failure, and the GUI's way
+-- of failing is FAIL-GUI: it prints "** GUI ERROR: Cannot parse the GUI
+-- dialect at:" with the next five values, and HALTs. A HALT is not an error
+-- TRY can catch; at the command line it ends the run with status 15, as a
+-- real 3.22.5's HALT does. No window is opened for it.
+rule ALayoutTheGuiCannotReadHaltsTheRun {
+    when: EvaluateCall(view, layout)
+    requires: is_a_block(layout)
+    requires: there_is_a_screen()
+    requires: not the_gui_can_read(layout)
+
+    ensures: the_run_printed(the_values_from_where_reading_stopped(layout)) = true
+    ensures: the_run_halted() = true
+    ensures: no_window_was_opened() = true
+}
+
+-- With no screen there is nothing to show a layout on, and VIEW of a block is
+-- refused as VIEW of a gob is: the root gob still exists, so the refusal comes
+-- from the first thing that needs pixels, and it is not_present either way.
+rule ViewOfALayoutBlockWithNoScreenIsRefused {
+    when: EvaluateCall(view, layout)
+    requires: is_a_block(layout)
+    requires: not there_is_a_screen()
+
+    ensures: CallFails(error: no_service)
+}
+
+-- A gob, an image and a face object stay on Rebol's VIEW and load nothing.
+-- The GUI's 0.2.1 VIEW accepts a face and then does nothing with it, so
+-- handing it one would answer an error where Rebol's answers a window.
+rule ViewOfAGobImageOrFaceIsRebols {
+    when: EvaluateCall(view, window)
+    requires: not is_a_block(window)
+
+    ensures: the_gui_is_loaded() = false
+}
+
+-- The GUI waits on an event port of its own, `gui-event-port`, because 3.22's
+-- `system/view` has no field to keep one in: it holds the screen gob, the
+-- handler and the metrics and nothing else, and JEBOL leaves Rebol's system
+-- object as Rebol declares it.
+rule TheGuiKeepsItsEventPortInAWordOfItsOwn {
+    when: EvaluateCall(view, layout)
+    requires: is_a_block(layout)
+    requires: there_is_a_screen()
+
+    ensures: is_an_event_port(gui_event_port) = true
+    ensures: the_fields_of(system_view) = [screen_gob, handler, metrics]
+}
+
+-- Eight places in the 2010 source assume a Rebol that 3.22 is not, and each
+-- is edited in the carried copy rather than rewritten as it loads.
+--
+-- A set-word may not end an object's spec, so the one that does is given
+-- none. SET refuses a set-word, so the facet reader converts the word it is
+-- given. A port's spare field is EXTRA where it was LOCALS. SHOW of a block
+-- shows nothing in 3.22 -- the C has a branch for a gob alone -- so the show
+-- queue is shown a gob at a time. A key the host reports as CONTROL is handled
+-- as a KEY is. A colour's fourth number is its opacity in 3.22 where it was
+-- its transparency, so each of the eight written in the source is inverted,
+-- and SPAN-COLORS scales a transparency as it did.
+--
+-- The eighth is a correction rather than a translation. The guide's opinion
+-- survey ends with a RESET button that names nothing and clears the form, and
+-- 0.2.1's RESET with no name resets only the button itself. With no name it
+-- resets every face in the panel the button is in.
+rule TheCarriedGuiRunsOn322 {
+    when: EvaluateCall(load_gui)
+
+    ensures: not CallFails()
+    ensures: a_colour_written_with_four_numbers_keeps_its_2010_opacity() = true
+    ensures: the_shows_the_gui_queues_are_each_painted() = true
+    ensures: a_control_key_reaches_the_focused_face() = true
+    ensures: reset_with_no_name_resets_the_whole_panel() = true
+}
+
 ------------------------------------------------------------
 -- Invariants
 ------------------------------------------------------------
@@ -1515,13 +1646,6 @@ surface TheScreen {
         -- they paint a gob and in nothing else a script can see, so the same
         -- description reaches all three and the difference is which adapter
         -- is supplied.
-        --
-        -- The alternative was tried and is still in the tree: the existing
-        -- web renderer reads a layout block straight into markup and never
-        -- makes a gob at all. It works, and it is a second implementation of
-        -- the dialect rather than a third renderer of one, so the two will
-        -- drift and only one of them will be the one that REBOL's own
-        -- library talks to.
 
     @guarantee AScreenThatIsNotThereAnswersAboutItselfAndRefusesToDrawOnItself
         -- The three commands split on whether they need pixels. Taking the

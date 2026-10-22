@@ -1,12 +1,10 @@
 Rebol []
 
-do %gui-322.r
-gui-view: get bind 'view first find gui first [view:]
 sliders-layout: last load %sliders.r
-slider-window: gui-view/no-wait sliders-layout
+slider-window: view/no-wait sliders-layout
 slider-window/offset: 20x20
 survey-layout: last load %survey.r
-survey-window: gui-view/no-wait survey-layout
+survey-window: view/no-wait survey-layout
 survey-window/offset: 620x20
 show system/view/screen-gob
 the-slider: none

@@ -1,5 +1,4 @@
 REBOL [Title: "Sliders"]
-do %gui-322.r
 view [
     title "Progress, Scrollers, and Sliders"
     text "These will change:"
