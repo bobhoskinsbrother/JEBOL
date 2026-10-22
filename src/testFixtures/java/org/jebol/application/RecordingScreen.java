@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
@@ -27,6 +28,7 @@ final class RecordingScreen extends GobScreen {
     private final List<GobValue> withWindows = new ArrayList<>();
 
     private RecordingScreen(boolean present) {
+        super(() -> 0L, new WindowHistory());
         this.present = present;
     }
 

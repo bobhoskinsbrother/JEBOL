@@ -2049,3 +2049,75 @@ script prints in a panel over the foot of the screen, for the same reason.
 Both are what the C answers -- `R_UNSET` from BROWSE, `R_NONE` from a chooser
 that came back empty whatever the refinements -- and JEBOL answered none and an
 empty block before.
+
+## 50. An app has one history, on every screen, and Back is an event
+
+**A real 3.22.5 has no history, no address and no navigation event, so all of
+this is JEBOL's own.** The rules are `spec/nav.allium`. One history per app,
+however many windows it has, as a phone keeps. Every screen has one: a window,
+the shipped page and `--screen=web`, and the phones when they come. A run with
+no screen is refused as not present. Navigation is a host service of its own,
+granted by the shipped page and by the command line.
+
+**The words are `go`, `go/replace`, `go-back`, `go-forward`, `current-place`
+(with `/refused`) and `unsaved-work`.** BACK and FORWARD are series actions,
+and `go` is defined nowhere in Rebol's library, the 2010 GUI or the examples.
+`go-back` cannot be `go/back`: a refinement cannot remove the argument `go`
+takes.
+
+**A place is data a script can write.** It is a word, a string, a number, a
+logic, or a block of them nested to any depth, and `go 'survey` goes to
+`[survey]`. None is not a place and is refused. The address is the place
+written as data: each item as MOLD/ALL writes it, then percent-encoded, so
+`[survey 3]` is `#survey%203`. MOLD/ALL, because MOLD writes `true` as a word.
+Reading an address is TRANSCODE and a type check, and nothing is ever
+evaluated, because anyone can write a link. A link that does not read starts
+the app at its start, and `current-place/refused` says what it was. A place
+the app does not know is the app's own "not found", since a server never sees
+a hash.
+
+**The limits are the strictest host's everywhere.** Safari's rate, 100 changes
+the app makes in 30 seconds, and an address of at most 2,048 characters. The
+length is chosen rather than measured: every target keeps far longer, and a
+link is meant to survive being pasted. Going to the place already current adds
+nothing, which Android calls single top.
+
+**Back and Forward are two event types appended after `char`,** so every index
+the C fixed keeps its number. They arrive on `system/ports/event`, name no
+window, and carry the place in `event/data`, as a dropped file does. An app
+that has never asked about its history hears none of them, because the 2010
+GUI looks a handler up by the event's type, and an event type it does not know
+would stop it. `sysobj.reb` carries the two words; it is JEBOL's copy of the
+boot file and now differs from Rebol's there too.
+
+**The domain decides and the screen carries out.** `History` and `Navigation`
+are the domain's. A screen hands its `NavigationPort` to the domain:
+`WindowHistory` for a window, where a move arrives at once, and `PageHistory`
+for a page, where the browser's own `pushState`, `replaceState`, `back` and
+`forward` do it and popstate reports the arrival. Each browser entry carries
+its index in `history.state`, which survives a reload, so Back after a reload
+still names the entry it reached.
+
+**Unsaved work is a flag set in advance, and the host asks.** Leaving cannot
+wait on the interpreter: `beforeunload` is synchronous and the interpreter is
+in a worker. So the page holds the flag and asks through the browser's own
+prompt, and a window asks through Swing's confirmation before the close
+reaches the script. Back between two of the app's own places is never
+guarded. The page's close moved from `beforeunload` to `pagehide` for the same
+reason: a leave the operator cancels must not have closed every window
+already. A page brought back from the back-forward cache reloads, because its
+app was closed when it was hidden.
+
+**In a window the keys a browser uses move the history too**: Alt+Left and
+Alt+Right on Windows and Linux, Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS,
+and the mouse's side buttons. They still reach the app as key presses. The
+trackpad's swipe in a window is an open question in the spec: Java has no
+public way to hear it.
+
+**The first window's title is the app's.** On a page it is the tab's title;
+in a window it is the first window's title bar, which now follows its text on
+SHOW where before it was read once.
+
+**What the gate cannot reach.** The test JVMs are headless, so a real window
+is checked by hand, as decision 48's chooser is: the title following, the
+Back keys, and the confirmation on close.

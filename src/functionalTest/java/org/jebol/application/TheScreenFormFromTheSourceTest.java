@@ -10,6 +10,7 @@ import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.value.AnyBlockValue;
@@ -245,6 +246,10 @@ class TheScreenFormFromTheSourceTest {
         private int opened;
         private final List<String> typingHeadings = new ArrayList<>();
         private boolean typingHeld;
+
+        AnOperatorAtTheScreen() {
+            super(() -> 0L, new WindowHistory());
+        }
 
         AnOperatorAtTheScreen types(String text) {
             text.codePoints().forEach(this::presses);

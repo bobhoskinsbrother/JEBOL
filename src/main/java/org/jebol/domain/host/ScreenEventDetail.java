@@ -24,6 +24,10 @@ public sealed interface ScreenEventDetail {
     record Scrolled(int across, int down, int amount) implements ScreenEventDetail {
     }
 
+    /** Where the app's history arrived: the place now current. */
+    record Arrived(Place place) implements ScreenEventDetail {
+    }
+
     /** Nothing beside the type: a close, or a key nothing names. */
     record NothingMore() implements ScreenEventDetail {
     }

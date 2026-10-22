@@ -6,6 +6,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.Stopped;
 import org.jebol.domain.eval.EventPath;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.Place;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.value.AnyBlockValue;
@@ -212,9 +213,12 @@ public class WaitNative extends PortWakingNative {
                 ? List.of(SetWordValue.of("port"), NoneValue.none())
                 : List.of(SetWordValue.of("window"), reported.window()));
         spec.addAll(writeDetail(reported.detail()));
-        return EventPath.make(BlockValue.of(spec), UnaryOperator.identity()) instanceof EventValue made
-                ? made
+        EventValue made = EventPath.make(BlockValue.of(spec), UnaryOperator.identity()) instanceof EventValue built
+                ? built
                 : EventValue.fresh();
+        return reported.detail() instanceof ScreenEventDetail.Arrived(Place place)
+                ? made.withHeldData(place.asBlock())
+                : made;
     }
 
     private List<Value> writeDetail(ScreenEventDetail detail) {
@@ -229,6 +233,7 @@ public class WaitNative extends PortWakingNative {
                     .orElse(List.of());
             case ScreenEventDetail.Scrolled(_, _, int amount) ->
                     List.of(SetWordValue.of("offset"), PairValue.of(0, amount));
+            case ScreenEventDetail.Arrived _ -> List.of();
             case ScreenEventDetail.NothingMore nothing -> List.of();
         };
     }

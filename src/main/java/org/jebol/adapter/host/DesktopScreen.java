@@ -1,6 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.DefaultFont;
+import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
@@ -10,8 +11,6 @@ import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.AnyStringValue;
-import org.jebol.domain.value.Value;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,21 +24,55 @@ public final class DesktopScreen extends GobScreen {
     private static final String MACOS_APP_NAME_PROPERTY = "apple.awt.application.name";
     private static final List<Integer> ICON_SIZES = List.of(16, 32, 64, 128, 256, 512);
 
+    private static final String UNTITLED = "REBOL: untitled";
+    private static final String OPERATING_SYSTEM_PROPERTY = "os.name";
+    private static final String MACOS_NAME_STARTS = "mac";
+    private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000;
+
     private final JebolIcon icon = new JebolIcon();
     private final boolean present;
     private final DefaultFont font;
     private final Font face;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
+    private final List<GobValue> openedInOrder = new ArrayList<>();
+    private final LeavingConfirmation leaving;
+    private final BackForwardChords chords;
 
-    private DesktopScreen(FilePort files, boolean present) {
+    private DesktopScreen(FilePort files, boolean present, LeavingConfirmation leaving, BackForwardChords chords) {
+        super(() -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND, new WindowHistory());
         this.present = present;
         this.font = DefaultFont.readFrom(files);
         this.face = Java2DSurface.faceFrom(font.readFontBytes());
+        this.leaving = leaving;
+        this.chords = chords;
     }
 
     public static DesktopScreen onThisMachine(FilePort files) {
         System.setProperty(MACOS_APP_NAME_PROPERTY, JebolIcon.APPLICATION_NAME);
-        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless());
+        boolean onMac = System.getProperty(OPERATING_SYSTEM_PROPERTY, "")
+                .toLowerCase(Locale.ROOT).startsWith(MACOS_NAME_STARTS);
+        return confirmingWith(files, new SwingLeavingConfirmation(), onMac);
+    }
+
+    static DesktopScreen confirmingWith(FilePort files, LeavingConfirmation asking, boolean onMac) {
+        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless(), asking, new BackForwardChords(onMac));
+    }
+
+    void requestClose(GobValue gob) {
+        if (navigation().isGuarding() && !leaving.operatorLeaves()) {
+            return;
+        }
+        post(ScreenEventType.CLOSE, gob);
+    }
+
+    void pressKey(int keyCode, int modifiers, char typed, GobValue window) {
+        queueKey(keyCode, typed, ScreenEventType.KEY, ScreenEventType.CONTROL, window);
+        chords.keyDirection(keyCode, modifiers).ifPresent(navigation()::reportMoveRequest);
+    }
+
+    void pressButton(int button, int across, int down, GobValue window) {
+        post(ScreenEventType.DOWN, window, new ScreenEventDetail.At(across, down));
+        chords.buttonDirection(button).ifPresent(navigation()::reportMoveRequest);
     }
 
     private void showJebolIcon(JFrame frame) {
@@ -174,19 +207,30 @@ public final class DesktopScreen extends GobScreen {
     @Override
     protected void openWindowFor(GobValue gob) {
         onToolkitThreadAndWaitedFor(() -> windows.put(gob, showWindow(gob)));
+        openedInOrder.add(gob);
     }
 
     @Override
     protected void repaintWindowFor(GobValue gob) {
-        findWindowFor(gob).ifPresent(standing -> onToolkitThreadAndWaitedFor(standing::repaint));
+        findWindowFor(gob).ifPresent(standing -> onToolkitThreadAndWaitedFor(() -> {
+            if (isFirstOpenWindow(gob)) {
+                standing.setTitle(windowTitle(gob));
+            }
+            standing.repaint();
+        }));
     }
 
     @Override
     protected void closeWindowFor(GobValue gob) {
+        openedInOrder.removeIf(gob::sharesStorageWith);
         findWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
             onToolkitThreadAndWaitedFor(standing::dispose);
         });
+    }
+
+    private boolean isFirstOpenWindow(GobValue gob) {
+        return !openedInOrder.isEmpty() && openedInOrder.getFirst().sharesStorageWith(gob);
     }
 
     private Optional<JFrame> findWindowFor(GobValue gob) {
@@ -208,12 +252,8 @@ public final class DesktopScreen extends GobScreen {
         return frame;
     }
 
-    private static String windowTitle(GobValue gob) {
-        Value text = gob.storage().readContentIfKind(
-                org.jebol.domain.value.GobStorage.Content.STRING);
-        return text instanceof AnyStringValue title && !title.text().isEmpty()
-                ? title.text()
-                : "REBOL: untitled";
+    private String windowTitle(GobValue gob) {
+        return readTitle(gob).orElse(UNTITLED);
     }
 
     private JPanel paintSurface(GobValue gob) {
@@ -247,7 +287,7 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void windowClosing(WindowEvent shutting) {
-                post(ScreenEventType.CLOSE, gob);
+                requestClose(gob);
             }
         });
         frame.addComponentListener(new ComponentAdapter() {
@@ -273,19 +313,19 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void keyPressed(KeyEvent down) {
-                queueKey(down, ScreenEventType.KEY, ScreenEventType.CONTROL, gob);
+                pressKey(down.getKeyCode(), down.getModifiersEx(), down.getKeyChar(), gob);
             }
 
             @Override
             public void keyReleased(KeyEvent up) {
-                queueKey(up, ScreenEventType.KEY_UP, ScreenEventType.CONTROL_UP, gob);
+                queueKey(up.getKeyCode(), up.getKeyChar(), ScreenEventType.KEY_UP, ScreenEventType.CONTROL_UP, gob);
             }
         });
         frame.getContentPane().addMouseListener(new MouseListener() {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                post(ScreenEventType.DOWN, gob, locatePointer(down));
+                pressButton(down.getButton(), down.getX(), down.getY(), gob);
             }
 
             @Override
@@ -337,16 +377,16 @@ public final class DesktopScreen extends GobScreen {
         return new ScreenEventDetail.At(pointer.getX(), pointer.getY());
     }
 
-    private void queueKey(KeyEvent pressed, ScreenEventType typing, ScreenEventType naming,
+    private void queueKey(int keyCode, char typed, ScreenEventType typing, ScreenEventType naming,
                           GobValue window) {
 
-        Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(pressed.getKeyCode()));
+        Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(keyCode));
         if (named.isPresent()) {
             post(naming, window, new ScreenEventDetail.NamedKey(named.get()));
             return;
         }
-        if (pressed.getKeyChar() != KeyEvent.CHAR_UNDEFINED) {
-            post(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
+        if (typed != KeyEvent.CHAR_UNDEFINED) {
+            post(typing, window, new ScreenEventDetail.Typed(typed));
         }
     }
 

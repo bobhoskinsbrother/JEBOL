@@ -3,9 +3,15 @@ package org.jebol.adapter.web;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.MutableCapabilities;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.bidi.browsingcontext.BrowsingContext;
+import org.openqa.selenium.bidi.browsingcontext.UserPromptOpened;
+import org.openqa.selenium.bidi.browsingcontext.UserPromptType;
+import org.openqa.selenium.bidi.module.BrowsingContextInspector;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
@@ -22,6 +28,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -29,11 +39,21 @@ public final class AnOperatorAtThePage implements AutoCloseable {
 
     private static final Duration PATIENCE = Duration.ofSeconds(60);
 
+    private static final String PROMPT_HANDLING = "unhandledPromptBehavior";
+
+    private static final Map<String, String> LEAVE_EVERY_PROMPT_TO_THE_TEST =
+            Map.of("default", "ignore", "beforeUnload", "ignore");
+
+    private static final String BIDI = "webSocketUrl";
+
     private final String browserName;
     private final String origin;
     private final Path downloads;
     private final List<String> deniedPermissions = new ArrayList<>();
+    private final BlockingQueue<UserPromptOpened> leavePrompts = new LinkedBlockingQueue<>();
+    private Optional<UserPromptOpened> openLeavePrompt = Optional.empty();
     private boolean everyPopupBlocked;
+    private boolean leavingWatched;
     private WebDriver browser;
 
     public AnOperatorAtThePage(String browserName, String address, Path downloads) {
@@ -56,9 +76,25 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         return this;
     }
 
+    public AnOperatorAtThePage whoseLeavingIsWatched() {
+        leavingWatched = true;
+        return this;
+    }
+
     public AnOperatorAtThePage opensThePage() {
+        return opensThePageAt("");
+    }
+
+    public AnOperatorAtThePage opensThePageAt(String hash) {
         browser = isFirefox() ? openFirefox() : openChrome();
-        browser.get(origin + "/");
+        if (leavingWatched) {
+            new BrowsingContextInspector(browser).onUserPromptOpened(asked -> {
+                if (asked.getType() == UserPromptType.BEFORE_UNLOAD) {
+                    leavePrompts.add(asked);
+                }
+            });
+        }
+        browser.get(origin + "/" + hash);
         return this;
     }
 
@@ -66,11 +102,82 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         browser.navigate().refresh();
     }
 
+    public void pressesReload() {
+        ((JavascriptExecutor) browser).executeScript("setTimeout(() => location.reload(), 0);");
+    }
+
+    public void pressesBack() {
+        browser.navigate().back();
+    }
+
+    public void pressesForward() {
+        browser.navigate().forward();
+    }
+
+    public void typesTheAddress(String hash) {
+        browser.get(origin + "/" + hash);
+    }
+
+    public void goesElsewhere(String path) {
+        browser.get(origin + path);
+    }
+
+    public void waitUntilTheAddressIs(String hash) {
+        waitUntil("the address became " + hash, () -> hash.equals(readTheAddressHash()));
+    }
+
+    public String readTheAddressHash() {
+        return (String) ((JavascriptExecutor) browser).executeScript("return location.hash;");
+    }
+
+    public void waitUntilTheTitleIs(String title) {
+        waitUntil("the tab's title became " + title, () -> title.equals(browser.getTitle()));
+    }
+
+    public void clicksTheScreen() {
+        new Actions(browser).moveToElement(browser.findElement(By.id("screen")), 0, 0).click().perform();
+    }
+
+    public void waitForTheLeavePrompt() throws InterruptedException {
+        UserPromptOpened asked = leavePrompts.poll(PATIENCE.toMillis(), TimeUnit.MILLISECONDS);
+        if (asked == null) {
+            throw new AssertionError("in " + browserName + " the browser never asked before leaving");
+        }
+        openLeavePrompt = Optional.of(asked);
+    }
+
+    public boolean isAskedBeforeLeaving() {
+        return !leavePrompts.isEmpty();
+    }
+
+    public void staysOnThePage() {
+        answerTheLeavePrompt(false);
+    }
+
+    public void leavesThePage() {
+        answerTheLeavePrompt(true);
+    }
+
+    private void answerTheLeavePrompt(boolean leaving) {
+        UserPromptOpened asked = openLeavePrompt.orElseThrow(() ->
+                new AssertionError("in " + browserName + " there is no leave prompt to answer"));
+        openLeavePrompt = Optional.empty();
+        new BrowsingContext(browser, asked.getBrowsingContextId()).handleUserPrompt(leaving);
+    }
+
+    public long countOutputLinesSaying(String line) {
+        return readOutput().stream().filter(line::equals).count();
+    }
+
     public List<String> readOutput() {
-        List<WebElement> shown = browser.findElements(By.id("out"));
-        return shown.isEmpty()
-                ? List.of()
-                : shown.getFirst().getDomProperty("textContent").lines().toList();
+        try {
+            List<WebElement> shown = browser.findElements(By.id("out"));
+            return shown.isEmpty()
+                    ? List.of()
+                    : shown.getFirst().getDomProperty("textContent").lines().toList();
+        } catch (StaleElementReferenceException pageWasReplaced) {
+            return List.of();
+        }
     }
 
     public void waitUntilOutputContains(String line) {
@@ -212,6 +319,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         ChromeOptions asked = new ChromeOptions();
         asked.addArguments("--headless=new", "--no-sandbox", "--window-size=1000,700",
                 "--force-device-scale-factor=1", "--hide-scrollbars");
+        handOverLeavePrompts(asked);
         asked.setExperimentalOption("prefs", Map.of(
                 "download.default_directory", downloads.toString(),
                 "download.prompt_for_download", false));
@@ -242,6 +350,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         profile.setPreference("midi.prompt.testing", true);
         profile.setPreference("media.navigator.permission.disabled", true);
         profile.setPreference("dom.webmidi.gated", false);
+        profile.setPreference("dom.disable_beforeunload", false);
         if (everyPopupBlocked) {
             profile.setPreference("dom.popup_allowed_events", "");
             profile.setPreference("dom.popup_maximum", 0);
@@ -250,6 +359,14 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         FirefoxOptions asked = new FirefoxOptions();
         asked.addArguments("-headless", "-width=1000", "-height=700");
         asked.setProfile(profile);
+        handOverLeavePrompts(asked);
         return new FirefoxDriver(asked);
+    }
+
+    private void handOverLeavePrompts(MutableCapabilities asked) {
+        if (leavingWatched) {
+            asked.setCapability(PROMPT_HANDLING, LEAVE_EVERY_PROMPT_TO_THE_TEST);
+            asked.setCapability(BIDI, true);
+        }
     }
 }

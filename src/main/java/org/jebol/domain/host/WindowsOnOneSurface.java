@@ -21,7 +21,7 @@ public final class WindowsOnOneSurface {
                     findWhoHearsPointer(kind, detail, showingFromBottomToTop);
             case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
-            case RESIZE, OFFSET -> List.of();
+            case RESIZE, OFFSET, BACK, FORWARD -> List.of();
         };
         return makeEvents(heardBy, kind, detail);
     }

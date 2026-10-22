@@ -405,6 +405,11 @@ public final class LibContext {
         registerExtension(new SizeTextNative(grantedServices));
         registerExtension(new RequireCertificateChecksNative(grantedServices));
         registerExtension(new CheckCertificatesNative(grantedServices));
+        registerExtension(new GoNative(grantedServices));
+        registerExtension(new GoBackNative(grantedServices));
+        registerExtension(new GoForwardNative(grantedServices));
+        registerExtension(new CurrentPlaceNative(grantedServices));
+        registerExtension(new UnsavedWorkNative(grantedServices));
     }
 
     private void registerOperators() {

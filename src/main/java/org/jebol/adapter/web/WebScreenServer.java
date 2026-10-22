@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.render.DrawingCommand;
 
 import java.io.IOException;
@@ -28,6 +29,10 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
 
     private static final String ASKS_SCRIPT = "/jebol-page/jebol-asks.js";
 
+    private static final String NAVIGATION_SCRIPT = "/jebol-page/jebol-navigation.js";
+
+    private final HistoryMessage history = new HistoryMessage();
+
     private final HttpServer server;
     private final DefaultFont font;
     private final List<OutputStream> browserConnections = new CopyOnWriteArrayList<>();
@@ -51,7 +56,9 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         listening.createContext("/paint", serving::openPaintStreamThatBrowserCloses);
         listening.createContext("/event", serving::receiveEvent);
         listening.createContext("/NotoSans-Regular.ttf", serving::serveFont);
-        listening.createContext("/jebol-asks.js", serving::serveAsksScript);
+        listening.createContext("/jebol-asks.js", exchange -> serving.serveCarriedScript(exchange, ASKS_SCRIPT));
+        listening.createContext("/jebol-navigation.js",
+                exchange -> serving.serveCarriedScript(exchange, NAVIGATION_SCRIPT));
         listening.start();
         return serving;
     }
@@ -121,10 +128,25 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         browserConnections.clear();
     }
 
-    private void serveAsksScript(HttpExchange exchange) throws IOException {
+    @Override
+    public void changeHistory(String move, HistoryEntry entry) {
+        dispatchToRegisteredBrowsers("navigate", history.navigate(move, entry));
+    }
+
+    @Override
+    public void guardLeaving(boolean unsavedWork) {
+        dispatchToRegisteredBrowsers("guard", history.guard(unsavedWork));
+    }
+
+    @Override
+    public void showTitle(String title) {
+        dispatchToRegisteredBrowsers("title", history.title(title));
+    }
+
+    private void serveCarriedScript(HttpExchange exchange, String carriedAt) throws IOException {
         byte[] script;
         try (InputStream carried = Objects.requireNonNull(
-                WebScreenServer.class.getResourceAsStream(ASKS_SCRIPT), "the jar carries " + ASKS_SCRIPT)) {
+                WebScreenServer.class.getResourceAsStream(carriedAt), "the jar carries " + carriedAt)) {
             script = carried.readAllBytes();
         }
         exchange.getResponseHeaders().add("Content-Type", "text/javascript; charset=utf-8");
@@ -190,6 +212,10 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
             return;
         }
         if (screen == null) {
+            return;
+        }
+        if (pageEvent.isArrival() || pageEvent.isMove()) {
+            pageEvent.reportHistory(screen.navigation());
             return;
         }
         if (pageEvent.isMeasurement()) {

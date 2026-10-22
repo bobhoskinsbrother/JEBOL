@@ -49,6 +49,8 @@ enum HostService {
     | web               -- fetch a url through the host's own HTTP machinery
     | certificates      -- judge whether a server's certificates are to be
                         -- trusted, against the authorities the host trusts
+    | navigation        -- move through the app's history, and guard leaving
+                        -- with unsaved work; nav.allium
 }
 
 -- What feeds a started program's standard input.
@@ -1310,7 +1312,8 @@ value HttpResponse {
 -- less than a machine and the difference is visible to scripts.
 --
 -- It has a console the page shows, files in a store of that site's own, the
--- clock, the screen it is drawn on, the clipboard, the instruments Web MIDI
+-- clock, the screen it is drawn on, the browser's own history and address,
+-- the clipboard, the instruments Web MIDI
 -- reaches, HTTP through the browser's own fetching, and a working
 -- directory, which is the interpreter's own and costs the page nothing,
 -- since it lives inside the store the host already has. It has no raw connection, no way to start a
@@ -1341,7 +1344,8 @@ rule TheShippedPageGrantsEverythingAPageHas {
     requires: the_host_is_the_shipped_page(interpreter)
 
     ensures: interpreter.bounds.granted_services =
-        {console, files, working_directory, clock, windows, clipboard, midi, web}
+        {console, files, working_directory, clock, windows, navigation, clipboard,
+         midi, web}
 }
 
 -- And what it does have it may still choose not to grant. The web service

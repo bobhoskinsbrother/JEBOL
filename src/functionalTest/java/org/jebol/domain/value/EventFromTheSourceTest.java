@@ -43,7 +43,17 @@ class EventFromTheSourceTest {
         void letsAScriptReadTheCatalogue() {
             assertThat(answerTo("block? system/catalog/event-types")).isEqualTo(TRUE);
             assertThat(answerTo("first system/catalog/event-types")).isEqualTo("ignore");
-            assertThat(answerTo("length? system/catalog/event-types")).isEqualTo("47");
+            assertThat(answerTo("length? system/catalog/event-types")).isEqualTo("49");
+        }
+
+        @Test
+        @DisplayName("JEBOL's back and forward come after the C's last, so every C index keeps its number")
+        void backAndForwardComeLast() {
+            assertThat(answerTo("pick system/catalog/event-types 47")).isEqualTo("char");
+            assertThat(answerTo("pick system/catalog/event-types 48")).isEqualTo("back");
+            assertThat(answerTo("pick system/catalog/event-types 49")).isEqualTo("forward");
+            assertThat(answerTo("e: make event! [type: 'back] e/type")).isEqualTo("back");
+            assertThat(answerTo("e: make event! [type: 'forward] e/type")).isEqualTo("forward");
         }
 
         @Test

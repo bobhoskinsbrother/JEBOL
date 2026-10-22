@@ -602,6 +602,10 @@ enum HandleKind {
 --
 -- And `port`, `gob` and `data` share one slot, with the model saying which is
 -- there. A gob and a window are the same field under two names.
+--
+-- JEBOL appends two types after `char`, `back` and `forward`, so every index
+-- the C fixed keeps its number; nav.allium says why. Their `data` is the
+-- place the move arrived at, in the shared slot, as a dropped file's is.
 variant EventValue : Value {
     type_index: Integer         -- into system/catalog/event-types; 0 reads as none
     flags: List<EventFlag>

@@ -43,7 +43,8 @@ public final class EventCatalogue {
             "drop-file",
             "click", "change", "focus", "unfocus", "scroll",
             "control", "control-up",
-            "char");
+            "char",
+            "back", "forward");
 
     /**
      * {@code system/catalog/event-keys}, in order.
@@ -68,6 +69,8 @@ public final class EventCatalogue {
     public static final int CONTROL = TYPES.indexOf("control");
     public static final int CONTROL_UP = TYPES.indexOf("control-up");
     public static final int DROP_FILE = TYPES.indexOf("drop-file");
+    public static final int BACK = TYPES.indexOf("back");
+    public static final int FORWARD = TYPES.indexOf("forward");
 
     /** Where a type word sits, or nothing when the list has not got it. */
     public static Optional<Integer> findTypeIndexOf(String word) {

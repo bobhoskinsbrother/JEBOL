@@ -232,7 +232,10 @@ catalog: object [
 		control    ;; used to pass control key events to a console port
 		control-up ;; only on Windows?
 
-		char ;; 
+		char ;;
+
+		back
+		forward
 	]
 	event-keys: [
 		; Event types. Order dependent for C and REBOL.

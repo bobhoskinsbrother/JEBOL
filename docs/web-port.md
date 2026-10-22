@@ -22,7 +22,8 @@ The pieces:
 | --- | --- |
 | The web's main class, the run loop in the worker | `src/teavm/java/org/jebol/adapter/web/WorkerInterpreter`, booting on `main` and awaiting scripts the page hands over |
 | The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyWorkerScript` task |
-| The page's half of an ask | `src/main/resources/jebol-page/jebol-asks.js`, copied beside the module by `copyAsksScript` and served by the command line's page from the jar |
+| The page's half of an ask | `src/main/resources/jebol-page/jebol-asks.js`, copied beside the module by `copyPageScripts` and served by the command line's page from the jar |
+| The page's half of the history | `src/main/resources/jebol-page/jebol-navigation.js`, copied and served the same way: it reports the address at load and each popstate, carries out `push`, `replace`, `back` and `forward`, holds the unsaved-work flag for `beforeunload`, reports the close on `pagehide` and reloads a page restored from the back-forward cache (decision 50) |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
 | The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- fill in with an app's file list and entry; the browser tests serve it as it ships through `ShippedRunner`, and `src/testFixtures/resources/web/rebol-on-a-page.html` is the one gate page of its own |

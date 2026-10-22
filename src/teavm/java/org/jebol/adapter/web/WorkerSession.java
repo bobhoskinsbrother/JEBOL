@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.adapter.host.JavaHost;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.render.DrawingCommand;
 import org.teavm.jso.JSBody;
@@ -21,6 +22,7 @@ final class WorkerSession implements BrowserScreen.Viewer {
     private final PageMidiDevices midi;
     private final BrowserScreen screen;
     private final Interpreter interpreter;
+    private final HistoryMessage history = new HistoryMessage();
     private Optional<ScriptHandOver> waitingForScript = Optional.empty();
     private boolean pageHasSpoken;
 
@@ -107,12 +109,29 @@ final class WorkerSession implements BrowserScreen.Viewer {
             }
         } else if (said.isFile()) {
             said.readFileName().ifPresent(name -> said.readFileText().ifPresent(text -> storeHandedFile(name, text)));
+        } else if (said.isArrival() || said.isMove()) {
+            said.reportHistory(screen.navigation());
         } else if (said.isMidiArrival()) {
             said.readConnection().ifPresent(connection ->
                     said.readOctets().ifPresent(octets -> midi.takeArrival(connection, octets)));
         } else {
             said.asEvent().ifPresent(kind -> said.readDetails(kind).ifPresent(detail -> screen.report(kind, detail)));
         }
+    }
+
+    @Override
+    public void changeHistory(String move, HistoryEntry entry) {
+        postToPage(history.navigate(move, entry));
+    }
+
+    @Override
+    public void guardLeaving(boolean unsavedWork) {
+        postToPage(history.guard(unsavedWork));
+    }
+
+    @Override
+    public void showTitle(String title) {
+        postToPage(history.title(title));
     }
 
     private void storeHandedFile(String name, String text) {

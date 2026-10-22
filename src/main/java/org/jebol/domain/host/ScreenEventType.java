@@ -23,7 +23,9 @@ public enum ScreenEventType {
     UP("up"),
     MOVE("move"),
     SCROLL_LINE("scroll-line"),
-    SCROLL_PAGE("scroll-page");
+    SCROLL_PAGE("scroll-page"),
+    BACK("back"),
+    FORWARD("forward");
 
     private final String spelling;
 

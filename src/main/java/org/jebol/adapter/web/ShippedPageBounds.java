@@ -13,6 +13,7 @@ public final class ShippedPageBounds {
                 .grant(HostService.WORKING_DIRECTORY)
                 .grant(HostService.CLOCK)
                 .grant(HostService.WINDOWS)
+                .grant(HostService.NAVIGATION)
                 .grant(HostService.CLIPBOARD)
                 .grant(HostService.MIDI)
                 .grant(HostService.WEB)

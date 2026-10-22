@@ -95,6 +95,8 @@ enum ScreenEventKind {
     | scroll_line  -- a wheel turned: one notch is a line of scrolling
     | scroll_page  -- a wheel turned a page, because control was held or the
                    -- machine counts its wheel in pages
+    | back         -- the app's history moved back; JEBOL's own, nav.allium
+    | forward      -- the app's history moved forward; JEBOL's own, nav.allium
 }
 
 ------------------------------------------------------------
@@ -181,7 +183,8 @@ entity ScreenWindow {
 entity ScreenEvent {
     port: ScreenPort
     kind: ScreenEventKind
-    window: ScreenWindow
+    window: ScreenWindow?       -- absent for back and forward, which belong
+                                -- to the app's history and to no window
     delivered: boolean
     across: Integer?            -- present when the event has a position, a size
                                 -- or an amount; nought down the across half of a
@@ -688,6 +691,10 @@ rule AKeyBelongsToTheWindowLastPressedIn {
 -- one close for each window showing, in the order of the root's pane. A
 -- person shutting the tab ends the wait exactly as shutting every window on a
 -- desktop would.
+--
+-- The page reports the close when it is hidden for good, never on
+-- beforeunload: a leave the browser asks about can still be cancelled
+-- (nav.allium's APageClosesWhenItIsHiddenForGood).
 rule ThePageClosingClosesEveryWindowOnIt {
     when: ThePageReported(port, kind, fields)
     requires: kind = close

@@ -20,6 +20,7 @@ final class WebScreenPage {
             <body>
             <canvas id="screen"></canvas>
             <script src="/jebol-asks.js"></script>
+            <script src="/jebol-navigation.js"></script>
             <script>
             const canvas = document.getElementById('screen');
             const brush = canvas.getContext('2d');
@@ -33,6 +34,13 @@ final class WebScreenPage {
             }
 
             const asks = new JebolAsks({ answer: dispatch, tell: dispatch, key: dispatch });
+
+            function sendAsThePageGoes(fields) {
+              navigator.sendBeacon('/event', JSON.stringify(fields));
+            }
+
+            const navigation = new JebolNavigation({ tell: dispatch, tellAsThePageGoes: sendAsThePageGoes });
+            navigation.arrive();
 
             function reportViewportSize() {
               dispatch({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
@@ -214,14 +222,21 @@ final class WebScreenPage {
                   step['pixel-wide'] || step.wide, step['pixel-high'] || step.high);
             }
 
-            const pictures = new EventSource('/paint');
-            pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
-            pictures.addEventListener('open', reportViewportSize);
-            pictures.addEventListener('ask', message => asks.take(JSON.parse(message.data)));
-            pictures.addEventListener('typing', message => {
-              const said = JSON.parse(message.data);
-              asks.holdTyping(said.held, said.heading);
-            });
+            function openPictures() {
+              const pictures = new EventSource('/paint');
+              pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
+              pictures.addEventListener('open', reportViewportSize);
+              pictures.addEventListener('ask', message => asks.take(JSON.parse(message.data)));
+              pictures.addEventListener('typing', message => {
+                const said = JSON.parse(message.data);
+                asks.holdTyping(said.held, said.heading);
+              });
+              for (const kind of ['navigate', 'guard', 'title']) {
+                pictures.addEventListener(kind, message => navigation.take(JSON.parse(message.data)));
+              }
+            }
+
+            eventResponse.then(openPictures);
 
             document.fonts.load('12px "Jebol Carried"').then(() => {
               if (lastPicture) paint(lastPicture);
@@ -302,7 +317,6 @@ final class WebScreenPage {
             canvas.addEventListener('wheel', reportWheel, { passive: false });
             window.addEventListener('keydown', pressed => reportKey(pressed, 'key', 'control'));
             window.addEventListener('keyup', pressed => reportKey(pressed, 'key-up', 'control-up'));
-            window.addEventListener('beforeunload', () => dispatch({ type: 'close' }));
 
             reportViewportSize();
             </script>

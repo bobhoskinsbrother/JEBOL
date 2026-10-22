@@ -1,5 +1,6 @@
 package org.jebol.domain.host;
 
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ObjectValue;
@@ -10,13 +11,29 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.LongSupplier;
 
 public abstract class GobScreen implements ScreenPort {
 
     protected final ScreenEventQueue queued = new ScreenEventQueue();
     private final Queue<ScreenEvent> postedFromAnotherThread = new ConcurrentLinkedQueue<>();
+    private final Navigation navigation;
     protected GobValue root;
     protected ObjectValue drawDialect;
+
+    protected GobScreen(LongSupplier millisecondsNow, NavigationPort keptBy) {
+        this.navigation = new Navigation(keptBy, new History(millisecondsNow), queued);
+    }
+
+    @Override
+    public Navigation navigation() {
+        return navigation;
+    }
+
+    @Override
+    public void acceptPendingReports() {
+        navigation.takeReports();
+    }
 
     @Override
     public void useDrawDialect(Value dialect) {
@@ -46,7 +63,15 @@ public abstract class GobScreen implements ScreenPort {
     @Override
     public Optional<ScreenEvent> acceptNextEvent() {
         moveEverythingPostedFromAnotherThread();
+        navigation.takeReports();
         return queued.takeOldest();
+    }
+
+    protected Optional<String> readTitle(GobValue window) {
+        return window.storage().readContentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue title
+                && !title.text().isEmpty()
+                ? Optional.of(title.text())
+                : Optional.empty();
     }
 
     private void moveEverythingPostedFromAnotherThread() {

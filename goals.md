@@ -19,7 +19,7 @@ Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 6 |
+| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 5 |
 | `./gradlew allTests` | 28,850 tests on 2026-10-22: `unitTests` 2,798, `functionalTests` 24,088, `endToEndTests` 1,964 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
@@ -58,129 +58,12 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. Navigation on the web comes first, and then the two
-that take JEBOL to Android and iOS, with the
-defects that would hurt there fixed before each stage. Agreeing with the C
+Ordered by importance. The two that take JEBOL to Android and iOS come
+first, with the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
 
-### 1. Navigation: back, forward, and a history stack
-
-An app has places, and the operator has a way back to the last one. On a page
-those are the browser's own Back and Forward buttons and its history stack; in
-a window there are no buttons, only the same stack. Today there is neither:
-pressing Back leaves or kills the app, the address never changes, a reload
-starts the app over, the worker never learns where the page is, and a frame's
-title is read once when it opens. The same model is the groundwork for the
-phone goals, where a link that opens a view is a deep link and Back is the
-operator's own gesture too.
-
-What an app needs is one model on every screen: moving to a place adds an
-entry, Back and Forward arrive as events the app answers, the address names
-the current state so a reload or a shared link lands in the same place, and
-leaving with unsaved work can ask first.
-
-1. **The port, on every screen.** `NavigationPort` (`org.jebol.domain.host`),
-   beside `WindowPort`: push a state, replace the current one, go back, go
-   forward, and answer the current state. Every screen supplies it -- a
-   desktop window, the shipped page and `--screen=web` now, the phones later
-   -- and a run with no screen refuses it, as decision 48 arranges the
-   dialogs. Navigation is a service of its own in the grants, granted
-   wherever there is a screen. There is one history per app, as a phone
-   keeps, however many windows are open, and the title that follows it is
-   the first window the app opened. The web adapter is the browser's own
-   `pushState`, `replaceState` and `popstate`, with `document.title`
-   following the state; the desktop adapter is a stack. On `--screen=web` the
-   page's half rides whatever transport carries its events.
-
-2. **The history's rules.** Going somewhere new after going back drops the
-   forward entries, as a browser does. Moving to the place already current
-   adds no entry, because it is not a move -- Android calls this single top;
-   the same place with different data is a different state and is a move.
-   Back at the first entry does nothing, and so does Forward at the last. A state is a word, string, number or
-   logic, or a block of them, and blocks may hold blocks. None is not a state
-   and is refused before anything is pushed; so is any other type.
-
-3. **The limits are the most restrictive host's, on every host.** At most
-   100 history changes in 30 seconds, which is Safari's. A state's size and
-   its address's length are capped at the smallest any target allows --
-   Firefox's state size, the shortest address a target browser keeps,
-   Android's saved-state limit -- measured and written into the spec as
-   numbers. Past any limit a move is a catchable error, never a silent drop.
-
-4. **The address is the state, written as data.** A hash first, because it
-   reads in any host with no server asked to serve a path it does not know;
-   the port hides the shape, so paths can come later. Every state the stack
-   accepts has an address, so a link can set an app up at any one place in
-   it, and a reload or a shared link lands there.
-
-5. **A link is untrusted input.** Anyone can write one. The address is read
-   as data and never loaded or evaluated. A server never sees a hash, so
-   there is no 404 from one; the two cases are the app's:
-   - an address that does not read as a state -- malformed, the wrong type,
-     too long -- starts the app at its start, and the first event says the
-     address was refused;
-   - an address that reads but names a place the app does not know is the
-     app's to answer with its own "not found", which is the 404.
-
-6. **A navigation event, an extension of the C.** Rebol's event types are a
-   fixed list and none of them is navigation. Both the phones and the web
-   need one, so JEBOL adds it: an event naming the move, back or forward,
-   with the state now current. It arrives on `system/ports/event` with every
-   other screen event, so one handler block answers clicks and Back alike. A
-   fresh load is the app's first such event. It goes in Standing as a
-   deliberate difference, with a decision entry.
-
-7. **The keys and gestures browsers use for Back and Forward** move the
-   history on every screen: Alt+Left and Alt+Right on Windows and Linux;
-   Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS; the mouse's back and
-   forward buttons; the macOS trackpad swipe. They still reach the app as
-   key presses too, on a page as in a window, so an app that reads them
-   keeps working.
-
-8. **Unsaved work is a flag the app sets and clears in advance.** Leaving
-   cannot ask the interpreter and wait -- `beforeunload` is synchronous and
-   the interpreter is in a worker, and Android's back gesture has the same
-   rule -- so the page holds the flag. With it set, a reload, closing the
-   tab and leaving the app ask first through `beforeunload`. A window's
-   close already reaches the script: `DesktopScreen` posts it and does not
-   close, and `view-funcs.reb`'s default handler is what calls `unview`. So
-   on the desktop the flag is read by that handler's path, not by a second
-   veto in the port. Back between two of the app's own places is not
-   guarded; an app that wants to ask there asks with its own form.
-
-9. **To do: move the page's close from `beforeunload` to `pagehide`.**
-   Today `site/runner.html:333` posts `close` from `beforeunload`, so once a
-   leave can be cancelled, choosing "Stay" would leave a live page whose app
-   has closed every window. The defect only shows once the flag exists, so
-   the move lands in the same change as the flag, with the end-to-end test
-   that chooses "Stay" and finds the app still running.
-
-10. **A page brought back from the browser's back-forward cache restarts the
-    app**, from its address, as a fresh load does.
-
-11. **A small layer for app code.** `go` moves -- `go 'survey`, `go/back`,
-    `go/forward`, `go/replace` -- because an app should not have to hold the
-    port. `back` and `forward` are series actions and cannot be the words;
-    `go` is defined nowhere in Rebol's library, the GUI or the examples.
-
-Tests are the browser gate in Chrome and Firefox, driving the real Back and
-Forward: a deep link that lands, one that is malformed, one the app does not
-know; "Stay" on a guarded reload keeping the app running; Back between two
-places with the flag set not asking; a restore from the back-forward cache.
-The history's rules, the limits and the desktop's keys are tested at the
-port's boundary on the JVM, and a real window is checked by hand, as decision
-48's chooser is.
-
-First steps, in the repo's order. The spec before any code: a new
-`spec/nav.allium` holds every rule above, `spec/embed.allium`'s shipped-page
-grants and `spec/repl.allium`'s command-line grants gain navigation, and
-`ThePageClosingClosesEveryWindowOnIt` in `spec/screen.allium` moves to
-`pagehide`. Then the tests that fail without a port, on the JVM and in both
-browsers. Then the port, its two adapters and the `go` layer, with a decision
-entry and `docs/web-port.md` beside them.
-
-### 2. Android, with the interpreter running on Android's own Java
+### 1. Android, with the interpreter running on Android's own Java
 
 1. **Check JEBOL's Java against Android's.** JEBOL is text for Java 25.
    Find the language features and library calls Android's compiler and
@@ -213,7 +96,7 @@ entry and `docs/web-port.md` beside them.
    the way the browser gate drives Chrome: a gate of its own, never a skipped
    test.
 
-### 3. iOS, with the interpreter compiled ahead of time by GraalVM
+### 2. iOS, with the interpreter compiled ahead of time by GraalVM
 
 Not a web view: one would pause JEBOL whenever the app is in the background,
 keep it out of widgets, the Watch and app extensions, and make every call to
@@ -229,7 +112,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    of this step.
 3. **The app.** One view draws the domain's surface calls with iOS's own
    drawing; touches, the keyboard, and pausing and resuming are handled as
-   on Android, using goal 2 step 4's work in the 2010 GUI.
+   on Android, using goal 1 step 4's work in the 2010 GUI.
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
@@ -240,7 +123,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
 
-### 4. A real MIDI device through `javax.sound.midi`
+### 3. A real MIDI device through `javax.sound.midi`
 
 The `midi` scheme is registered and its actor is `MidiSchemeActor`, behind
 the `MidiDevices` host port; every interpreter starts with `NoMidiDevices`,
@@ -251,7 +134,7 @@ interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Whether opening an open port should do what the C does is an
 open question in `spec/natives.allium`.
 
-### 5. Two found in Rebol's own declarations
+### 4. Two found in Rebol's own declarations
 
 1. **`system/standard/stats` starts at zero; R3 starts every field at none.**
    `STATS/PROFILE` and `DELTA-PROFILE` subtract the fields, so changing them is
@@ -262,7 +145,7 @@ open question in `spec/natives.allium`.
    write a line. `TheDialectsWordsMatchRebolsOwnTest` will turn red when it
    lands, and its list of absences wants updating then.
 
-### 6. The type-major refactor: what is left
+### 5. The type-major refactor: what is left
 
 Each datatype's behaviour belongs in its own class, not in a switch elsewhere.
 What still switches on the datatype, by `scripts/complexity.py`:
@@ -289,7 +172,7 @@ from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
 interpreters -- reads as missing.
 
-### 7. Graphics: what is left
+### 6. Graphics: what is left
 
 - **VID.**
 - **The old markup path** -- 522 lines.
@@ -299,7 +182,7 @@ interpreters -- reads as missing.
   decision 35 makes the walk one and leaves only the toolkit's coverage
   arithmetic, which the spec's tolerance already bounds.
 
-### 8. Loose ends
+### 7. Loose ends
 
 - **A task's body runs nowhere by default.** DO of a task answers the task,
   and the body runs only where a host supplies a way to run it: on a thread of
@@ -318,13 +201,15 @@ interpreters -- reads as missing.
   block from that value on; and R3's `where` names `catch` between a native
   and the TRY that caught it, which JEBOL's leaves out. Found by the sweeps on
   2026-10-15; no suite assertion asks.
-- **65 open questions across the spec files**, 28 of them in
-  `natives.allium`. Unowned by any goal: the three in `parse.allium`, the five
-  in `embed.allium`, and the design questions in `natives.allium` (whether a
+- **67 open questions across the spec files** on 2026-10-22, 27 of them in
+  `natives.allium`. Unowned by any goal: the three in `parse.allium`, the eight
+  in `embed.allium`, the one in `nav.allium` (whether a window should hear the
+  trackpad's swipe, which Java gives no public way to), and the design
+  questions in `natives.allium` (whether a
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters).
 
-### 9. Verify a fetched module
+### 8. Verify a fetched module
 
 Nothing is fetched today: every module this build needs is bundled. Before an
 address points outward again:
@@ -337,7 +222,7 @@ address points outward again:
 
 Still to decide: whether a host can refuse fetching outright.
 
-### 10. A debugger
+### 9. A debugger
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -350,7 +235,7 @@ decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
-### 11. Dev tools
+### 10. Dev tools
 
 Two homes: the flag and the example go in JEBOL; the server and its tools are a
 second Gradle build in this repo: one executable jar taking JEBOL's jar as its
@@ -387,9 +272,9 @@ one dependency, with a gate of its own rather than `allTests`.
    at first.
 
 
-### 12. What the command line does differently from r3
+### 11. What the command line does differently from r3
 
-1. **`--trace` does not trace the boot.** Do with goal 10.
+1. **`--trace` does not trace the boot.** Do with goal 9.
 2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. The banner's title line is decided -- it says "(JEBOL
@@ -404,7 +289,7 @@ one dependency, with a gate of its own rather than `allTests`.
    line's own input stream is the fix, and it is the same shape of gap the
    windows service had until decision 48.
 
-### 13. A drag still lags, and the interpreter has a next tier
+### 12. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -433,7 +318,7 @@ still reads slow after the paint work:
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
 
-### 14. WebP as an image format
+### 13. WebP as an image format
 
 A real 3.22.5 has no WebP codec, so this is the one goal that improves on the
 C rather than agreeing with it, and it comes last for that reason. Every
@@ -495,6 +380,10 @@ counterpart before any test.
   at allow. Links that stay inside are followed. `AFileIsJudgedByWhereItReallyLeads`
   in `spec/natives.allium` and `ALinkLeavingTheRootIsRefused` in
   `spec/embed.allium`.
+- **An app has a history, and `system/catalog/event-types` has 49 types where
+  R3 has 47, on purpose.** `back` and `forward` come after the C's last, so no
+  index the C fixed moves; `go`, `go-back`, `go-forward`, `current-place` and
+  `unsaved-work` are JEBOL's own words. Decision 50 and `spec/nav.allium`.
 - **No Java PDF implementation.** The borrowed codec is what Rebol has; more
   than that is a library the caller adds.
 

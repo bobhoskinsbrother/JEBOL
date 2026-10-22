@@ -34,7 +34,7 @@ public final class EventPath {
             case "code" -> event.has(EventValue.Flag.HAS_CODE)
                     ? IntegerValue.of(event.data())
                     : NoneValue.none();
-            case "data" -> droppedFile(event);
+            case "data" -> heldData(event);
             default -> throw Raised.of(
                     EvaluationFailure.INVALID_PATH, asked.spelling());
         };
@@ -70,12 +70,17 @@ public final class EventPath {
         return event.has(EventValue.Flag.HAS_DATA);
     }
 
-    private static Value droppedFile(EventValue event) {
-        if (!event.has(EventValue.Flag.HAS_DATA)
-                || event.typeIndex() != EventCatalogue.DROP_FILE) {
+    private static Value heldData(EventValue event) {
+        if (!event.has(EventValue.Flag.HAS_DATA) || !carriesData(event.typeIndex())) {
             return NoneValue.none();
         }
         return event.attached();
+    }
+
+    private static boolean carriesData(int typeIndex) {
+        return typeIndex == EventCatalogue.DROP_FILE
+                || typeIndex == EventCatalogue.BACK
+                || typeIndex == EventCatalogue.FORWARD;
     }
 
     static java.util.Optional<EventValue> write(

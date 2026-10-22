@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.domain.host.Navigation;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.value.EventCatalogue;
@@ -41,6 +42,32 @@ final class PageEvent {
         return new PageAnswer(posted).octets("octets");
     }
 
+    boolean isArrival() {
+        return eventFields.text("type").filter("arrive"::equals).isPresent();
+    }
+
+    boolean isMove() {
+        return eventFields.text("type").filter("moved"::equals).isPresent();
+    }
+
+    Optional<Integer> readHistoryIndex() {
+        return eventFields.readWholeNumber("index").filter(index -> index >= 0);
+    }
+
+    Optional<String> readAddress() {
+        return eventFields.text("address");
+    }
+
+    void reportHistory(Navigation navigation) {
+        readHistoryIndex().ifPresent(index -> readAddress().ifPresent(address -> {
+            if (isArrival()) {
+                navigation.reportStart(index, address);
+            } else if (isMove()) {
+                navigation.reportArrival(index, address);
+            }
+        }));
+    }
+
     boolean isFile() {
         return eventFields.text("type").filter("file"::equals).isPresent();
     }
@@ -76,6 +103,7 @@ final class PageEvent {
                     .map(ScreenEventDetail.NamedKey::new);
             case CLOSE, RESIZE, OFFSET -> Optional.of(new ScreenEventDetail.NothingMore());
             case SCROLL_LINE, SCROLL_PAGE -> wheelTurn();
+            case BACK, FORWARD -> Optional.empty();
         };
     }
 

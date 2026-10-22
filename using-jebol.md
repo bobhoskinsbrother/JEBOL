@@ -106,6 +106,21 @@ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
 ./build/install/jebol/bin/jebol --screen=window examples/choose-colour/
 ```
 
+### **Places, Back and Forward**
+
+An app on a screen has one history, and these words move through it. None of them is in a real Rebol; they are JEBOL's, and `spec/nav.allium` holds the rules.
+
+| Word | What it does |
+| --- | --- |
+| `go place` | Goes to a place and answers it. A place is a word, string, number or logic, or a block of them: `go 'survey`, `go [survey 3]`. Going where the app already is adds nothing. |
+| `go/replace place` | Replaces the place the app is at, adding no entry. |
+| `go-back`, `go-forward` | One entry each way. At either end they do nothing. |
+| `current-place` | The place the app is at, as a block. On a page this is where the address pointed when it loaded, so a reload or a shared link lands there. |
+| `current-place/refused` | The address a page was loaded at when it could not be read as a place, or none. |
+| `unsaved-work flag` | With `true`, a reload, closing the tab or closing a window asks the operator first. |
+
+Back and Forward, the operator's or the app's own, arrive on `system/ports/event` as events of type `back` and `forward`, with the place in `event/data`. Handle them in a handler of your own, as the 2010 GUI does not know them. On a page the address is the place: `[survey 3]` is `#survey%203`. Moves are limited to 100 in 30 seconds and an address to 2,048 characters, on every screen.
+
 ---
 
 ## **3. Embedding JEBOL in Java Applications**

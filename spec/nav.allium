@@ -1,0 +1,608 @@
+-- allium: 3
+--
+-- JEBOL: an app's places, the operator's way back to the last one, and the
+-- address that names where the app is.
+--
+-- Scope: one history per app, the rules it keeps, the words a script moves
+-- with, the events Back and Forward arrive as, the address a page carries,
+-- the guard on leaving with unsaved work, and what each screen does to keep
+-- all of that the same everywhere.
+--
+-- Excludes:
+--   - Paths as addresses. The address is a hash, which every host can carry
+--     with no server asked to serve a path it does not know. The port hides
+--     the shape, so paths can come later where a host can carry them.
+--   - The phones. Android and iOS are goals of their own; this spec is the
+--     model they implement, and their Back gesture is this spec's Back.
+--
+-- Dependencies: HostService and ServiceRefusal in embed.allium; ScreenPort,
+-- ScreenWindow, ScreenEvent and the event queue in screen.allium.
+--
+-- Rebol has nothing here. A real 3.22.5 has no history, no navigation event
+-- and no address, so every rule in this file is JEBOL's own, and the two
+-- event types it adds to system/catalog/event-types are a deliberate
+-- extension of the C: both the web and the phones need them.
+
+use "./embed.allium" as embed
+use "./screen.allium" as screen
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- Which way a move went. Also the two event types the move arrives as,
+-- appended to system/catalog/event-types after `char`, so every constant the
+-- C fixed keeps its number.
+enum Direction {
+    back             -- toward the first entry
+    | forward        -- toward the last
+}
+
+-- What a place may hold. A lone value of the first five kinds is a place of
+-- one item; a block holds any of the six, blocks included.
+enum PlaceItemKind {
+    word             -- a plain word: survey, not survey: nor 'survey
+    | text           -- a string
+    | whole_number   -- an integer
+    | decimal_number -- a decimal
+    | logic          -- true or false, the value rather than the word
+    | block          -- a block of any of these, nested to any depth
+}
+
+-- Why a value was not taken as a place.
+enum PlaceRefusal {
+    nothing_given    -- none: it says there is no place, so it cannot be one
+    | wrong_kind     -- any other type, or a block holding one
+    | too_long       -- its address would be longer than every host keeps
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- Safari's limit, the strictest of the hosts, kept on every host so an
+    -- app that runs on one runs on all of them.
+    most_changes_per_window: Integer = 100
+    change_window: Duration = 30.seconds
+
+    -- The longest address a place may have. Chosen, not measured: every
+    -- target keeps far longer, and the link is meant to be shared, so the
+    -- cap is the length a shared link survives being pasted. A state is its
+    -- address, so this caps the state too.
+    longest_address: Integer = 2048
+}
+
+------------------------------------------------------------
+-- Values and entities
+------------------------------------------------------------
+
+-- Somewhere in an app. Always a block: `go 'survey` goes to [survey].
+-- Two places are the same place when their addresses are the same.
+value Place {
+    items: List<PlaceItem>
+    address: String              -- the items written as data, see below
+}
+
+value PlaceItem {
+    kind: PlaceItemKind
+}
+
+-- The start: the place an app is at before it goes anywhere. Its address is
+-- empty, which on a page is the url with no hash at all.
+--   start = Place(items: [], address: "")
+
+-- One app's history. One per app, however many windows it has open, as a
+-- phone keeps one.
+entity History {
+    entries: List<Place>         -- never empty: the first is where the app began
+    position: Integer            -- which entry is current, from nought
+    used_by_the_app: Boolean     -- the app has asked about or moved through it
+    changes: List<Timestamp>     -- when the app last changed it, for the rate
+    unsaved_work: Boolean        -- set and cleared by the app, in advance
+    refused_address: String?     -- the address a fresh load could not read
+
+    current: entry_at(entries, position)
+    at_first: position = 0
+    at_last: position = entries.count - 1
+}
+
+invariant ThePositionIsAlwaysAnEntry {
+    for history in History:
+        history.position >= 0 and history.position < history.entries.count
+}
+
+------------------------------------------------------------
+-- Which screens have it
+------------------------------------------------------------
+
+-- Every screen has a history: a desktop window, the shipped page and
+-- --screen=web now, the phones later. It comes with the screen, as each
+-- screen's dialogs do (EachScreenBringsItsOwnDialogs).
+rule EveryScreenHasAHistory {
+    when: script_navigates(run, request)
+    requires: navigation in run.interpreter.bounds.granted_services
+    requires: run.interpreter.screen_port.has_a_display
+
+    ensures: the_request_is_answered_by_the_screens_history(run, request)
+}
+
+-- With no screen there is nowhere to be, so a move is refused as not
+-- present, never as not granted: granting would not fix it.
+rule NoScreenIsNoHistory {
+    when: script_navigates(run, request)
+    requires: navigation in run.interpreter.bounds.granted_services
+    requires: not run.interpreter.screen_port.has_a_display
+
+    ensures:
+        run.conclusion = raised
+        run.refusal_reason = not_present
+        run.refused_service = navigation
+}
+
+-- Navigation is a service of its own, and a host that withholds it refuses
+-- it as not granted, as it would any other.
+rule NavigationWithheldIsNotGranted {
+    when: script_navigates(run, request)
+    requires: not (navigation in run.interpreter.bounds.granted_services)
+
+    ensures:
+        run.conclusion = raised
+        run.refusal_reason = not_granted
+        run.refused_service = navigation
+}
+
+------------------------------------------------------------
+-- What a place may be
+------------------------------------------------------------
+
+-- `go` takes a word, a string, a number, a logic or a block of them, nested
+-- to any depth. A lone value is a place of one item. Anything else is
+-- refused before anything is pushed, and the history is as it was.
+rule APlaceIsDataAScriptCanWrite {
+    when: script_goes_to(run, given)
+    requires: is_a_place_item(given) or is_a_block_of_place_items(given)
+
+    ensures: the_place_is(as_place(given))
+}
+
+-- None says there is no place, so it cannot be one: it is refused rather
+-- than taken as the start. So is every other type: a set-word, a lit-word, a
+-- path, a paren, an object, a function, a date, a block holding any of them.
+rule ANonPlaceIsRefused {
+    when: script_goes_to(run, given)
+    requires: not is_a_place_item(given) and not is_a_block_of_place_items(given)
+
+    ensures:
+        run.conclusion = raised
+        run.raised_error = invalid_arg(given)
+        the_history_is_unchanged()
+}
+
+rule APlaceTooLongForAnAddressIsRefused {
+    when: script_goes_to(run, given)
+    requires: as_place(given).address.length > config.longest_address
+
+    ensures:
+        run.conclusion = raised
+        run.raised_error = too_long
+        the_history_is_unchanged()
+}
+
+------------------------------------------------------------
+-- The history's rules
+------------------------------------------------------------
+
+-- Going somewhere new adds an entry after the current one and drops every
+-- entry that was ahead of it, as a browser does.
+rule GoingSomewhereNewAddsAnEntryAndDropsWhatWasAhead {
+    when: GoTo(run, history, place)
+    requires: place != history.current
+    requires: changes_within(history, config.change_window) < config.most_changes_per_window
+
+    ensures:
+        history.entries = with_place_after(entries_through_current(history), place)
+        history.position = history.position + 1
+        history.changes.add(now)
+        history.used_by_the_app = true
+}
+
+-- Going to the place already current adds nothing, because it is not a move.
+-- Android calls this single top. The same place with different data is a
+-- different place, and going there is a move.
+rule GoingToTheCurrentPlaceAddsNothing {
+    when: GoTo(run, history, place)
+    requires: place = history.current
+
+    ensures: the_history_is_unchanged()
+    ensures: history.used_by_the_app = true
+}
+
+-- Replacing changes the current entry and nothing else: no entry is added,
+-- none is dropped, and the position stays.
+rule ReplacingChangesOnlyTheCurrentEntry {
+    when: Replace(run, history, place)
+    requires: changes_within(history, config.change_window) < config.most_changes_per_window
+
+    ensures:
+        the_entry_at_becomes(history, history.position, place)
+        history.changes.add(now)
+        history.used_by_the_app = true
+}
+
+-- Back at the first entry does nothing, and so does Forward at the last:
+-- no move, no event and no error.
+rule BackAtTheFirstEntryDoesNothing {
+    when: GoBack(run, history)
+    requires: history.at_first
+
+    ensures: the_history_is_unchanged()
+}
+
+rule ForwardAtTheLastEntryDoesNothing {
+    when: GoForward(run, history)
+    requires: history.at_last
+
+    ensures: the_history_is_unchanged()
+}
+
+-- The app's own Back moves one entry back, and the move arrives as a back
+-- event, as the operator's would: one handler answers both.
+rule TheAppsBackMovesOneEntryBack {
+    when: GoBack(run, history)
+    requires: not history.at_first
+    requires: changes_within(history, config.change_window) < config.most_changes_per_window
+
+    ensures:
+        history.changes.add(now)
+        history.used_by_the_app = true
+        the_screen_moves(history, back)
+}
+
+rule TheAppsForwardMovesOneEntryForward {
+    when: GoForward(run, history)
+    requires: not history.at_last
+    requires: changes_within(history, config.change_window) < config.most_changes_per_window
+
+    ensures:
+        history.changes.add(now)
+        history.used_by_the_app = true
+        the_screen_moves(history, forward)
+}
+
+-- At most a hundred changes the app makes in thirty seconds, which is
+-- Safari's limit kept everywhere. The hundred and first is a catchable
+-- error, never a silent drop, and the history is as it was. The operator's
+-- own moves are not counted: the limit is on the app.
+rule AChangePastTheRateIsRefused {
+    when: GoTo(run, history, place) or Replace(run, history, place)
+        or GoBack(run, history) or GoForward(run, history)
+    requires: changes_within(history, config.change_window) >= config.most_changes_per_window
+
+    ensures:
+        run.conclusion = raised
+        run.raised_error = size_limit
+        the_history_is_unchanged()
+}
+
+-- A change older than the window stops counting the moment it leaves it.
+rule AChangeOutsideTheWindowNoLongerCounts {
+    when: GoTo(run, history, place) or Replace(run, history, place)
+        or GoBack(run, history) or GoForward(run, history)
+    requires: every_counted_change_is_older_than(history, config.change_window)
+
+    ensures: changes_within(history, config.change_window) = 0
+}
+
+------------------------------------------------------------
+-- Back and Forward as events
+------------------------------------------------------------
+
+-- A move the screen reports -- the operator's Back or Forward, or the app's
+-- own go-back and go-forward arriving -- is an event on system/ports/event,
+-- the port every other screen event arrives on. Its type is back or
+-- forward, its data is the place now current, and it names no window,
+-- because a history belongs to the app rather than to one of its windows.
+rule AMoveArrivesAsAnEvent {
+    when: the_screen_reports_arriving_at(history, index, place)
+    requires: index != history.position
+    requires: history.used_by_the_app
+
+    let direction = if index < history.position: back else: forward
+
+    ensures:
+        history.position = index
+        the_entry_at_becomes(history, index, place)
+        screen.ScreenEvent.created(
+            kind: direction,
+            window: null,
+            delivered: false)
+        the_event_data_is(place)
+}
+
+-- An arrival at the entry already current is no move, and says nothing.
+rule AnArrivalWhereTheAppAlreadyIsSaysNothing {
+    when: the_screen_reports_arriving_at(history, index, place)
+    requires: index = history.position
+
+    ensures: nothing_is_queued
+}
+
+-- An app that has never asked about its history hears nothing of it. An app
+-- written before navigation existed has no handler for these two types, and
+-- the 2010 GUI looks a handler up by the event's type: an event it never
+-- asked for would stop it. The history still follows, so the place is right
+-- if the app asks later.
+rule AnAppThatNeverAskedHearsNothing {
+    when: the_screen_reports_arriving_at(history, index, place)
+    requires: not history.used_by_the_app
+
+    ensures:
+        history.position = index
+        the_entry_at_becomes(history, index, place)
+        nothing_is_queued
+}
+
+-- The app moving itself is not news to it: going somewhere and replacing
+-- queue no event, as pushState raises no popstate.
+rule TheAppsOwnGoQueuesNoEvent {
+    when: GoTo(run, history, place) or Replace(run, history, place)
+
+    ensures: nothing_is_queued
+}
+
+------------------------------------------------------------
+-- The address
+------------------------------------------------------------
+
+-- The address is the place written as data: each item as MOLD/ALL writes
+-- it, separated by a space, then percent-encoded so only letters, digits and
+-- `-._~` are left as they are. [survey] is `survey` and [survey 3] is
+-- `survey%203`. MOLD/ALL rather than MOLD, because MOLD writes true as a
+-- word and the address must read back as the logic it was.
+rule TheAddressIsThePlaceWrittenAsData {
+    when: place: Place.created
+
+    ensures: place.address = percent_encoded(joined_with_spaces(mold_all_each(place.items)))
+}
+
+-- Every place the history takes reads back from its own address as the
+-- same place, which is what lets a link set an app up at any place in it.
+invariant EveryPlaceReadsBackFromItsAddress {
+    for place in Place:
+        read_address(place.address) = place
+}
+
+-- An address is untrusted: anyone can write a link. It is read as data and
+-- never loaded and never evaluated, and it reads as a place only when every
+-- step succeeds: the percent escapes are whole, the bytes are UTF-8, the
+-- text reads as REBOL values, every value is a place item, and the address
+-- is no longer than the longest allowed.
+rule AnAddressIsReadAsDataAndNeverEvaluated {
+    when: read_address(text)
+
+    ensures:
+        if every_step_of_reading_succeeds(text): the_place_it_names(text)
+        else: unreadable
+}
+
+-- A fresh load starts at the place its address names, so a reload or a
+-- shared link lands where it pointed. The app learns where it is from
+-- CURRENT-PLACE before it draws anything, so it draws the right place first
+-- rather than the start and then the right one.
+rule AFreshLoadStartsWhereTheAddressPoints {
+    when: the_app_loads_at(history, address)
+    requires: read_address(address) != unreadable
+
+    ensures:
+        history.entries = only(read_address(address))
+        history.position = 0
+        history.refused_address = null
+}
+
+-- An address that does not read as a place -- malformed, the wrong kind, too
+-- long -- starts the app at its start, and CURRENT-PLACE/REFUSED answers the
+-- address as it was given, so the app can say what it could not open.
+rule AnUnreadableAddressStartsAtTheStart {
+    when: the_app_loads_at(history, address)
+    requires: read_address(address) = unreadable
+
+    ensures:
+        history.entries = only(start_place())
+        history.position = 0
+        history.refused_address = address
+}
+
+-- A place that reads but that the app does not know is the app's to answer
+-- with its own "not found". JEBOL cannot know which places an app has, and a
+-- server never sees a hash, so there is no 404 from one.
+rule APlaceTheAppDoesNotKnowIsTheAppsToAnswer {
+    when: the_app_loads_at(history, address)
+    requires: read_address(address) != unreadable
+    requires: not the_app_knows(read_address(address))
+
+    ensures: the_app_shows_its_own_not_found()
+}
+
+------------------------------------------------------------
+-- Leaving with unsaved work
+------------------------------------------------------------
+
+-- The guard is a flag the app sets and clears in advance. Leaving cannot ask
+-- the interpreter and wait: beforeunload is synchronous and a page's
+-- interpreter is in a worker, and Android's back gesture has the same rule.
+-- So the host holds the flag, and the host asks.
+rule UnsavedWorkIsAFlagTheHostHolds {
+    when: script_marks_unsaved_work(run, flag)
+    requires: navigation in run.interpreter.bounds.granted_services
+
+    ensures: run.interpreter.history.unsaved_work = flag
+    ensures: the_host_holds(flag)
+}
+
+-- With the flag set, leaving asks first: on a page a reload, closing the tab
+-- and leaving the app ask through the browser's own beforeunload prompt; in
+-- a window, closing it asks through the machine's own confirmation before
+-- the close reaches the script.
+rule LeavingWithUnsavedWorkAsksFirst {
+    when: the_operator_leaves(history)
+    requires: history.unsaved_work
+
+    ensures: the_host_asks_whether_to_leave()
+}
+
+-- Staying keeps the app running: nothing reaches the script and every
+-- window stays open.
+rule StayingKeepsTheAppRunning {
+    when: the_operator_chooses_to_stay(history)
+
+    ensures: nothing_is_queued
+    ensures: every_window_stays_open()
+}
+
+-- Without the flag nothing asks, and leaving is what it was.
+rule WithoutTheFlagNothingAsks {
+    when: the_operator_leaves(history)
+    requires: not history.unsaved_work
+
+    ensures: not the_host_asks_whether_to_leave()
+}
+
+-- Back and Forward between two of the app's own places are not leaving. A
+-- page cannot stop them anyway: by the time popstate arrives the move has
+-- happened. An app that wants to ask there asks with its own form.
+rule MovingBetweenTheAppsOwnPlacesIsNotGuarded {
+    when: the_screen_reports_arriving_at(history, index, place)
+    requires: history.unsaved_work
+
+    ensures: not the_host_asks_whether_to_leave()
+}
+
+------------------------------------------------------------
+-- What each screen does
+------------------------------------------------------------
+
+-- The keys and buttons each system's browser uses for Back and Forward move
+-- the history in a window too: Alt+Left and Alt+Right on Windows and Linux;
+-- Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS, where Alt+Left moves a word
+-- in a text field; the mouse's back and forward buttons everywhere. Only the
+-- chord exactly: a second modifier held makes it some other key. They still
+-- reach the app as key presses, so an app that reads them keeps working.
+rule TheBrowsersBackKeysMoveAWindowsHistory {
+    when: the_operator_presses_a_back_or_forward_chord(window, direction)
+
+    ensures:
+        if direction = back: GoBackAskedByTheOperator(history)
+        else: GoForwardAskedByTheOperator(history)
+    ensures: the_key_press_is_reported_as_well(window)
+}
+
+-- The operator's Back keeps the history's own rules: at the first entry it
+-- does nothing, and the operator's moves are not counted against the rate.
+rule TheOperatorsBackKeepsTheRules {
+    when: GoBackAskedByTheOperator(history)
+    requires: not history.at_first
+
+    ensures: the_screen_reports_arriving_at(history, history.position - 1,
+        entry_at(history.entries, history.position - 1))
+}
+
+rule TheOperatorsForwardKeepsTheRules {
+    when: GoForwardAskedByTheOperator(history)
+    requires: not history.at_last
+
+    ensures: the_screen_reports_arriving_at(history, history.position + 1,
+        entry_at(history.entries, history.position + 1))
+}
+
+-- A page uses the browser's own history: going somewhere is pushState,
+-- replacing is replaceState, and Back and Forward are the browser's, its
+-- buttons, its keys and the trackpad's swipe included. Each entry carries
+-- its index, kept across a reload, so a move reported by popstate names the
+-- entry it reached.
+rule APageUsesTheBrowsersOwnHistory {
+    when: the_app_changes_its_history_on_a_page(history, change)
+
+    ensures: the_browser_history_is_changed_the_same_way(change)
+}
+
+-- An address the operator types into the address bar is a new entry the
+-- operator made, after the current one, and arrives as a forward move. An
+-- address that does not read as a place arrives as the start.
+rule AnAddressTypedIntoTheBarIsAForwardMove {
+    when: the_operator_types_an_address(history, address)
+
+    ensures: the_screen_reports_arriving_at(history, history.position + 1,
+        if read_address(address) = unreadable: start else: read_address(address))
+}
+
+-- The page tells the interpreter it is closing when the page is hidden for
+-- good, never on beforeunload: a leave asked about can still be cancelled,
+-- and a close sent before the answer would close every window of an app the
+-- operator chose to keep (screen.allium's ThePageClosingClosesEveryWindowOnIt).
+rule APageClosesWhenItIsHiddenForGood {
+    when: the_page_is_hidden_for_good()
+
+    ensures: the_page_reports_close()
+}
+
+-- A page brought back from the browser's back-forward cache restarts the
+-- app from its address, as a fresh load does: the app it held was closed
+-- when the page was hidden.
+rule APageBroughtBackFromTheCacheRestarts {
+    when: the_page_is_shown_from_the_back_forward_cache()
+
+    ensures: the_page_loads_afresh()
+}
+
+-- The app's title is the first window it opened: its text names the app,
+-- and the title follows it as the app changes it. On a page that is the
+-- tab's title; in a window it is that window's title bar. The other windows
+-- keep the title they opened with.
+rule TheFirstWindowsTextIsTheAppsTitle {
+    when: script_shows(run, gob)
+    requires: gob = the_first_window_the_app_opened(run)
+
+    ensures: the_apps_title_is(gob.text)
+}
+
+------------------------------------------------------------
+-- The words
+------------------------------------------------------------
+
+surface TheNavigationWords {
+    facing script: embed.ScriptRun
+
+    provides:
+        -- go place: goes there, and answers the place now current.
+        GoTo(script, script.interpreter.history, place)
+        -- go/replace place: replaces the current entry, and answers it.
+        Replace(script, script.interpreter.history, place)
+        -- go-back and go-forward: one entry each way, as the event that
+        -- arrives says; both answer unset.
+        GoBack(script, script.interpreter.history)
+        GoForward(script, script.interpreter.history)
+        -- current-place: the place now current, as a fresh block.
+        -- current-place/refused: the address a fresh load could not read,
+        -- or none.
+        CurrentPlace(script)
+        CurrentPlaceRefused(script)
+        -- unsaved-work flag: sets or clears the guard, and answers it.
+        UnsavedWork(script, flag)
+
+    exposes:
+        Direction
+        PlaceItemKind
+        PlaceRefusal
+
+    @guarantee BackAndForwardAreNotTheWords
+        -- BACK and FORWARD are series actions, so the moves are GO-BACK and
+        -- GO-FORWARD. GO is defined nowhere in Rebol's library, the 2010 GUI
+        -- or the examples.
+}
+
+------------------------------------------------------------
+-- Open questions
+------------------------------------------------------------
+
+open question "The trackpad's two-finger swipe moves a page's history because the browser does it. Java has no public way to hear a swipe in a window: macOS reports it to the JDK's own com.apple.eawt.event, which is not exported. Is a window's swipe worth reaching into the JDK for, or does the window keep the keys and the mouse buttons only?"

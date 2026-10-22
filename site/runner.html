@@ -15,6 +15,7 @@
 <body>
 <canvas id="screen"></canvas>
 <script src="jebol-asks.js"></script>
+<script src="jebol-navigation.js"></script>
 <script>
 const canvas = document.getElementById('screen');
 const brush = canvas.getContext('2d');
@@ -223,6 +224,8 @@ function hearWorker(message) {
     asks.take(said);
   } else if (said.type === 'typing') {
     asks.holdTyping(said.held, said.heading);
+  } else if (said.type === 'navigate' || said.type === 'guard' || said.type === 'title') {
+    navigation.take(said);
   } else if (said.type === 'printed') {
     print(said.text);
   } else if (said.type === 'booted') {
@@ -250,6 +253,8 @@ function postToWorker(fields) {
 }
 
 const asks = new JebolAsks({ answer: postToWorker, tell: postToWorker, key: postToWorker });
+const navigation = new JebolNavigation({ tell: postToWorker, tellAsThePageGoes: postToWorker });
+navigation.arrive();
 
 function reportViewportSize() {
   postToWorker({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
@@ -330,7 +335,6 @@ canvas.addEventListener('mousemove', pointer => reportPointer('move', pointer));
 canvas.addEventListener('wheel', reportWheel, { passive: false });
 window.addEventListener('keydown', pressed => reportKey(pressed, 'key', 'control'));
 window.addEventListener('keyup', pressed => reportKey(pressed, 'key-up', 'control-up'));
-window.addEventListener('beforeunload', () => postToWorker({ type: 'close' }));
 
 document.fonts.load('12px "Jebol Carried"').then(() => {
   if (lastPicture) paint(lastPicture);

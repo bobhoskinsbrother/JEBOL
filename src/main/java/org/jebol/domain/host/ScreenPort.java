@@ -156,6 +156,10 @@ public interface ScreenPort {
     default void useDrawDialect(Value dialect) {
     }
 
+    default Navigation navigation() {
+        throw new Denied("no-service", "this interpreter was given no screen to keep a history on");
+    }
+
     default void takeTyping(String heading) {
     }
 

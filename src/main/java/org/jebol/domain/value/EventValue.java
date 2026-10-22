@@ -135,6 +135,13 @@ public record EventValue(
         return new EventValue(typeIndex, now, model, given, attached);
     }
 
+    public EventValue withHeldData(Value held) {
+        Set<Flag> now = EnumSet.noneOf(Flag.class);
+        now.addAll(flags);
+        now.add(Flag.HAS_DATA);
+        return new EventValue(typeIndex, now, Model.GUI, data, held);
+    }
+
     public boolean has(Flag flag) {
         return flags.contains(flag);
     }

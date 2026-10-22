@@ -25,5 +25,7 @@ public enum HostService {
 
     WEB,
 
-    CERTIFICATES
+    CERTIFICATES,
+
+    NAVIGATION
 }

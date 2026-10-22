@@ -26,13 +26,13 @@ class TheShippedPageGrantsFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("the shipped page grants everything a page has: the clock, the clipboard and MIDI among them")
+    @DisplayName("the shipped page grants everything a page has: the clock, its history, the clipboard and MIDI among them")
     void grantsEverythingAPageHas() {
         assertThat(Arrays.stream(HostService.values()).filter(shipped::grants))
                 .containsExactlyInAnyOrder(
                         HostService.CONSOLE, HostService.FILES, HostService.WORKING_DIRECTORY,
-                        HostService.CLOCK, HostService.WINDOWS, HostService.CLIPBOARD,
-                        HostService.MIDI, HostService.WEB);
+                        HostService.CLOCK, HostService.WINDOWS, HostService.NAVIGATION,
+                        HostService.CLIPBOARD, HostService.MIDI, HostService.WEB);
     }
 
     @Test

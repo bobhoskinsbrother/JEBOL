@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -20,8 +21,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.LongSupplier;
 
 public final class BrowserScreen extends GobScreen {
+
+    private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000;
 
     private final Viewer viewer;
     private final DefaultFont font;
@@ -31,15 +35,22 @@ public final class BrowserScreen extends GobScreen {
     private final Queue<ScreenMeasurement> measurements = new ConcurrentLinkedQueue<>();
     private PairValue viewport = PairValue.of(0, 0);
     private boolean isPictureRequired;
+    private Optional<String> titleShown = Optional.empty();
 
-    private BrowserScreen(Viewer viewer, DefaultFont font) {
+    private BrowserScreen(Viewer viewer, DefaultFont font, LongSupplier millisecondsNow) {
+        super(millisecondsNow, new PageHistory(viewer));
         this.viewer = viewer;
         this.font = font;
     }
 
     public static BrowserScreen showTo(Viewer viewer, FilePort files) {
-        return new BrowserScreen(viewer, DefaultFont.readFrom(files));
+        return showTo(viewer, files, () -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND);
     }
+
+    public static BrowserScreen showTo(Viewer viewer, FilePort files, LongSupplier millisecondsNow) {
+        return new BrowserScreen(viewer, DefaultFont.readFrom(files), millisecondsNow);
+    }
+
 
     @Override
     public boolean hasDisplay() {
@@ -100,6 +111,15 @@ public final class BrowserScreen extends GobScreen {
         }
         isPictureRequired = false;
         viewer.paint(paintPage());
+        showTitleIfChanged();
+    }
+
+    private void showTitleIfChanged() {
+        Optional<String> title = gobValues.stream().findFirst().flatMap(this::readTitle);
+        if (title.isPresent() && !title.equals(titleShown)) {
+            titleShown = title;
+            viewer.showTitle(title.get());
+        }
     }
 
 
@@ -116,6 +136,7 @@ public final class BrowserScreen extends GobScreen {
     public void acceptPendingReports() {
         viewer.takePostedLines();
         acceptMeasurements();
+        super.acceptPendingReports();
     }
 
     @Override
@@ -207,6 +228,12 @@ public final class BrowserScreen extends GobScreen {
         default void takeTyping(String heading) {
         }
         default void releaseTyping() {
+        }
+        default void changeHistory(String move, HistoryEntry entry) {
+        }
+        default void guardLeaving(boolean unsavedWork) {
+        }
+        default void showTitle(String title) {
         }
     }
 
