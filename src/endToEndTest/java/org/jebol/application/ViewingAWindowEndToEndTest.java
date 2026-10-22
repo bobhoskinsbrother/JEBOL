@@ -106,16 +106,22 @@ class ViewingAWindowEndToEndTest {
         }
 
         @Test
-        @DisplayName("a layout block fails, because there is no VID to lay it out")
+        @DisplayName("a layout block the GUI cannot read halts the script and opens no window")
         @Timeout(20)
-        void alayoutBlockFails() {
-            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
-                    e: try [view/no-wait [button "Press"]]
-                    error? e""")).isEqualTo(TRUE);
+        void aLayoutTheGuiCannotReadHalts() {
+            RecordingScreen screen = RecordingScreen.measure(1440, 900);
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
+            String script = """
+                    try [view/no-wait [button "Press" no-such-style]]
+                    finished: true""";
+            interpreter.defineNewWordsIn(script);
+
+            assertThat(interpreter.run(script).succeeded()).isFalse();
+            assertThat(screen.listWhatOpened()).isEmpty();
         }
 
         @Test
-        @DisplayName("and nothing here pretends to be VID")
+        @DisplayName("and there is no LAYOUT, because the GUI's VIEW reads a layout block itself")
         @Timeout(20)
         void pretendNothingIsVid() {
             assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
