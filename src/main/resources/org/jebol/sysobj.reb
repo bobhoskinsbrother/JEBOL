@@ -56,6 +56,7 @@ options: object [  ; Options supplied to REBOL during startup
 	http-redirects: 10 ; Max HTTP redirects allowed
 	module-paths: none ;@@ DEPRECATED!
 	default-suffix: %.reb ; Used by IMPORT if no suffix is provided
+	module-digests: make map! []
 	result-types: none
 
 	; verbosity of logs per service (codecs, schemes)

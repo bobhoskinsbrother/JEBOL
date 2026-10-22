@@ -1559,6 +1559,23 @@ download-extension: function [
 		[options/modules lowercase second split-path source]
 	]
 
+	digest: all [
+		map? digests: options/module-digests
+		select digests source
+	]
+
+	unless all [binary? :digest 32 = length? digest] [
+		digest: _
+	]
+
+	unless any [
+		digest
+		exists? file
+		'bundled = select decode-url source 'scheme
+	][
+		cause-error 'access 'cannot-open reduce [source "no SHA-256 digest is recorded for it"]
+	]
+
 	saved-log-settings: options/log
 
 	try/with [
@@ -1581,6 +1598,10 @@ download-extension: function [
 
 		content: read source
 
+		if all [digest digest !== checksum content 'sha256] [
+			cause-error 'access 'invalid-check source
+		]
+
 		if %.gz = suffix? source [
 			content: decompress content 'gzip
 		]
@@ -1600,6 +1621,11 @@ download-extension: function [
 		]
 
 		file: _
+
+		if find [invalid-check no-service] error/id [
+			options/log: saved-log-settings
+			do error
+		]
 	]
 
 	options/log: saved-log-settings

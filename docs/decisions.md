@@ -2121,3 +2121,52 @@ SHOW where before it was read once.
 **What the gate cannot reach.** The test JVMs are headless, so a real window
 is checked by hand, as decision 48's chooser is: the title following, the
 Back keys, and the confirmation on close.
+
+## 51. A fetched module is checked against a digest its address was given
+
+**Every address in `system/modules` names the `bundled:` scheme today, so this
+guards the day one does not.** Rebol's path from the table to the evaluator has
+no check in it: DOWNLOAD-EXTENSION reads the address, writes what came back
+into the modules directory, and the next IMPORT evaluates it. A module's own
+`checksum:` header is no help, because whoever changed the module changed its
+header too. The rules are under "A fetched module is checked before it is
+kept" in `spec/natives.allium`.
+
+**The digest is recorded beside the address, by whoever wrote the address.**
+`system/options/module-digests` is a map from the address read to the SHA-256
+of what is there, declared empty in JEBOL's `sysobj.reb` so each interpreter
+has its own. A map rather than a second value in `system/modules`, because
+Rebol's own code reads that table as name and url, and `url? module` is how
+IMPORT decides to fetch at all. Keyed by the address read rather than the name,
+because a compiled extension's table entry is a directory and the file read
+from it is named for the platform; each platform's file has its own digest.
+
+**An address outside the build with no digest is refused before it is read**,
+with `access/cannot-open` and the reason "no SHA-256 digest is recorded for
+it". Anything that is not a binary of exactly thirty-two bytes counts as no
+digest, and so does a table that is not a map: a SHA-1, a string of hex or
+none could only ever disagree with a SHA-256, and saying "no digest" says why
+where a mismatch would not. A `bundled:` address needs none, because its bytes
+are the program that is running; a digest recorded for one is checked all the
+same.
+
+**A mismatch is Rebol's own error for a tampered file**, `access/invalid-check`,
+the one IMPORT/CHECK already raises. The check is of the bytes as they arrived,
+before the gzip a compiled extension is served in is undone, so a decompressor
+is never handed bytes nobody vouched for. DOWNLOAD-EXTENSION catches every
+failure and logs it, which would turn a refused module into "module not
+found"; a mismatch and a refused network now escape that TRY.
+
+**A host refuses fetching outright by not granting the network.** That was the
+open question, and it needs no switch of its own: the read underneath is an
+ordinary network read, it raises `no-service`, and that escapes too.
+
+**Two things are deliberately left alone.** A copy already in the modules
+directory is loaded as it is: it was checked when it was fetched, and whoever
+can write that directory can write anything a script will run. And an address
+a script names itself, `import https://...` or a url in a `needs:` header, is
+the script choosing what to run, as DO of a url is. The table is the one place
+an address is chosen for the script rather than by it.
+
+**All of it is REBOL.** The change is twenty-odd lines in `sys-load.reb`, listed
+in ORDER.txt, and one field in `sysobj.reb`; no Java was added.

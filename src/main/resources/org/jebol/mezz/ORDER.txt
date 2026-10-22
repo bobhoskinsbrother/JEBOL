@@ -63,6 +63,14 @@
 #                        which is what stopped a certificate from a company's
 #                        TLS inspector being read at all. Keep all three edits
 #                        when taking newer copies.
+#   sys-load.reb         DOWNLOAD-EXTENSION checks a module's bytes against
+#                        the SHA-256 in system/options/module-digests before
+#                        it decompresses, writes or loads them, refuses an
+#                        address outside the build that has none, and lets a
+#                        mismatch or a refused network escape its TRY rather
+#                        than become "module not found". The table is declared
+#                        in JEBOL's sysobj.reb. Read decision 51 before taking
+#                        a newer copy, or every fetched module goes unchecked.
 #
 # and one outside this directory, because there is nowhere else that records
 # a borrowed file differing from Rebol's:

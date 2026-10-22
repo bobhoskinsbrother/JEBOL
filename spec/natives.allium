@@ -10347,6 +10347,146 @@ rule ALoadedModuleTakesThePlaceOfItsAddress {
     ensures: the_field_named(name) = the_module_that_loaded()
 }
 
+-- === A fetched module is checked before it is kept ========
+--
+-- The third place IMPORT looks is the table, and what it finds there it reads
+-- and writes into the modules directory, where the next IMPORT of that name
+-- evaluates it. Every address in the table today names the BUNDLED scheme.
+-- The day one points outward, those bytes come over a wire, and nothing in
+-- Rebol's path checks them: DOWNLOAD-EXTENSION does `content: read source` and
+-- `write file content`, and the module's own header checksum is no help,
+-- because whoever changed the module changed its header too.
+--
+-- So an address carries the digest its bytes must have, and the digest is
+-- recorded by whoever wrote the address, not by whoever serves it. The table
+-- of digests is `system/options/module-digests`, a map from the address read
+-- to the SHA-256 of what is there. It starts empty, because nothing in the
+-- table leaves the build.
+--
+-- A recorded digest is a binary of exactly thirty-two bytes. Anything else is
+-- treated as no digest at all: a twenty-byte SHA-1, a string of hex or none
+-- would otherwise be compared with a SHA-256 and could only ever disagree,
+-- and refusing the address says why where a mismatch would not. A script
+-- that replaces the table with something that is not a map has recorded no
+-- digests, and every address outside the build is refused: the check fails
+-- closed.
+--
+-- What IMPORT does with an address a script names itself --
+-- `import https://...` or a `needs:` header naming a url -- is untouched.
+-- That is the script choosing what to run, as DO of a url is, and the table
+-- is the one place an address is chosen for the script rather than by it.
+
+-- Each interpreter has a table of its own, so a digest one script records is
+-- not a digest another interpreter in the same process trusts.
+rule TheDigestTableStartsEmpty {
+    when: ReadSystemOption(module_digests)
+
+    ensures: OptionValue(datatype: map)
+    ensures: OptionValue(value: an_empty_map())
+    ensures: the_table_is_this_interpreters_own() = true
+}
+
+-- An address that leaves the build and has no digest is not usable. It is
+-- refused before it is read, so nothing is asked of the host it names.
+rule AnAddressOutsideTheBuildWithNoDigestIsNotFetched {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: not names_the_bundled_scheme(the_address_for(name))
+    requires: not is_a_sha256_digest(
+        the_digest_recorded_for(the_address_for(name)))
+
+    ensures: CallFails(error: cannot_open, about: the_address_for(name))
+    ensures: nothing_was_requested_from(the_address_for(name)) = true
+    ensures: nothing_was_written_to_the_modules_directory() = true
+}
+
+-- An address in the build needs no digest: its bytes are part of the program
+-- that is running, and a digest of them would be checked against itself.
+rule ABundledAddressNeedsNoDigest {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: names_the_bundled_scheme(the_address_for(name))
+    requires: this_build_bundles(the_name_in(the_address_for(name)))
+
+    ensures: CallResult(datatype: module)
+}
+
+-- Bytes whose SHA-256 is the recorded digest are kept and loaded, as they were
+-- before there was a digest.
+rule AFetchedModuleWhoseBytesMatchIsKeptAndLoaded {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: is_a_sha256_digest(
+        the_digest_recorded_for(the_address_for(name)))
+    requires: sha256(the_bytes_read_from(the_address_for(name)))
+        = the_digest_recorded_for(the_address_for(name))
+
+    ensures: the_modules_directory_keeps(the_bytes_read_from(the_address_for(name)))
+    ensures: CallResult(datatype: module)
+}
+
+-- Bytes that do not match fail the import with Rebol's own error for a
+-- tampered file, the one IMPORT/CHECK already raises, and are neither written
+-- nor evaluated. The error escapes DOWNLOAD-EXTENSION's own TRY rather than
+-- being logged and turned into "module not found": a module that was found
+-- and refused is a different fact from one that was not there.
+--
+-- A digest recorded for a BUNDLED address is checked too. The rule is that a
+-- recorded digest is always checked, and an address outside the build must
+-- have one.
+rule AFetchedModuleWhoseBytesDoNotMatchIsNeitherKeptNorRun {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: is_a_sha256_digest(
+        the_digest_recorded_for(the_address_for(name)))
+    requires: sha256(the_bytes_read_from(the_address_for(name)))
+        != the_digest_recorded_for(the_address_for(name))
+
+    ensures: CallFails(error: invalid_check, about: the_address_for(name))
+    ensures: nothing_was_written_to_the_modules_directory() = true
+    ensures: nothing_from_the_address_was_evaluated() = true
+}
+
+-- The digest is of the bytes as they arrived. A compiled extension is served
+-- gzipped, and DOWNLOAD-EXTENSION decompresses it before writing it; the check
+-- comes first, so a decompressor is never handed bytes nobody vouched for.
+rule TheDigestIsOfTheBytesBeforeTheyAreDecompressed {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: the_address_is_served_gzipped(the_address_for(name))
+    requires: sha256(the_bytes_read_from(the_address_for(name)))
+        != the_digest_recorded_for(the_address_for(name))
+
+    ensures: CallFails(error: invalid_check, about: the_address_for(name))
+    ensures: nothing_was_decompressed() = true
+}
+
+-- A host refuses fetching outright by not granting the network, and needs no
+-- switch of its own for it: the read underneath is an ordinary network read.
+-- The refusal escapes the same way a mismatch does, so the script hears that
+-- the host said no rather than that the module is missing.
+rule AHostThatGrantsNoNetworkRefusesTheFetch {
+    when: EvaluateCall(import, name)
+    requires: import_reaches_the_table_for(name)
+    requires: not names_the_bundled_scheme(the_address_for(name))
+    requires: is_a_sha256_digest(
+        the_digest_recorded_for(the_address_for(name)))
+    requires: not service_granted(network)
+
+    ensures: CallFails(error: no_service)
+    ensures: nothing_was_written_to_the_modules_directory() = true
+}
+
+-- A copy already in the modules directory is the operator's own file, loaded
+-- as it is, as any file DO is given. It was checked when it was fetched, and
+-- whoever can write that directory can write anything a script will run.
+rule AKeptCopyIsLoadedWithoutFetching {
+    when: EvaluateCall(import, name)
+    requires: the_modules_directory_holds_a_copy_of(name)
+
+    ensures: nothing_was_requested_from(the_address_for(name)) = true
+}
+
 -- `system/options/boot` is a FILE naming what this interpreter was started
 -- as, or NONE when the host provided nothing runnable.
 --

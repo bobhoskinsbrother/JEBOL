@@ -79,6 +79,14 @@ jebol https://example.com/app/main.reb
 jebol --cafile company-ca.pem https://example.com/app/main.reb
 ```
 
+A module listed in `system/modules` by an address outside the build is fetched only if its SHA-256 is recorded first, in `system/options/module-digests`. A module with no digest is refused before anything is requested. Bytes that do not match fail the import with `invalid checksum (tampered file)`, and are neither kept nor run. Bytes that match are kept in the modules directory and loaded from there on later runs. The modules JEBOL ships with are read from the build and need no digest.
+
+```
+extend system/modules 'greeting https://example.com/modules/greeting.reb
+put system/options/module-digests https://example.com/modules/greeting.reb #{CAF0557DBCFBF943E17F4B7840B5E1E43CC7A05D0BE45BDBABF9189C25D13E6B}
+import 'greeting
+```
+
 `--cafile` adds the authorities in that file to the ones the machine trusts; it does not replace them. See "Trusted certificates" in section 4.
 
 Alternatively, pass script content via standard input:
