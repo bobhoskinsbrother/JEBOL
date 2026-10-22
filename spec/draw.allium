@@ -31,8 +31,14 @@
 -- drift, and the awkward cases cost instructions rather than fidelity.
 --
 -- Excluded, and each is named rather than hidden:
---   - effect. A dialect of its own -- blurs and tints over a whole image --
---     that happens to be listed in the draw table. It belongs with the codecs.
+--   - effect. No R3 has ever painted it. The draw table lists it and DELECT
+--     reads it, and then nothing happens: in R3 A110, Carl's 2010 host kit
+--     and the build the 2010 GUI ran on, the code that applied an effect
+--     inside DRAW is under `#ifdef TEMP_REMOVED` in `agg_graphics.cpp`, and
+--     in 3.22 the compositor paints neither a draw gob nor an effect gob
+--     ("not implemented", `host-compositor.c`). The effect routines
+--     themselves were AGG code that 3.22 does not carry. Painting it would
+--     answer something no real Rebol answers.
 --   - image-options and image-pattern. Declared in draw.reb, absent from
 --     dial-draw.reb, so DELECT cannot read either of them in any Rebol.
 --
@@ -812,9 +818,10 @@ rule TextWithNothingToWriteWithWritesNothing {
 --     Java2D has no such knob and a canvas has none either, so there is
 --     nothing to set. Obeying it would mean rasterising in JEBOL rather than
 --     in the toolkits.
---   * `effect` is a dialect of its own -- blurs, sharpens, tints over a whole
---     image -- that happens to be listed in the draw table. It belongs with
---     the image codecs rather than with the path commands.
+--   * `effect` is read and paints nothing, which is what every R3 has done
+--     with it: A110 compiled its painting out under `TEMP_REMOVED`, and 3.22
+--     has no effect routines at all. A gob whose content is an effect block
+--     paints nothing either, for the same reason, and keeps the block.
 --
 -- Two more are in the table's declaration and unreachable from any draw block
 -- at all, here and in a real Rebol: `image-options` and `image-pattern` are
@@ -822,6 +829,24 @@ rule TextWithNothingToWriteWithWritesNothing {
 -- what DELECT reads. The same trap catches `opened`: `draw.reb` documents
 -- `OPENED or CLOSED` for SPLINE and ARC, the table lists only `closed`, and
 -- writing the documented word makes the whole command fail to read.
+-- A stroked curve is compared between renderers both ways, and neither way
+-- needs a tolerance of its own. The path is exact: the walk is in the domain,
+-- so a curve, a spline, a dash and an arrowhead become the same surface calls
+-- on every adapter, and EveryAdapterIsAskedForTheSameCalls in screen.allium
+-- holds them to that. The pixels fall under the screen's two rules:
+-- TheInsideOfAShapeMatchesExactly and AnEdgePixelMayDifferByTheAllowance. A
+-- stroke's join, cap and curve flattening are a rasteriser's coverage
+-- arithmetic, which is what the edge allowance is for, and a stroke that
+-- differs inside its own width is a defect like any other.
+rule AStrokedCurveIsHeldToTheScreensComparison {
+    when: two_renderers_execute(a_paint_list_of_stroked_curves)
+
+    ensures: the_calls_are_the_same_for_both()
+    ensures: the_inside_of_every_stroke_matches_exactly()
+    ensures: every_differing_edge_pixel_is_within(channel_allowance)
+    ensures: the_share_of_differing_edge_pixels_is_at_most(most_edge_pixels_that_may_differ)
+}
+
 rule ACommandThisBuildDoesNotPaintIsSkipped {
     when: the_command_is_not_served(command)
     ensures:
@@ -896,8 +921,6 @@ surface TheDrawDialect {
 ------------------------------------------------------------
 
 open question "Should a command this build does not paint be skipped or refused? Skipped is what this says, on the grounds that a picture missing one shape is more use than no picture. But the binary dialect made the opposite call for a reason that half applies here: a caller who writes `grad-pen` and gets a flat fill has been told nothing, and may ship it. Would a way to ask -- draw/strict, or a warning collected somewhere a script can read -- be better than either?"
-
-open question "A stroked curve will not compare pixel for pixel between Java2D and a browser canvas. Line joins, miter limits and how a cap is drawn on a curve all differ slightly, and no shared input fixes it because the difference is in the rasteriser. The flat-rectangle comparison in browserCheck needs a stated tolerance for these, or the curve cases need to assert the path rather than the pixels. Which?"
 
 open question "The C's defaults read the gob's size, so `box` alone fills the gob and `circle` alone is the biggest circle that fits. That is lovely for writing by hand and it means a draw block means different things on gobs of different sizes -- which is either the point or a trap, depending on whether somebody expected a block to be portable between gobs. Nothing in the C or the documentation says which."
 

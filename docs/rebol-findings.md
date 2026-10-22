@@ -6841,3 +6841,19 @@ posts as `application/x-www-form-urlencoded; charset=utf-8`, a binary as
 `application/octet-stream`, a map as JSON, anything else formed as a form; the
 reply to GET, POST and PATCH is decoded and to any other method left binary;
 404 is `protocol` "Not Found", and `/all` answers status, headers and body.
+
+## 232. No R3 has ever painted DRAW's `effect`
+
+`dial-draw.reb` lists `effect: [pair! pair! block!]` and DELECT reads it, and
+in every R3 that is where it ends. In R3 A110, Carl's host kit of
+1-Nov-2010 (`github.com/carls/R3A110`), `agg_graphics::agg_effect` records the
+command as a path attribute, and the case that would apply it, `RT_EFFECT` in
+`agg_graphics.cpp`, sits under `#ifdef TEMP_REMOVED`. The 31 routines it would
+have called, `fx_add` to `fx_tint`, are in that tree's `agg_effects.cpp` and in
+no file of the 3.22 checkout. In 3.22 the win32 host builds `sys-d2d.cpp` and
+`host-compositor.c` and neither `host-draw.c` nor `host-effect.c`, and the
+compositor's cases for `GOBT_DRAW` and `GOBT_EFFECT` are both "not
+implemented". The `effect` native in `n-graphics.c` is declared nowhere, so
+`value? 'effect` is false, and a gob given `effect: [...]` keeps the block and
+paints nothing. JEBOL does all three the same way, and
+`AnEffectPaintsNothingAsInEveryR3FromTheSourceTest` pins them.
