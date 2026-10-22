@@ -8,19 +8,20 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
+import java.util.Optional;
 
 public final class JavaClipboard implements ClipboardPort {
 
     private static final String NOTHING_SCRIPT_CAN_READ = "";
 
     @Override
-    public String read() {
+    public Optional<String> read() {
         Clipboard clipboard = systemClipboard();
         try {
             if (!clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
-                return NOTHING_SCRIPT_CAN_READ;
+                return Optional.of(NOTHING_SCRIPT_CAN_READ);
             }
-            return (String) clipboard.getData(DataFlavor.stringFlavor);
+            return Optional.of((String) clipboard.getData(DataFlavor.stringFlavor));
         } catch (UnsupportedFlavorException | IOException | IllegalStateException
                  unreadable) {
             throw new Unreachable(
@@ -29,9 +30,10 @@ public final class JavaClipboard implements ClipboardPort {
     }
 
     @Override
-    public void write(String text) {
+    public boolean write(String text) {
         try {
             systemClipboard().setContents(new StringSelection(text), null);
+            return true;
         } catch (IllegalStateException busy) {
             throw new Unreachable(
                     "the clipboard could not be written: " + busy.getMessage());

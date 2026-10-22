@@ -18,6 +18,8 @@ import java.util.function.Supplier;
 
 public abstract class WindowNative extends HostNative {
 
+    private static final String NO_SERVICE = "no-service";
+
     protected WindowNative(GrantedServices granted) {
         super(granted);
     }
@@ -31,8 +33,10 @@ public abstract class WindowNative extends HostNative {
     }
 
     protected Raised refuseForHost(String errorId, String because) {
-        String reason = because + ", which is "
-                + ServiceRefusal.NOT_PRESENT.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        String reason = errorId.equals(NO_SERVICE)
+                ? because + ", which is "
+                        + ServiceRefusal.NOT_PRESENT.name().toLowerCase(Locale.ROOT).replace('_', ' ')
+                : because;
         return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
     }
 

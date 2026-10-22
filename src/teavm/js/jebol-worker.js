@@ -1,26 +1,24 @@
-// The worker a JEBOL page runs its interpreter in. The shell is the only
-// JavaScript here: it loads the interpreter and speaks for the page. The
-// script to run arrives as a {run: ...} message and goes straight to the
-// interpreter; everything else the page posts -- clicks, keys, how big the
-// viewport is -- waits in a queue the interpreter pulls between slices of a
-// wait, on its own thread, and nothing here ever re-enters the module while
-// it is suspended.
-//
-// Anything that goes wrong loading or booting is posted to the page as a
-// failed message, because a worker that died quietly would leave a page
-// waiting forever.
 importScripts('jebol-web-runtime.js');
 
 var inbox = [];
 var jebol = null;
+var waitingAnswers = new Map();
 
 onmessage = function (event) {
   var said = event.data;
   if (said && typeof said.run === 'string') {
     if (jebol) {
-      jebol.runTheScript(said.run);
+      jebol.runScript(said.run);
     } else {
       self.postMessage({ type: 'failed', text: 'the interpreter was not ready to run a script' });
+    }
+    return;
+  }
+  if (said && said.type === 'answer') {
+    var waiting = waitingAnswers.get(said.ask);
+    if (waiting) {
+      waitingAnswers.delete(said.ask);
+      waiting(JSON.stringify(said));
     }
     return;
   }
@@ -39,6 +37,13 @@ self.addEventListener('error', function (event) {
   }
   self.postMessage({ type: 'failed', text: 'the worker errored: ' + detail });
 });
+
+function jebolAsk(number, written) {
+  return new Promise(function (answered) {
+    waitingAnswers.set(number, answered);
+    self.postMessage(written);
+  });
+}
 
 var jebolStoreRoot = null;
 
@@ -148,6 +153,37 @@ async function jebolKeyedDigest(method, key, octets) {
         { name: 'HMAC', hash: { name: jebolDigestNames[method] } }, false, ['sign']);
     var signed = await crypto.subtle.sign('HMAC', imported, octets);
     return { failed: null, octets: new Int8Array(signed) };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), octets: new Int8Array() };
+  }
+}
+
+async function jebolDecodeImage(octets) {
+  try {
+    var bitmap = await createImageBitmap(new Blob([octets]),
+        { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    var canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    var brush = canvas.getContext('2d', { colorSpace: 'srgb' });
+    brush.drawImage(bitmap, 0, 0);
+    var pixels = brush.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    return { failed: null, wide: bitmap.width, high: bitmap.height,
+      rgba: new Int8Array(pixels.buffer, pixels.byteOffset, pixels.length) };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), wide: 0, high: 0, rgba: new Int8Array() };
+  }
+}
+
+async function jebolEncodeImage(rgba, wide, high, mediaType) {
+  try {
+    var canvas = new OffscreenCanvas(wide, high);
+    var brush = canvas.getContext('2d', { colorSpace: 'srgb' });
+    brush.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.length),
+        wide, high), 0, 0);
+    var written = await canvas.convertToBlob({ type: mediaType });
+    if (written.type !== mediaType) {
+      return { failed: 'this browser wrote ' + written.type + ' instead', octets: new Int8Array() };
+    }
+    return { failed: null, octets: new Int8Array(await written.arrayBuffer()) };
   } catch (problem) {
     return { failed: String(problem && problem.message || problem), octets: new Int8Array() };
   }

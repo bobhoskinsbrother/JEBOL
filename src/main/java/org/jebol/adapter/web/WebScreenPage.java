@@ -19,6 +19,7 @@ final class WebScreenPage {
             </head>
             <body>
             <canvas id="screen"></canvas>
+            <script src="/jebol-asks.js"></script>
             <script>
             const canvas = document.getElementById('screen');
             const brush = canvas.getContext('2d');
@@ -31,7 +32,9 @@ final class WebScreenPage {
                   .catch(() => {});
             }
 
-            function windowSize() {
+            const asks = new JebolAsks({ answer: dispatch, tell: dispatch, key: dispatch });
+
+            function reportViewportSize() {
               dispatch({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
             }
 
@@ -122,7 +125,7 @@ final class WebScreenPage {
                   call['draw-wide'], call['draw-high']);
             }
 
-            function fontOf(piece) {
+            function fontFor(piece) {
               return (piece.italic ? 'italic ' : '') + (piece.bold ? 'bold ' : '')
                   + piece.size + 'px "Jebol Carried", sans-serif';
             }
@@ -146,11 +149,11 @@ final class WebScreenPage {
               }
             }
 
-            function writeLines(lines, movedAcross, movedDown, everyPieceIn) {
+            function writeLines(lines, movedAcross, movedDown, colourOverride) {
               for (const line of lines) {
                 for (const piece of line.pieces) {
-                  brush.font = fontOf(piece);
-                  brush.fillStyle = everyPieceIn || piece.colour;
+                  brush.font = fontFor(piece);
+                  brush.fillStyle = colourOverride || piece.colour;
                   brush.fillText(piece.text, piece.across + movedAcross,
                       piece.baseline + movedDown);
                 }
@@ -213,13 +216,18 @@ final class WebScreenPage {
 
             const pictures = new EventSource('/paint');
             pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
-            pictures.addEventListener('open', windowSize);
+            pictures.addEventListener('open', reportViewportSize);
+            pictures.addEventListener('ask', message => asks.take(JSON.parse(message.data)));
+            pictures.addEventListener('typing', message => {
+              const said = JSON.parse(message.data);
+              asks.holdTyping(said.held, said.heading);
+            });
 
             document.fonts.load('12px "Jebol Carried"').then(() => {
               if (lastPicture) paint(lastPicture);
             });
 
-            const keysWithoutCharacters = {
+            const namedKeys = {
               PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',
               ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down',
               Insert: 'insert',
@@ -227,34 +235,34 @@ final class WebScreenPage {
               F7: 'f7', F8: 'f8', F9: 'f9', F10: 'f10', F11: 'f11', F12: 'f12',
               Shift: 'shift', Control: 'control', Alt: 'alt', Pause: 'pause', CapsLock: 'capital'
             };
-            const keysThatTypeAControlCharacter = {
+            const controlCharacters = {
               Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Delete: 127
             };
 
-            function pointerLocation(kind, pointer) {
+            function reportPointer(kind, pointer) {
               dispatch({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
             }
 
-            const pixelsInANotch = 100;
-            const linesInANotch = 3;
-            const aLineOfScrolling = 30;
-            const aPageOfScrolling = 10;
+            const pixelsPerNotch = 100;
+            const linesPerNotch = 3;
+            const lineScroll = 30;
+            const pageScroll = 10;
 
             let turned = 0;
 
-            function theNotchesIn(wheel) {
+            function countNotches(wheel) {
               if (wheel.deltaMode === 1) {
-                return wheel.deltaY / linesInANotch;
+                return wheel.deltaY / linesPerNotch;
               }
               if (wheel.deltaMode === 2) {
                 return wheel.deltaY;
               }
-              return wheel.deltaY / pixelsInANotch;
+              return wheel.deltaY / pixelsPerNotch;
             }
 
-            function wheelTurn(wheel) {
+            function reportWheel(wheel) {
               wheel.preventDefault();
-              turned += theNotchesIn(wheel);
+              turned += countNotches(wheel);
               const whole = Math.trunc(turned);
               if (whole === 0) {
                 return;
@@ -265,38 +273,38 @@ final class WebScreenPage {
                 type: wholePages ? 'scroll-page' : 'scroll-line',
                 across: Math.round(wheel.offsetX),
                 down: Math.round(wheel.offsetY),
-                amount: -whole * (wholePages ? aPageOfScrolling : aLineOfScrolling)
+                amount: -whole * (wholePages ? pageScroll : lineScroll)
               });
             }
 
-            function characterTyped(pressed) {
-              if (pressed.key in keysThatTypeAControlCharacter) {
-                return keysThatTypeAControlCharacter[pressed.key];
+            function typedCodePoint(pressed) {
+              if (pressed.key in controlCharacters) {
+                return controlCharacters[pressed.key];
               }
               return [...pressed.key].length === 1 ? pressed.key.codePointAt(0) : null;
             }
 
-            function dispatchKey(pressed, typing, naming) {
-              if (pressed.key in keysWithoutCharacters) {
-                dispatch({ type: naming, named: keysWithoutCharacters[pressed.key] });
+            function reportKey(pressed, typing, naming) {
+              if (pressed.key in namedKeys) {
+                dispatch({ type: naming, named: namedKeys[pressed.key] });
                 return;
               }
-              const typed = characterTyped(pressed);
+              const typed = typedCodePoint(pressed);
               if (typed !== null) {
                 dispatch({ type: typing, code: typed });
               }
             }
 
-            window.addEventListener('resize', windowSize);
-            canvas.addEventListener('mousedown', pointer => pointerLocation('down', pointer));
-            canvas.addEventListener('mouseup', pointer => pointerLocation('up', pointer));
-            canvas.addEventListener('mousemove', pointer => pointerLocation('move', pointer));
-            canvas.addEventListener('wheel', wheelTurn, { passive: false });
-            window.addEventListener('keydown', pressed => dispatchKey(pressed, 'key', 'control'));
-            window.addEventListener('keyup', pressed => dispatchKey(pressed, 'key-up', 'control-up'));
+            window.addEventListener('resize', reportViewportSize);
+            canvas.addEventListener('mousedown', pointer => reportPointer('down', pointer));
+            canvas.addEventListener('mouseup', pointer => reportPointer('up', pointer));
+            canvas.addEventListener('mousemove', pointer => reportPointer('move', pointer));
+            canvas.addEventListener('wheel', reportWheel, { passive: false });
+            window.addEventListener('keydown', pressed => reportKey(pressed, 'key', 'control'));
+            window.addEventListener('keyup', pressed => reportKey(pressed, 'key-up', 'control-up'));
             window.addEventListener('beforeunload', () => dispatch({ type: 'close' }));
 
-            windowSize();
+            reportViewportSize();
             </script>
             </body>
             </html>

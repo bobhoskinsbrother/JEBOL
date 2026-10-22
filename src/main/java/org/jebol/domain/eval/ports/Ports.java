@@ -232,6 +232,9 @@ public final class Ports {
 
     private Value lineReadFromConsole(Evaluator evaluator) {
         granted.require(HostService.CONSOLE);
+        if (evaluator.ports().console().isTypedOnScreen() && evaluator.ports().screen().hasDisplay()) {
+            return new ScreenForm(evaluator).askForLine().<Value>map(StringValue::of).orElseGet(NoneValue::none);
+        }
         return runThroughFileSystem(() -> {
             String line = evaluator.ports().console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
@@ -240,7 +243,11 @@ public final class Ports {
 
     private Value lastCopiedText(PortValue port, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.CLIPBOARD);
-        String whole = askClipboard(evaluator);
+        Optional<String> given = askClipboard(evaluator);
+        if (given.isEmpty()) {
+            return NoneValue.none();
+        }
+        String whole = given.orElseThrow();
         String copied = asked.part()
                 .filter(IntegerValue.class::isInstance)
                 .map(wanted -> whole.substring(0, Math.clamp(
@@ -253,7 +260,7 @@ public final class Ports {
         return StringValue.of(copied);
     }
 
-    private String askClipboard(Evaluator evaluator) {
+    private Optional<String> askClipboard(Evaluator evaluator) {
         try {
             return evaluator.ports().clipboard().read();
         } catch (ClipboardPort.Unreachable unreachable) {
@@ -396,9 +403,22 @@ public final class Ports {
         granted.require(HostService.FILES);
         requireFilePolicy(((AnyStringValue) destination).text(), evaluator, Set.of(PolicyAccess.WRITE));
         return runThroughFileSystem(() -> {
-            new FileWriting(((AnyStringValue) destination).text(), data, asked)
-                    .performThrough(evaluator.ports().files());
+            String path = ((AnyStringValue) destination).text();
+            new FileWriting(path, data, asked).performThrough(evaluator.ports().files());
+            evaluator.ports().files().finishWriting(path);
             return destination;
+        });
+    }
+
+    private boolean isFileOpenToWrite(PortValue port) {
+        return port.schemeName().equals("file") && port.isOpen()
+                && new SeekableFilePort(port).canWriteThrough();
+    }
+
+    private void finishWriting(String path, Evaluator evaluator) {
+        runThroughFileSystem(() -> {
+            evaluator.ports().files().finishWriting(path);
+            return NoneValue.none();
         });
     }
 
@@ -416,11 +436,16 @@ public final class Ports {
             case "checksum" -> sumIntoPort(port, data, asked);
             case "crypt" -> encipherIntoPort(port, data);
             case "file" -> {
-                if (!port.isOpen()) {
+                boolean writtenInOneGo = !port.isOpen();
+                if (writtenInOneGo) {
                     requireFilePolicy(portPath(port), evaluator, Set.of(PolicyAccess.WRITE));
                 }
-                yield new OpenFile(port, evaluator.ports().files(), granted)
+                Value written = new OpenFile(port, evaluator.ports().files(), granted)
                         .write(data, asked.seek(), asked.part(), asked.refinements().contains("append"));
+                if (writtenInOneGo) {
+                    finishWriting(portPath(port), evaluator);
+                }
+                yield written;
             }
             default -> throw refuseWithNoActionFor("write");
         };
@@ -440,11 +465,10 @@ public final class Ports {
             default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
         };
         try {
-            evaluator.ports().clipboard().write(text);
+            return evaluator.ports().clipboard().write(text) ? port : NoneValue.none();
         } catch (ClipboardPort.Unreachable unreachable) {
             throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
         }
-        return port;
     }
 
     private Value sendDownConnection(PortValue port, Value data, Evaluator evaluator) {
@@ -627,13 +651,17 @@ public final class Ports {
         return LogicValue.of(port.isOpen());
     }
 
-    public Value close(PortValue port) {
+    public Value close(PortValue port, Evaluator evaluator) {
         if (port.schemeName().equals("crypt")) {
             cryptPort.refuseWhenClosed(port);
             cryptPort.stop(port);
         }
         handBackConnectionBehind(port);
+        boolean wasWrittenThrough = isFileOpenToWrite(port);
         port.markOpen(false);
+        if (wasWrittenThrough) {
+            finishWriting(portPath(port), evaluator);
+        }
         if (port.schemeName().equals("checksum")) {
             checksumPort.stop(port);
         }

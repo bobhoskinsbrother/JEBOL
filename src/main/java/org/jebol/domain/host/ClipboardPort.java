@@ -1,10 +1,12 @@
 package org.jebol.domain.host;
 
+import java.util.Optional;
+
 public interface ClipboardPort {
 
-    String read();
+    Optional<String> read();
 
-    void write(String text);
+    boolean write(String text);
 
     final class Unreachable extends RuntimeException {
 
@@ -19,12 +21,12 @@ public interface ClipboardPort {
         return new ClipboardPort() {
 
             @Override
-            public String read() {
+            public Optional<String> read() {
                 throw refuse();
             }
 
             @Override
-            public void write(String text) {
+            public boolean write(String text) {
                 throw refuse();
             }
 

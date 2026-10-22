@@ -3,31 +3,12 @@ package org.jebol.adapter.web;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.FilePort;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
 public final class WebConsole implements ConsolePort {
-
-    private static final long SLICE = 20;
-
-    private final Runnable runnable;
-    private final Deque<String> typed = new ArrayDeque<>();
-
-    public WebConsole(Runnable runnable) {
-        this.runnable = runnable;
-    }
-
-    public void takeTypedLine(String text) {
-        typed.add(text);
-    }
 
     @Override
     public String readLine() {
-        while (typed.isEmpty()) {
-            runnable.run();
-            letSlicePass();
-        }
-        return typed.poll();
+        throw new FilePort.Denied("no-port",
+                "this page types its lines into a form on its screen, and no page is attached to show it");
     }
 
     @Override
@@ -36,11 +17,8 @@ public final class WebConsole implements ConsolePort {
                 "this page has no way to read a line without showing it");
     }
 
-    private static void letSlicePass() {
-        try {
-            Thread.sleep(SLICE);
-        } catch (InterruptedException stopped) {
-            Thread.currentThread().interrupt();
-        }
+    @Override
+    public boolean isTypedOnScreen() {
+        return true;
     }
 }

@@ -41,7 +41,7 @@ class TheChooseColourExampleEndToEndTest {
         }
 
         @Override
-        public void browse(String target) {
+        public boolean browse(String target) {
             throw new UnsupportedOperationException();
         }
 

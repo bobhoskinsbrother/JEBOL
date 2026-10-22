@@ -830,6 +830,27 @@ rule ADeclinedDialogAnswersNone {
     ensures: WindowResult(value: none)
 }
 
+-- A file chooser asked for several files and cancelled is none too, not an
+-- empty block: the C answers R_NONE whenever the chooser came back with
+-- nothing, whatever the refinements.
+rule ACancelledChooserForSeveralFilesIsNone {
+    when: script_asks_the_operator_to_choose_a_file(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: request.several_at_once
+    requires: operator_declined(request)
+    ensures: WindowResult(value: none)
+}
+
+-- A browser that opened is unset, as the C answers: BROWSE returns R_UNSET
+-- both for `browse none` and after OS_Browse succeeds.
+rule ABrowseThatOpenedAnswersUnset {
+    when: script_asks_the_operator(run, request)
+    requires: windows in run.interpreter.bounds.granted_services
+    requires: request = a_browser_at
+    requires: not operator_declined(request)
+    ensures: WindowResult(value: unset)
+}
+
 -- A host that granted the windows service and supplied nothing to put a
 -- window on gets not_present rather than not_granted. The two are different
 -- facts about the host and a script may act on either: the first can be
@@ -1289,10 +1310,10 @@ value HttpResponse {
 -- less than a machine and the difference is visible to scripts.
 --
 -- It has a console the page shows, files in a store of that site's own, the
--- clock, the screen it is drawn on, the clipboard, HTTP through the
--- browser's own fetching, and a working directory -- which is the
--- interpreter's own and costs the page nothing, since it lives inside the
--- store the host already has. It has no raw connection, no way to start a
+-- clock, the screen it is drawn on, the clipboard, the instruments Web MIDI
+-- reaches, HTTP through the browser's own fetching, and a working
+-- directory, which is the interpreter's own and costs the page nothing,
+-- since it lives inside the store the host already has. It has no raw connection, no way to start a
 -- program and no environment it was launched with, because a page has none
 -- of those. Nor does it have a list of authorities to judge a certificate
 -- against: the browser judges every certificate itself, inside fetch, and a
@@ -1310,6 +1331,17 @@ rule ABrowserOffersWhatItsPageCan {
     ensures: interpreter.bounds.unavailable_services =
         {network, processes, environment, certificates}
     ensures: interpreter.bounds.host_name = "a browser"
+}
+
+-- The page JEBOL ships grants everything a page has. The clock among them:
+-- the boot reads the time to set up the system object whatever is granted,
+-- so withholding it from the script protected nothing and made NOW refuse.
+rule TheShippedPageGrantsEverythingAPageHas {
+    when: interpreter: Interpreter.created
+    requires: the_host_is_the_shipped_page(interpreter)
+
+    ensures: interpreter.bounds.granted_services =
+        {console, files, working_directory, clock, windows, clipboard, midi, web}
 }
 
 -- And what it does have it may still choose not to grant. The web service

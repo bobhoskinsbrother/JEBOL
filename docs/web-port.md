@@ -21,11 +21,12 @@ The pieces:
 | Piece | Where |
 | --- | --- |
 | The web's main class, the run loop in the worker | `src/teavm/java/org/jebol/adapter/web/WorkerInterpreter`, booting on `main` and awaiting scripts the page hands over |
-| The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
+| The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyWorkerScript` task |
+| The page's half of an ask | `src/main/resources/jebol-page/jebol-asks.js`, copied beside the module by `copyAsksScript` and served by the command line's page from the jar |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
-| The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- fill in with an app's file list and entry; `src/test/resources/web/rebol-on-a-page.html` and `rebol-adapters-on-a-page.html` are the gate's own |
-| The site a host serves | `assembleTheSite` copies the app (`examples/r3-gui` by default, `-PsiteDir=my-app`), the module, its loader, the worker's shell and the font with its licence into `build/site`, and writes `index.html` from `site/runner.html` around the app's file list; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
+| The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- fill in with an app's file list and entry; the browser tests serve it as it ships through `ShippedRunner`, and `src/testFixtures/resources/web/rebol-on-a-page.html` is the one gate page of its own |
+| The site a host serves | `assembleSite` copies the app (`examples/r3-gui` by default, `-PsiteDir=my-app`), the module, its loader, the worker's shell and the font with its licence into `build/site`, and writes `index.html` from `site/runner.html` around the app's file list; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
 | The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
 | The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real wheel turn changes the scroller, and a real click and real keys put a name in the survey's field |
 
@@ -171,9 +172,10 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 ## What the web build refuses
 
 **A page has less outside it than a machine, and the worker says so once.**
-`WorkerInterpreter` builds the browser's bounds: console, files,
-windows, web and a working directory are granted, because each of those the
-page can supply; network, processes and environment are `unavailable`, so a
+`ShippedPageBounds` builds the browser's bounds: console, files, a working
+directory, the clock, windows, the clipboard, MIDI and web are granted,
+because each of those the page can supply; network, processes, environment
+and certificates are `unavailable`, so a
 script that reaches for a raw connection or another program reads
 `not_present` with the browser named rather than `not_granted`. That is
 decision 31 in `docs/decisions.md`, and `ABrowserHostFromTheSourceTest` pins
@@ -186,11 +188,36 @@ promise while it is in flight, which is the pause-and-resume decision 28
 describes. Decision 32 has the shape; a page that fetches outside its own
 origin is subject to the browser's CORS rules like any other page.
 
-**Files are the page's private store for the site, and the console is the
-page's element** - `WebFiles`, `BrowserStore` and `WebConsole`
-(`org.jebol.adapter.web`). The whole store is loaded once at boot and every
-change is awaited into it, so a reload finds what a script wrote; a browser
-without OPFS falls back to memory. Decision 33.
+**Files are the page's private store for the site** - `WebFiles` and
+`BrowserStore` (`org.jebol.adapter.web`). The whole store is loaded once at
+boot and every change is awaited into it, so a reload finds what a script
+wrote; a browser without OPFS falls back to memory. Decision 33.
+
+**The console's line is typed into JEBOL's own form on the screen.**
+`WebConsole` says it is typed on the screen, so INPUT draws the same Rebol
+form REQUEST-PASSWORD uses, and the page holds a hidden text input under it
+for the keyboard and input methods. Decision 49.
+
+**The page answers the rest itself, over one round trip.** Each service is an
+adapter in `src/main` over `PageRoundTrip`, with the page's half in
+`jebol-asks.js` and the worker's transport in `WorkerRoundTrip`. Decision 49
+has the design; where each landed:
+
+| Service | Adapter | The browser's part |
+| --- | --- | --- |
+| BROWSE, REQUEST-FILE, REQUEST-DIR, REQUEST-COLOR | `PageWindows`, with `PickedFiles` copying picks into `%/picked/N/` and sending saves when finished | a prompt the operator clicks, then `window.open`, a file input, a `webkitdirectory` input, a colour input with a hex field beside it, `showSaveFilePicker` or a download |
+| REQUEST-PASSWORD and INPUT | `ScreenForm` running `forms/screen-form.reb` | the hidden input `#jebol-typing` |
+| The clipboard | `PageClipboard` | `navigator.clipboard`, the read behind the prompt |
+| POST and the write dialect | the write arm of `HttpSchemeActor` | `fetch`, as for READ |
+| Pictures | `BrowserImageCodec` over `BrowserImages` | `createImageBitmap` with no premultiplying or colour conversion, and `OffscreenCanvas.convertToBlob` |
+| MIDI | `PageMidiDevices` | `requestMIDIAccess` on the page; what an input hears is posted back as `midi-arrived` |
+
+What a browser cannot do is a catchable error at the moment it is used: dds
+always, tiff outside Safari, writing gif, bmp or tiff anywhere. A png, gif or
+bmp decodes to the same pixels a real 3.22.5 reads from the same file, in
+Chrome and in Firefox; a jpeg decodes to the browser's own reading, and
+`PicturesOnAPageEndToEndTest` holds it as a literal. Only the first frame of a
+picture is read.
 
 **Crypto is the browser's own where it can be, and refused where it cannot.**
 `DigestPort` (`org.jebol.domain.host`) is the port; the worker supplies

@@ -1345,6 +1345,120 @@ rule TheEventsAPageSendsJoinTheQueueInOrder {
 }
 
 ------------------------------------------------------------
+-- What every screen keeps
+------------------------------------------------------------
+
+-- A port is a need the host fills. A script that asks for a colour, a file
+-- or a secret says only what it needs, and the screen answers with the
+-- control it has: Swing on the desktop, the browser's own controls on a
+-- page, the operating system's sheet on a phone. So the dialogs come with
+-- the screen -- the machine's with a window, the page's with a page -- and
+-- a run with no screen at all refuses them as the host having none.
+rule EachScreenBringsItsOwnDialogs {
+    when: script_asks_the_operator(run, request)
+    requires: windows_are_granted(run)
+
+    ensures: the_dialogs_supplied(run) =
+        if the_screen_is_a_window(run): the_machines_own_dialogs()
+        else if the_screen_is_a_browser(run): the_pages_own_dialogs()
+        else: no_dialogs_at_all()
+}
+
+-- The operator declining any ask -- a cancelled picker, a dismissed prompt,
+-- a denied permission -- is none, on every screen. A screen that has not
+-- got what the ask needs at all is a catchable error naming why, never a
+-- hang and never an exception of the host's own.
+rule TheOperatorDecliningIsNoneOnEveryScreen {
+    when: the_operator_declines(run, request)
+    requires: windows_are_granted(run)
+
+    ensures: the_script_gets_none(run, request)
+}
+
+rule AScreenWithoutWhatTheAskNeedsIsACatchableError {
+    when: script_asks_the_operator(run, request)
+    requires: windows_are_granted(run)
+    requires: not the_screen_has_what_the_ask_needs(run, request)
+
+    ensures: run.conclusion = raised
+    ensures: the_error_names_why(run)
+}
+
+-- The password and the console's line are one Rebol form, drawn on the
+-- screen the run has, the same in a desktop window and on a page. No
+-- environment has a password dialog worth taking -- Swing's is a generic box
+-- and a browser has none at all -- and one form everywhere is the
+-- consistency being bought.
+--
+-- A run with a screen of JEBOL's own asks through the form; a host that
+-- supplies a dialog port and no screen keeps the port's own way of asking,
+-- which on the desktop is Swing's.
+rule APasswordIsAskedThroughTheFormWhereThereIsAScreen {
+    when: script_asks_for_a_password(run)
+    requires: windows_are_granted(run)
+    requires: the_screen_has_a_display(run)
+
+    ensures: the_form_is_shown(run, masked: true)
+}
+
+rule APasswordWithNoScreenIsAskedOfTheDialogPort {
+    when: script_asks_for_a_password(run)
+    requires: windows_are_granted(run)
+    requires: not the_screen_has_a_display(run)
+
+    ensures: the_dialog_port_is_asked_for_a_password(run)
+}
+
+-- The form takes its own window, as VIEW would give one, so a script that
+-- has not called VIEW still gets it. It is modal: while it is open every
+-- event the screen sends is the form's, and the script's own windows hear
+-- nothing until it closes.
+rule TheFormIsModal {
+    when: the_form_is_open(run)
+
+    ensures: every_event_goes_to_the_form(run)
+    ensures: no_handler_of_the_scripts_hears_an_event(run)
+}
+
+-- Typing into the form. A character that types is added at the end; a
+-- backspace takes the last one away; Enter answers what was typed, empty
+-- text included; Escape and closing the window answer none. A masked form
+-- shows one dot for each character and never the characters.
+-- The line form is headed by the question the script asked, as a terminal
+-- shows the prompt on the line being typed: whatever was printed since the
+-- last line ended, so `ask "Your name? "` heads its form "Your name?". With
+-- nothing printed since a line ended, the form asks the operator to type a
+-- line. The password form is always headed "Password", since REQUEST-PASSWORD
+-- takes no question and Rebol's ASK-PASSWORD prints its own first.
+rule TheLineFormShowsTheQuestionAsked {
+    when: script_reads_a_line_through_the_form(run)
+
+    ensures: the_form_heading(run) =
+        if the_text_printed_since_the_last_line_ended(run) != "":
+            the_text_printed_since_the_last_line_ended(run)
+        else: "Type a line"
+}
+
+rule EnterAnswersWhatWasTyped {
+    when: the_operator_presses_enter_in_the_form(run)
+
+    ensures: the_form_closes(run)
+    ensures: the_script_gets(run, the_text_typed(run))
+}
+
+rule EscapeAnswersNone {
+    when: the_operator_presses_escape_in_the_form(run)
+
+    ensures: the_form_closes(run)
+    ensures: the_script_gets_none(run, a_password)
+}
+
+invariant AMaskedFormNeverShowsWhatWasTyped {
+    for form in masked_forms():
+        the_text_painted(form) = one_dot_per_character_of(the_text_typed_into(form))
+}
+
+------------------------------------------------------------
 -- Invariants
 ------------------------------------------------------------
 

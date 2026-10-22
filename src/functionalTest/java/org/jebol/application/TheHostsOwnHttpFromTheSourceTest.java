@@ -215,15 +215,6 @@ class TheHostsOwnHttpFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("write has no arm yet, and says so by naming the verb")
-    void writeIsNotAnArmYet() {
-        Interpreter interpreter = makeAHostThatFetches(new ACannedHost());
-
-        assertThat(answerTo(interpreter, "e: try [write http://example.com/a {x}] e/arg1"))
-                .isEqualTo("write:");
-    }
-
-    @Test
     @DisplayName("https is the same actor, and answers the same way")
     void httpsIsTheSameActor() {
         assertThat(answerTo(makeAHostThatFetches(new ACannedHost()), "read https://example.com/a"))

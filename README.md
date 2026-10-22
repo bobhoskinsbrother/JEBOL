@@ -135,7 +135,7 @@ and a window lay out the same words in the same places.
   in, and puts the module, the loader, the worker's shell and the font beside it.
 
 ```
-$ ./gradlew assembleTheSite -PsiteDir=my-app
+$ ./gradlew assembleSite -PsiteDir=my-app
 $ cd build/site && python3 -m http.server 8000
 ```
 
@@ -269,7 +269,7 @@ Things to note:
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a text reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
-- **`midi` is registered and has no instrument behind it yet** (goal 5).
+- **`midi` is registered and has no instrument behind it yet** on the desktop (goal 4); a page reaches Web MIDI.
   `query midi:// 'devices-in` lists nothing and `open midi://1` is refused, as
   in a real 3.22.5 with nothing attached; a host can supply devices through
   `Interpreter.useMidiDevices`, and MIDI needs a grant of its own.
@@ -391,7 +391,7 @@ no runtime dependencies; the jar carries everything it needs.
 ./gradlew networkTests     # Rebol's suite assertions that need the network
 ./gradlew jar              # just the jar: build/libs/jebol-3.22.5.jar
 ./gradlew build            # allTests, then the jar
-./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
+./gradlew assembleSite  # the static site in build/site (see JEBOL Web)
 ./gradlew run              # the console, from source
 ```
 

@@ -3,10 +3,10 @@ package org.jebol.adapter.cli;
 import org.jebol.adapter.host.DesktopScreen;
 import org.jebol.adapter.host.DesktopWindows;
 import org.jebol.adapter.web.BrowserScreen;
+import org.jebol.adapter.web.PageWindows;
+import org.jebol.adapter.web.PickedFiles;
 import org.jebol.adapter.web.WebScreenServer;
-import org.jebol.domain.host.FilePort;
-import org.jebol.domain.host.ScreenPort;
-import org.jebol.domain.host.WindowPort;
+import org.jebol.domain.host.HostPorts;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -26,73 +26,75 @@ final class ChosenScreen {
 
     private static final long BROWSER_POLLING_WAIT_MILLISECONDS = 50;
 
-    private ChosenScreen() {
+    private static final String PICK_FOLDER = "picked/";
+
+    private final String[] arguments;
+
+    ChosenScreen(String[] arguments) {
+        this.arguments = arguments.clone();
     }
 
-    static void setHeadlessBasedOnWhetherScreenIsNeeded(String[] arguments) {
-        boolean isWindow = switchValue(arguments)
-                .filter(WINDOW::equalsIgnoreCase)
-                .isPresent();
-        System.setProperty(HEADLESS_PROPERTY, Boolean.toString(!isWindow));
+    void chooseHeadlessMode() {
+        System.setProperty(HEADLESS_PROPERTY, Boolean.toString(!isWindow()));
     }
 
-    static boolean isAskedFor(String[] arguments) {
-        return switchValue(arguments).isPresent();
+    boolean isAskedFor() {
+        return switchValue().isPresent();
     }
 
-    static String[] withoutSwitch(String[] arguments) {
+    String[] withoutSwitch() {
         return Arrays.stream(arguments)
                 .filter(each -> !each.startsWith(SWITCH))
                 .toArray(String[]::new);
     }
 
-    static ScreenPort screenFor(
-            String[] arguments, PrintStream out, boolean forScript, FilePort files) {
-        String asked = switchValue(arguments).orElseThrow();
+    HostPorts attachTo(HostPorts ports, PrintStream out, boolean forScript) {
+        String asked = switchValue().orElseThrow();
         return switch (asked.toLowerCase(Locale.ROOT)) {
-            case WINDOW -> windowScreen(out, files);
-            case PAGE -> pageScreen(out, forScript, files);
-            default -> refuseAsNotUnderstood(asked);
+            case WINDOW -> ports
+                    .withScreen(windowScreen(out, ports))
+                    .withWindows(DesktopWindows.onThisMachine());
+            case PAGE -> attachPage(ports, out, forScript);
+            default -> throw new IllegalArgumentException(
+                    "there is no screen called " + asked + "; it is " + WINDOW + " or " + PAGE);
         };
     }
 
-    static WindowPort windowPortFor(String[] arguments) {
-        boolean isWindow = switchValue(arguments)
-                .filter(WINDOW::equalsIgnoreCase)
-                .isPresent();
-        return isWindow ? DesktopWindows.onThisMachine() : WindowPort.none();
+    private boolean isWindow() {
+        return switchValue().filter(WINDOW::equalsIgnoreCase).isPresent();
     }
 
-    private static ScreenPort windowScreen(PrintStream out, FilePort files) {
-        DesktopScreen screen = DesktopScreen.onThisMachine(files);
+    private DesktopScreen windowScreen(PrintStream out, HostPorts ports) {
+        DesktopScreen screen = DesktopScreen.onThisMachine(ports.carriedFiles());
         out.println(screen.hasDisplay()
                 ? "Screen: a native window."
                 : "Screen: asked for a window and this machine has no display.");
         return screen;
     }
 
-    private static ScreenPort pageScreen(PrintStream out, boolean forScript, FilePort files) {
+    private HostPorts attachPage(HostPorts ports, PrintStream out, boolean forScript) {
         try {
-            WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, files);
-            BrowserScreen screen = BrowserScreen.showTo(serving, files);
+            WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, ports.carriedFiles());
+            BrowserScreen screen = BrowserScreen.showTo(serving, ports.carriedFiles());
             serving.reportTo(screen);
+            PickedFiles picked = new PickedFiles(ports.files(), PICK_FOLDER, serving);
             if (forScript) {
                 out.println("Screen: a page at " + serving.address()
                         + " -- the script starts once it is open.");
                 waitForBrowser(screen);
-                return screen;
+            } else {
+                out.println("Screen: a page at " + serving.address() + " -- open it, then VIEW.");
             }
-            out.println("Screen: a page at " + serving.address()
-                    + " -- open it, then VIEW.");
-            return screen;
+            return ports.withScreen(screen)
+                    .withFiles(picked)
+                    .withWindows(new PageWindows(serving, picked));
         } catch (IOException couldNotListen) {
             throw new IllegalStateException(
-                    "the page could not be served: " + couldNotListen.getMessage(),
-                    couldNotListen);
+                    "the page could not be served: " + couldNotListen.getMessage(), couldNotListen);
         }
     }
 
-    private static void waitForBrowser(BrowserScreen screen) {
+    private void waitForBrowser(BrowserScreen screen) {
         while (!screen.hasDisplay()) {
             try {
                 Thread.sleep(BROWSER_POLLING_WAIT_MILLISECONDS);
@@ -103,13 +105,7 @@ final class ChosenScreen {
         }
     }
 
-    private static ScreenPort refuseAsNotUnderstood(String asked) {
-        throw new IllegalArgumentException(
-                "there is no screen called " + asked
-                        + "; it is " + WINDOW + " or " + PAGE);
-    }
-
-    private static Optional<String> switchValue(String[] arguments) {
+    private Optional<String> switchValue() {
         for (String each : arguments) {
             if (each.startsWith(SWITCH)) {
                 return Optional.of(each.substring(SWITCH.length()));

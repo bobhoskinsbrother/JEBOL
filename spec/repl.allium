@@ -517,25 +517,26 @@ rule TheCommandLineGrantsEveryService {
     ensures: the_granted_services() = every_host_service()
 }
 
--- The machine's dialogs come with the machine's window, and with nothing else.
+-- Each screen brings its own dialogs: the machine's with `--screen=window`,
+-- the page's with `--screen=web`, and a refusal where there is no screen.
 --
 -- The WINDOW service's five requests -- BROWSE, REQUEST-FILE, REQUEST-DIR,
--- REQUEST-COLOR and REQUEST-PASSWORD -- need something to put a dialog on, and
--- the command line handed nothing over for any of them: it granted every
--- service and supplied no port, so all five were reachable and could not
--- succeed. `--screen=window` is the run that has already said it may use this
+-- REQUEST-COLOR and REQUEST-PASSWORD -- need something to put a dialog on.
+-- `--screen=window` is the run that has already said it may use this
 -- machine's screen -- it is the same switch that turns the JVM's headless mode
 -- off -- so that is where the machine's own dialogs are handed over.
 --
--- `--screen=web` draws into a page and runs headless, and a run that asked for
--- no screen at all stays as it was, so both refuse a dialog as the host having
--- none. That refusal is the answer to enabling the example that asked: run it
--- again with a window, and the chooser opens.
-rule TheWindowScreenComesWithTheMachinesDialogs {
+-- `--screen=web` draws into a page, and the page has controls of its own, so
+-- its asks ride the stream that carries the picture down to the page and the
+-- answers are posted back while the interpreter waits. A run that asked for
+-- no screen at all refuses a dialog as the host having none.
+rule EachCommandLineScreenBringsItsOwnDialogs {
     when: line: CommandLine.created
-    requires: the_screen_asked_for_is_the_window()
 
-    ensures: the_window_port_supplied() = the_machines_own_dialogs()
+    ensures: the_window_port_supplied() =
+        if the_screen_asked_for_is_the_window(): the_machines_own_dialogs()
+        else if the_screen_asked_for_is_the_web(): the_pages_own_dialogs()
+        else: no_dialogs_at_all()
 }
 
 -- With `--screen=web` and a script, the script waits for a browser. The page's

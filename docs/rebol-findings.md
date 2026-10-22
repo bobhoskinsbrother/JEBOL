@@ -6827,3 +6827,17 @@ SIGSEGV, so there is no answer to port and the sweep leaves both out of
 `make-and-to-as-r3-answers.tsv`. JEBOL refuses them as `bad-field-set` naming
 `[x]`, and `WhereR3Dies` pins that so the refusal cannot drift. Nothing in
 Rebol's own suite asks.
+
+## 231. A path in the HTTP write dialect is glued to the url's own path
+
+`write http://host/start [PUT %/other [X-Token: "t"] "body"]` sends
+`PUT /otherstart` from a real 3.22.5: `parse-write-dialect` in `prot-http.reb`
+sets `spec/path` to `%/other`, and the request line is built from the path
+and the url's target, which is still `start`. Nothing in Rebol's own suite
+writes with a path, and a script that names one means that path. JEBOL sends
+`PUT /other`, and `PostingOverHttpFromTheSourceTest` pins it. The rest of the
+write matches the probe of 2026-10-22 against a local echo server: a string
+posts as `application/x-www-form-urlencoded; charset=utf-8`, a binary as
+`application/octet-stream`, a map as JSON, anything else formed as a form; the
+reply to GET, POST and PATCH is decoded and to any other method left binary;
+404 is `protocol` "Not Found", and `/all` answers status, headers and body.

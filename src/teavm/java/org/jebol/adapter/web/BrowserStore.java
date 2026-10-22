@@ -15,7 +15,7 @@ import java.util.TreeSet;
 
 final class BrowserStore implements WebFiles.Store {
 
-    static WebFiles.Store openForThePage() {
+    static WebFiles.Store openForPage() {
         return isTheStoreHere() ? new BrowserStore() : WebFiles.Store.keepInMemory();
     }
 

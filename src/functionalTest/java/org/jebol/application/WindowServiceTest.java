@@ -42,8 +42,9 @@ class WindowServiceTest {
         }
 
         @Override
-        public void browse(String target) {
+        public boolean browse(String target) {
             browsed = target;
+            return true;
         }
 
         private Optional<String> suggestedNameAsked = Optional.empty();
@@ -95,7 +96,7 @@ class WindowServiceTest {
 
     private static String readTheErrorIdFrom(Interpreter interpreter, String source) {
         return answerFrom(interpreter,
-                "e: try [" + source + "] either error? e [e/id] ['no-error]");
+                "set/any 'e try [" + source + "] either error? :e [e/id] ['no-error]");
     }
 
     private static final String TRUE = "#(true)";
@@ -164,7 +165,7 @@ class WindowServiceTest {
             Screen screen = Screen.makeOneAnswering("/chosen/file.txt");
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
-            answerFrom(interpreter, "browse http://example.com");
+            assertThat(answerFrom(interpreter, "unset? browse http://example.com")).isEqualTo(TRUE);
 
             assertThat(screen.browsed()).isEqualTo("http://example.com");
         }
@@ -247,10 +248,10 @@ class WindowServiceTest {
         }
 
         @Test
-        @DisplayName("/MULTI declined answers an empty block, not none")
-        void answersAnEmptyBlockForTheManyForm() {
+        @DisplayName("/MULTI declined answers none too, as the C does, not an empty block")
+        void answersNoneForTheManyForm() {
             assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
-                    "mold request-file/multi")).isEqualTo("\"[]\"");
+                    "none? request-file/multi")).isEqualTo(TRUE);
         }
     }
 

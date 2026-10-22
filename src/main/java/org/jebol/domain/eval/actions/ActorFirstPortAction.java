@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.actions;
 
+import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
@@ -16,7 +17,7 @@ public abstract class ActorFirstPortAction extends PortAction {
         super(granted, ports);
     }
 
-    abstract Value answerHere(PortValue port);
+    abstract Value answerHere(PortValue port, Evaluator evaluator);
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -27,6 +28,6 @@ public abstract class ActorFirstPortAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
                 .askRebolActor(nativeName(), arguments, Set.of())
-                .orElseGet(() -> answerHere((PortValue) arguments.getFirst()));
+                .orElseGet(() -> answerHere((PortValue) arguments.getFirst(), evaluator));
     }
 }

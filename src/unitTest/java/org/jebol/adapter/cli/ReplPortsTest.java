@@ -2,6 +2,8 @@ package org.jebol.adapter.cli;
 
 import org.jebol.adapter.host.DesktopWindows;
 import org.jebol.adapter.host.ProcessEnvironment;
+import org.jebol.adapter.web.PageWindows;
+import org.jebol.adapter.web.PickedFiles;
 import org.jebol.application.Bounds;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.WindowPort;
@@ -29,6 +31,15 @@ class ReplPortsTest {
     void windowScreenBringsTheMachinesDialogs() {
         assertThat(portsFor("--screen=window").windows())
                 .isInstanceOf(DesktopWindows.class);
+    }
+
+    @Test
+    @DisplayName("a page screen brings the page's own dialogs, and files a save through the page can be sent from")
+    void pageScreenBringsThePagesDialogs() {
+        HostPorts ports = portsFor("--screen=web");
+
+        assertThat(ports.windows()).isInstanceOf(PageWindows.class);
+        assertThat(ports.files()).isInstanceOf(PickedFiles.class);
     }
 
     @Test

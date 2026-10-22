@@ -7,26 +7,35 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.render.DrawingCommand;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseable {
+public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTrip, AutoCloseable {
+
+    private static final AtomicInteger CONNECTIONS = new AtomicInteger();
+
+    private static final String ASKS_SCRIPT = "/jebol-page/jebol-asks.js";
 
     private final HttpServer server;
     private final DefaultFont font;
     private final List<OutputStream> browserConnections = new CopyOnWriteArrayList<>();
+    private final AtomicInteger asksMade = new AtomicInteger();
+    private final Map<Integer, CompletableFuture<PageAnswer>> waitingForAnswers = new ConcurrentHashMap<>();
     private BrowserScreen screen;
     private volatile int width;
     private volatile int height;
-
-    private static final AtomicInteger CONNECTIONS = new AtomicInteger();
 
     private WebScreenServer(HttpServer server, DefaultFont font) {
         this.server = server;
@@ -42,6 +51,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         listening.createContext("/paint", serving::openPaintStreamThatBrowserCloses);
         listening.createContext("/event", serving::receiveEvent);
         listening.createContext("/NotoSans-Regular.ttf", serving::serveFont);
+        listening.createContext("/jebol-asks.js", serving::serveAsksScript);
         listening.start();
         return serving;
     }
@@ -79,9 +89,49 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     }
 
     @Override
+    public PageAnswer ask(PageAsk asked) {
+        if (!isConnected()) {
+            return new PageAnswer("""
+                    {"answer":"refused","why":"no browser is attached to answer"}""");
+        }
+        int number = asksMade.incrementAndGet();
+        CompletableFuture<PageAnswer> answered = new CompletableFuture<>();
+        waitingForAnswers.put(number, answered);
+        dispatchToRegisteredBrowsers("ask", asked.writeNumbered(number));
+        try {
+            return answered.join();
+        } finally {
+            waitingForAnswers.remove(number);
+        }
+    }
+
+    @Override
+    public void takeTyping(String heading) {
+        dispatchToRegisteredBrowsers("typing", new TypingMessage(true, heading).write());
+    }
+
+    @Override
+    public void releaseTyping() {
+        dispatchToRegisteredBrowsers("typing", new TypingMessage(false, "").write());
+    }
+
+    @Override
     public void close() {
         server.stop(0);
         browserConnections.clear();
+    }
+
+    private void serveAsksScript(HttpExchange exchange) throws IOException {
+        byte[] script;
+        try (InputStream carried = Objects.requireNonNull(
+                WebScreenServer.class.getResourceAsStream(ASKS_SCRIPT), "the jar carries " + ASKS_SCRIPT)) {
+            script = carried.readAllBytes();
+        }
+        exchange.getResponseHeaders().add("Content-Type", "text/javascript; charset=utf-8");
+        exchange.sendResponseHeaders(200, script.length);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write(script);
+        }
     }
 
     private void servePage(HttpExchange exchange) throws IOException {
@@ -133,10 +183,15 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     }
 
     private void dispatch(String posted) {
+        PageEvent pageEvent = new PageEvent(posted);
+        if (pageEvent.isAnswer()) {
+            PageAnswer answer = new PageAnswer(posted);
+            answer.answering().map(waitingForAnswers::get).ifPresent(waiting -> waiting.complete(answer));
+            return;
+        }
         if (screen == null) {
             return;
         }
-        PageEvent pageEvent = new PageEvent(posted);
         if (pageEvent.isMeasurement()) {
             if (pageEvent.isWholeMeasurement()) {
                 width = pageEvent.width();

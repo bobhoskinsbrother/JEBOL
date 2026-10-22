@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count row on 2026-10-21 and the timing rows on
+Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 2026-10-13.
 
 | Measure | Reads |
@@ -19,8 +19,8 @@ Measured on 2026-10-12, the test count row on 2026-10-21 and the timing rows on
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 7 |
-| `./gradlew allTests` | 28,608 tests on 2026-10-21: `unitTests` 2,656, `functionalTests` 24,033, `endToEndTests` 1,919 |
+| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 6 |
+| `./gradlew allTests` | 28,850 tests on 2026-10-22: `unitTests` 2,798, `functionalTests` 24,088, `endToEndTests` 1,964 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
@@ -58,241 +58,13 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The web comes first -- its missing services, then
-navigation -- and then the two that take JEBOL to Android and iOS, with the
+Ordered by importance. Navigation on the web comes first, and then the two
+that take JEBOL to Android and iOS, with the
 defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
 
-### 1. The web: what a page has not got
-
-The compiled page is a host with less outside it than any other, and what it
-lacks is not all one kind of loss. Four services are impossible and stay out
-of this goal. The seven it does work on are one granted service with nothing
-behind it, one port answering `none()` where the browser has a decoder, two
-already promised by the spec's own comment and never granted, two unwired
-though the browser can do each -- one of those a whole verb -- and a console
-the shipped page gives no way to type into. Every one is an adapter or a
-grant with a browser-gate test, and `docs/web-port.md` says where each landed.
-
-None of it changes the core. The ports already exist and already say what a
-script gets; the work is all behind them, in the adapters and the page.
-
-A port is a need the host fills. A script that asks for a colour, a file or a
-secret says only what it needs; the environment answers with the control it
-has -- Swing on the desktop, the browser's own controls in a page, the
-operating system's sheet on a phone. That is why four of the five dialogs
-below are the browser's own wherever a browser has one, and why the fifth,
-and the console's line, are one Rebol form everywhere: no environment has a
-password dialog worth taking, and a form of JEBOL's own looks the same on
-every screen.
-
-A refusal is always an answer a script can act on. The operator declining any
-ask -- a cancelled picker, a dismissed prompt, a denied permission -- is
-`none`, which `WindowPort` already promises. A browser that has not the API at
-all is a catchable error naming why, never a hang and never a host exception.
-
-**Where the interpreter runs decides how each service is reached.** It runs
-in a Web Worker -- `site/runner.html` starts `jebol-worker.js` -- and a worker
-has no elements to put a picker in, no `navigator.clipboard` and no
-`navigator.requestMIDIAccess`. So the dialogs, the clipboard and MIDI all
-reach the browser the same way: the worker posts an ask to the page, the page
-does the work, and the page posts the answer back. Item 2 builds that round
-trip, and items 3 and 6 ride on it. POST and pictures do not need it:
-`fetch`, `createImageBitmap` and `OffscreenCanvas` all work in a worker.
-
-What stays as it is, on purpose:
-
-- **NETWORK, PROCESSES, ENVIRONMENT and CERTIFICATES** -- `tcp`, `udp`, `dns`,
-  `call`, `get-env` and `set-env`, `open tls://` -- decision 31's unavailable
-  set, refused not_present with "a browser" named. A page has no raw
-  connection, no other program, no launch environment and no certificate
-  store, and no adapter can change that.
-- **A task's body runs nowhere**, `TaskPort.none()`. Decision 30; the default
-  everywhere, and the browser is where it cannot change.
-- **HTTP is the browser's**: `fetch`, with names, redirects, cookies and CORS
-  its own, decision 32. Its missing verb is item 4.
-
-The items are in the order they are to be built.
-
-1. **The clock, which the spec already promises.**
-   `ABrowserOffersWhatItsPageCan` says a browser has "the clock", and the
-   worker's bounds grant CONSOLE, FILES, WINDOWS, WEB and WORKING_DIRECTORY --
-   no CLOCK -- so `now` refuses not-granted where the boot has already read
-   `ZonedDateTime.now()` without one. `boundAWorkerToTheScreen()` gains the
-   grant; the spec is right and the code moves.
-
-2. **The five dialogs, and the round trip under them.** WINDOWS is granted
-   and `WindowPort.none()` is behind it, so BROWSE, REQUEST-FILE, REQUEST-DIR,
-   REQUEST-COLOR and REQUEST-PASSWORD all refuse as "given no screen to put a
-   window on" -- the hole the command line had until decision 48.
-   `BrowserWindows`, beside `BrowserDigests` in `src/teavm`, posts an ask to
-   the page and awaits the answer the way `BrowserDigests` awaits
-   `crypto.subtle`: a `JSPromise` the worker's shell resolves when the page
-   posts back, with the message's shape in `src/main` so the JVM gate can test
-   it. The controls are the browser's -- `<input type="color">`,
-   `<input type="file">`, `webkitdirectory`, `window.open` -- behind a small
-   prompt the page draws, because a picker and a popup each want a gesture the
-   script cannot give. Cancelling answers none.
-
-   **Opening a file.** REQUEST-FILE answers a file path, as a real 3.22.5
-   does, never the bytes. The adapter copies the chosen file's bytes into the
-   page's file store, `WebFiles`, and the path it answers names that copy, so
-   a `read` of it works like any other. Each pick gets a fresh folder in the
-   store, numbered in the order the picks were made, holding the files under
-   their own names -- `%/picked/1/notes.txt`, then `%/picked/2/notes.txt` --
-   so picking the same name twice never overwrites the first copy or a file
-   the script wrote itself, and the name a script shows the operator is the
-   one the file had. REQUEST-DIR copies the whole folder the operator chose,
-   its tree intact, into its pick's folder -- `%/picked/3/photos/` -- and
-   answers that directory. `/multi` lets the picker take several files, puts
-   them side by side in one pick's folder, and answers a block of paths;
-   `/filter` becomes the file input's `accept` list. All of this is the
-   adapter's work: the core and the borrowed library do not change.
-
-   **Saving a file.** `REQUEST-FILE/SAVE` goes through the browser too, and
-   the file port is what makes it work. The ask opens the browser's save
-   picker inside the prompt's gesture, the operator chooses the file there and
-   then, and the port answers a path in the page's store. A write to that path
-   goes through `WebFiles` as any write does. When the file is closed -- not
-   on every write -- a `WebFiles.Store` mirror sends the bytes out: to the
-   chosen handle where the browser has `showSaveFilePicker`, and to a download
-   where it has not. That is every Firefox and every Safari, so the download
-   is a first-class path rather than a fallback, and sending on close is what
-   keeps it to one download per save. The store keeps the file either way, so
-   reading back what was saved works. A cancelled picker is none; a browser
-   that refuses the picker outright is a catchable error naming why.
-
-   **BROWSE.** The new tab opens inside the click on the page's prompt, which
-   is the gesture a popup blocker wants. The operator dismissing the prompt is
-   none, like every other refusal. A browser that blocks the tab anyway -- a
-   setting that blocks every popup -- is the browser refusing rather than the
-   operator, so it is a catchable error saying the browser blocked the new
-   window. When the tab opens, BROWSE answers what a real 3.22.5 answers, read
-   off `./r3-head`. BROWSE never replaces the current tab: that would end the
-   app.
-
-   **The command line's page.** It gets the same five in this goal, which is
-   what reverses the second half of decision 48. A run with `--screen=web`
-   serves its picture to a page, so its asks ride the same stream down and the
-   answer is posted back to `/event` while the interpreter waits; that is a
-   second transport rather than `postMessage`, and when it lands
-   `TheWindowScreenComesWithTheMachinesDialogs` becomes "each screen brings
-   its own dialogs": the machine's with `--screen=window`, the page's with
-   `--screen=web`, and a refusal where there is no screen at all.
-
-   **REQUEST-PASSWORD** is answered by a form of JEBOL's own, drawn on
-   whatever screen the run has, so the same form appears in a desktop window
-   and on a page. It is the one ask that does not take the environment's
-   control: no environment has a password dialog worth taking -- Swing's is a
-   generic box and the browser has none at all -- and one form everywhere is
-   the consistency being bought. The field masks what is typed, and the
-   typing is the screen's own key events, which on a page already route to
-   the worker. A page always has a screen -- the runner's `<canvas
-   id="screen">` -- so a script that has not yet called `view` gets the form
-   in a window of its own, as `view` would give it one.
-
-   The form stays Rebol; the plumbing to run it -- a modal window, the events
-   routed to it, and what a canvas-drawn field needs to take text on a page --
-   belongs to the screen's adapter, the web's among them, and not to a branch
-   in the shipped library. On a page, the field takes its text through a
-   hidden `<input>` that holds the focus while the form is open, because
-   without one a phone shows no keyboard and an input method -- the way
-   Chinese or Japanese is typed -- has nowhere to compose. Android will want
-   the same. The port's own `askForPassword` stays as the answer for a host
-   that supplies a window port and no screen of JEBOL's; the desktop's Swing
-   dialog is that path today.
-
-3. **The clipboard, which the spec promises too.** The same comment says "the
-   clipboard"; CLIPBOARD is ungranted and `ClipboardPort.none()` is supplied,
-   so `write clipboard://` and `read clipboard://` refuse.
-   `BrowserClipboard` asks the page over item 2's round trip, because a worker
-   has no `navigator.clipboard`, and the page answers through its own. The
-   read goes behind item 2's prompt, since a read outside a gesture is refused
-   by the browser, and a write does too wherever the browser wants a gesture
-   for it. A refused permission is none. Then the grant.
-
-4. **POST.** `write http://` says `no-port-action`: `HttpPort` answers OPEN,
-   READ and CLOSE through `fetch` and has no write arm, which decision 32
-   records. One more verb on the same port, and the first thing a page posting
-   to an API wants. It runs in the worker, where `fetch` already is.
-
-5. **Pictures.** `ImagePort.none()` raises `feature-na` "image encoding
-   through the operating system", so `lib/image/load/as` refuses and the
-   codecs `codec-image.reb` registers -- png, jpeg, gif, bmp, dds and tiff
-   among them -- read nothing. `BrowserImages` (`src/teavm`) decodes through
-   `createImageBitmap`, asked for `premultiplyAlpha: 'none'` and
-   `colorSpaceConversion: 'none'` so the pixels are the file's own, and
-   encodes through `OffscreenCanvas.convertToBlob`, both awaited as promises.
-   A worker has no `<canvas>` element, so `canvas.toBlob` is not available
-   to it; Safari has `OffscreenCanvas` from 16.4. What it can read is then the
-   browser's answer, and what it can write is png, jpeg and webp.
-
-   The catalogue stays as the borrowed `codec-image.reb` has it: all six
-   formats listed on every host, and a format the browser cannot do -- dds
-   always, tiff outside Safari, writing gif or bmp anywhere -- is a catchable
-   error at the moment it is used, naming the format and the browser. A
-   shorter list would be wrong in some browser, since which formats it reads
-   is the browser's own answer, and shrinking it needs a change to a borrowed
-   file. No webp codec is added here: a real 3.22.5 has none, and goal 15
-   adds it on every host at once.
-
-   Showing a picture needs no work here. The page already draws an `image!`
-   as raw pixels -- `putImageData`, then `drawImage` onto the screen -- so
-   whatever decodes can be shown, and the format matters only when it is read.
-
-   The expected pixels are Chrome's, written in the test as literals. A
-   lossless format -- png, gif, bmp -- must decode to the same pixels in
-   Firefox. Where Firefox decodes a lossy one differently, its test carries
-   Firefox's own literals, and `docs/web-port.md` records the difference.
-
-6. **MIDI.** Ungranted, `NoMidiDevices` behind it. A Web MIDI adapter behind
-   `MidiDevices`, reached over item 2's round trip -- `requestMIDIAccess`
-   exists only on the page, not in a worker -- and the grant. The browser's
-   permission prompt is the operator's to answer; a denial is none. Goal 5
-   does the desktop's `javax.sound.midi`; it is the same port and the same
-   `MidiSchemeActor`, so whichever lands second is much the smaller.
-
-7. **A line to type into on the shipped page.** `WebConsole` reads the page's
-   line input, and `site/runner.html` has none, so `input` in an app on the
-   shipped site waits for a line that can never arrive. The gate's own page,
-   `rebol-adapters-on-a-page.html`, has an HTML line input, which is why no
-   test has noticed. The runner gains a line to type into, and it is a Rebol
-   form drawn on the screen rather than an HTML element, for the same
-   consistency as REQUEST-PASSWORD: the same plumbing -- a modal window on the
-   canvas and the hidden `<input>` behind its field -- and the same look on
-   every screen. The gate's page moves to the same form, so the gate tests
-   what ships.
-
-**Tests run in Chrome and in Firefox.** Every item gets a browser-gate test in
-both, each driving the browser the way an operator does: clicking the prompt,
-choosing in the picker, typing into the form. Firefox has no
-`showSaveFilePicker`, so its run is the real test of the download path rather
-than one faked by hiding an API from Chrome; Chrome's run tests the picker.
-Where the picker must really be operated, the gate may run its browser headed
--- the headless default is a convenience, not a promise. Both browsers send
-their downloads to a folder the test owns, and the test asserts the bytes that
-land there. Selenium fetches Firefox's driver as it fetches Chrome's, so
-nothing new enters the build, but Firefox has to be installed: `CLAUDE.md`'s
-paragraph on what `endToEndTests` needs changes with the first Firefox test.
-Safari stays out of the gate: its driver needs "Allow Remote Automation"
-switched on by hand and runs one session at a time. The message shapes in
-`src/main` are tested on the JVM in `unitTests`.
-
-**First steps, in the repo's order.** The spec before any code. A new
-`spec/web.allium` holds what a page does with each need -- the round trip, the
-prompt's gesture, where an opened file lands in the store, the save sent on
-close, BROWSE's answers, what pictures it reads and writes, the line form --
-and is the file Android's spec will sit beside. `spec/screen.allium` gains
-what every screen keeps: each screen brings its own dialogs, a refusal by the
-operator is none, a missing API is a catchable error, and the password and
-the console's line are one Rebol form everywhere. `ABrowserOffersWhatItsPageCan`
-in `spec/embed.allium` gains the clipboard and MIDI beside the clock.
-`allium check` clean. Then the tests, red in both browsers. Then the adapters,
-one item at a time, with a decision entry for reversing the second half of
-decision 48 and `docs/web-port.md` beside them.
-
-### 2. Navigation: back, forward, and a history stack
+### 1. Navigation: back, forward, and a history stack
 
 An app has places, and the operator has a way back to the last one. On a page
 those are the browser's own Back and Forward buttons and its history stack; in
@@ -312,7 +84,7 @@ leaving with unsaved work can ask first.
    `WindowPort`: push a state, replace the current one, go back, go forward,
    and answer the current state. It is supplied with the screen and refuses
    where there is no screen -- the arrangement decision 48 gives the dialogs,
-   which goal 1 extends to a page, `--screen=web`'s second transport
+   which decision 49 extends to a page, `--screen=web`'s second transport
    included. The web adapter is the browser's own `pushState`, `replaceState`
    and `popstate`, with `document.title` following the state. The desktop
    adapter is a stack, and both things drive Back: the app's own controls
@@ -355,7 +127,7 @@ gains navigation beside the clock and the clipboard. Then the tests that fail
 without a port, on the JVM and in Chrome. Then the port, its two adapters and
 the `go` layer, with a decision entry and `docs/web-port.md` beside them.
 
-### 3. Android, with the interpreter running on Android's own Java
+### 2. Android, with the interpreter running on Android's own Java
 
 1. **Check JEBOL's Java against Android's.** JEBOL is text for Java 25.
    Find the language features and library calls Android's compiler and
@@ -388,7 +160,7 @@ the `go` layer, with a decision entry and `docs/web-port.md` beside them.
    the way the browser gate drives Chrome: a gate of its own, never a skipped
    test.
 
-### 4. iOS, with the interpreter compiled ahead of time by GraalVM
+### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 
 Not a web view: one would pause JEBOL whenever the app is in the background,
 keep it out of widgets, the Watch and app extensions, and make every call to
@@ -404,7 +176,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    of this step.
 3. **The app.** One view draws the domain's surface calls with iOS's own
    drawing; touches, the keyboard, and pausing and resuming are handled as
-   on Android, using goal 3 step 4's work in the 2010 GUI.
+   on Android, using goal 2 step 4's work in the 2010 GUI.
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
@@ -415,7 +187,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
 
-### 5. A real MIDI device through `javax.sound.midi`
+### 4. A real MIDI device through `javax.sound.midi`
 
 The `midi` scheme is registered and its actor is `MidiSchemeActor`, behind
 the `MidiDevices` host port; every interpreter starts with `NoMidiDevices`,
@@ -426,7 +198,7 @@ interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Whether opening an open port should do what the C does is an
 open question in `spec/natives.allium`.
 
-### 6. Two found in Rebol's own declarations
+### 5. Two found in Rebol's own declarations
 
 1. **`system/standard/stats` starts at zero; R3 starts every field at none.**
    `STATS/PROFILE` and `DELTA-PROFILE` subtract the fields, so changing them is
@@ -437,7 +209,7 @@ open question in `spec/natives.allium`.
    write a line. `TheDialectsWordsMatchRebolsOwnTest` will turn red when it
    lands, and its list of absences wants updating then.
 
-### 7. The type-major refactor: what is left
+### 6. The type-major refactor: what is left
 
 Each datatype's behaviour belongs in its own class, not in a switch elsewhere.
 What still switches on the datatype, by `scripts/complexity.py`:
@@ -464,7 +236,7 @@ from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
 interpreters -- reads as missing.
 
-### 8. Graphics: what is left
+### 7. Graphics: what is left
 
 - **VID.**
 - **The old markup path** -- 522 lines.
@@ -474,13 +246,13 @@ interpreters -- reads as missing.
   decision 35 makes the walk one and leaves only the toolkit's coverage
   arithmetic, which the spec's tolerance already bounds.
 
-### 9. Loose ends
+### 8. Loose ends
 
 - **A task's body runs nowhere by default.** DO of a task answers the task,
   and the body runs only where a host supplies a way to run it: on a thread of
   its own in a fresh interpreter on the JVM, which the console wires. The rule
-  is `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`; what a
-  browser does with one is goal 1.
+  is `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`; a
+  browser runs none, decision 30.
 - **Fourteen compiled modules are left out of `system/modules`** -- sqlite,
   zstd, webp and the rest -- because importing them fetches native code. Each
   can come back as an extension text in Java, one at a time, when one is
@@ -499,7 +271,7 @@ interpreters -- reads as missing.
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters).
 
-### 10. Verify a fetched module
+### 9. Verify a fetched module
 
 Nothing is fetched today: every module this build needs is bundled. Before an
 address points outward again:
@@ -512,7 +284,7 @@ address points outward again:
 
 Still to decide: whether a host can refuse fetching outright.
 
-### 11. A debugger
+### 10. A debugger
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -525,7 +297,7 @@ decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
-### 12. Dev tools
+### 11. Dev tools
 
 Two homes: the flag and the example go in JEBOL; the server and its tools are a
 second Gradle build in this repo: one executable jar taking JEBOL's jar as its
@@ -562,9 +334,9 @@ one dependency, with a gate of its own rather than `allTests`.
    at first.
 
 
-### 13. What the command line does differently from r3
+### 12. What the command line does differently from r3
 
-1. **`--trace` does not trace the boot.** Do with goal 11.
+1. **`--trace` does not trace the boot.** Do with goal 10.
 2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. The banner's title line is decided -- it says "(JEBOL
@@ -579,7 +351,7 @@ one dependency, with a gate of its own rather than `allTests`.
    line's own input stream is the fix, and it is the same shape of gap the
    windows service had until decision 48.
 
-### 14. A drag still lags, and the interpreter has a next tier
+### 13. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -608,7 +380,7 @@ still reads slow after the paint work:
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
 
-### 15. WebP as an image format
+### 14. WebP as an image format
 
 A real 3.22.5 has no WebP codec, so this is the one goal that improves on the
 C rather than agreeing with it, and it comes last for that reason. Every
@@ -622,7 +394,7 @@ What it needs:
    and `WEBP` -- is registered by a file of JEBOL's own, loaded after the
    borrowed one, decoding and encoding through `lib/image/load/as` and
    `lib/image/save/as` with `'WEBP` like the six beside it.
-2. **The page.** Nothing beyond goal 1's `BrowserImages`: `createImageBitmap`
+2. **The page.** Nothing beyond the page's `BrowserImages` (decision 49): `createImageBitmap`
    reads it and `OffscreenCanvas.convertToBlob` writes it.
 3. **The desktop.** Java's own image library has no WebP, and the shipped jar
    takes no dependency, so the desktop needs a port: VP8L, the lossless form,
@@ -636,7 +408,7 @@ What it needs:
    `BitmapFactory` reads it and `Bitmap.compress` writes it; iOS reads it from
    14 and has no encoder.
 
-A host that cannot do one side refuses it the way goal 1 refuses dds: a
+A host that cannot do one side refuses it the way a page refuses dds: a
 catchable error naming the format and the host. The spec first, as everywhere:
 the codec and each host's answer go in `spec/web.allium` and its desktop
 counterpart before any test.

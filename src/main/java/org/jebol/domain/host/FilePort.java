@@ -37,6 +37,9 @@ public interface FilePort {
     /** Adds to the end of a file, making it when it is not there. */
     void appendTo(String path, byte[] contents);
 
+    default void finishWriting(String path) {
+    }
+
     /** Whether there is anything at that path. */
     boolean exists(String path);
 

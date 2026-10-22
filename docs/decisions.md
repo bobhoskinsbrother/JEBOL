@@ -1681,7 +1681,7 @@ for, and the refusal is a divergence in the right direction besides.
 page (`site/runner.html`, the canvas, the replayer and the worker hookup) is
 fill in by the build with the app's file list and its `main.reb` as the entry;
 every file is fetched into the worker's store before the entry runs. So
-`./gradlew assembleTheSite -PsiteDir=my-app` is the whole of making one, a
+`./gradlew assembleSite -PsiteDir=my-app` is the whole of making one, a
 directory with an `index.html` in it keeps that page instead, and the shipped
 demo is the same with `examples/r3-gui` as the directory: its driver, once the
 page's own script tag, is now just `examples/r3-gui/main.reb`.
@@ -1976,3 +1976,76 @@ lands this decision's rule becomes "each screen brings its own dialogs": the
 machine's with `--screen=window`, the page's with `--screen=web`. Until then a
 page run keeps the refusal, because a port that is not built is honestly
 absent.
+
+## 49. Each screen brings its own dialogs, and a page answers its services itself
+
+**The second half of decision 48 is reversed.** A page now has dialogs of its
+own: `--screen=web` hands over `PageWindows`, and so does the shipped page.
+`EachCommandLineScreenBringsItsOwnDialogs` in `spec/repl.allium` replaces
+`TheWindowScreenComesWithTheMachinesDialogs`, and `EachScreenBringsItsOwnDialogs`
+in `spec/screen.allium` says it for every screen.
+
+**One round trip, two transports.** The interpreter runs in a worker, and a
+worker has no elements, no clipboard and no MIDI, so every service that needs
+the page is an ask: one JSON object numbered from one, answered once with
+given, declined or refused (`PageAsk`, `PageAnswer`, `PageRoundTrip` in
+`src/main`, tested on the JVM). In a page the worker posts the ask and awaits a
+promise the shell resolves when the page posts the answer (`WorkerRoundTrip`);
+on the command line the ask rides the picture's event stream and the answer is
+posted to `/event` while the interpreter waits (`WebScreenServer`). The page's
+half is one script, `jebol-asks.js`, served by both. Declining is none,
+refusing is a catchable error naming why, and an answer to no waiting ask is
+dropped.
+
+**A picker opens inside the operator's click.** A script cannot click, and a
+picker, a popup and a clipboard read each refuse to open without one, so an
+ask that needs a gesture is shown behind a prompt the page draws, with a
+button that does it and one that declines.
+
+**Files picked are copied, never handed over as bytes.** REQUEST-FILE answers a
+path, as a real 3.22.5 does. Each pick gets a fresh folder numbered one past
+the highest already in the store -- `%/picked/1/notes.txt`, then
+`%/picked/2/notes.txt` -- because the store outlives a reload and counting from
+one again would overwrite yesterday's pick. On the command line the same
+folders are under `picked/` in the directory the run started in, because the
+default policy -- a real 3.22.5's as much as JEBOL's -- lets a script read
+nothing outside its own directory, and a copy in the machine's temporary
+folder was refused on the first READ. A save answers a path
+the same way, and `PickedFiles`, wrapping the file port, sends the bytes out
+when the file is finished with: after a one-shot WRITE, or when a port opened
+on it closes. That moment is new to the core -- `FilePort.finishWriting` --
+and it is the only change the file port needed. Where the browser has
+`showSaveFilePicker` the bytes go to the chosen file, and elsewhere they are a
+download.
+
+**What the gate cannot reach, and is checked by hand.** Chrome's own save
+dialog cannot be operated by WebDriver, and headless Chrome aborts it, so the
+gate proves the picker opens inside the click and that an aborted picker is
+none; writing to a file chosen there is checked by hand, as decision 48's
+chooser is. Firefox's driver cannot hand a folder to a folder chooser, so
+REQUEST-DIR's copy is proved in Chrome and Firefox proves the decline.
+Firefox's clipboard read and its Web MIDI need the operator to confirm in the
+browser's own chrome, which no driver reaches; the gate runs Firefox with its
+testing preferences for both, which leave the API itself as it is and give
+Web MIDI the test devices that echo what they are sent.
+
+**The password and the console's line are one Rebol form.**
+`src/main/resources/org/jebol/forms/screen-form.reb` draws a window with a
+field and runs a modal handler at the front of the event handlers until Enter
+or Escape; REQUEST-PASSWORD uses it wherever the screen has a display, and
+INPUT uses it where the console says it is typed on the screen, which a page's
+is. The screen's adapter carries what a canvas-drawn field needs: on a page a
+hidden text input holds the focus while the form is open, so a phone shows
+its keyboard and an input method composes into it. The port's own
+`askForPassword` stays for a host with a window port and no screen.
+The line form is headed by whatever was printed since the last line ended,
+as a terminal shows the prompt on the line being typed, so `ask "Your name? "`
+heads its form "Your name?"; the hidden input carries that heading as its
+accessible name. The first try showed why: two forms in a row with the same
+heading looked like one form that had ignored Enter. The runner keeps what a
+script prints in a panel over the foot of the screen, for the same reason.
+
+**BROWSE answers unset, and a cancelled REQUEST-FILE/MULTI answers none.**
+Both are what the C answers -- `R_UNSET` from BROWSE, `R_NONE` from a chooser
+that came back empty whatever the refinements -- and JEBOL answered none and an
+empty block before.

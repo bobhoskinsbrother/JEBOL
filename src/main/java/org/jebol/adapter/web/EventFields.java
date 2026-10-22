@@ -1,6 +1,8 @@
 package org.jebol.adapter.web;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -165,6 +167,35 @@ final class EventFields {
         } catch (NumberFormatException notWholeNumber) {
             return Optional.empty();
         }
+    }
+
+    List<String> itemsIn(String field) {
+        return Optional.ofNullable(asPosted.get(field))
+                .filter(posted -> posted.startsWith("[") && posted.endsWith("]"))
+                .map(this::splitItems)
+                .orElse(List.of());
+    }
+
+    private List<String> splitItems(String posted) {
+        List<String> items = new ArrayList<>();
+        int at = skipWhitespaceIn(posted, 1);
+        while (at < posted.length() - 1) {
+            if (posted.charAt(at) == ',') {
+                at = skipWhitespaceIn(posted, at + 1);
+                continue;
+            }
+            int ends = findEndOfValue(posted, at);
+            if (ends < 0 || ends <= at) {
+                break;
+            }
+            items.add(posted.substring(at, ends).trim());
+            at = skipWhitespaceIn(posted, ends);
+        }
+        return items;
+    }
+
+    Optional<String> unquote(String item) {
+        return isQuoted(item) ? Optional.of(unescape(item, 1, item.length() - 1)) : Optional.empty();
     }
 
     private static boolean isQuoted(String posted) {

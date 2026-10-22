@@ -16,12 +16,14 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -40,6 +42,12 @@ import java.util.Set;
 public final class HttpSchemeActor extends DefaultNative implements ServesPortActions {
 
     private static final String ARGUMENT_NOTHING_CAN_FILL = "internal";
+
+    private static final String OCTETS_CONTENT_TYPE = "application/octet-stream";
+
+    private static final String MAP_CONTENT_TYPE = "application/json; charset=utf-8";
+
+    private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded; charset=utf-8";
 
     private final String scheme;
     private final HttpPort host;
@@ -77,6 +85,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         }
         return switch (action) {
             case "read" -> Optional.of(fetchThroughHost(port, arguments, refinements, evaluator));
+            case "write" -> Optional.of(sendThroughHost(port, arguments.get(1), refinements, evaluator));
             case "open" -> Optional.of(open(port));
             case "close" -> Optional.of(close(port));
             default -> Optional.empty();
@@ -109,6 +118,104 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         }
         requireAnswerRatherThanErrorPage(answer, evaluator);
         return answerBody(answer, asked);
+    }
+
+    private Value sendThroughHost(
+            PortValue port, Value data, Set<String> refinements, Evaluator evaluator) {
+
+        OutgoingRequest sent = readOutgoing(data, evaluator);
+        WhatWasAsked asked = WhatWasAsked.readFrom(List.of(port), refinements);
+        HttpPort.Answer answer = send(port, sent);
+        port.markOpen(true);
+        port.setField("data", BinaryValue.ofBytes(answer.body()));
+        Value body = sent.isAnsweredInText() && !asked.binary()
+                ? answerBody(answer, asked)
+                : BinaryValue.ofBytes(answer.body());
+        if (asked.all()) {
+            return BlockValue.of(List.of(IntegerValue.of(answer.status()), headersAsBlock(answer), body));
+        }
+        requireAnswerRatherThanErrorPage(answer, evaluator);
+        return body;
+    }
+
+    private OutgoingRequest readOutgoing(Value data, Evaluator evaluator) {
+        return switch (data) {
+            case BinaryValue octets -> new OutgoingRequest(OCTETS_CONTENT_TYPE, octets.octetsFromHere());
+            case MapValue fields -> new OutgoingRequest(MAP_CONTENT_TYPE, encodeAsJson(fields, evaluator));
+            case AnyBlockValue dialect -> readWriteDialect(dialect.remaining(), evaluator);
+            default -> new OutgoingRequest(FORM_CONTENT_TYPE,
+                    Molder.form(data).getBytes(StandardCharsets.UTF_8));
+        };
+    }
+
+    private OutgoingRequest readWriteDialect(List<Value> items, Evaluator evaluator) {
+        int at = 0;
+        String method = "POST";
+        if (at < items.size() && items.get(at) instanceof WordValue named) {
+            method = named.spelling();
+            at++;
+        }
+        Optional<String> path = Optional.empty();
+        if (at < items.size() && (items.get(at) instanceof FileValue || items.get(at) instanceof UrlValue)) {
+            path = Optional.of(((AnyStringValue) items.get(at)).text());
+            at++;
+        }
+        List<Value> headers = List.of();
+        if (at < items.size() && items.get(at) instanceof AnyBlockValue written) {
+            headers = written.remaining();
+            at++;
+        } else if (at < items.size() && items.get(at) instanceof MapValue written) {
+            headers = written.flatten();
+            at++;
+        }
+        byte[] content = at < items.size() ? readContent(items.get(at), evaluator) : new byte[0];
+        return new OutgoingRequest(method, path, readHeaderPairs(headers), content);
+    }
+
+    private byte[] readContent(Value given, Evaluator evaluator) {
+        return switch (given) {
+            case AnyStringValue text -> text.asOctets();
+            case BinaryValue octets -> octets.octetsFromHere();
+            case MapValue fields -> encodeAsJson(fields, evaluator);
+            default -> new byte[0];
+        };
+    }
+
+    private byte[] encodeAsJson(MapValue fields, Evaluator evaluator) {
+        Value encode = evaluator.systemContext().findSlotFor("encode").value();
+        Value written = evaluator.applyFunction(encode, List.of(WordValue.of("JSON"), fields));
+        return written.asOctets();
+    }
+
+    private List<String> readHeaderPairs(List<Value> written) {
+        List<String> flat = new ArrayList<>();
+        for (Value each : written) {
+            if (each instanceof AnyWordValue word) {
+                flat.add(word.spelling());
+            } else if (each instanceof AnyStringValue text) {
+                flat.add(text.text());
+            }
+        }
+        return flat;
+    }
+
+    private HttpPort.Answer send(PortValue port, OutgoingRequest sent) {
+        String url = sent.path().map(path -> path.contains("://") ? path : findOrigin(requestUrl(port)) + path)
+                .orElseGet(() -> requestUrl(port));
+        try {
+            return host.fetch(new HttpPort.Request(url, sent.method(), sent.headerNames(), sent.headerValues(),
+                    sent.content(), followsRedirects(port), httpTimeout(port)));
+        } catch (HttpPort.Refused refused) {
+            throw new Raised(ErrorValue.of(ErrorCategory.ACCESS,
+                    refused.errorId(), refused.getMessage(),
+                    StringValue.of(refused.subject())));
+        }
+    }
+
+    private String findOrigin(String url) {
+        int afterScheme = url.indexOf("://") + "://".length();
+        int pathStarts = url.indexOf('/', afterScheme);
+        return pathStarts < 0 ? url : url.substring(0, pathStarts);
     }
 
     private HttpPort.Answer fetch(PortValue port, WhatWasAsked asked) {
@@ -323,6 +430,35 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return held instanceof IntegerValue(long magnitude)
                 ? Optional.of(magnitude)
                 : Optional.empty();
+    }
+
+    private record OutgoingRequest(String method, Optional<String> path, List<String> headerPairs, byte[] content) {
+
+        private static final Set<String> TEXT_ANSWERED_METHODS = Set.of("GET", "POST", "PATCH");
+
+        OutgoingRequest(String contentType, byte[] content) {
+            this("POST", Optional.empty(), List.of("Content-Type", contentType), content);
+        }
+
+        List<String> headerNames() {
+            return everyOther(0);
+        }
+
+        List<String> headerValues() {
+            return everyOther(1);
+        }
+
+        boolean isAnsweredInText() {
+            return TEXT_ANSWERED_METHODS.contains(method.toUpperCase(Locale.ROOT));
+        }
+
+        private List<String> everyOther(int startingAt) {
+            List<String> picked = new ArrayList<>();
+            for (int pair = 0; pair + 1 < headerPairs.size(); pair += 2) {
+                picked.add(headerPairs.get(pair + startingAt));
+            }
+            return picked;
+        }
     }
 
     private record WhatWasAsked(

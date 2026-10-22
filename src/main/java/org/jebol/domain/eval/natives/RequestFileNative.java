@@ -53,12 +53,15 @@ public class RequestFileNative extends WindowNative {
                         textGivenFor("file", arguments, refinements),
                         textGivenFor("title", arguments, refinements),
                         filters);
+                if (chosen.isEmpty()) {
+                    return NoneValue.none();
+                }
                 if (refinements.contains("multi")) {
                     return BlockValue.of(chosen.stream()
                             .<Value>map(FileValue::of)
                             .toList());
                 }
-                return chosen.isEmpty() ? NoneValue.none() : FileValue.of(chosen.getFirst());
+                return FileValue.of(chosen.getFirst());
             });
         };
     }

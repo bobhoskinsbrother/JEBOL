@@ -57,6 +57,24 @@ class FieldsOfAScreenPostEventFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("a MIDI message that arrived names its connection and carries its bytes in base64")
+    void carriesAMidiArrival() {
+        PageEvent said = new PageEvent("""
+                {"type":"midi-arrived","connection":3,"octets":"kAB/"}""");
+
+        assertThat(said.isMidiArrival()).isTrue();
+        assertThat(said.readConnection()).contains(3);
+        assertThat(said.readOctets()).hasValueSatisfying(octets ->
+                assertThat(octets).containsExactly(0x90, 0x00, 0x7F));
+        assertThat(new PageEvent("""
+                {"type":"midi-arrived","connection":"3","octets":"not base64!"}""").readConnection()).isEmpty();
+        assertThat(new PageEvent("""
+                {"type":"midi-arrived","connection":3,"octets":"not base64!"}""").readOctets()).isEmpty();
+        assertThat(new PageEvent("""
+                {"type":"Midi-Arrived","connection":3}""").isMidiArrival()).isFalse();
+    }
+
+    @Test
     @DisplayName("a number is a number and a quoted one is not")
     void keepsNumbersAsNumbers() {
         assertThat(new EventFields("""

@@ -10,6 +10,7 @@ import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.UnsetValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,10 +38,11 @@ public class BrowseNative extends WindowNative {
             granted.require(HostService.WINDOWS);
             evaluator.policies().require(PolicyClass.BROWSE, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             return runThroughWindows(() -> {
-                if (arguments.getFirst() instanceof AnyStringValue target) {
-                    evaluator.ports().windows().browse(target.text());
+                if (arguments.getFirst() instanceof AnyStringValue target
+                        && !evaluator.ports().windows().browse(target.text())) {
+                    return NoneValue.none();
                 }
-                return NoneValue.none();
+                return UnsetValue.unset();
             });
         };
     }

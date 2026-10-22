@@ -189,10 +189,24 @@ public final class BrowserScreen extends GobScreen {
     }
 
 
+    @Override
+    public void takeTyping(String heading) {
+        viewer.takeTyping(heading);
+    }
+
+    @Override
+    public void releaseTyping() {
+        viewer.releaseTyping();
+    }
+
     public interface Viewer {
         boolean isConnected();
         void paint(List<DrawingCommand> painting);
         default void takePostedLines() {
+        }
+        default void takeTyping(String heading) {
+        }
+        default void releaseTyping() {
         }
     }
 

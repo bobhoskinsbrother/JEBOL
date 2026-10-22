@@ -156,6 +156,12 @@ public interface ScreenPort {
     default void useDrawDialect(Value dialect) {
     }
 
+    default void takeTyping(String heading) {
+    }
+
+    default void releaseTyping() {
+    }
+
     /** Why the screen refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
 

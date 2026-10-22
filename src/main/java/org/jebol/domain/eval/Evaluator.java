@@ -20,7 +20,7 @@ public final class Evaluator {
 
     private static final int IDENTITY_BEFORE_FIRST_CIPHER = 2000;
 
-    private final OutputPort output;
+    private final UnfinishedLine output;
     private final Context systemContext;
 
     private Context runtimeContext;
@@ -167,7 +167,7 @@ public final class Evaluator {
         this.construction = construction;
         this.makerSource = makerSource;
         this.wording = new ErrorWording(systemContext);
-        this.output = output;
+        this.output = new UnfinishedLine(output);
         this.maximumDepth = maximumDepth;
         this.interruption = interruption;
         this.checkEvery = checkEvery;
@@ -184,6 +184,10 @@ public final class Evaluator {
             output.write(text);
             copyingTo.write(text);
         };
+    }
+
+    public String readUnfinishedLine() {
+        return output.read();
     }
 
     public void alsoWriteTo(OutputPort second) {

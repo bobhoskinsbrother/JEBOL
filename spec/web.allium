@@ -1,0 +1,531 @@
+-- allium: 3
+--
+-- JEBOL: what a page does with each need a script has.
+--
+-- Scope: the services a browser page fills behind ports the core already
+-- owns -- the dialogs, the clipboard, pictures, MIDI, sending a body over
+-- HTTP, and a line typed at the console -- and the round trip the page and
+-- the interpreter use to reach each other. The interpreter runs in a Web
+-- Worker, and a worker has no elements, no clipboard and no MIDI, so most of
+-- these are asked of the page and answered by it.
+--
+-- Excludes:
+--   - Raw connections, other programs, the launch environment and a list of
+--     certificate authorities. A page has none of them; embed.allium's
+--     ABrowserOffersWhatItsPageCan marks them unavailable.
+--   - A task's body, which runs nowhere on a page (decision 30).
+--   - How a picture is painted. A decoded image is pixels, and the screen
+--     paints pixels the same way whatever format they came from.
+--
+-- Dependencies: HostService, ServiceRefusal, WindowRequest and
+-- FileChoiceRequest in embed.allium; the screen forms and each screen's
+-- dialogs in screen.allium.
+--
+-- This file is the one Android's spec will sit beside: a phone has the same
+-- needs and a different control for each.
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- What the interpreter asks the page for. Each is one ask and one answer.
+enum PageAskKind {
+    a_colour             -- the browser's colour control
+    | files_to_open      -- the browser's file chooser, one file or several
+    | a_folder_to_open   -- the browser's folder chooser, the whole tree
+    | a_file_to_save     -- the browser's save picker, or a download
+    | a_page_to_open     -- a new tab
+    | clipboard_text     -- what the operator last copied
+    | clipboard_write    -- putting text where the operator can paste it
+    | midi_ports         -- the instruments the browser can reach
+    | midi_open          -- open an input, an output, or both
+    | midi_send          -- send a message to an opened output
+    | midi_close         -- close what was opened
+    | a_saved_file_sent  -- the bytes of a file saved through the page,
+                         -- sent out when the file is finished with
+}
+
+-- How the page answered an ask. Three answers, and a script can tell all
+-- three apart: the operator said no, the browser could not, or here it is.
+enum PageAnswerKind {
+    given                -- the page did what was asked and says what came of it
+    | declined           -- the operator said no: dismissed the prompt,
+                         -- cancelled the picker, or denied a permission
+    | refused            -- the browser could not do it at all: no such API,
+                         -- or a setting that blocks it
+}
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- One ask crossing from the interpreter to the page. The interpreter waits
+-- for the answer; nothing else the script does happens until it comes.
+entity PageAsk {
+    kind: PageAskKind
+    number: Integer              -- counts from one, never reused by a page
+    needs_a_gesture: Boolean     -- shown behind the page's prompt
+    answer: PageAnswerKind?
+    answered: answer != null
+}
+
+-- An ask is answered once, and an answer is never changed afterwards.
+invariant AnAnswerIsNeverReplaced {
+    for ask in PageAsk:
+        ask.answered implies the_answer_is_the_first_the_page_gave(ask)
+}
+
+-- A file the operator chose, copied into the page's own store.
+--
+-- The store is the page's private filesystem and it outlives a reload, so a
+-- copy taken today is still there tomorrow; the folder number keeps two
+-- picks of the same name apart for as long as the store holds them.
+entity PickedFile {
+    pick_number: Integer         -- which pick it came from
+    name_as_chosen: String       -- the name the file had where the operator chose it
+    path_in_store: String        -- /picked/<pick_number>/<name_as_chosen>
+}
+
+-- A file the operator chose a place to save to, through the page.
+entity PageSave {
+    pick_number: Integer
+    name_as_chosen: String
+    path_in_store: String
+    sent_out_by: SaveDelivery
+}
+
+-- Where a saved file's bytes go when the script finishes with it.
+enum SaveDelivery {
+    the_chosen_file      -- the browser's save picker gave a file to write
+    | a_download         -- the browser has no save picker, so the bytes are
+                         -- a download the browser saves where it saves them
+}
+
+------------------------------------------------------------
+-- The round trip
+------------------------------------------------------------
+
+-- An ask is posted to the page and the interpreter waits for its answer. The
+-- page answers each ask exactly once, naming the ask it answers, so two asks
+-- in flight can never take each other's answers.
+rule AnAskIsAnsweredOnceByNumber {
+    when: ask: PageAsk.created
+    requires: not ask.answered
+
+    ensures: the_page_is_posted(ask)
+    ensures: the_interpreter_waits_for_the_answer_numbered(ask.number)
+}
+
+-- An answer the interpreter is not waiting for is dropped. A page reloaded
+-- mid-ask, or an answer posted twice, would otherwise land on whichever ask
+-- happened to be waiting next.
+rule AnAnswerToNoAskIsDropped {
+    when: the_page_answers(number)
+    requires: not an_ask_is_waiting_numbered(number)
+
+    ensures: the_answer_is_dropped(number)
+}
+
+-- Every answer is one of three, and each reaches the script differently.
+-- Declining is none, which is what WindowPort promises for every dialog.
+-- Refusing is a catchable error whose message names why. The browser
+-- throwing, or the page having no handler for the ask at all, is a refusal
+-- too: never a hang and never an exception of the host's own.
+rule DecliningIsNoneAndRefusingIsAnError {
+    when: ask: PageAsk.answer becomes declined
+
+    ensures: the_script_gets_none(ask)
+}
+
+rule ARefusalIsACatchableErrorNamingWhy {
+    when: ask: PageAsk.answer becomes refused
+
+    ensures: the_script_gets_a_catchable_error(ask, the_reason_the_page_gave(ask))
+}
+
+-- An ask that needs a gesture is shown behind a prompt the page draws: a
+-- sentence saying what the script asks for, a button that does it, and a
+-- button that declines. A picker, a popup, and a clipboard read each refuse
+-- to open outside a click, and a script cannot click, so the operator's
+-- click on the prompt is the gesture the browser wants and the control opens
+-- inside it.
+rule AnAskThatNeedsAGestureIsShownBehindAPrompt {
+    when: ask: PageAsk.created
+    requires: ask.needs_a_gesture
+
+    ensures: the_prompt_says_what_was_asked(ask)
+    ensures: the_control_opens_inside_the_click_on_the_prompt(ask)
+}
+
+rule DismissingThePromptDeclines {
+    when: the_operator_dismisses_the_prompt(ask)
+
+    ensures: ask.answer = declined
+}
+
+------------------------------------------------------------
+-- Opening files
+------------------------------------------------------------
+
+-- REQUEST-FILE answers a path, as a real 3.22.5 does, and never the bytes.
+-- The page copies what the operator chose into its store, and the path
+-- answered names the copy, so a READ of it works like a READ of anything
+-- else the script keeps.
+--
+-- Each pick gets a fresh folder, numbered one more than the highest numbered
+-- folder already under /picked. The store survives a reload, so counting
+-- from one each time would put today's pick on top of yesterday's.
+rule AnOpenedFileIsCopiedIntoAFreshFolder {
+    when: the_operator_chooses_files(ask, chosen)
+    requires: ask.kind = files_to_open
+
+    let pick = one_more_than_the_highest_pick_in_the_store()
+
+    ensures:
+        for file in chosen:
+            PickedFile.created(
+                pick_number: pick,
+                name_as_chosen: file.name,
+                path_in_store: the_path("/picked/", pick, "/", file.name))
+    ensures: the_bytes_in_the_store_are_the_bytes_chosen(chosen)
+}
+
+-- One file answers one path. /MULTI lets the chooser take several, puts them
+-- side by side in the one pick's folder, and answers a block of paths in the
+-- order the browser listed them.
+rule MultiAnswersABlockOfPaths {
+    when: the_operator_chooses_files(ask, chosen)
+    requires: ask.kind = files_to_open
+    requires: the_script_asked_for_several(ask)
+
+    ensures: the_script_gets_a_block_of(the_paths_of(chosen))
+}
+
+-- Cancelling answers none, with /MULTI too. The C answers R_NONE whenever the
+-- chooser came back empty, whatever the refinements; an empty block would
+-- be a different answer, and a script testing `none? files` would take it
+-- for a choice of nothing.
+rule ACancelledChooserIsNoneWithMultiToo {
+    when: ask: PageAsk.answer becomes declined
+    requires: ask.kind = files_to_open
+
+    ensures: the_script_gets_none(ask)
+}
+
+-- /FILTER becomes the chooser's list of what it accepts. A pattern of the
+-- form `*.ext` is the suffix `.ext`; a pattern that matches everything
+-- leaves the chooser unrestricted; and a pattern a browser cannot express
+-- is dropped, as AFilterTheHostCannotHonourIsAppliedAsFarAsItGoes in
+-- embed.allium says for every host. The names in the filter list are for a
+-- desktop chooser's menu and a browser has no menu to put them in.
+rule AFilterBecomesWhatTheChooserAccepts {
+    when: script_asks_the_operator_to_choose_a_file(run, request)
+    requires: the_screen_is_a_page(run)
+
+    ensures: the_chooser_accepts(the_suffixes_in(request.filters))
+}
+
+-- REQUEST-DIR copies the whole folder the operator chose, its tree intact,
+-- into its pick's folder, and answers that directory: /picked/3/photos/.
+rule AnOpenedFolderIsCopiedWhole {
+    when: the_operator_chooses_a_folder(ask, folder)
+    requires: ask.kind = a_folder_to_open
+
+    let pick = one_more_than_the_highest_pick_in_the_store()
+
+    ensures: every_file_under(folder) = every_file_under(
+        the_path("/picked/", pick, "/", folder.name, "/"))
+    ensures: the_script_gets_the_directory(
+        the_path("/picked/", pick, "/", folder.name, "/"))
+}
+
+------------------------------------------------------------
+-- Saving a file
+------------------------------------------------------------
+
+-- REQUEST-FILE/SAVE answers a path in the store, in a fresh pick folder,
+-- under the name the operator chose. A write to that path goes into the
+-- store like any other write, so reading back what was saved works.
+--
+-- Where the browser has a save picker it opens inside the prompt's click,
+-- and the operator chooses the file there and then. Where it has none --
+-- every Firefox and every Safari -- the name answered is the one the script
+-- suggested, or the name the prompt offers when it suggested none.
+rule SavingAnswersAPathInTheStore {
+    when: the_operator_chooses_where_to_save(ask, name)
+    requires: ask.kind = a_file_to_save
+
+    let pick = one_more_than_the_highest_pick_in_the_store()
+
+    ensures: PageSave.created(
+        pick_number: pick,
+        name_as_chosen: name,
+        path_in_store: the_path("/picked/", pick, "/", name),
+        sent_out_by: if the_browser_has_a_save_picker(): the_chosen_file
+                     else: a_download)
+}
+
+-- The bytes go out when the file is finished with: when a one-shot WRITE has
+-- written it, or when a port opened on it is closed. Never on every write --
+-- a download per write would leave the operator with a folder of partial
+-- copies, and a file written in pieces would be sent once for each piece.
+rule ASavedFileIsSentWhenFinishedWith {
+    when: the_script_finishes_writing(save)
+
+    ensures: PageAsk.created(kind: a_saved_file_sent, needs_a_gesture: false)
+    ensures: the_bytes_sent_are_the_bytes_in_the_store(save)
+}
+
+-- A save's file stays in the store after it is sent, so a script that reads
+-- back what it saved reads what it wrote.
+invariant ASavedFileStaysInTheStore {
+    for save in PageSave:
+        the_store_holds(save.path_in_store)
+}
+
+------------------------------------------------------------
+-- Opening a page
+------------------------------------------------------------
+
+-- BROWSE opens its target in a new tab, inside the click on the prompt,
+-- which is the gesture a popup blocker wants. It never replaces the tab the
+-- app is in: that would end the app.
+--
+-- A target that is a file in the store opens as that file's bytes, since a
+-- tab cannot reach into the page's private store by name.
+rule BrowseOpensANewTabInsideTheClick {
+    when: script_browses(run, target)
+    requires: the_screen_is_a_page(run)
+
+    ensures: PageAsk.created(kind: a_page_to_open, needs_a_gesture: true)
+    ensures: the_tab_the_app_is_in_stays(run)
+}
+
+-- When the tab opens BROWSE answers what a real 3.22.5 answers, which is
+-- unset: `browse none` is unset and so is a browse that worked.
+rule ABrowseThatOpenedIsUnset {
+    when: ask: PageAsk.answer becomes given
+    requires: ask.kind = a_page_to_open
+
+    ensures: the_script_gets_unset(ask)
+}
+
+-- The operator dismissing the prompt is none, like every refusal by the
+-- operator. A browser that blocks the tab anyway -- a setting that blocks
+-- every popup -- is the browser refusing rather than the operator, so it is
+-- a catchable error saying the browser blocked the new window.
+rule ABlockedTabIsTheBrowserRefusing {
+    when: the_browser_blocks_the_new_tab(ask)
+    requires: ask.kind = a_page_to_open
+
+    ensures: ask.answer = refused
+    ensures: the_reason_the_page_gave(ask) = "the browser blocked the new window"
+}
+
+------------------------------------------------------------
+-- The clipboard
+------------------------------------------------------------
+
+-- A page reads the clipboard behind the prompt, because a browser refuses a
+-- read outside a gesture. A write is tried at once and goes behind the
+-- prompt only where the browser wants a gesture for it, so a script that
+-- copies does not stop to ask the operator in a browser that would not have.
+rule ReadingTheClipboardGoesBehindThePrompt {
+    when: script_reads_the_clipboard(run)
+    requires: the_screen_is_a_page(run)
+
+    ensures: PageAsk.created(kind: clipboard_text, needs_a_gesture: true)
+}
+
+rule WritingTheClipboardAsksForAGestureOnlyWhereTheBrowserWantsOne {
+    when: script_writes_the_clipboard(run, text)
+    requires: the_screen_is_a_page(run)
+
+    ensures: PageAsk.created(kind: clipboard_write,
+        needs_a_gesture: the_browser_wants_a_gesture_to_write())
+}
+
+-- A refused permission is the operator's answer, so it is none, for a read
+-- and for a write.
+rule ARefusedClipboardPermissionIsNone {
+    when: the_browser_denies_clipboard_permission(ask)
+
+    ensures: ask.answer = declined
+}
+
+------------------------------------------------------------
+-- Sending a body over HTTP
+------------------------------------------------------------
+
+-- WRITE to an http url sends the data and answers the response, as Rebol's
+-- own prot-http does. A string goes as a form, url-encoded; a binary as
+-- octets; a map as JSON; and a block is the write dialect -- a method, then
+-- optionally a path, headers and content. The response is read the way READ
+-- reads one: decoded where it is text, an error at a status of 400 or more,
+-- and status, headers and body with /ALL.
+rule WritingToAnHttpUrlSendsTheData {
+    when: script_writes_to_an_http_url(run, url, data)
+    requires: web in run.interpreter.bounds.granted_services
+
+    ensures: the_request_crosses_as(a_request_carrying(url, data))
+    ensures: the_script_gets(the_response_read_as_read_reads_it())
+}
+
+-- The method a string, binary or map sends is POST, and the content type is
+-- the one prot-http writes for it.
+rule WhatEachKindOfDataSends {
+    when: script_writes_to_an_http_url(run, url, data)
+    requires: not data_is_a_block(data)
+
+    ensures: the_method_sent() = "POST"
+    ensures: the_content_type_sent() =
+        if data_is_binary(data): "application/octet-stream"
+        else if data_is_a_map(data): "application/json; charset=utf-8"
+        else: "application/x-www-form-urlencoded; charset=utf-8"
+}
+
+------------------------------------------------------------
+-- Pictures
+------------------------------------------------------------
+
+-- A page decodes a picture with the browser's own decoder, asked not to
+-- premultiply and not to convert colour spaces, so the pixels a script
+-- reads are the file's own. What it can read is the browser's answer.
+rule APageDecodesWithTheBrowser {
+    when: script_decodes_an_image(run, bytes, format)
+    requires: the_screen_is_a_page(run)
+    requires: the_browser_reads(format)
+
+    ensures: the_script_gets(the_pixels_the_browser_decoded(bytes))
+}
+
+-- A page encodes png and jpeg -- and webp, though no codec in the catalogue
+-- names it. The catalogue stays as the borrowed codec-image.reb has it, all
+-- six formats on every host, because which formats a browser reads is its
+-- own answer and a shorter list would be wrong in some browser.
+rule APageEncodesWhatItsCanvasWrites {
+    when: script_encodes_an_image(run, pixels, format)
+    requires: the_screen_is_a_page(run)
+    requires: format in {"png", "jpeg", "webp"}
+
+    ensures: the_script_gets(the_bytes_the_canvas_wrote(pixels, format))
+}
+
+-- A format the browser cannot do -- dds always, tiff outside Safari, writing
+-- gif or bmp anywhere -- is a catchable error at the moment it is used,
+-- naming the format and the browser.
+rule AFormatTheBrowserCannotDoIsACatchableError {
+    when: script_uses_an_image_format(run, format)
+    requires: the_screen_is_a_page(run)
+    requires: not the_browser_can(format)
+
+    ensures: the_script_gets_a_catchable_error_naming(format, "a browser")
+}
+
+-- A lossless picture decodes to the same pixels in every browser. A lossy
+-- one may differ by browser, and where it does the difference is recorded
+-- beside the test that measures it.
+invariant ALosslessPictureIsTheSameInEveryBrowser {
+    for picture in lossless_pictures():
+        the_pixels_in_chrome(picture) = the_pixels_in_firefox(picture)
+}
+
+------------------------------------------------------------
+-- MIDI
+------------------------------------------------------------
+
+-- A page reaches MIDI through the page, because a worker has no
+-- requestMIDIAccess. The browser's permission prompt is the operator's to
+-- answer, and a denial is none: the instruments the script lists are none
+-- rather than an empty list, so it can tell "you said no" from "nothing is
+-- plugged in".
+rule APageAsksForMidiThroughThePage {
+    when: script_lists_midi_devices(run)
+    requires: midi in run.interpreter.bounds.granted_services
+    requires: the_screen_is_a_page(run)
+
+    ensures: PageAsk.created(kind: midi_ports, needs_a_gesture: false)
+}
+
+rule ADeniedMidiPermissionIsNone {
+    when: ask: PageAsk.answer becomes declined
+    requires: ask.kind = midi_ports
+
+    ensures: the_script_gets_none(ask)
+}
+
+------------------------------------------------------------
+-- The shipped page's line
+------------------------------------------------------------
+
+-- INPUT on a page reads a line from the console form screen.allium
+-- describes: drawn on the screen, the same on every screen, and the same
+-- form the gate's page uses, so the gate tests what ships. A page with no
+-- element to type into would otherwise wait for a line that never arrives.
+rule APagesConsoleReadsThroughTheLineForm {
+    when: script_reads_a_line(run)
+    requires: the_screen_is_a_page(run)
+
+    ensures: the_line_form_is_shown(run)
+}
+
+-- What a script prints stays in view beside the screen, never below it, so
+-- an operator answering a form can read what the script said before asking.
+rule WhatAScriptPrintsStaysInView {
+    when: script_prints(run, text)
+    requires: the_screen_is_a_page(run)
+
+    ensures: the_printed_text_is_visible_with_the_screen(run, text)
+}
+
+-- While a form is open the page holds the focus in a hidden text input
+-- beneath it, so a phone shows its keyboard and an input method -- the way
+-- Chinese or Japanese is typed -- has somewhere to compose. What it composes
+-- reaches the form as the characters it settled on. The input is named by the
+-- form's heading, so a screen reader reads out the question being asked.
+rule AFormOnAPageTypesThroughAHiddenInput {
+    when: a_form_opens(run)
+    requires: the_screen_is_a_page(run)
+
+    ensures: the_hidden_input_holds_the_focus(run)
+    ensures: what_is_composed_arrives_as_its_characters(run)
+    ensures: the_hidden_input_is_named_by_the_form_heading(run)
+}
+
+------------------------------------------------------------
+-- Surface
+------------------------------------------------------------
+
+surface ThePageOnTheOtherSide {
+    facing page: PageAsk
+
+    provides:
+        Ask(page)
+        Answer(page)
+
+    exposes:
+        PageAskKind
+        PageAnswerKind
+        SaveDelivery
+
+    @guarantee TheCoreNeverLearnsItIsOnAPage
+        -- Every service here sits behind a port the core already owns:
+        -- WindowPort, ClipboardPort, ImagePort, MidiDevices, HttpPort and the
+        -- console. The page, the prompt and the round trip are adapters'
+        -- business, and a script asking for a colour on a page writes what it
+        -- writes on a desktop.
+
+    @guarantee OneRoundTripTwoTransports
+        -- The asks and answers have one shape, and two transports carry it:
+        -- postMessage between a worker and its page, and the command line's
+        -- --screen=web stream down with each answer posted back. The shapes
+        -- are tested on the JVM; each transport is tested where it runs.
+}
+
+------------------------------------------------------------
+-- Open questions
+------------------------------------------------------------
+
+open question "A folder the operator chose that holds no files gives a browser nothing to read its name from: webkitdirectory lists files, each with a path that starts with the folder's name, and an empty folder lists none. This spec answers the pick's own folder, empty, rather than none, because the operator did choose something. Whether a script would rather be told the folder's name is the question, and no browser offers a way to learn it."
+
+open question "Decoding through a 2D canvas stores pixels premultiplied, so a pixel whose alpha is neither 0 nor 255 can come back a step away from the file's own value even with premultiplyAlpha set to none. ImageDecoder would avoid it and is not in every browser. Lossless tests use opaque or fully transparent pixels; is a partly transparent pixel worth a second decoder?"

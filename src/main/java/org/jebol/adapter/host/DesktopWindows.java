@@ -23,7 +23,7 @@ public final class DesktopWindows implements WindowPort {
     }
 
     @Override
-    public void browse(String target) {
+    public boolean browse(String target) {
         checkIsNotHeadless();
         if (!Desktop.isDesktopSupported() || isDesktopBrowseNotSupported()) {
             throw new Denied("no-service", "this machine has no browser to open");
@@ -33,6 +33,7 @@ public final class DesktopWindows implements WindowPort {
                     ? new File(target).toURI()
                     : new URI(target);
             Desktop.getDesktop().browse(uri);
+            return true;
         } catch (URISyntaxException malformed) {
             throw new Denied("invalid-arg", target + " is not something a browser can open");
         } catch (IOException refused) {

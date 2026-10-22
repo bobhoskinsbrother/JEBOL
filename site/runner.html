@@ -6,46 +6,49 @@
 <style>
   html, body { margin: 0; height: 100%; background: #101216; }
   canvas { display: block; }
-  #out { white-space: pre-wrap; color: #d8dee9; font: 12px monospace; margin: 0; }
+  #out { white-space: pre-wrap; color: #d8dee9; font: 12px monospace; margin: 0;
+         position: fixed; left: 0; right: 0; bottom: 0; max-height: 30vh; overflow-y: auto;
+         padding: 6px 8px; background: rgba(16, 18, 22, 0.85); }
   @font-face { font-family: 'Jebol Carried'; src: url('NotoSans-Regular.ttf'); }
 </style>
 </head>
 <body>
 <canvas id="screen"></canvas>
+<script src="jebol-asks.js"></script>
 <script>
 const canvas = document.getElementById('screen');
 const brush = canvas.getContext('2d');
-const thePageOpenedAt = performance.now();
+const pageOpenedAt = performance.now();
 
-let theLastPicture = null;
+let lastPicture = null;
 
 function paint(picture) {
-  theLastPicture = picture;
+  lastPicture = picture;
   canvas.width = picture.wide;
   canvas.height = picture.high;
   brush.clearRect(0, 0, picture.wide, picture.high);
   for (const call of picture.paint) {
-    paintOneCall(call);
+    paintCall(call);
   }
 }
 
-function paintOneCall(call) {
+function paintCall(call) {
   brush.save();
   brush.beginPath();
   brush.rect(call.clip.across, call.clip.down, call.clip.wide, call.clip.high);
   brush.clip();
   if (call['clip-shape'] && call['clip-shape'].length) {
-    clipToTheShape(call);
+    clipToShape(call);
   }
   brush.globalAlpha = call.opacity / 255;
   if (call.type === 'fill') {
-    fillThePath(call);
+    fillPath(call);
   } else if (call.type === 'stroke') {
-    strokeThePath(call);
+    strokePath(call);
   } else if (call.type === 'picture') {
     showPicture(call);
   } else if (call.type === 'text') {
-    writeTheText(call);
+    writeText(call);
   }
   brush.restore();
 }
@@ -55,7 +58,7 @@ function isIdentity(t) {
       && t[3] === 1 && t[4] === 0 && t[5] === 0);
 }
 
-function clipToTheShape(call) {
+function clipToShape(call) {
   const inside = asPath(call['clip-shape']);
   if (isIdentity(call.transform)) {
     brush.clip(inside);
@@ -76,13 +79,13 @@ const capNames = { 'butt': 'butt', 'square': 'square', 'rounded': 'round' };
 const joinNames = { 'miter': 'miter', 'miter-bevel': 'miter',
                     'round': 'round', 'bevel': 'bevel' };
 
-function fillThePath(call) {
+function fillPath(call) {
   applyTransform(call);
   brush.fillStyle = call.gradient ? asGradient(call.gradient) : call.colour;
   brush.fill(asPath(call.path), call.rule === 'even-odd' ? 'evenodd' : 'nonzero');
 }
 
-function strokeThePath(call) {
+function strokePath(call) {
   applyTransform(call);
   brush.strokeStyle = call.colour;
   brush.lineWidth = call.width;
@@ -103,12 +106,12 @@ function showPicture(call) {
   brush.drawImage(held, call.across, call.down, call['draw-wide'], call['draw-high']);
 }
 
-function fontOf(piece) {
+function fontFor(piece) {
   return (piece.italic ? 'italic ' : '') + (piece.bold ? 'bold ' : '')
       + piece.size + 'px "Jebol Carried", sans-serif';
 }
 
-function writeTheText(call) {
+function writeText(call) {
   if (call.selection && call.selection.length) {
     brush.fillStyle = call['selection-colour'];
     for (const patch of call.selection) {
@@ -116,20 +119,20 @@ function writeTheText(call) {
     }
   }
   if (call.shadow) {
-    writeThePieces(call.lines, call.shadow.across, call.shadow.down, call.shadow.colour);
+    writePieces(call.lines, call.shadow.across, call.shadow.down, call.shadow.colour);
   }
-  writeThePieces(call.lines, 0, 0, null);
+  writePieces(call.lines, 0, 0, null);
   if (call.caret) {
     brush.fillStyle = call.caret.colour;
     brush.fillRect(call.caret.across, call.caret.top, call.caret.wide, call.caret.high);
   }
 }
 
-function writeThePieces(lines, movedAcross, movedDown, everyPieceIn) {
+function writePieces(lines, movedAcross, movedDown, colourOverride) {
   for (const line of lines) {
     for (const piece of line.pieces) {
-      brush.font = fontOf(piece);
-      brush.fillStyle = everyPieceIn || piece.colour;
+      brush.font = fontFor(piece);
+      brush.fillStyle = colourOverride || piece.colour;
       brush.fillText(piece.text, piece.across + movedAcross, piece.baseline + movedDown);
     }
   }
@@ -189,66 +192,70 @@ function asImageData(step) {
       step['pixel-wide'] || step.wide, step['pixel-high'] || step.high);
 }
 
-const out = [];
-const shown = document.createElement('pre');
-shown.id = 'out';
-shown.textContent = '';
+const printed = [];
+const output = document.createElement('pre');
+output.id = 'out';
+output.textContent = '';
 
-const theAppFiles = __THE_APP_FILES__;
+function print(text) {
+  printed.push(text);
+  output.textContent = printed.join('');
+  output.scrollTop = output.scrollHeight;
+}
 
-function theAppFilesAreInTheStore() {
-  return Promise.all(theAppFiles.map(name =>
+const appFiles = __APP_FILES__;
+
+function storeAppFiles() {
+  return Promise.all(appFiles.map(name =>
       fetch(name).then(response => response.text()).then(text =>
-          theWorker.postMessage({ type: 'file', path: name, text: text }))));
+          worker.postMessage({ type: 'file', path: name, text: text }))));
 }
 
-function theEntryScript() {
-  return fetch('__THE_APP_ENTRY__').then(response => response.text());
+function fetchEntryScript() {
+  return fetch('__APP_ENTRY__').then(response => response.text());
 }
 
-function theWorkerSays(message) {
+function hearWorker(message) {
   const said = typeof message.data === 'string' ? JSON.parse(message.data) : message.data;
   if (said.type === 'paint') {
     paint(said.picture);
+  } else if (said.type === 'ask') {
+    asks.take(said);
+  } else if (said.type === 'typing') {
+    asks.holdTyping(said.held, said.heading);
   } else if (said.type === 'printed') {
-    out.push(said.text);
-    shown.textContent = out.join('');
+    print(said.text);
   } else if (said.type === 'booted') {
-    out.push('booted in ' + Math.round(performance.now() - thePageOpenedAt) + ' ms\n');
-    shown.textContent = out.join('');
-    theAppFilesAreInTheStore()
-        .then(() => theEntryScript())
-        .then(source => theWorker.postMessage({ run: source }));
+    print('booted in ' + Math.round(performance.now() - pageOpenedAt) + ' ms\n');
+    storeAppFiles()
+        .then(() => fetchEntryScript())
+        .then(source => worker.postMessage({ run: source }));
   } else if (said.type === 'loaded') {
-    out.push('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '
+    print('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '
         + said.mainMs + ' ms\n');
-    shown.textContent = out.join('');
   } else if (said.type === 'finished') {
-    out.push(said.text);
-    shown.textContent = out.join('');
+    print(said.text);
   } else if (said.type === 'failed') {
-    out.push('failed ' + said.text);
-    shown.textContent = out.join('');
+    print('failed ' + said.text);
   }
 }
 
-const theWorker = new Worker('jebol-worker.js');
-theWorker.onmessage = theWorkerSays;
-theWorker.onerror = problem => {
-  out.push('worker error ' + problem.message);
-  shown.textContent = out.join('');
-};
-document.body.appendChild(shown);
+const worker = new Worker('jebol-worker.js');
+worker.onmessage = hearWorker;
+worker.onerror = problem => print('worker error ' + problem.message);
+document.body.appendChild(output);
 
-function tellTheWorker(fields) {
-  theWorker.postMessage(fields);
+function postToWorker(fields) {
+  worker.postMessage(fields);
 }
 
-function sayHowBigWeAre() {
-  tellTheWorker({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
+const asks = new JebolAsks({ answer: postToWorker, tell: postToWorker, key: postToWorker });
+
+function reportViewportSize() {
+  postToWorker({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
 }
 
-const keysThatTypeNothing = {
+const namedKeys = {
   PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',
   ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down',
   Insert: 'insert',
@@ -256,80 +263,80 @@ const keysThatTypeNothing = {
   F7: 'f7', F8: 'f8', F9: 'f9', F10: 'f10', F11: 'f11', F12: 'f12',
   Shift: 'shift', Control: 'control', Alt: 'alt', Pause: 'pause', CapsLock: 'capital'
 };
-const keysThatTypeAControlCharacter = {
+const controlCharacters = {
   Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Delete: 127
 };
 
-function tellWhereThePointerIs(kind, pointer) {
-  tellTheWorker({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
+function reportPointer(kind, pointer) {
+  postToWorker({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
 }
 
-const pixelsInANotch = 100;
-const linesInANotch = 3;
-const aLineOfScrolling = 30;
-const aPageOfScrolling = 10;
+const pixelsPerNotch = 100;
+const linesPerNotch = 3;
+const lineScroll = 30;
+const pageScroll = 10;
 
 let turned = 0;
 
-function theNotchesIn(wheel) {
+function countNotches(wheel) {
   if (wheel.deltaMode === 1) {
-    return wheel.deltaY / linesInANotch;
+    return wheel.deltaY / linesPerNotch;
   }
   if (wheel.deltaMode === 2) {
     return wheel.deltaY;
   }
-  return wheel.deltaY / pixelsInANotch;
+  return wheel.deltaY / pixelsPerNotch;
 }
 
-function tellTheWheel(wheel) {
+function reportWheel(wheel) {
   wheel.preventDefault();
-  turned += theNotchesIn(wheel);
+  turned += countNotches(wheel);
   const whole = Math.trunc(turned);
   if (whole === 0) {
     return;
   }
   turned -= whole;
   const wholePages = wheel.ctrlKey || wheel.deltaMode === 2;
-  tellTheWorker({
+  postToWorker({
     type: wholePages ? 'scroll-page' : 'scroll-line',
     across: Math.round(wheel.offsetX),
     down: Math.round(wheel.offsetY),
-    amount: -whole * (wholePages ? aPageOfScrolling : aLineOfScrolling)
+    amount: -whole * (wholePages ? pageScroll : lineScroll)
   });
 }
 
-function theCharacterTyped(pressed) {
-  if (pressed.key in keysThatTypeAControlCharacter) {
-    return keysThatTypeAControlCharacter[pressed.key];
+function typedCodePoint(pressed) {
+  if (pressed.key in controlCharacters) {
+    return controlCharacters[pressed.key];
   }
   return [...pressed.key].length === 1 ? pressed.key.codePointAt(0) : null;
 }
 
-function tellTheKey(pressed, typing, naming) {
-  if (pressed.key in keysThatTypeNothing) {
-    tellTheWorker({ type: naming, named: keysThatTypeNothing[pressed.key] });
+function reportKey(pressed, typing, naming) {
+  if (pressed.key in namedKeys) {
+    postToWorker({ type: naming, named: namedKeys[pressed.key] });
     return;
   }
-  const typed = theCharacterTyped(pressed);
+  const typed = typedCodePoint(pressed);
   if (typed !== null) {
-    tellTheWorker({ type: typing, code: typed });
+    postToWorker({ type: typing, code: typed });
   }
 }
 
-window.addEventListener('resize', sayHowBigWeAre);
-canvas.addEventListener('mousedown', pointer => tellWhereThePointerIs('down', pointer));
-canvas.addEventListener('mouseup', pointer => tellWhereThePointerIs('up', pointer));
-canvas.addEventListener('mousemove', pointer => tellWhereThePointerIs('move', pointer));
-canvas.addEventListener('wheel', tellTheWheel, { passive: false });
-window.addEventListener('keydown', pressed => tellTheKey(pressed, 'key', 'control'));
-window.addEventListener('keyup', pressed => tellTheKey(pressed, 'key-up', 'control-up'));
-window.addEventListener('beforeunload', () => tellTheWorker({ type: 'close' }));
+window.addEventListener('resize', reportViewportSize);
+canvas.addEventListener('mousedown', pointer => reportPointer('down', pointer));
+canvas.addEventListener('mouseup', pointer => reportPointer('up', pointer));
+canvas.addEventListener('mousemove', pointer => reportPointer('move', pointer));
+canvas.addEventListener('wheel', reportWheel, { passive: false });
+window.addEventListener('keydown', pressed => reportKey(pressed, 'key', 'control'));
+window.addEventListener('keyup', pressed => reportKey(pressed, 'key-up', 'control-up'));
+window.addEventListener('beforeunload', () => postToWorker({ type: 'close' }));
 
 document.fonts.load('12px "Jebol Carried"').then(() => {
-  if (theLastPicture) paint(theLastPicture);
+  if (lastPicture) paint(lastPicture);
 });
 
-sayHowBigWeAre();
+reportViewportSize();
 </script>
 </body>
 </html>

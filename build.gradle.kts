@@ -57,18 +57,21 @@ tasks.named<JavaCompile>("compileTeavmJava") {
     options.release.set(21)
 }
 
-// The worker's shell script is the page's other half and is served beside the
-// module it loads, so it is copied where the WebAssembly build writes.
-val copyTheWorkerScript = tasks.register<Copy>("copyTheWorkerScript") {
+val copyWorkerScript = tasks.register<Copy>("copyWorkerScript") {
     group = "build"
     description = "Put the worker's shell script beside the WebAssembly module"
     from("src/teavm/js/jebol-worker.js")
     into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
 }
 
-// The font this build carries is fetched by the page and drawn with, so it is
-// served beside the page that asks for it.
-val copyTheCarriedFont = tasks.register<Copy>("copyTheCarriedFont") {
+val copyAsksScript = tasks.register<Copy>("copyAsksScript") {
+    group = "build"
+    description = "Put the page's script for the interpreter's asks beside the WebAssembly module"
+    from("src/main/resources/jebol-page/jebol-asks.js")
+    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
+}
+
+val copyCarriedFont = tasks.register<Copy>("copyCarriedFont") {
     group = "build"
     description = "Put the font this build carries beside the WebAssembly module"
     from("src/main/resources/org/jebol/fonts/NotoSans-Regular.ttf")
@@ -76,16 +79,10 @@ val copyTheCarriedFont = tasks.register<Copy>("copyTheCarriedFont") {
 }
 
 tasks.named("buildWasmGC") {
-    dependsOn(copyTheWorkerScript, copyTheCarriedFont)
+    dependsOn(copyWorkerScript, copyAsksScript, copyCarriedFont)
 }
 
-// The static files a host can serve with no server code at all: a runner page
-// built around an app, the module and its loader, the worker's shell and the
-// font with its licence. The app is `-PsiteDir=my-app`, a directory of REBOL
-// whose main.reb is the entry and whose every file is fetched into the
-// worker's store before it runs; the shipped demo is examples/r3-gui, served
-// the same way. A directory with an index.html of its own keeps it.
-val assembleTheSite = tasks.register<Sync>("assembleTheSite") {
+val assembleSite = tasks.register<Sync>("assembleSite") {
     group = "build"
     description = "Assemble the static site: a runner page and the app it runs"
     dependsOn(tasks.named("buildWasmGC"))
@@ -96,7 +93,8 @@ val assembleTheSite = tasks.register<Sync>("assembleTheSite") {
     into(layout.buildDirectory.dir("site"))
     from(theApp)
     from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
-        include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "NotoSans-Regular.ttf")
+        include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "jebol-asks.js",
+            "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
     doLast {
@@ -114,8 +112,8 @@ val assembleTheSite = tasks.register<Sync>("assembleTheSite") {
         }
         site.resolve("index.html").writeText(
             theRunner.asFile.readText()
-                .replace("__THE_APP_FILES__", filesJson)
-                .replace("__THE_APP_ENTRY__", "main.reb"))
+                .replace("__APP_FILES__", filesJson)
+                .replace("__APP_ENTRY__", "main.reb"))
     }
 }
 
@@ -243,7 +241,7 @@ val endToEndTests = tasks.register<Test>("endToEndTests") {
         "jebol.webSite",
         layout.buildDirectory.dir("site").get().asFile.path,
     )
-    dependsOn(tasks.named("buildWasmGC"), assembleTheSite)
+    dependsOn(tasks.named("buildWasmGC"), assembleSite)
     outputs.upToDateWhen { false }
     mustRunAfter(functionalTests)
 }

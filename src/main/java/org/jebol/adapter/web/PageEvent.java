@@ -9,9 +9,11 @@ import java.util.Optional;
 
 final class PageEvent {
 
+    private final String posted;
     private final EventFields eventFields;
 
     PageEvent(String posted) {
+        this.posted = posted;
         this.eventFields = new EventFields(posted);
     }
 
@@ -23,12 +25,20 @@ final class PageEvent {
         return eventFields.readWholeNumber("wide").isPresent() && eventFields.readWholeNumber("high").isPresent();
     }
 
-    boolean isLine() {
-        return eventFields.text("type").filter("line"::equals).isPresent();
+    boolean isAnswer() {
+        return eventFields.text("type").filter("answer"::equals).isPresent();
     }
 
-    String readLine() {
-        return eventFields.text("text").orElse("");
+    boolean isMidiArrival() {
+        return eventFields.text("type").filter("midi-arrived"::equals).isPresent();
+    }
+
+    Optional<Integer> readConnection() {
+        return eventFields.readWholeNumber("connection");
+    }
+
+    Optional<byte[]> readOctets() {
+        return new PageAnswer(posted).octets("octets");
     }
 
     boolean isFile() {

@@ -143,9 +143,11 @@ class WebScreenServerFromTheSourceTest {
         void loadsNothingFromElsewhere() throws Exception {
             String page = get("").body();
 
-            assertThat(page).doesNotContain("<script src");
+            assertThat(page).doesNotContainPattern("src=.?(https?:)?//");
+            assertThat(page).doesNotContainPattern("url[(].?(https?:)?//");
             assertThat(page).doesNotContain("<link");
-            assertThat(page).doesNotContain("//cdn");
+            assertThat(page).contains("""
+                    <script src="/jebol-asks.js">""");
         }
     }
 

@@ -100,7 +100,8 @@ class DesktopWindowsTest {
         void modelsDecliningAsEmpty() {
             WindowPort declining = new WindowPort() {
                 @Override
-                public void browse(String target) {
+                public boolean browse(String target) {
+                    return false;
                 }
 
                 @Override

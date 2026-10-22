@@ -26,8 +26,7 @@ import java.util.Optional;
  */
 public interface WindowPort {
 
-    /** Opens a URL or a local file in a web browser. */
-    void browse(String target);
+    boolean browse(String target);
 
     /**
      * Asks the operator to choose a file, or empty if they declined.
@@ -96,7 +95,7 @@ public interface WindowPort {
     static WindowPort none() {
         return new WindowPort() {
             @Override
-            public void browse(String target) {
+            public boolean browse(String target) {
                 throw refuse();
             }
 

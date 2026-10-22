@@ -111,11 +111,11 @@ public final class Repl {
     static int runCommandLine(String[] arguments, BufferedReader typed,
                               PrintStream out, PrintStream errors, String startedIn) {
 
-        ChosenScreen.setHeadlessBasedOnWhetherScreenIsNeeded(arguments);
+        new ChosenScreen(arguments).chooseHeadlessMode();
 
         Path root = readRoot(arguments);
         RebolArguments asked = new RebolArguments(List.of(
-                argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutSwitch(arguments))));
+                argumentsWithoutJebolOnlySwitches(new ChosenScreen(arguments).withoutSwitch())));
         asked.script().ifPresent(script -> asked.nameScript(findAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = buildInterpreter(arguments, out, anythingWasAsked, root);
@@ -196,12 +196,8 @@ public final class Repl {
                 .withCertificateAuthority(cafile.isEmpty()
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));
-        if (ChosenScreen.isAskedFor(arguments)) {
-            ports = ports.withScreen(ChosenScreen.screenFor(
-                    arguments, out, anythingWasAsked, ports.carriedFiles()));
-            ports = ports.withWindows(ChosenScreen.windowPortFor(arguments));
-        }
-        return ports;
+        ChosenScreen chosen = new ChosenScreen(arguments);
+        return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
     private static void applyDataSwitch(

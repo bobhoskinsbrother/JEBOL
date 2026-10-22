@@ -63,6 +63,10 @@ public interface ConsolePort {
         return false;
     }
 
+    default boolean isTypedOnScreen() {
+        return false;
+    }
+
     /** A port that reads nothing, which is what a script gets by default. */
     static ConsolePort none() {
         return new ConsolePort() {

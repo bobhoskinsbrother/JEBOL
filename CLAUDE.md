@@ -192,8 +192,11 @@ matches. Helpers and every resource the three share are in `src/testFixtures`.
 `./gradlew test` and `./gradlew check` both run `allTests`, so no name runs
 less than it sounds like.
 
-`endToEndTests` needs Chrome installed, and Selenium fetches the browser driver
-the first time it runs. Its TLS and http checks put the command line to servers
+`endToEndTests` needs Chrome and Firefox installed, and Selenium fetches both
+browser drivers the first time it runs. The page's services -- the dialogs, the
+clipboard, pictures, MIDI, POST and the console's line -- are driven in both
+browsers; Firefox runs with its own testing preferences for the clipboard and
+for Web MIDI's test devices, set in `AnOperatorAtThePage`. Its TLS and http checks put the command line to servers
 it spins itself up: a local server whose chain the test root vouches for is
 read, and local servers that are self-signed, expired, wrongly named or chained
 to a stranger are refused. It builds the core for the web

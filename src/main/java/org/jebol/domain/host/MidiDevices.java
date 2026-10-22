@@ -19,6 +19,15 @@ public interface MidiDevices {
         void close();
     }
 
+    final class Declined extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        public Declined(String because) {
+            super(because, null, false, false);
+        }
+    }
+
     final class Refused extends RuntimeException {
 
         private static final long serialVersionUID = 1L;

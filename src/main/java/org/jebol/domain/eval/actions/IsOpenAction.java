@@ -1,5 +1,6 @@
 package org.jebol.domain.eval.actions;
 
+import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.value.PortValue;
@@ -17,7 +18,7 @@ public class IsOpenAction extends ActorFirstPortAction {
     }
 
     @Override
-    Value answerHere(PortValue port) {
+    Value answerHere(PortValue port, Evaluator evaluator) {
         return ports.isOpen(port);
     }
 }

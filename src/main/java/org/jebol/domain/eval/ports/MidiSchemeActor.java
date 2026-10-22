@@ -32,6 +32,7 @@ import org.jebol.domain.value.WordValue;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public final class MidiSchemeActor extends DefaultNative implements ServesPortActions {
 
@@ -101,11 +102,13 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             makeOneDeviceOutput(spec);
         }
         MidiDevices devices = evaluator.ports().midiDevices();
-        MidiRoute route = findRouteSpecNames(port, spec, devices);
         try {
+            MidiRoute route = findRouteSpecNames(port, spec, devices);
             port.setField("state", JavaObjectValue.of(devices.connect(route)));
         } catch (MidiDevices.Refused refused) {
             throw refuseToOpen(port, refused.devicesOwnNumber());
+        } catch (MidiDevices.Declined declined) {
+            return NoneValue.none();
         }
         queueWhatHappenedTo(port, "open", evaluator);
         return port;
@@ -240,10 +243,18 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         @Override
         protected Optional<Value> findFieldNamed(String asked) {
             return switch (asked) {
-                case DEVICES_IN -> Optional.of(namesAsBlock(devices.inputs()));
-                case DEVICES_OUT -> Optional.of(namesAsBlock(devices.outputs()));
+                case DEVICES_IN -> Optional.of(listNamesOrNone(devices::inputs));
+                case DEVICES_OUT -> Optional.of(listNamesOrNone(devices::outputs));
                 default -> Optional.empty();
             };
+        }
+
+        private Value listNamesOrNone(Supplier<List<String>> listing) {
+            try {
+                return namesAsBlock(listing.get());
+            } catch (MidiDevices.Declined declined) {
+                return NoneValue.none();
+            }
         }
 
         @Override
