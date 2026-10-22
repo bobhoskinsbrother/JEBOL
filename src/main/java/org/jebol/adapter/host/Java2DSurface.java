@@ -70,6 +70,8 @@ public final class Java2DSurface implements Surface {
                     RenderingHints.VALUE_ANTIALIAS_ON);
             own.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            own.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+                    RenderingHints.VALUE_STROKE_PURE);
             confineTo(own, where.clip());
             confineToShape(own, call);
             applyTransparency(own, where.opacity());

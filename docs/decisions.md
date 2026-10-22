@@ -1446,6 +1446,14 @@ letters are one design everywhere and only the hinting differs. The page
 stops laying text out: a few hundred lines of JavaScript that duplicated
 `TextLines` are deleted rather than kept in step.
 
+**An adapter draws a stroke where the call puts it.** Comparing stroked
+curves, splines, joins, dashes and arrows between the two adapters found every
+dash end in Java2D smeared across two pixels where the canvas stopped dead.
+That was Java2D's default stroke normalisation moving strokes toward pixel
+centres, which a canvas never does, so `Java2DSurface` draws strokes pure.
+With that, the stroked pictures match exactly inside every stroke and stay
+within the edge allowance; the allowance was not widened.
+
 **Decided while planning the web port**, after the plan's first draft
 proposed the rasteriser. Goals 3 and 4 change with it: a phone app
 implements the surface on its own canvas rather than copying a grid.

@@ -200,6 +200,42 @@ class PageRendersLikeTheDesktopTest {
         assertTheyAgree(fromTheBrowser, fromJava2D);
     }
 
+    private static final String STROKED_CURVES_WORTH_COMPARING = """
+            system/view/screen-gob/color: 0.0.0
+            view/no-wait make gob! [
+                size: 420x260
+                draw: [
+                    pen off fill-pen 30.34.44 box 0x0 420x260
+                    fill-pen off
+                    pen 130.170.255 line-width 4 curve 20x120 90x10 160x200 220x40
+                    pen 244.196.66 line-width 3 curve 230x120 310x10 400x120
+                    pen 96.198.128 line-width 4 spline 20 20x240 80x160 150x250 210x170
+                    pen 232.93.74 line-width 5 line 230x240 300x150 330x230 400x160
+                    pen 255.255.255 line-width 2 arc 330x200 50x40 200 140
+                    pen 232.93.74 line-width 4 line-pattern 96.198.128 14 8 line 20x140 400x145
+                    pen 244.196.66 line-width 3 fill-pen 244.196.66 arrow 244.196.66 1x1 line 240x60 400x20
+                ]
+            ]
+            system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and stroked curves, a spline, a joined line, a dash and an arrow match inside every stroke and stay within the allowance at its edges")
+    void strokedCurvesMatchWithinTheAllowance() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
+        interpreter.defineNewWordsIn(STROKED_CURVES_WORTH_COMPARING);
+        GobValue root = (GobValue) interpreter.run(STROKED_CURVES_WORTH_COMPARING).value();
+
+        BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
+        BufferedImage fromJava2D = paintWithJava2D(root,
+                fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
+
+        assertThat(countTheColoursIn(fromTheBrowser))
+                .as("a blank canvas would match a blank surface and mean nothing")
+                .isGreaterThanOrEqualTo(6);
+        assertTheyAgree("stroked curves", fromTheBrowser, fromJava2D, EXACTLY);
+    }
+
     private static final String SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS = """
             system/view/screen-gob/color: 0.0.0
             view/no-wait make gob! [

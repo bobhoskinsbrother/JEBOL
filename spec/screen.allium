@@ -985,6 +985,18 @@ rule EveryAdapterIsAskedForTheSameCalls {
     ensures: the_calls_are_the_same_for_both()
 }
 
+-- And each adapter draws a call's geometry where the call puts it. Java2D by
+-- default normalises a stroke, moving it toward pixel centres so a thin line
+-- looks crisp; a canvas never does. Left on, every dash end and every stroke
+-- at a whole-pixel coordinate lands half a pixel away from the browser's, and
+-- that is an adapter deciding something the domain already decided, not two
+-- rasterisers judging coverage. So the desktop adapter draws strokes pure.
+rule AnAdapterDrawsAStrokeWhereTheCallPutsIt {
+    when: an_adapter_strokes(call)
+
+    ensures: the_stroke_is_not_moved_toward_pixel_centres() = true
+}
+
 -- A gob paints itself before its children, and its children in pane order.
 --
 -- The order is the whole of what "in front" means, and the C's compositor
