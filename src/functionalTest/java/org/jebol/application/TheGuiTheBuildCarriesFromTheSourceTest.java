@@ -232,6 +232,32 @@ class TheGuiTheBuildCarriesFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("names a face for the layout's own actions, which can reach another face by its name")
+        void anActionReachesAFaceByItsName() {
+            Interpreter interpreter = interpreter();
+
+            assertThat(answerTo(interpreter, """
+                    window: view/no-wait [
+                        entry: field "typed"
+                        going: button "Go" do [set-face entry "done"]
+                    ]
+                    do-face get-panel-var window 'going
+                    (get-face get-panel-var window 'entry) == {done}"""))
+                    .isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("keeps a face's name out of the script's words, and GET-PANEL-VAR finds it from the window")
+        void aNameIsThePanelsNotTheScripts() {
+            Interpreter interpreter = interpreter();
+
+            assertThat(answerTo(interpreter, """
+                    window: view/no-wait [entry: field "typed"]
+                    reduce [value? 'entry object? get-panel-var window 'entry (get-face get-panel-var window 'entry) == {typed}]"""))
+                    .isEqualTo("[#(false) #(true) #(true)]");
+        }
+
+        @Test
         @DisplayName("with no screen is refused as no-service, as VIEW of a gob is")
         void withNoScreenIsRefused() {
             Interpreter interpreter = interpreterOn(RecordingScreen.absent());

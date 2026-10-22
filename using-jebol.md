@@ -103,7 +103,11 @@ A script that uses `VIEW` needs a screen. `--screen=window` attaches a native wi
 ./build/install/jebol/bin/jebol --screen=window examples/r3-gui/
 ```
 
-`VIEW` takes a layout block, as the 2010 R3 GUI's guide (https://www.rebol.com/r3/docs/gui/gui.html) writes one. JEBOL carries that GUI, version 0.2.1, and loads it the first time a script views a block, so there is no `load-gui` line to write. A gob, an image or a face object is shown by Rebol's own `VIEW` and loads nothing. A layout the GUI cannot read prints `** GUI ERROR:` and halts the script, as the GUI always has.
+#### **VID: windows from a layout block**
+
+VID is REBOL's dialect for describing a window: a block that lists the things on it, not code that draws them. Rebol 3.22 ships no VID of its own, so JEBOL carries the one R3 had: the R3 GUI from REBOL Technologies, version 0.2.1 of 2010, documented in its guide at https://www.rebol.com/r3/docs/gui/gui.html. It is REBOL from end to end and draws every widget with DRAW, so a layout looks the same in a native window, on `--screen=web` and in a page.
+
+The guide's scripts start with `load-gui`. Here there is no need: the GUI is loaded the first time a script gives `view` a block, and calling `load-gui` yourself does no harm, because it loads once. A script that never views a block never pays for it. `view` given a gob, an image or a face object is Rebol's own and loads nothing.
 
 ```
 view [
@@ -111,6 +115,57 @@ view [
     button "Close" close
 ]
 ```
+
+**How a layout reads.** Each item is a style word followed by what it needs, in any order: a string for its text, a tuple for its colour, a pair for its size, a number where the style takes one. Then come the actions it takes when used. A set-word before a style names that face.
+
+```
+view [
+    title "Opinion Survey"
+    panel 2 [
+        label "Name:"    entry: field
+        label "Comment:" area
+    ]
+    group [
+        button "Submit" submit none
+        button "Reset"  reset
+        button "Show"   do [print get-face entry]
+        button "Cancel" close
+    ]
+]
+```
+
+`panel` and `group` hold other faces. A number after either sets how many columns it lays them out in, and a tuple after `panel` gives its colour, as in `panel 2 80.200.180.80 [...]`.
+
+**The styles.** `title`, `head-bar`, `text`, `label`, `info`, `info-area`, `doc`, `button`, `toggle`, `check`, `radio`, `arrow-button`, `field`, `area`, `code-area`, `text-area`, `text-box`, `text-list`, `slider`, `scroller`, `progress`, `box`, `bar`, `div`, `image`, `drawing`, `sensor`, `pad`, `panel`, `group`, `tight`, `backdrop` and `window`. `words-of guie/styles` lists them once the GUI is loaded.
+
+**The actions** a face can take when it is used:
+
+| Action | What it does |
+| --- | --- |
+| `do [...]` | Runs the block. Named faces in the same layout can be used by name inside it. |
+| `set name value` | Sets the named face's value. |
+| `attach name` | Sets the named face to this face's value, so one slider can drive a scroller. |
+| `reset` / `reset name` | Puts faces back to their starting values. With no name, every face in the panel the button is in. |
+| `clear name` | Empties the named face. |
+| `focus name` | Sends typing to the named face. |
+| `of name` | Makes faces sharing a name exclusive, as radio buttons are. |
+| `submit target` | Collects the panel's values and sends them to a url, a file or a function; `none` prints them. |
+| `close` | Closes the window. |
+| `alert "message"` | Shows a message. |
+| `print value`, `dump` | Prints a value, or the face itself, to the console. |
+| `browse url`, `launch file` | Opens a page, or runs another script. |
+| `halt`, `quit` | Stops the script, or the process. |
+
+**Reaching a face from the script.** A face's name belongs to its panel, not to the script, so `entry` above is not a word the script can use outside the layout. `get-panel-var window 'entry` finds the face from the window gob `view` answered. `get-face` reads its value, `set-face` changes it, and `do-face` runs its actions as though the operator had used it.
+
+```
+window: view/no-wait [entry: field "typed"]
+print get-face get-panel-var window 'entry
+```
+
+**Waiting.** `view` waits until the window is closed, and then the script carries on. `view/no-wait` answers the window at once. The script then waits for the operator itself, either with `do-events`, which returns when every window has closed, or with `wait [gui-event-port 0.1]` in a loop of its own. That is how `examples/r3-gui/main.reb` prints each change as it is made. `view/options [...] [title: "..."]` gives the window its title.
+
+**What it is not.** This is the R3 GUI, not REBOL 2's VID, and the two dialects are different: a REBOL 2 layout with `banner`, `effect [...]` or a `feel` object will not read. A word the GUI does not know prints `** GUI ERROR: Cannot parse the GUI dialect at:` with the words that follow, and halts the script, as the GUI always has; `try` cannot catch a halt, and at the command line the run ends with status 15. The GUI is in the jar at `org/jebol/modules/r3-gui.reb`, and the changes made so it runs on 3.22 are listed in `org/jebol/mezz/ORDER.txt`.
 
 The shipped example uses the same GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
 
