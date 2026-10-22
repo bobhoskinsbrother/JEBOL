@@ -234,7 +234,8 @@ The items are in the order they are to be built.
    error at the moment it is used, naming the format and the browser. A
    shorter list would be wrong in some browser, since which formats it reads
    is the browser's own answer, and shrinking it needs a change to a borrowed
-   file. No webp codec is added: a real 3.22.5 has none.
+   file. No webp codec is added here: a real 3.22.5 has none, and goal 15
+   adds it on every host at once.
 
    Showing a picture needs no work here. The page already draws an `image!`
    as raw pixels -- `putImageData`, then `drawImage` onto the screen -- so
@@ -606,6 +607,39 @@ still reads slow after the paint work:
 3. **The wasm worker's cold start**, 459ms, which is the JVM's first create
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
+
+### 15. WebP as an image format
+
+A real 3.22.5 has no WebP codec, so this is the one goal that improves on the
+C rather than agreeing with it, and it comes last for that reason. Every
+browser reads and writes WebP, phones take pictures in it, and a script that
+loads a picture from the web meets it often.
+
+What it needs:
+
+1. **The codec.** `codec-image.reb` is borrowed and stays as it is, so the
+   `webp` codec -- suffix `.webp`, identified by `RIFF`, four bytes of length
+   and `WEBP` -- is registered by a file of JEBOL's own, loaded after the
+   borrowed one, decoding and encoding through `lib/image/load/as` and
+   `lib/image/save/as` with `'WEBP` like the six beside it.
+2. **The page.** Nothing beyond goal 1's `BrowserImages`: `createImageBitmap`
+   reads it and `OffscreenCanvas.convertToBlob` writes it.
+3. **The desktop.** Java's own image library has no WebP, and the shipped jar
+   takes no dependency, so the desktop needs a port: VP8L, the lossless form,
+   and VP8, the lossy one, decoding first. It is byte-exact work and the rules
+   in `CLAUDE.md` for a codec apply in full -- libwebp compiled into a probe
+   before the port, the boundaries read from its C, and libwebp's own test
+   images as the corpus. Whether the desktop also encodes, and in which form,
+   is to be settled before the spec: the browser's encoder is lossy, and a
+   lossless encoder alone is a much smaller port.
+4. **Android and iOS**, when they land, use the system's decoder. Android's
+   `BitmapFactory` reads it and `Bitmap.compress` writes it; iOS reads it from
+   14 and has no encoder.
+
+A host that cannot do one side refuses it the way goal 1 refuses dds: a
+catchable error naming the format and the host. The spec first, as everywhere:
+the codec and each host's answer go in `spec/web.allium` and its desktop
+counterpart before any test.
 
 ---
 
