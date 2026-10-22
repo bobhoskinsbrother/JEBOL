@@ -20,7 +20,7 @@ Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 5 |
-| `./gradlew allTests` | 28,850 tests on 2026-10-22: `unitTests` 2,798, `functionalTests` 24,088, `endToEndTests` 1,964 |
+| `./gradlew allTests` | 29,137 tests on 2026-10-22: `unitTests` 2,976, `functionalTests` 24,161, `endToEndTests` 2,000 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
@@ -174,8 +174,47 @@ interpreters -- reads as missing.
 
 ### 6. Graphics: what is left
 
-- **VID.**
-- **The old markup path** -- 522 lines.
+- **The 2010 R3 GUI, shipped rather than demonstrated.** It already runs:
+  `examples/r3-gui/gui-source.r` is the GUI, `gui-322.r` rewrites eight
+  2010 habits as it loads, and the sliders and survey forms are driven end
+  to end in a window and a page. What is left:
+  1. **The spec first.** `spec/screen.allium` excludes VID as "JEBOL's own,
+     written in REBOL"; it becomes the 2010 GUI, and decision 9 (the target
+     is markup) is marked reversed.
+  2. **Which VIEW wins.** The GUI defines its own `view`, `unview` and
+     `do-events` and no `layout`, while Rebol's `view-funcs.reb` calls a
+     `layout` nothing defines. The GUI's guide answers it: a script calls
+     `load-gui` and then the GUI's own `view [title "Hello World" button
+     "Close" close]`, and says "later, this line will not be needed". So
+     the GUI's three replace Rebol's, and `load-gui` happens by itself.
+     `main.reb` digs the GUI's `view` out by hand until then.
+  3. **Its licence.** `gui-source.r` is byte for byte the compressed body
+     of http://www.rebol.com/r3/gui.r, "R3 GUI" version 0.2.1, "Developer
+     test GUI theme": the file the commented-out `load-gui` in
+     `mezz-help.reb` fetched. Neither it nor its documentation at
+     https://www.rebol.com/r3/docs/gui/gui.html states a licence; JEBOL
+     treats it as Apache 2, as Rebol's own source is, and says so in
+     `NOTICE` beside the vendored copy. The documentation is the GUI's
+     authority where the source is silent.
+  4. **A borrowed file, not a program that edits one.** The eight rewrites
+     become edits to a vendored copy under `src/main/resources/org/jebol/`,
+     listed in ORDER.txt beside the other borrowed-file changes, each with
+     the JEBOL test that pins it.
+  5. **Loaded when asked for, in REBOL.** About 74 KB of REBOL must not
+     join every `Interpreter.create()`: a `view` in the library loads the
+     GUI the first time it is called and hands over to the GUI's own, which
+     is what the guide said `load-gui` would become. The boot and jar
+     figures above are measured again.
+  No Java class is added for any of this: the dialect is the GUI's REBOL,
+  and the gobs, DRAW and events beneath it already work.
+  6. **Plain `view [button "hi"]` works** on every screen with no example
+     directory, and an end-to-end test says so, failures included.
+  This comes before goal 1 step 4, which puts touch into the GUI's REBOL
+  and should edit the vendored copy, not the loader.
+- **The old markup path**, after the GUI ships: `Layout`, `Face` and `Html`
+  in `domain/render`, `Markup` and `View` in `render`, 464 lines, and the
+  two tests that are their only callers. Anything those tests pin that the
+  GUI's tests do not is moved first.
 - **`effect`**, the one DRAW command not painted; it is a dialect of its own
   and belongs with the codecs.
 - **The stroke-curve comparison** between the two adapters. The surface of
@@ -209,20 +248,7 @@ interpreters -- reads as missing.
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters).
 
-### 8. Verify a fetched module
-
-Nothing is fetched today: every module this build needs is bundled. Before an
-address points outward again:
-
-1. `system/modules` carries an expected digest beside each remote address.
-2. The bytes are verified before they are text to disk and before anything
-   is evaluated. `download-extension` currently reads and writes with no check.
-3. A mismatch fails the import.
-4. No digest recorded means the address is not usable.
-
-Still to decide: whether a host can refuse fetching outright.
-
-### 9. A debugger
+### 8. A debugger
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -235,7 +261,7 @@ decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
-### 10. Dev tools
+### 9. Dev tools
 
 Two homes: the flag and the example go in JEBOL; the server and its tools are a
 second Gradle build in this repo: one executable jar taking JEBOL's jar as its
@@ -272,9 +298,9 @@ one dependency, with a gate of its own rather than `allTests`.
    at first.
 
 
-### 11. What the command line does differently from r3
+### 10. What the command line does differently from r3
 
-1. **`--trace` does not trace the boot.** Do with goal 9.
+1. **`--trace` does not trace the boot.** Do with goal 8, the debugger.
 2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. The banner's title line is decided -- it says "(JEBOL
@@ -289,7 +315,7 @@ one dependency, with a gate of its own rather than `allTests`.
    line's own input stream is the fix, and it is the same shape of gap the
    windows service had until decision 48.
 
-### 12. A drag still lags, and the interpreter has a next tier
+### 11. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -318,7 +344,7 @@ still reads slow after the paint work:
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
 
-### 13. WebP as an image format
+### 12. WebP as an image format
 
 A real 3.22.5 has no WebP codec, so this is the one goal that improves on the
 C rather than agreeing with it, and it comes last for that reason. Every
