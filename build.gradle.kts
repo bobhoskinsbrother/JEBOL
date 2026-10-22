@@ -19,7 +19,7 @@ java {
 }
 
 application {
-    mainClass = "org.jebol.adapter.cli.Repl"
+    mainClass = "org.jebol.adapter.cli.JebolLauncher"
     applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true")
 }
 
@@ -146,6 +146,20 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
 
+// The first class a launch loads, built so that every Java from 8 on can load
+// it: it tells a Java too old for the rest of JEBOL so, in words, rather than
+// leaving the JVM to report a class file version. spec/repl.allium.
+val launcher = sourceSets.create("launcher")
+
+tasks.named<JavaCompile>(launcher.compileJavaTaskName) {
+    options.release.set(8)
+    options.compilerArgs.add("-Xlint:-options")
+}
+
+tasks.jar {
+    from(launcher.output)
+}
+
 val unitTest = sourceSets.create("unitTest")
 val functionalTest = sourceSets.create("functionalTest")
 val endToEndTest = sourceSets.create("endToEndTest")
@@ -170,8 +184,8 @@ dependencies {
 }
 
 testSuites.forEach { suite ->
-    suite.compileClasspath += sourceSets.main.get().output
-    suite.runtimeClasspath += sourceSets.main.get().output
+    suite.compileClasspath += sourceSets.main.get().output + launcher.output
+    suite.runtimeClasspath += sourceSets.main.get().output + launcher.output
 }
 
 fun Test.runsTheTestsIn(suite: SourceSet) {
@@ -241,7 +255,22 @@ val endToEndTests = tasks.register<Test>("endToEndTests") {
         "jebol.webSite",
         layout.buildDirectory.dir("site").get().asFile.path,
     )
-    dependsOn(tasks.named("buildWasmGC"), assembleSite)
+    dependsOn(tasks.named("buildWasmGC"), assembleSite, tasks.named("installDist"), tasks.jar)
+    systemProperty(
+        "jebol.installedLauncher",
+        layout.buildDirectory.file("install/jebol/bin/jebol").get().asFile.path,
+    )
+    systemProperty("jebol.shippedJar", tasks.jar.get().archiveFile.get().asFile.path)
+    systemProperty(
+        "jebol.olderJavaHome",
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+            .get().metadata.installationPath.asFile.path,
+    )
+    systemProperty(
+        "jebol.supportedJavaHome",
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+            .get().metadata.installationPath.asFile.path,
+    )
     outputs.upToDateWhen { false }
     mustRunAfter(functionalTests)
 }

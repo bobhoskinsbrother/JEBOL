@@ -28,7 +28,7 @@ As a port of Oldes/Rebol3 ([https://github.com/Oldes/Rebol3](https://github.com/
 
 ## **2. Installation and Execution**
 
-**Prerequisite:** JEBOL requires Java 25 or higher. Running on earlier Java versions will result in unsupported class file version errors.
+**Prerequisite:** JEBOL requires Java 25 or higher. On an older Java it says so and stops: `JEBOL needs Java 25 or later; this is Java 21.`
 
 ### **Running from the Distribution Package**
 
@@ -36,13 +36,12 @@ The binary release contains launch scripts for Unix and Windows, the compiled JA
 
 ```commandline
 unzip jebol-3.22.5.zip  
-JAVA_HOME=/path/to/java25 jebol-3.22.5/bin/jebol
+jebol-3.22.5/bin/jebol
 ```
 ### **Building and Running from Source**
 
 ```
 ./gradlew installDist  
-JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)   
 ./build/install/jebol/bin/jebol
 ```
 Launching the REBOL interactive console initializes start (similar to r3) and presents the startup banner. Enter REBOL expressions directly at the prompt:
@@ -93,7 +92,6 @@ cat my-script.reb | jebol
 A script that uses `VIEW` needs a screen. `--screen=window` attaches a native window; with no switch the interpreter runs headless and a view draws nothing. `--screen=web` serves the same picture to a browser page instead and prints the address to open.
 
 ```
-JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
 ./build/install/jebol/bin/jebol --screen=window examples/r3-gui/
 ```
 
@@ -102,7 +100,6 @@ The shipped example is the 2010 R3 GUI. The window opens with the sliders and su
 `--screen=window` is also what the dialogs need. `request-color`, `request-file`, `request-dir`, `request-password` and `browse` are refused without a screen, and a run given the native window may use them. The second shipped example opens the machine's colour chooser and prints each colour chosen; cancelling ends it.
 
 ```
-JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
 ./build/install/jebol/bin/jebol --screen=window examples/choose-colour/
 ```
 

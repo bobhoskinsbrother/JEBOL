@@ -113,6 +113,9 @@ config {
     longest_result_shown: Integer = 500
     -- And an error is formed to at most this many.
     longest_error_shown: Integer = 640
+    -- The oldest Java JEBOL runs on. Its classes are built for it, and an
+    -- older Java cannot load them at all.
+    oldest_java: Integer = 25
 }
 
 ------------------------------------------------------------
@@ -364,6 +367,7 @@ surface Console {
         Submit(session, source_text) when operator.is_open
         RunAndLeave(user_context, source_text)
         RunTheNamedScript(path, arguments)
+        Launch(words, java)
         Start(words)
 
     exposes:
@@ -637,6 +641,44 @@ entity CommandLine {
     flags: Set<String>         -- spelled as system/catalog/boot-flags spells them
     script: String?            -- as it was written
     arguments: List<String>    -- the --args value first, if given, then the rest
+}
+
+-- Before anything else, the launch looks at the Java it is running on. Both
+-- ways in -- `java -jar` and the installed `jebol` script -- start at the same
+-- place, so one look covers both. A Java older than the oldest JEBOL runs on
+-- is told plainly, on standard error, with both numbers, and the process ends
+-- with 1 before any of JEBOL is loaded: what an older Java would otherwise
+-- print is a class file version, which means nothing to the person reading
+-- it. Where to find a newer Java is the operator's business, not JEBOL's.
+--
+-- Java 8 and older call themselves 1.8 and so on; that is read as 8.
+rule AJavaTooOldIsToldSo {
+    when: Launch(words, java)
+    requires: java_version_can_be_read(java)
+    requires: java_version(java) < config.oldest_java
+
+    ensures: standard_error_says(
+        "JEBOL needs Java " + config.oldest_java + " or later; this is Java " + java_version(java) + ".")
+    ensures: the_process_exits_with(1)
+    ensures: nothing_of_jebol_is_loaded()
+}
+
+rule AJavaNewEnoughStartsTheCommandLine {
+    when: Launch(words, java)
+    requires: java_version_can_be_read(java)
+    requires: java_version(java) >= config.oldest_java
+
+    ensures: Start(words)
+}
+
+-- A version that cannot be read is let through rather than refused: the look
+-- exists to explain a refusal the JVM would make anyway, and guessing wrong
+-- the other way would stop a Java that could have run JEBOL.
+rule AJavaVersionThatCannotBeReadStartsAnyway {
+    when: Launch(words, java)
+    requires: not java_version_can_be_read(java)
+
+    ensures: Start(words)
 }
 
 rule TheCommandLineIsReadAsRebolsHostReadsIt {

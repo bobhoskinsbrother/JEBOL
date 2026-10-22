@@ -381,7 +381,8 @@ editor does, so a bad regex cannot land quietly.
 **What you need: a JDK to run Gradle, and nothing else.** The build asks for a
 Java 25 toolchain and downloads one itself (the toolchain resolver in
 `settings.gradle.kts`), so the JDK on your PATH does not have to be 25. There are
-no runtime dependencies; the jar carries everything it needs.
+no runtime dependencies; the jar carries everything it needs. Running JEBOL does
+need Java 25 or later, and a launch on an older one says so and stops.
 
 ```
 ./gradlew allTests         # the spec check and all three suites below
