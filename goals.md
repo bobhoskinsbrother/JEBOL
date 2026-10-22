@@ -68,64 +68,117 @@ comes before improving on it: a place where JEBOL answers something a real
 
 An app has places, and the operator has a way back to the last one. On a page
 those are the browser's own Back and Forward buttons and its history stack; in
-a window there are no buttons, only the same stack. Today there is neither: a
-page tells the interpreter only that it is closing, pressing Back leaves or
-kills the app, the address never changes, a reload starts the app over, the
-worker never learns where the page is, and a frame's title is read once when
-it opens. The same model is the groundwork for the phone goals, where a link
-that opens a view is a deep link and Back is the operator's own gesture too.
+a window there are no buttons, only the same stack. Today there is neither:
+pressing Back leaves or kills the app, the address never changes, a reload
+starts the app over, the worker never learns where the page is, and a frame's
+title is read once when it opens. The same model is the groundwork for the
+phone goals, where a link that opens a view is a deep link and Back is the
+operator's own gesture too.
 
 What an app needs is one model on every screen: moving to a place adds an
 entry, Back and Forward arrive as events the app answers, the address names
 the current state so a reload or a shared link lands in the same place, and
 leaving with unsaved work can ask first.
 
-1. **The port.** `NavigationPort` (`org.jebol.domain.host`), beside
-   `WindowPort`: push a state, replace the current one, go back, go forward,
-   and answer the current state. It is supplied with the screen and refuses
-   where there is no screen -- the arrangement decision 48 gives the dialogs,
-   which decision 49 extends to a page, `--screen=web`'s second transport
-   included. The web adapter is the browser's own `pushState`, `replaceState`
-   and `popstate`, with `document.title` following the state. The desktop
-   adapter is a stack, and both things drive Back: the app's own controls
-   through the port, and the key chord each system's browser uses, which the
-   host watches. A frame's title follows the state, where today it is read
-   once.
+1. **The port, on every screen.** `NavigationPort` (`org.jebol.domain.host`),
+   beside `WindowPort`: push a state, replace the current one, go back, go
+   forward, and answer the current state. Every screen supplies it -- a
+   desktop window, the shipped page and `--screen=web` now, the phones later
+   -- and a run with no screen refuses it, as decision 48 arranges the
+   dialogs. Navigation is a service of its own in the grants, granted
+   wherever there is a screen. There is one history per app, as a phone
+   keeps, however many windows are open, and the title that follows it is
+   the first window the app opened. The web adapter is the browser's own
+   `pushState`, `replaceState` and `popstate`, with `document.title`
+   following the state; the desktop adapter is a stack. On `--screen=web` the
+   page's half rides whatever transport carries its events.
 
-2. **The events.** The operator's Back or Forward reaches a script the way a
-   port event already does (`MidiSchemeActor`'s queueing on the system port is
-   the shape): an event naming the navigation, with the state now current. The
-   state crosses as a value `pushState` can carry -- a block or map of strings,
-   numbers and logics -- and anything else is refused before the browser sees
-   it. A fresh load answers the same way, from the address the page passes the
-   worker at boot.
+2. **The history's rules.** Going somewhere new after going back drops the
+   forward entries, as a browser does. Moving to the place already current
+   adds no entry, because it is not a move -- Android calls this single top;
+   the same place with different data is a different state and is a move.
+   Back at the first entry does nothing, and so does Forward at the last. A state is a word, string, number or
+   logic, or a block of them, and blocks may hold blocks. None is not a state
+   and is refused before anything is pushed; so is any other type.
 
-3. **A hash first.** A state is `#survey` and reads in any host, with no
-   server asked to serve a path it does not know; the port hides the shape, so
-   paths can come later where a host can carry them. The address is what makes
-   a link shareable and a reload land in the same place, which is the deep
-   link a phone app will want next.
+3. **The limits are the most restrictive host's, on every host.** At most
+   100 history changes in 30 seconds, which is Safari's. A state's size and
+   its address's length are capped at the smallest any target allows --
+   Firefox's state size, the shortest address a target browser keeps,
+   Android's saved-state limit -- measured and written into the spec as
+   numbers. Past any limit a move is a catchable error, never a silent drop.
 
-4. **Leaving asks.** Where an app says it has unsaved work, Back, reload and
-   closing ask first: `beforeunload` on a page, and a window's close gets a
-   veto the port can hold, which is new -- today the close is posted and the
-   frame goes. Without the guard nothing changes.
+4. **The address is the state, written as data.** A hash first, because it
+   reads in any host with no server asked to serve a path it does not know;
+   the port hides the shape, so paths can come later. Every state the stack
+   accepts has an address, so a link can set an app up at any one place in
+   it, and a reload or a shared link lands there.
 
-5. **A small layer for app code.** `go` moves -- `go 'survey`, `go/back`,
-   `go/forward`, `go/replace` -- because an app should not have to hold the
-   port. `back` and `forward` are series actions and cannot be the words.
+5. **A link is untrusted input.** Anyone can write one. The address is read
+   as data and never loaded or evaluated. A server never sees a hash, so
+   there is no 404 from one; the two cases are the app's:
+   - an address that does not read as a state -- malformed, the wrong type,
+     too long -- starts the app at its start, and the first event says the
+     address was refused;
+   - an address that reads but names a place the app does not know is the
+     app's to answer with its own "not found", which is the 404.
 
-Tests are the browser gate driving Chrome's real Back and Forward and a
-deep-link load, with a guard accepted and dismissed; the port's own
-bookkeeping on the JVM; and a real window checked by hand, as decision 48's
-chooser is.
+6. **A navigation event, an extension of the C.** Rebol's event types are a
+   fixed list and none of them is navigation. Both the phones and the web
+   need one, so JEBOL adds it: an event naming the move, back or forward,
+   with the state now current. It arrives on `system/ports/event` with every
+   other screen event, so one handler block answers clicks and Back alike. A
+   fresh load is the app's first such event. It goes in Standing as a
+   deliberate difference, with a decision entry.
 
-First steps, in the repo's order. The spec before any code: `spec/screen.allium`
-gains the rules for push, replace, back, forward, what a fresh load answers and
-the guard, and `ABrowserOffersWhatItsPageCan`'s list in `spec/embed.allium`
-gains navigation beside the clock and the clipboard. Then the tests that fail
-without a port, on the JVM and in Chrome. Then the port, its two adapters and
-the `go` layer, with a decision entry and `docs/web-port.md` beside them.
+7. **The keys and gestures browsers use for Back and Forward** move the
+   history on every screen: Alt+Left and Alt+Right on Windows and Linux;
+   Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS; the mouse's back and
+   forward buttons; the macOS trackpad swipe. They still reach the app as
+   key presses too, on a page as in a window, so an app that reads them
+   keeps working.
+
+8. **Unsaved work is a flag the app sets and clears in advance.** Leaving
+   cannot ask the interpreter and wait -- `beforeunload` is synchronous and
+   the interpreter is in a worker, and Android's back gesture has the same
+   rule -- so the page holds the flag. With it set, a reload, closing the
+   tab and leaving the app ask first through `beforeunload`. A window's
+   close already reaches the script: `DesktopScreen` posts it and does not
+   close, and `view-funcs.reb`'s default handler is what calls `unview`. So
+   on the desktop the flag is read by that handler's path, not by a second
+   veto in the port. Back between two of the app's own places is not
+   guarded; an app that wants to ask there asks with its own form.
+
+9. **To do: move the page's close from `beforeunload` to `pagehide`.**
+   Today `site/runner.html:333` posts `close` from `beforeunload`, so once a
+   leave can be cancelled, choosing "Stay" would leave a live page whose app
+   has closed every window. The defect only shows once the flag exists, so
+   the move lands in the same change as the flag, with the end-to-end test
+   that chooses "Stay" and finds the app still running.
+
+10. **A page brought back from the browser's back-forward cache restarts the
+    app**, from its address, as a fresh load does.
+
+11. **A small layer for app code.** `go` moves -- `go 'survey`, `go/back`,
+    `go/forward`, `go/replace` -- because an app should not have to hold the
+    port. `back` and `forward` are series actions and cannot be the words;
+    `go` is defined nowhere in Rebol's library, the GUI or the examples.
+
+Tests are the browser gate in Chrome and Firefox, driving the real Back and
+Forward: a deep link that lands, one that is malformed, one the app does not
+know; "Stay" on a guarded reload keeping the app running; Back between two
+places with the flag set not asking; a restore from the back-forward cache.
+The history's rules, the limits and the desktop's keys are tested at the
+port's boundary on the JVM, and a real window is checked by hand, as decision
+48's chooser is.
+
+First steps, in the repo's order. The spec before any code: a new
+`spec/nav.allium` holds every rule above, `spec/embed.allium`'s shipped-page
+grants and `spec/repl.allium`'s command-line grants gain navigation, and
+`ThePageClosingClosesEveryWindowOnIt` in `spec/screen.allium` moves to
+`pagehide`. Then the tests that fail without a port, on the JVM and in both
+browsers. Then the port, its two adapters and the `go` layer, with a decision
+entry and `docs/web-port.md` beside them.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
