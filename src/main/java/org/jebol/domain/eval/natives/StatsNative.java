@@ -9,6 +9,10 @@ import java.util.Set;
 
 public class StatsNative extends DefaultNative {
 
+    private static final List<String> COUNTS_JEBOL_DOES_NOT_KEEP = List.of(
+            "series-made", "series-freed", "series-expanded", "series-recycled",
+            "made-blocks", "made-objects", "recycles", "collisions");
+
     private final long startedAt = System.nanoTime();
 
     @Override
@@ -59,6 +63,10 @@ public class StatsNative extends DefaultNative {
         setIfPresent(fields, "evals", IntegerValue.of(evaluator.valuesWalked()));
         setIfPresent(fields, "eval-natives", IntegerValue.of(evaluator.nativesCalled()));
         setIfPresent(fields, "eval-functions", IntegerValue.of(evaluator.functionsCalled()));
+        setIfPresent(fields, "series-bytes", IntegerValue.of(SeriesMemory.countBytesHeld()));
+        for (String field : COUNTS_JEBOL_DOES_NOT_KEEP) {
+            setIfPresent(fields, field, IntegerValue.of(0));
+        }
         return profile;
     }
 

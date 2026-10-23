@@ -10695,6 +10695,45 @@ invariant TheEvaluationCountOnlyRises {
         stats_evals(interpreter) >= previous(stats_evals(interpreter))
 }
 
+-- `system/standard/stats` starts as Rebol declares it: thirteen fields, every
+-- one none. `sysobj.reb` writes them as a chain of set-words with nothing
+-- after the last, and a real 3.22.5 answers none for each until something
+-- profiles.
+rule TheStatsTemplateStartsAsNone {
+    when: ReadSystemField(standard_stats)
+    requires: nothing_has_profiled_yet()
+
+    ensures: for field in the_thirteen_stats_fields(): field_value(field) = none
+}
+
+-- STATS/PROFILE writes its counts into that same object and answers it.
+-- `n-system.c` takes `Get_System(SYS_STANDARD, STD_STATS)` and sets each field
+-- in place, so `same? stats/profile system/standard/stats` is true, a second
+-- call overwrites the first, and DELTA-PROFILE takes its snapshot with COPY
+-- before asking again.
+--
+-- Every field is written, and every one as a number, because DELTA-PROFILE
+-- subtracts each from the next reading and none cannot be subtracted. The
+-- timer is a time; the rest are integers. Evaluations, natives called and
+-- functions called are this interpreter's own counts, and series-bytes is
+-- what STATS itself answers. The other eight -- series made, freed, expanded
+-- and recycled, blocks and objects made, collections run and hash
+-- collisions -- describe R3's own allocator and its collector, which in JEBOL
+-- are the JVM's, and JEBOL keeps no count of them: each is 0, which is the
+-- truth about what JEBOL counted, and never a guess at what the JVM did.
+rule StatsProfileFillsTheTemplateInPlace {
+    when: EvaluateCall(stats)
+    requires: refinement_asked(profile)
+
+    ensures: CallResult(value: the_object_at(standard_stats))
+    ensures: field_value(timer) = time_since_start_up()
+    ensures: field_value(evals) = stats_evals(the_interpreter())
+    ensures: field_value(eval_natives) = natives_called(the_interpreter())
+    ensures: field_value(eval_functions) = functions_called(the_interpreter())
+    ensures: field_value(series_bytes) = storage_used_by_series()
+    ensures: for field in the_counts_jebol_does_not_keep(): field_value(field) = 0
+}
+
 -- HALT stops the script and returns to whatever was reading it.
 --
 -- Not QUIT: quitting ends the host's run and halting does not, so a console

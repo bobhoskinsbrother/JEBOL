@@ -358,28 +358,10 @@ clean-path: func [
 ;; the object from that file, so the shapes a scheme, a port, a header and
 ;; the rest are built from are Rebol's own text rather than a copy of it.
 ;;
-;; Two of the declared fields are deliberately left empty there for something
-;; else to fill, and this is what fills them. ENUM is marked "is defined
-;; later in %mezz-func.r file" and carries two functions, which is why it
-;; cannot be data in a declaration. STATS is what STATS/PROFILE refreshes in
-;; place, and DELTA-PROFILE copies it, runs a block, asks again and
-;; differences the two, so its thirteen fields start as numbers to subtract.
-
-system/standard/stats: make object! [
-    timer: 0:0:0
-    evals: 0
-    eval-natives: 0
-    eval-functions: 0
-    series-made: 0
-    series-freed: 0
-    series-expanded: 0
-    series-bytes: 0
-    series-recycled: 0
-    made-blocks: 0
-    made-objects: 0
-    recycles: 0
-    collisions: 0
-]
+;; One of the declared fields is deliberately left empty there for something
+;; else to fill, and this is what fills it. ENUM is marked "is defined later
+;; in %mezz-func.r file" and carries two functions, which is why it cannot be
+;; data in a declaration.
 
 
 system/standard/enum: make object! [
