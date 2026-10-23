@@ -208,6 +208,11 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
+    public void printLine(String line) {
+        evaluator.findOutput().writeLine(line);
+    }
+
+    @Override
     public int negate(List<Value> rules, int at) {
         int negations = 1;
         while (isWordNot(rules, at + negations)) {

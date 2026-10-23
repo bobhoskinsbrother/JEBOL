@@ -46,6 +46,8 @@ public interface ParseWalk {
 
     int mindCaseFromHereOn(boolean minding);
 
+    void printLine(String line);
+
     ParseWalk walkOver(RebolSeries nested);
 
     boolean matchesWhole(AnyBlockValue rule);

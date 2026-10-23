@@ -40,7 +40,8 @@ final class DialectsWords {
                 new MindCase("case", true),
                 new MindCase("no-case", false),
                 new Fail(),
-                new Limit()}) {
+                new Limit(),
+                new ShowWhereWalkStands()}) {
                     words.put(keyword.spelling(), keyword);
             }
         return Map.copyOf(words);

@@ -664,6 +664,44 @@ rule OptResolvesTheRuleAWordNames {
 -- Being a mode rather than a refinement is what lets one rule mind case
 -- in one place and not in another.
 
+-- === Showing where the walk has got to ====================
+
+-- ?? prints one line saying where the walk stands, and changes nothing: it
+-- matches nothing, consumes nothing and never decides the answer, so a rule
+-- reads the same with or without it. It is `case SYM_QQ` in `u-parse.c`,
+-- which calls `Print_Parse_Index` and continues.
+--
+-- The line is the rule that comes next, a colon and a space, and the input
+-- from where the walk stands, each molded flat -- `parse [a b] [?? skip skip]`
+-- prints `skip: [a b]`. At the end of the rules there is no next rule, and
+-- the C molds its end marker, which a real 3.22.5 prints as `#(end)`. The
+-- line goes where PRINT goes.
+--
+-- Each half is cut short, and not by the same amount. `Debug_Fmt_Limited(76,
+-- "%r: %r")` hands a 75-character budget to each value but counts only the
+-- literal `: ` against it, so the rule is cut to 74 characters and the input
+-- to 72, and a long rule makes a line longer than 76. A control character in
+-- what was molded -- the newline inside a long string's braces -- is written
+-- as a space, so the line stays one line.
+rule QuestionQuestionPrintsWhereTheWalkStands {
+    when: the_rule_word_is(qq)
+    requires: rules_follow_it()
+
+    ensures: printed_line(
+        cut_to(74, mold_flat(the_next_rule())) + ": " +
+        cut_to(72, mold_flat(the_input_from_here())))
+    ensures: no_input_was_consumed()
+    ensures: the_walk_continues_with(the_next_rule())
+}
+
+rule QuestionQuestionAtTheEndOfTheRulesPrintsTheEndMarker {
+    when: the_rule_word_is(qq)
+    requires: not rules_follow_it()
+
+    ensures: printed_line("#(end): " + cut_to(72, mold_flat(the_input_from_here())))
+    ensures: no_input_was_consumed()
+}
+
 -- === Looking without consuming ============================
 
 -- AHEAD, spelled AND as well, matches the rule after it and then puts

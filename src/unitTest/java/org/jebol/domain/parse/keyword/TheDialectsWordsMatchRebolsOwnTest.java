@@ -72,11 +72,11 @@ class TheDialectsWordsMatchRebolsOwnTest {
     }
 
     @Test
-    @DisplayName("four of Rebol's words are not keywords here, and only one is a gap")
-    void includeTheFourTheTableHasNotGot() {
+    @DisplayName("three of Rebol's words are not keywords here, and none of them is a gap")
+    void includeTheThreeTheTableHasNotGot() {
         Set<String> missing = new LinkedHashSet<>(listTheParseWordsRebolLists());
         missing.removeAll(ParseKeyword.BY_SPELLING.keySet());
-        assertThat(missing).containsExactly("|", "??", "do", "only");
+        assertThat(missing).containsExactly("|", "do", "only");
     }
 
     @Test

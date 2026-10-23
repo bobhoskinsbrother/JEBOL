@@ -19,7 +19,7 @@ Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 5 |
+| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 4 |
 | `./gradlew allTests` | 29,137 tests on 2026-10-22: `unitTests` 2,976, `functionalTests` 24,161, `endToEndTests` 2,000 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
@@ -135,18 +135,7 @@ interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Whether opening an open port should do what the C does is an
 open question in `spec/natives.allium`.
 
-### 4. Two found in Rebol's own declarations
-
-1. **`system/standard/stats` starts at zero; R3 starts every field at none.**
-   `STATS/PROFILE` and `DELTA-PROFILE` subtract the fields, so changing them is
-   a behaviour change with its own spec rule and tests.
-2. **The `??` parse keyword is missing.** `parse [a b] [?? skip skip]` prints
-   `skip: [a b]` and answers true in R3, and raises `parse-rule` here. The C is
-   three lines at `u-parse.c:1109`; the decision is how the parse walk gets to
-   write a line. `TheDialectsWordsMatchRebolsOwnTest` will turn red when it
-   lands, and its list of absences wants updating then.
-
-### 5. The type-major refactor: what is left
+### 4. The type-major refactor: what is left
 
 Each datatype's behaviour belongs in its own class, not in a switch elsewhere.
 What still switches on the datatype, by `scripts/complexity.py`:
@@ -173,7 +162,7 @@ from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
 interpreters -- reads as missing.
 
-### 6. Loose ends
+### 5. Loose ends
 
 - **A task's body runs nowhere by default.** DO of a task answers the task,
   and the body runs only where a host supplies a way to run it: on a thread of
@@ -200,7 +189,7 @@ interpreters -- reads as missing.
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters).
 
-### 7. A debugger
+### 6. A debugger
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -225,7 +214,7 @@ functions, objects, and ports holding host resources -- must copy, proven by
 isolation tests of the whole interpreter like `LibrarySourceIsolationTest`.
 The gate is 5m22s on 2026-10-23, with one test process per core.
 
-### 8. Dev tools
+### 7. Dev tools
 
 Two homes: the flag and the example go in JEBOL; the server and its tools are a
 second Gradle build in this repo: one executable jar taking JEBOL's jar as its
@@ -262,9 +251,9 @@ one dependency, with a gate of its own rather than `allTests`.
    at first.
 
 
-### 9. What the command line does differently from r3
+### 8. What the command line does differently from r3
 
-1. **`--trace` does not trace the boot.** Do with goal 7, the debugger.
+1. **`--trace` does not trace the boot.** Do with goal 6, the debugger.
 2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. The banner's title line is decided -- it says "(JEBOL
@@ -279,7 +268,7 @@ one dependency, with a gate of its own rather than `allTests`.
    line's own input stream is the fix, and it is the same shape of gap the
    windows service had until decision 48.
 
-### 10. A drag still lags, and the interpreter has a next tier
+### 9. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -308,7 +297,7 @@ still reads slow after the paint work:
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
 
-### 11. WebP as an image format
+### 10. WebP as an image format
 
 A real 3.22.5 has no WebP codec, so this goal improves on the C rather than
 agreeing with it, and it comes after the agreement work for that reason. Every
@@ -341,7 +330,7 @@ catchable error naming the format and the host. The spec first, as everywhere:
 the codec and each host's answer go in `spec/web.allium` and its desktop
 counterpart before any test.
 
-### 12. A url script's own files come from its url, and it cannot leave its root
+### 11. A url script's own files come from its url, and it cannot leave its root
 
 A script given by url runs today in the directory the command was given in, so
 `do %my-alt-vid.rb` inside `https://raw.github.com/myresources/main.rb` reads

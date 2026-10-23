@@ -52,4 +52,20 @@ class ParseAtTheConsoleEndToEndTest {
 
                 >>\s""");
     }
+
+    @Test
+    @DisplayName("?? in a rule prints where the walk stands on the console, before the answer, as a real 3.22.5 console does")
+    void printsWhereTheWalkStands() {
+        assertThat(readWhatTheConsolePrints("""
+                parse [a b] [?? skip skip]
+                parse [a] [??]
+                """)).isEqualTo("""
+                >> skip: [a b]
+                == #(true)
+
+                >> #(end): [a]
+                == #(false)
+
+                >>\s""");
+    }
 }
