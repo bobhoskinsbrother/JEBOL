@@ -2253,9 +2253,10 @@ building the frame at about 14% of the time and looking words up at about
 because the frame was never its cost: checking each argument's type is 13%
 of it, the largest single piece, and is where the next gain is.
 
-`./gradlew allTests` took 4m46s after the change. No gate time was taken
-the same day before it, so this is a figure to measure the next change
-against, not a before-and-after; decision 38's 4m19s was a different suite.
+`./gradlew allTests` went from 5m22s to 4m46s, 36 seconds or about 11%
+faster, both on 2026-10-23 with one test process per core. Two small commits
+landed between the two runs (the stats template and PARSE's `??`), adding a
+handful of tests and no measurable work.
 
 **What it did not do: words still find their slot by name.** Giving each
 word its slot's position, as the C does, would change binding in every place

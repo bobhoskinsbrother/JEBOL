@@ -217,7 +217,7 @@ test a deep copy of it. Measure the copy first and stop if it is not clearly
 under about 15ms; if it is, every piece of interpreter state -- contexts,
 functions, objects, and ports holding host resources -- must copy, proven by
 isolation tests of the whole interpreter like `LibrarySourceIsolationTest`.
-The gate is 5m22s on 2026-10-23, with one test process per core.
+The gate is 4m46s on 2026-10-23, with one test process per core.
 
 ### 7. Dev tools
 
