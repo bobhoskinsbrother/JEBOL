@@ -17,7 +17,6 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.WheelInput;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -46,7 +45,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         serving.reportTo(screen);
         operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();
         browser = operator.browser();
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> screen.hasDisplay());
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> screen.hasDisplay());
 
         Bounds everything = Bounds.standard().withTimeLimit(Duration.ofSeconds(100));
         for (HostService service : HostService.values()) {
@@ -87,7 +86,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     }
 
     private void waitUntilTheScriptHasHeard(String question) {
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [system/ports/event 0.05]");
             return "#(true)".equals(answerTo(question));
         });
@@ -251,7 +250,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
         placeTheOperatorAt(Integer.parseInt(middle[0]), Integer.parseInt(middle[1])).click().perform();
 
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [gui-event-port 0.05]");
             return "#(true)".equals(answerTo("clicked"));
         });
@@ -285,7 +284,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
         placeTheOperatorAt(across, down).clickAndHold().moveByOffset(80, 0).release().perform();
 
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [gui-event-port 0.05]");
             return "#(true)".equals(answerTo("before <> get-face the-slider"));
         });
@@ -322,7 +321,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
                 .scrollFromOrigin(WheelInput.ScrollOrigin.fromViewport(across, down), 0, 400)
                 .perform();
 
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [gui-event-port 0.05]");
             return "#(true)".equals(answerTo("before <> get-face the-scroller"));
         });
@@ -363,7 +362,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     private void waitUntilTheGuiHasHeard(String question) {
         try {
-            new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+            new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
                 answerTo("wait [gui-event-port 0.05]");
                 return "#(true)".equals(answerTo(question));
             });

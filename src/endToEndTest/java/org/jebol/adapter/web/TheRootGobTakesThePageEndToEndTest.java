@@ -14,7 +14,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -100,7 +99,7 @@ class TheRootGobTakesThePageEndToEndTest {
         operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();
         browser = operator.browser();
 
-        new WebDriverWait(browser, Duration.ofSeconds(20))
+        new PageWait(browser, Duration.ofSeconds(20))
                 .until(anything -> screen.hasDisplay());
     }
 

@@ -16,7 +16,6 @@ import org.openqa.selenium.bidi.module.Browser;
 import org.openqa.selenium.bidi.module.BrowsingContextInspector;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -398,7 +397,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
 
     private void waitUntil(String hoped, Supplier<Boolean> condition) {
         try {
-            new WebDriverWait(browser, PATIENCE).until(anything -> hasGivenUp() || condition.get());
+            new PageWait(browser, PATIENCE).until(anything -> hasGivenUp() || condition.get());
         } catch (TimeoutException late) {
             throw new AssertionError("in " + browserName + " " + hoped + " never happened; the page said: "
                     + readOutput(), late);

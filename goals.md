@@ -297,9 +297,11 @@ if the drag still reads slow after the paint work:
 
 1. **`BlockStorage.at(int)`**, 6 to 8 per cent of some workloads: every value
    read from a block pays bounds arithmetic and an indirection.
-2. **The wasm worker's cold start**, 459ms, which is the JVM's first create
-   by another route; the per-boot parse of the borrowed library is its
-   biggest single piece and the candidate for a build-time form of it.
+2. **The wasm worker's cold start**, about 460ms, which is the JVM's first
+   create by another route. Not the parse: decision 39's pre-parsed library
+   image left it unchanged, because building the values costs what scanning
+   them did. What is left is constructing and evaluating the library on every
+   boot, which only a boot image in the strong sense would skip.
 
 ### 10. WebP as an image format
 

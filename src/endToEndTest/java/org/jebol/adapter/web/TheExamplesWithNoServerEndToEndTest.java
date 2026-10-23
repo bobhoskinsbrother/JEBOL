@@ -13,7 +13,6 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.WheelInput;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,8 +57,8 @@ class TheExamplesWithNoServerEndToEndTest {
         serving.stop(0);
     }
 
-    private WebDriverWait patientBrowser() {
-        return new WebDriverWait(browser, Duration.ofSeconds(60));
+    private PageWait patientBrowser() {
+        return new PageWait(browser, Duration.ofSeconds(60));
     }
 
     private List<String> readTheLinesSoFar() {

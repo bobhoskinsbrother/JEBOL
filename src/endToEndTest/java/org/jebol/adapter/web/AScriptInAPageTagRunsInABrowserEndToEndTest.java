@@ -15,7 +15,6 @@ import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -74,8 +73,8 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
         return (Long) operator.runsInThePage("return window.innerWidth;");
     }
 
-    private WebDriverWait patientBrowser() {
-        return new WebDriverWait(browser, Duration.ofSeconds(30));
+    private PageWait patientBrowser() {
+        return new PageWait(browser, Duration.ofSeconds(30));
     }
 
     private List<String> readTheLinesSoFar() {
