@@ -298,8 +298,8 @@ still reads slow after the paint work:
 
 ### 11. WebP as an image format
 
-A real 3.22.5 has no WebP codec, so this is the one goal that improves on the
-C rather than agreeing with it, and it comes last for that reason. Every
+A real 3.22.5 has no WebP codec, so this goal improves on the C rather than
+agreeing with it, and it comes after the agreement work for that reason. Every
 browser reads and writes WebP, phones take pictures in it, and a script that
 loads a picture from the web meets it often.
 
@@ -328,6 +328,39 @@ A host that cannot do one side refuses it the way a page refuses dds: a
 catchable error naming the format and the host. The spec first, as everywhere:
 the codec and each host's answer go in `spec/web.allium` and its desktop
 counterpart before any test.
+
+### 12. A url script's own files come from its url, and it cannot leave its root
+
+A script given by url runs today in the directory the command was given in, so
+`do %my-alt-vid.rb` inside `https://raw.github.com/myresources/main.rb` reads
+a local `./my-alt-vid.rb` or nothing, and never the file beside the script.
+That is the current contract and not an accident: `AScriptMayComeFromAUrl` in
+`spec/repl.allium` says relative paths count from the command's directory, and
+`do*`'s change-dir guard (`sys-base.reb:117`) fires only for a file.
+
+What it should do instead: a relative path inside the script resolves against
+the script's own url. `%my-alt-vid.rb` is
+`https://raw.github.com/myresources/my-alt-vid.rb`, and every way a script
+reaches another file takes it - `do`, `load`, `read`, `import` and a `needs:`
+header naming a file.
+
+**The root is fixed and may not be left.** The directory the first script was
+fetched from is the root, and every fetch resolves under it: a relative path
+may descend into the root, and one that climbs above it (`%../x.rb`) is
+refused with a catchable error naming the url, the way a link leaving a host's
+`--root` is refused (`ALinkLeavingTheRootIsRefused`, `spec/embed.allium`). A
+script fetched under the root resolves its own relative paths against its own
+url, still under the same root, so nothing a run fetches widens what it can
+reach. An explicit url - `read https://other/x.r3` - is the script choosing,
+as DO of a url is, and is left alone.
+
+The spec changes first: `AScriptMayComeFromAUrl` gains the new answer, with
+the root rule beside it.
+`AScriptGivenByUrlAtTheCommandLineEndToEndTest` grows two cases through the
+local TLS server it already builds: a relative include fetched from the
+served tree, and a `%../` refused with nothing requested. `ORDER.txt`'s note
+on `sys-start.reb` says a url has no directory to run in, and stops being true
+the day this lands.
 
 ---
 
