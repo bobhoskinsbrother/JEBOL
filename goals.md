@@ -164,35 +164,112 @@ interpreters -- reads as missing.
 
 ### 5. Loose ends
 
-- **A task's body runs nowhere by default.** DO of a task answers the task,
-  and the body runs only where a host supplies a way to run it: on a thread of
-  its own in a fresh interpreter on the JVM, which the console wires. The rule
-  is `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`; a
-  browser runs none, decision 30.
-- **Fourteen compiled modules are left out of `system/modules`** -- sqlite,
-  zstd, webp and the rest -- because importing them fetches native code. Each
-  can come back as an extension text in Java, one at a time, when one is
-  wanted. The `serial` scheme is the same: an extension can provide it now.
-- **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
-  JVM has no portable way to ask.
-- **An error's `near` and `where` differ from R3's in form.** R3 writes `near`
-  as the whole block positioned at the failing value,
-  `#(block! [o: make object! [self: 3] o/self] 2)`, where JEBOL writes the
-  block from that value on; and R3's `where` names `catch` between a native
-  and the TRY that caught it, which JEBOL's leaves out. Found by the sweeps on
-  2026-10-15; no suite assertion asks.
-- **The table of word spellings only grows.** `Context.canonicalise` keeps
-  one lower-cased copy of every spelling ever read, in a static table every
-  interpreter in the process shares and nothing empties, so a long-running
-  process whose scripts make words in a loop (`to word! join "k" i`) grows it
-  without limit. Whether r3's own word table does the same is not measured.
-- **63 open questions across the spec files** on 2026-10-23, 26 of them in
-  `natives.allium`. Unowned by any goal: the three in `parse.allium`, the eight
-  in `embed.allium`, the one in `nav.allium` (whether a window should hear the
-  trackpad's swipe, which Java gives no public way to), and the design
-  questions in `natives.allium` (whether a
-  `struct!` is more than its layout, which verbs reach a port's actor, whether
-  values may cross between interpreters).
+Six pieces of work, unrelated to each other, in the order to do them: the
+three defects first, then the port, then the two reviews.
+
+#### 5a. LOAD and TRANSCODE keep the line breaks at the top level
+
+`mold load "a^/b"` is `[a b]` here and `[a^/b]` in R3, and
+`new-line? next load "a^/b"` is false here and true there. The same for
+`transcode`. A nested block keeps its breaks; only the outermost block of
+what was read loses them. It shows wherever a loaded script is molded: an
+error's `near` prints the whole script on one line.
+
+**Done when** the outermost block carries its line breaks as R3's does, for
+LOAD, TRANSCODE and a script run from a file.
+
+#### 5b. An error a native raises carries its `near` and `where`
+
+For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
+and `where: [compress try ...]`; JEBOL gives none for both. Errors from
+evaluated code, paths, PARSE and CAUSE-ERROR already agree with R3.
+
+1. Sweep: raise an error from every native that can raise one, in both
+   interpreters, and diff `near` and `where`. COMPRESS is the one found so
+   far; how many others share it is not known.
+2. Fix the path they share, not each native.
+
+**Done when** the sweep shows no difference, and is a test.
+
+#### 5c. The table of word spellings belongs to an interpreter
+
+`Context.ONE_NAME_PER_SPELLING` keeps one lower-cased copy of every spelling
+ever read, in a static table every interpreter in the process shares and
+nothing empties. A long-running process whose scripts make words in a loop
+(`to word! join "k" i`) grows it without limit. It is per-interpreter state
+held in a static, and it goes.
+
+**Done when** the table lives with the interpreter and is gone when the
+interpreter is, proven by a test that makes words in one interpreter and
+finds none of them in the next.
+
+#### 5d. Port `lz4` and `lzav` to COMPRESS
+
+R3 lists `[deflate zlib gzip br crush lz4 lzav lzma lzw]` in
+`system/catalog/compressions`; JEBOL lists
+`[zlib gzip deflate crush lzw lzma br]` and answers `feature-na` for both.
+`compress "aaaa" 'lz4` is `#{4061616161}` in R3.
+
+Neither is in the JDK. Both are in the C, wired into `u-compress.c`:
+`rebol3-source/src/core/lz4/` (`lz4.c`, and `lz4hc.c` for the high levels)
+and `rebol3-source/src/include/sys-lzav.h` (LZAV 5.5).
+
+1. The reference probe for each, built from the C, before any Java.
+2. A boundary list from the C's block and window sizes, with the test
+   beside each.
+3. The port, byte-exact against the probe.
+4. The catalogue in R3's order.
+
+Today `Encodings.COMPRESSIONS_ELSEWHERE` names them and
+`CompressionThisBuildLacksFromTheSourceTest` pins `feature-na` -- a test of
+the gap, not of R3, which changes with the port.
+
+**Done when** both compress and decompress as R3 does at every level, and
+the catalogue reads as R3's.
+
+#### 5e. Review the sixteen missing entries of `system/modules`
+
+R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
+downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
+mathpresso, miniaudio, speak, sqlite, triangulate, webp, zlib-ng and zstd.
+Two are host modules: `window` (none in a macOS r3) and `osx-dialogs`. Some
+of what they serve is here another way -- `'br` is JEBOL's own Brotli and
+writes R3's bytes, and the request dialogs come from the Java window service
+-- but nobody has checked what each one exports. Meanwhile
+`system/modules/brotli` raises `cannot access` where R3 answers its url.
+
+For each of the sixteen, and the `serial` scheme:
+
+1. Import it in `./r3-head` (this needs the network) and list what it
+   exports.
+2. Say which of those JEBOL already serves another way, and which it lacks.
+3. Decide: carry the entry as R3 does, serve it by an extension in Java, or
+   leave it out on purpose and list it under Standing.
+
+**Done when** each has a decision written down, and the ones to build are
+goals of their own.
+
+#### 5f. Review the 63 open questions in the spec
+
+On 2026-10-23: 26 in `natives.allium`, 8 in `embed.allium`, 6 in
+`load.allium`, 5 in `screen.allium`, 3 each in `dialect`, `draw`, `eval`,
+`parse` and `values`, 2 in `web.allium`, 1 in `nav.allium`. They have been
+counted, not read.
+
+1. Read each one against the code and `./r3-head`. Say whether it is still
+   open, already answered by what was built since (then it becomes a rule
+   and the question goes), or no longer relevant (then it goes).
+2. Of those still open, give each one a goal or say why it has none.
+
+Unowned by any goal today: the three in `parse.allium`, the eight in
+`embed.allium`, the one in `nav.allium` (whether a window should hear the
+trackpad's swipe, which Java gives no public way to), which verbs reach a
+port's actor (`natives.allium`), and whether a `struct!` is more than its
+layout and whether values may cross between interpreters (both
+`values.allium`).
+
+**Done when** every question left is still open for a reason written beside
+it, and owned.
 
 ### 6. Debugging and tracing
 
@@ -402,5 +479,11 @@ the day this lands.
   R3 has 47, on purpose.** `back` and `forward` come after the C's last, so no
   index the C fixed moves; `go`, `go-back`, `go-forward`, `current-place` and
   `unsaved-work` are JEBOL's own words. Decision 50 and `spec/nav.allium`.
+- **A task's body runs, where R3 never runs it, on purpose.** R3 makes a
+  task and DO answers it, but nothing ever starts the body: an obvious bug.
+  JEBOL runs it where a host supplies a way to: on a thread of its own in a
+  fresh interpreter on the JVM, which the console and the command line wire.
+  A browser runs none. `TheFateOfATasksBodyIsTheHostsToDecide` in
+  `spec/natives.allium`, decision 30.
 - **No Java PDF implementation.** The borrowed codec is what Rebol has; more
   than that is a library the caller adds.
