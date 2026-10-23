@@ -213,6 +213,18 @@ decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
+**Next, with tracing to see what a boot builds: copy a booted interpreter
+rather than boot one per test.** The gate builds about 16,300 interpreters at
+about 41ms each, and nearly all of that is evaluating the borrowed library to
+define the same functions and objects every time. Caching the parsed library
+(decision 39) and reading each file once only touch the parsing, which is
+not where the time goes. Boot one interpreter per test process and hand each
+test a deep copy of it. Measure the copy first and stop if it is not clearly
+under about 15ms; if it is, every piece of interpreter state -- contexts,
+functions, objects, and ports holding host resources -- must copy, proven by
+isolation tests of the whole interpreter like `LibrarySourceIsolationTest`.
+The gate is 5m22s on 2026-10-23, with one test process per core.
+
 ### 8. Dev tools
 
 Two homes: the flag and the example go in JEBOL; the server and its tools are a
