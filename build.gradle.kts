@@ -201,7 +201,7 @@ fun Test.runsTheTestsIn(suite: SourceSet) {
         "jebol.testClassesDirs",
         testSuites.joinToString(File.pathSeparator) { it.output.classesDirs.asPath },
     )
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
     inputs.dir(layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")
         .withPathSensitivity(PathSensitivity.RELATIVE)
