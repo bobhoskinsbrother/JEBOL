@@ -19,7 +19,7 @@ Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 4 |
+| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 5 |
 | `./gradlew allTests` | 29,137 tests on 2026-10-22: `unitTests` 2,976, `functionalTests` 24,161, `endToEndTests` 2,000 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
@@ -58,12 +58,466 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The two that take JEBOL to Android and iOS come
-first, with the defects that would hurt there fixed before each stage. Agreeing with the C
-comes before improving on it: a place where JEBOL answers something a real
-3.22.5 does not is a defect.
+Ordered by importance. Any Rebol file running the same on a real 3.22.5 and
+on JEBOL comes first (goal 1). The two that take JEBOL to Android and iOS
+come next, with the defects that would hurt there fixed before each stage.
+Agreeing with the C comes before improving on it: a place where JEBOL answers
+something a real 3.22.5 does not is a defect.
 
-### 1. Android, with the interpreter running on Android's own Java
+### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
+
+Seventeen pieces of work, in the order to do them.
+
+**1a to 1l come first: each makes the same script answer differently on a
+real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
+either. Ordered by how much ordinary code they break: a scheme written in
+REBOL (1a), saving and loading data (1b, 1c), binding (1d), the compressions
+and modules a script can ask for (1e to 1g), the console and https (1h, 1i),
+then what a script sees when it fails (1j to 1l).
+
+**1m to 1q change nothing a script run on both would see**: the spec, a
+process-wide table, confinement and tasks, and then the five Rebol bugs
+JEBOL fixes on purpose (1p), which make the two differ deliberately.
+
+#### 1a. Every verb reaches a port's actor, with all its arguments
+
+A scheme written in REBOL, with an actor declaring INSERT, APPEND, FIND,
+CLEAR, COPY, READ and WRITE, measured on 2026-10-23:
+
+| Call | R3 | JEBOL |
+| --- | --- | --- |
+| `insert p 1`, `append p 1`, `clear p` | the actor's answer | `cannot-use` |
+| `find p 1` | the actor's answer | none |
+| `take p` (not declared) | `no-port-action` | `cannot-use` |
+| `copy/part p 10` | the actor gets PART true, LENGTH 10 | LENGTH none |
+| `read/part p 10`, `write/append p "x"` | as declared | the same |
+
+JEBOL wires fifteen verbs to an actor by hand; R3's `T_Port` sends every
+action except MAKE, TO and REFLECT. `prot-mysql.reb` declares an INSERT that
+can never be called. COPY and OPEN rebuild the argument list instead of
+passing it through, which loses the refinement values.
+
+1. Spec: replace the open questions under `TheRefinementsAskedForReachTheActor`
+   and the url routing with one rule: every action but MAKE, TO and
+   REFLECT goes to the actor with its arguments as given, and an action the
+   actor does not declare is `no-port-action`.
+2. Tests through a REBOL-written scheme for every action, declared and not,
+   with every refinement.
+3. One general dispatch replacing the fifteen hand-wired verbs.
+
+**Done when** every action R3 sends to an actor reaches JEBOL's with the same
+arguments, and an undeclared one is `no-port-action`.
+
+#### 1b. MOLD keeps a nested series' position, and lays a struct out as R3 does
+
+- `mold/all reduce [next "abc"]` is `["bc"]` here and `[#(string! "abc" 2)]`
+  in R3. A series at the top keeps its position (`mold/all next "abc"`
+  agrees); one inside a block loses it. Binaries the same. A script that
+  saves data and loads it back gets a different value here.
+- `mold` of a `struct!` is one line here and is laid out over several in R3,
+  with the spec and the values each on lines of their own.
+
+1. Sweep: every series datatype at a non-head position, inside a block,
+   a paren, an object and a map, under `mold` and `mold/all`; every
+   datatype that molds over several lines in R3. Diff against `./r3-head`.
+2. Spec, tests from the sweep, then the molder.
+
+**Done when** the sweep shows no difference, and is a test.
+
+#### 1c. LOAD and TRANSCODE keep the line breaks at the top level
+
+`mold load "a^/b"` is `[a b]` here and `[a^/b]` in R3, and
+`new-line? next load "a^/b"` is false here and true there. The same for
+`transcode`. A nested block keeps its breaks; only the outermost block of
+what was read loses them. It shows wherever a loaded script is molded: an
+error's `near` prints the whole script on one line.
+
+**Done when** the outermost block carries its line breaks as R3's does, for
+LOAD, TRANSCODE and a script run from a file.
+
+#### 1d. BIND with a word target does not look outward
+
+`bind 'outer in ctx/inner 'local`, where only the outer object has OUTER, is
+`not-in-context` in R3 and 1 in JEBOL: the word form walks up to a parent
+context, which R3 has no chain for. The block form already matches R3 (the
+word is left alone).
+
+1. Spec: the rule for BIND says neither form looks past the target's own
+   context.
+2. Tests for both forms, a word in the target, a word only in a parent, a
+   word in neither.
+3. Change the word form; run the functional suite for anything relying on
+   the old walk.
+
+**Done when** both forms answer as R3 does on all three.
+
+#### 1e. Port `lz4` and `lzav` to COMPRESS
+
+R3 lists `[deflate zlib gzip br crush lz4 lzav lzma lzw]` in
+`system/catalog/compressions`; JEBOL lists
+`[zlib gzip deflate crush lzw lzma br]` and answers `feature-na` for both.
+`compress "aaaa" 'lz4` is `#{4061616161}` in R3.
+
+Neither is in the JDK. Both are in the C, wired into `u-compress.c`:
+`rebol3-source/src/core/lz4/` (`lz4.c`, and `lz4hc.c` for the high levels)
+and `rebol3-source/src/include/sys-lzav.h` (LZAV 5.5).
+
+1. The reference probe for each, built from the C, before any Java.
+2. A boundary list from the C's block and window sizes, with the test
+   beside each.
+3. The port, byte-exact against the probe.
+4. The catalogue in R3's order.
+
+Today `Encodings.COMPRESSIONS_ELSEWHERE` names them and
+`CompressionThisBuildLacksFromTheSourceTest` pins `feature-na` -- a test of
+the gap, not of R3, which changes with the port.
+
+**Done when** both compress and decompress as R3 does at every level, and
+the catalogue reads as R3's.
+
+#### 1f. Review the sixteen missing entries of `system/modules`
+
+R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
+downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
+mathpresso, miniaudio, speak, sqlite, triangulate, webp, zlib-ng and zstd.
+Two are host modules: `window` (none in a macOS r3) and `osx-dialogs`. Some
+of what they serve is here another way -- `'br` is JEBOL's own Brotli and
+writes R3's bytes, and the request dialogs come from the Java window service
+-- but nobody has checked what each one exports. Meanwhile
+`system/modules/brotli` raises `cannot access` where R3 answers its url.
+
+For each of the sixteen, and the `serial` scheme:
+
+1. Import it in `./r3-head` (this needs the network) and list what it
+   exports.
+2. Say which of those JEBOL already serves another way, and which it lacks.
+3. Decide: carry the entry as R3 does, serve it by an extension in Java, or
+   leave it out on purpose and list it under Standing.
+
+**Done when** each has a decision written down, and the ones to build are
+goals of their own. Brotli is reviewed: 1g.
+
+#### 1g. The `brotli` module, and the streaming encoder it needs
+
+`compress` and `decompress` with `'br` already run on JEBOL's Brotli and
+write R3's bytes. `system/modules/brotli` is something else: a link to
+Oldes/Rebol-Brotli 0.1.0, a native extension R3 downloads on `import brotli`.
+Its source is at https://github.com/Oldes/Rebol-Brotli (`src/brotli-rebol-extension.r3`
+declares the commands, `src/brotli-commands.c` implements them). A real
+3.22.5 here cannot import it: the download meets the TLS inspector (Standing).
+
+What `import brotli` gives a script, against what JEBOL's port has:
+
+| Command | What it does | In the Java port |
+| --- | --- | --- |
+| `version` | the Brotli library's version | no; the vendored C is 1.2.0 |
+| `compress` `/part` `/level` | compress in one call | yes, `Brotli.compress` |
+| `decompress` `/part` `/size` | decompress in one call | yes, `Brotli.decompress` |
+| `make-encoder` `/level`, `make-decoder` | a handle holding a stream's state | no |
+| `write` `/flush` `/finish`, `read` | feed a stream in chunks and take its output | no |
+| an encoder's `/mode` and `/size-hint`, a codec's `/finished` | tune the encoder; ask whether a stream ended | no |
+| on import | appends `br` to `system/schemes/http/headers/Accept-Encoding` | trivial |
+
+The port compresses and decompresses a whole input in one call. It has no
+encoder that keeps its state between calls, never flushes a block partway
+through, and takes no mode and no size hint. None of that is cosmetic: the
+extension sets `BROTLI_PARAM_MODE` and `BROTLI_PARAM_SIZE_HINT`, and
+`docs/brotli-port.md` records that the size hint changes which of the four
+hashers runs.
+
+Two stages, each specified, tested and built in that order:
+
+1. **The module over the port as it is.** `version`, `compress`,
+   `decompress`, and the `Accept-Encoding` edit, served by an extension in
+   Java. `system/modules/brotli` then answers what an imported module
+   answers.
+2. **The streaming encoder and decoder.** A port, not wiring, done the way
+   the one-shot port was:
+    1. The reference probe first: the extension's `brotli-commands.c` compiled
+       against `rebol3-source/src/core/brotli/`, driven by a script of
+       `write`, `/flush`, `/finish` and `read` calls, writing each chunk.
+       Check which Brotli the extension is built against (its `.nest` names
+       upstream `@brotli`); if not 1.2.0, say what differs.
+    2. A boundary list from the C: chunk sizes either side of the input
+       block and the window, a flush on an empty stream, a flush twice, a
+       `write` after `/finish`, each mode, a size hint under and over the
+       real length, and every level.
+    3. The streaming state in Java, byte-exact against the probe; the
+       decoder fed in chunks split at every place a chunk can split.
+    4. The handles and their getters and setters, with R3's errors for a
+       wrong handle or a write after the end.
+
+**Done when** every command in the table answers as the extension does in
+a real 3.22.5, the stream's bytes match the probe at every boundary on the
+list, and Brotli's own corpus round-trips through the streaming API in
+chunks.
+
+
+#### 1h. The console honours echo, and `call/console` runs without one
+
+- **Echo.** `modify system/ports/output 'echo false` is accepted and changes
+  nothing: what is typed is still shown, so a script asking for a password
+  shows it here and not in R3. JEBOL also writes the setting into a field
+  R3's port has not got (`system/ports/output/echo` answers false here and
+  is `invalid-path` in R3). The console adapter holds the three modes --
+  echo, line and error -- and honours them; the field goes. First say, in
+  the spec, what each mode means for a host that is not a terminal.
+- **`call/console` on a host with no console** runs the program as plain
+  inheritance would. One rule in `embed.allium`.
+
+**Done when** echo off hides what is typed at the REPL (an end-to-end test
+through the command line), the port has no extra field, and `call/console`
+runs under a host with no console.
+
+#### 1i. TLS: an out-of-order chain, and a Unicode host name
+
+R3 trusts every server, so a script reading a server like these works there
+and fails here.
+
+- **A chain sent out of order is put in order** before it is checked, as
+  browsers do. A chain missing an intermediate is still refused: fetching
+  it would be a network call per handshake.
+- **A Unicode host name is converted to its ASCII form** (`java.net.IDN`)
+  before it is matched against the certificate, so `https://bücher.de` can
+  be read.
+
+Both need servers the end-to-end suite spins up itself, like the expired and
+wrongly named ones it already has.
+
+**Done when** both are rules, and the command line reads a local server that
+sends its chain backwards and one named in Unicode.
+
+#### 1j. An error a native raises carries its `near` and `where`
+
+For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
+and `where: [compress try ...]`; JEBOL gives none for both. Errors from
+evaluated code, paths, PARSE and CAUSE-ERROR already agree with R3. A script
+that stops on such an error prints a different `** Near:` and `** Where:`.
+
+1. Sweep: raise an error from every native that can raise one, in both
+   interpreters, and diff `near` and `where`. COMPRESS is the one found so
+   far; how many others share it is not known.
+2. Fix the path they share, not each native.
+
+**Done when** the sweep shows no difference, and is a test.
+
+#### 1k. An operator with nothing on its left raises what R3 raises
+
+Measured on 2026-10-23:
+
+| Source | R3 | JEBOL |
+| --- | --- | --- |
+| `do [+ 1]` | `no-op-arg`, arg1 `+` | `no-op-arg`, arg1 the sentence "the operator + has nothing on its left" |
+| `do [1 + + 3]` | `cannot-use`, arg1 `add:`, arg2 none | `missing-arg`, arg1 the same sentence |
+
+`AnOperatorWithNothingOnItsLeftFails` in `spec/eval.allium` names
+`missing-arg` for the second case, which R3 does not raise there: the rule is
+wrong, so it is fixed first.
+
+1. Read the C for what the second case pushes and why it surfaces as
+   `cannot-use` on `add:`; probe a few more positions (after a set-word,
+   inside a paren, after a function's last argument).
+2. Correct the rule, then the tests, then the code.
+
+**Done when** every position probed answers R3's id and arguments.
+
+#### 1l. An error's arguments are values, not sentences
+
+Twice now JEBOL has put an English sentence where R3 puts a value: arg1 of
+the operator error (1k), and arg1 of `gui-metric/set 'restore true` ("no host
+serves the metric restore"). A script that reads `e/arg1` gets prose.
+
+1. Sweep: raise every error JEBOL can raise, read arg1, arg2 and arg3, and
+   list every one that is a sentence. `scripts/error-parity.py` is the place
+   to start.
+2. For each, find what R3 puts there. Where R3 cannot raise it, the
+   argument is the value the error is about, and the wording goes in the
+   catalogue's message.
+
+**Done when** no error argument is a sentence, proven by the sweep as a
+test.
+
+#### 1m. Clear the spec's open questions
+
+All 63 were read against the code and `./r3-head` on 2026-10-23 and each has
+an answer. The work that follows from the answers is 1h, 1i, 1o, 1p and 1q;
+this sub-goal is the spec's side of it. Every edit runs `allium check` clean.
+
+1. **Already answered: the question becomes a rule, or goes.** Each of
+   these now matches R3 or is built. Where the behaviour is not already a
+   rule, write it as one, and point it at the test that covers it (write the
+   test if none does):
+   - `parse.allium`: THEN commits the alternative (`parse "ab" [["a" then
+     "x" | "a" "b"]]` is false in both); a mark into another series is read
+     as a rule, as R3 reads it.
+   - `eval.allium`: a get-word refinement is checked whatever it holds
+     (`append/:bogus` is `no-refine` with BOGUS false, in both).
+   - `values.allium`: `#[none]` is `invalid-arg` in both; `struct!` matches
+     R3 as a binary layout tool (typed fields, arrays, nesting, `rebval!`
+     fields, `change s #{...}` to lay bytes over it, `to binary!`) -- that
+     is all R3 does with one, so the question goes.
+   - `load.allium`: `a%b`, `a#b`, `a$b` and `a\b` are `invalid` in both; an
+     export never defined says nothing, in both; HELP, SOURCE, WHAT, ABOUT
+     and DUMP-OBJ exist; the unbalanced-delimiter spellings match R3.
+     Delete the paren-led path question outright: R3 reads
+     `(make object! [q: 7])/q` as a paren and a refinement too.
+   - `natives.allium`: `delete` and `query` on a url answer as R3's;
+     the two error ids for giving a native a body match R3 on all three
+     spellings; `read %*.r3` lists matches; REMOVE on a complemented bitset
+     matches; PROTECT/HIDE hides; REPEAT takes a series and a decimal; the
+     six natives waiting on datatypes exist; a handle holds a value and
+     stays opaque; `CompressedBytesAreTheOnesARealRebolWrites` now holds for
+     all seven methods (zlib, gzip and deflate write R3's bytes at levels 0,
+     1, 6 and 9), so the libdeflate question goes and the invariant loses
+     its exception; a wait on a connection with no timeout answers none
+     until connections are read on their own thread (a rule, not a
+     question); `system/options/boot` serves children only, which is enough
+     (owner's answer); a byte-exact CHECK over a vector is dropped.
+   - `screen.allium`: VIEW waits until a deadline ends it, built; a draw
+     block on a gob paints; a missing screen's metrics are zero, as R3's
+     host answers; the window's size is settled by the sliders example
+     matching its reference screenshot.
+   - `draw.allium`: SPLINE is built; a block's defaults read the gob's
+     size, as the C does.
+   - `dialect.allium`: no dialect has a slot after a repeating slot (every
+     `*` in `dial-draw.reb` is last); swapped slots of one type get no
+     warning (owner's answer); a near-miss count stays debugging output
+     (owner's answer).
+   - `embed.allium`: the evaluator checks its bounds every `checkEvery`
+     steps, 1,000 by default; a file feeding a program's input stays a path
+     for the host, since no script can tell; a host sees nothing of a run
+     until it ends (owner's answer).
+   - `web.allium`: an empty folder chosen in a browser answers the empty
+     folder; no browser can name it.
+2. **Answered by the owner, with work to do: the question becomes a rule
+   when its sub-goal starts**, not before, so the rule and its tests arrive
+   together: console echo and `call/console` (1h), TLS chains and Unicode
+   hosts (1i), home and values between interpreters (1o), the Rebol bugs
+   (1p), `effect` in DRAW and GUI-METRIC/SET (1q). The `call/console`
+   question is in `embed.allium` and `natives.allium` both; the rule goes
+   in `embed.allium` and the copy in `natives.allium` is deleted.
+3. **Not a question for JEBOL:** move the `open/new` question -- a real
+   3.22.5 answers two different ways on two identical runs -- to
+   `docs/rebol-findings.md`. `change/part` on an image with a count copies
+   R3 (owner's answer): the question becomes a finding beside it.
+4. **Questions about the spec itself**, decided while editing:
+   - Write down how far PARSE backs up when an alternative fails, and
+     whether a repeat is retried at a lower count -- read off the C and
+     `./r3-head`.
+   - `TranscodeRequest` holds the text twice (`source_text` and `source`);
+     keep `source` and derive the text.
+   - State the mold property once (whatever would not read back is written
+     as a construct) rather than listing members, with the round-trip
+     invariant enforcing it.
+   - `mold_indent_width`, `longest_quoted_string` and
+     `newlines_forcing_braces` become named constants, not configuration.
+5. **Moved:** whether a running script can be paused and resumed goes to
+   goal 6, where stepping needs it.
+6. **Still open, rewritten in plain English:**
+   - Should a host be able to cap a script's memory? (Later.)
+   - Should JEBOL check whether a certificate was revoked, and if it cannot
+     find out, allow or refuse? (Later.)
+   - Does a partly transparent pixel decoded in the browser come out
+     visibly wrong? Look at one first, then decide whether a second decoder
+     is worth it.
+   - A swipe moves an app back and forward on every platform: decided. How
+     it arrives differs on each, and the desktop is the one undecided:
+     - **Web, desktop and mobile browsers:** the browser's own swipe moves
+       its history, and JEBOL's history is the browser's (decision 50,
+       `spec/nav.allium`), so it works today. Prove it with an end-to-end
+       test, and check a mobile browser's edge swipe takes the same path.
+     - **Desktop window:** macOS sends a swipe to
+       `com.apple.eawt.event.SwipeListener`, which JDK 25 still ships but
+       does not export (it needs `Add-Exports` in the jar's manifest, and
+       works on macOS only); the public alternative is reading a sideways
+       scroll as back and forward, which works on every system and cannot
+       tell a swipe from scrolling sideways. Try both on a real trackpad,
+       then choose.
+     - **Android and iOS (goals 2 and 3):** Android's system back gesture
+       arrives through the app's back handler; iOS has no system back, so
+       an edge swipe has to be recognised by the app itself. Each goes in
+       its platform's goal.
+
+**Done when** the spec holds only the four questions in step 6, each in
+plain English, and every answered one is a rule or gone.
+
+#### 1n. The table of word spellings belongs to an interpreter
+
+`Context.ONE_NAME_PER_SPELLING` keeps one lower-cased copy of every spelling
+ever read, in a static table every interpreter in the process shares and
+nothing empties. A long-running process whose scripts make words in a loop
+(`to word! join "k" i`) grows it without limit. It is per-interpreter state
+held in a static, and it goes.
+
+**Done when** the table lives with the interpreter and is gone when the
+interpreter is, proven by a test that makes words in one interpreter and
+finds none of them in the next.
+
+#### 1o. A confined script's home, and values between interpreters
+
+The command line confines a script to its folder as R3 does, and both report
+the machine's home, so neither changes what a script run on both answers.
+
+- **Home inside the confinement.** `system/options/home` reports the
+  machine's home even when the script may only see one folder, so REBOL's
+  own user storage cannot write there. Ask the filesystem port where home
+  is, so every host gives an answer inside what it lets the script see.
+- **Values cross between interpreters by deep copy.** Owner's decision. Say
+  in `values.allium` what crosses (every datatype, or which not: ports,
+  handles, functions bound to the sender's contexts), and that the receiver
+  gets a copy it owns. A task's body is the first place it is used; goal 6's
+  copied interpreter is the second.
+
+**Done when** both are rules with tests, and a confined interpreter can make
+REBOL's user file at home.
+
+#### 1p. Fix five Rebol bugs, and copy one
+
+Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
+real 3.22.5 does not, so each gets a Standing entry saying what and why.
+
+1. **`find` in a binary finds 255.** `find #{00FF} 255` is none in R3 and
+   `#{FF}` here; JEBOL is already right. Write it in Standing, and turn the
+   open question into a rule.
+2. **`make image!` takes a block of tuples.** `make image! [2x1 [1.1.1
+   2.2.2]]` is a malconstruct in R3, because the reader that consumes the
+   block never steps past it. Read the C and decide what the block should
+   mean (one tuple per pixel, row by row) before writing the rule.
+3. **`image-diff/part` clips an area that runs past the edge.** The C
+   subtracts the size twice; `image-diff/part i1 i2 0x0 1x3` on two two by
+   two images answers 0% where the pixels differ. Rebol's own
+   `image-test.r3` asserts that 0% (line 402), so the suite assertion must
+   be recorded as a deliberate difference: decide how the suite harness
+   records one -- it has `fails-on-rebol-too.txt` for the other direction
+   and nothing for this -- before the fix lands.
+4. **A cipher that would swallow a message raises.** The open question named
+   one cipher; a probe on 2026-10-23 that writes 32 bytes without a header,
+   then UPDATE and READ, answers none for all nine GCM ciphers and only 16
+   bytes for chacha20-poly1305, in both. Find which of those are the bug
+   (a GCM stream may simply need its tag read differently) and raise on
+   those.
+5. **Opening a MIDI port that is already open raises `already-open`**, as the
+   crypt port does, instead of connecting again and leaking the first
+   connection.
+6. **Copied, not fixed:** `change/part` on an image with a count changes
+   nothing. The question becomes a finding in `docs/rebol-findings.md`.
+
+**Done when** the five behave as above, each with a rule, tests, and a
+Standing entry, and the suite records the `image-diff` difference.
+
+#### 1q. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
+
+- **`effect`** is the one DRAW command (of the 34 in `dial-draw.reb`) JEBOL
+  does not paint, and it is skipped without a word. It raises until it is
+  built. Read the C for the id.
+- **`gui-metric/set`** with `'restore`, `'minimize`, `'maximize` and
+  `'activate` controls the window, on the desktop. Say what each does in a
+  browser, where a page cannot minimise itself.
+
+**Done when** both are rules, with an end-to-end test that minimises,
+restores and maximises a real window.
+
+### 2. Android, with the interpreter running on Android's own Java
 
 1. **Check JEBOL's Java against Android's.** JEBOL is text for Java 25.
    Find the language features and library calls Android's compiler and
@@ -72,7 +526,9 @@ comes before improving on it: a place where JEBOL answers something a real
 2. **The app.** An Android project of its own, so the jar keeps no
    dependencies. One screen draws the domain's surface calls on Android's own
    canvas and turns touches and the on-screen keyboard into JEBOL's events.
-   Pausing and resuming the app are handled.
+   Pausing and resuming the app are handled. The system back gesture (and
+   the back button) moves the app's history back, through Android's back
+   handler, as a swipe does in a browser (1m, `spec/nav.allium`).
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
    console view. CALL is refused. And a task's body must run on the host's
    ports too: `ThreadTasks`
@@ -97,7 +553,7 @@ comes before improving on it: a place where JEBOL answers something a real
    the way the browser gate drives Chrome: a gate of its own, never a skipped
    test.
 
-### 2. iOS, with the interpreter compiled ahead of time by GraalVM
+### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 
 Not a web view: one would pause JEBOL whenever the app is in the background,
 keep it out of widgets, the Watch and app extensions, and make every call to
@@ -113,7 +569,10 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    of this step.
 3. **The app.** One view draws the domain's surface calls with iOS's own
    drawing; touches, the keyboard, and pausing and resuming are handled as
-   on Android, using goal 1 step 4's work in the 2010 GUI.
+   on Android, using goal 2 step 4's work in the 2010 GUI. iOS has no system
+   back gesture, so the app recognises a swipe from the left edge as back
+   and from the right edge as forward, the way a browser on the phone
+   does (1m, `spec/nav.allium`).
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
@@ -124,7 +583,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
 
-### 3. A real MIDI device through `javax.sound.midi`
+### 4. A real MIDI device through `javax.sound.midi`
 
 The `midi` scheme is registered and its actor is `MidiSchemeActor`, behind
 the `MidiDevices` host port; every interpreter starts with `NoMidiDevices`,
@@ -132,10 +591,10 @@ which lists nothing. What is left is an adapter behind `MidiDevices` over
 `javax.sound.midi`, wired by the command line as the clipboard is. Input
 arrives on another thread and reaches the port's `awake` through the
 interpreter's postbox, as a `read` event; the C sends one for each message
-that arrives. Whether opening an open port should do what the C does is an
-open question in `spec/natives.allium`.
+that arrives. Opening a port that is already open raises `already-open`
+rather than connecting twice (1p).
 
-### 4. The type-major refactor: what is left
+### 5. The type-major refactor: what is left
 
 Each datatype's behaviour belongs in its own class, not in a switch elsewhere.
 What still switches on the datatype, by `scripts/complexity.py`:
@@ -162,115 +621,6 @@ from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
 interpreters -- reads as missing.
 
-### 5. Loose ends
-
-Six pieces of work, unrelated to each other, in the order to do them: the
-three defects first, then the port, then the two reviews.
-
-#### 5a. LOAD and TRANSCODE keep the line breaks at the top level
-
-`mold load "a^/b"` is `[a b]` here and `[a^/b]` in R3, and
-`new-line? next load "a^/b"` is false here and true there. The same for
-`transcode`. A nested block keeps its breaks; only the outermost block of
-what was read loses them. It shows wherever a loaded script is molded: an
-error's `near` prints the whole script on one line.
-
-**Done when** the outermost block carries its line breaks as R3's does, for
-LOAD, TRANSCODE and a script run from a file.
-
-#### 5b. An error a native raises carries its `near` and `where`
-
-For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
-and `where: [compress try ...]`; JEBOL gives none for both. Errors from
-evaluated code, paths, PARSE and CAUSE-ERROR already agree with R3.
-
-1. Sweep: raise an error from every native that can raise one, in both
-   interpreters, and diff `near` and `where`. COMPRESS is the one found so
-   far; how many others share it is not known.
-2. Fix the path they share, not each native.
-
-**Done when** the sweep shows no difference, and is a test.
-
-#### 5c. The table of word spellings belongs to an interpreter
-
-`Context.ONE_NAME_PER_SPELLING` keeps one lower-cased copy of every spelling
-ever read, in a static table every interpreter in the process shares and
-nothing empties. A long-running process whose scripts make words in a loop
-(`to word! join "k" i`) grows it without limit. It is per-interpreter state
-held in a static, and it goes.
-
-**Done when** the table lives with the interpreter and is gone when the
-interpreter is, proven by a test that makes words in one interpreter and
-finds none of them in the next.
-
-#### 5d. Port `lz4` and `lzav` to COMPRESS
-
-R3 lists `[deflate zlib gzip br crush lz4 lzav lzma lzw]` in
-`system/catalog/compressions`; JEBOL lists
-`[zlib gzip deflate crush lzw lzma br]` and answers `feature-na` for both.
-`compress "aaaa" 'lz4` is `#{4061616161}` in R3.
-
-Neither is in the JDK. Both are in the C, wired into `u-compress.c`:
-`rebol3-source/src/core/lz4/` (`lz4.c`, and `lz4hc.c` for the high levels)
-and `rebol3-source/src/include/sys-lzav.h` (LZAV 5.5).
-
-1. The reference probe for each, built from the C, before any Java.
-2. A boundary list from the C's block and window sizes, with the test
-   beside each.
-3. The port, byte-exact against the probe.
-4. The catalogue in R3's order.
-
-Today `Encodings.COMPRESSIONS_ELSEWHERE` names them and
-`CompressionThisBuildLacksFromTheSourceTest` pins `feature-na` -- a test of
-the gap, not of R3, which changes with the port.
-
-**Done when** both compress and decompress as R3 does at every level, and
-the catalogue reads as R3's.
-
-#### 5e. Review the sixteen missing entries of `system/modules`
-
-R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
-downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
-mathpresso, miniaudio, speak, sqlite, triangulate, webp, zlib-ng and zstd.
-Two are host modules: `window` (none in a macOS r3) and `osx-dialogs`. Some
-of what they serve is here another way -- `'br` is JEBOL's own Brotli and
-writes R3's bytes, and the request dialogs come from the Java window service
--- but nobody has checked what each one exports. Meanwhile
-`system/modules/brotli` raises `cannot access` where R3 answers its url.
-
-For each of the sixteen, and the `serial` scheme:
-
-1. Import it in `./r3-head` (this needs the network) and list what it
-   exports.
-2. Say which of those JEBOL already serves another way, and which it lacks.
-3. Decide: carry the entry as R3 does, serve it by an extension in Java, or
-   leave it out on purpose and list it under Standing.
-
-**Done when** each has a decision written down, and the ones to build are
-goals of their own.
-
-#### 5f. Review the 63 open questions in the spec
-
-On 2026-10-23: 26 in `natives.allium`, 8 in `embed.allium`, 6 in
-`load.allium`, 5 in `screen.allium`, 3 each in `dialect`, `draw`, `eval`,
-`parse` and `values`, 2 in `web.allium`, 1 in `nav.allium`. They have been
-counted, not read.
-
-1. Read each one against the code and `./r3-head`. Say whether it is still
-   open, already answered by what was built since (then it becomes a rule
-   and the question goes), or no longer relevant (then it goes).
-2. Of those still open, give each one a goal or say why it has none.
-
-Unowned by any goal today: the three in `parse.allium`, the eight in
-`embed.allium`, the one in `nav.allium` (whether a window should hear the
-trackpad's swipe, which Java gives no public way to), which verbs reach a
-port's actor (`natives.allium`), and whether a `struct!` is more than its
-layout and whether values may cross between interpreters (both
-`values.allium`).
-
-**Done when** every question left is still open for a reason written beside
-it, and owned.
-
 ### 6. Debugging and tracing
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
@@ -282,7 +632,10 @@ unchecked.
 **Then stepping and breakpoints**, which R3 does not have. Three things to
 decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
-grants it runs under; and whether a script may debug itself.
+grants it runs under; and whether a script may debug itself. The question
+moved here from `spec/eval.allium`: evaluation state lives on the heap, so a
+running evaluation could be paused, resumed, or moved to another thread --
+say which of those JEBOL promises, and at what step a script can be stopped.
 
 **Next, with tracing to see what a boot builds: copy a booted interpreter
 rather than boot one per test.** The gate builds about 16,300 interpreters at
