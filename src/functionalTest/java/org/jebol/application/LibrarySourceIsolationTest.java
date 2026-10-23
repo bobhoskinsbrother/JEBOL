@@ -26,7 +26,7 @@ class LibrarySourceIsolationTest {
                 d: [[["deep" #{0304}]]]""";
 
         private static AnyBlockValue takeAReadingOf(String name) {
-            TranscodeResult read = LibrarySource.read(name, SOURCE);
+            TranscodeResult read = LibrarySource.read(name, () -> SOURCE);
             return read.values().orElseThrow();
         }
 
@@ -132,6 +132,27 @@ class LibrarySourceIsolationTest {
                     .isEqualTo("\"January!\"");
             assertThat(answerTo(AnInterpreter.create(), "system/locale/months/1"))
                     .isEqualTo("\"January\"");
+        }
+
+        @Test
+        @DisplayName("a library map one script changes is unchanged in the next")
+        void keepsALibraryMapUnchangedInTheNext() {
+            Interpreter first = AnInterpreter.create();
+            String was = answerTo(first, "system/options/log/rebol");
+            answerTo(first, "system/options/log/rebol: 9");
+            assertThat(answerTo(first, "system/options/log/rebol")).isEqualTo("9");
+            assertThat(answerTo(AnInterpreter.create(), "system/options/log/rebol")).isEqualTo(was);
+        }
+
+        @Test
+        @DisplayName("a library bitset one script changes is unchanged in the next")
+        void keepsALibraryBitsetUnchangedInTheNext() {
+            Interpreter first = AnInterpreter.create();
+            assertThat(answerTo(first, "did find whitespace first {x}")).isEqualTo("#(false)");
+            answerTo(first, "poke whitespace first {x} true");
+            assertThat(answerTo(first, "did find whitespace first {x}")).isEqualTo("#(true)");
+            assertThat(answerTo(AnInterpreter.create(), "did find whitespace first {x}"))
+                    .isEqualTo("#(false)");
         }
 
         @Test

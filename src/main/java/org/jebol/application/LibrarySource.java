@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 final class LibrarySource {
 
@@ -17,15 +18,19 @@ final class LibrarySource {
     private static final Map<String, AnyBlockValue> READ_VALUES = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> CANNOT_BE_COPIED = new ConcurrentHashMap<>();
 
-    static TranscodeResult read(String name, String source) {
+    static boolean readsAsRebol(String name, Supplier<String> source) {
+        return READ_VALUES.containsKey(name) || read(name, source).values().isPresent();
+    }
+
+    static TranscodeResult read(String name, Supplier<String> source) {
         if (CANNOT_BE_COPIED.containsKey(name)) {
-            return Transcoder.transcode(source);
+            return Transcoder.transcode(source.get());
         }
         AnyBlockValue current = READ_VALUES.get(name);
         if (current != null) {
             return new TranscodeResult.Success((AnyBlockValue) newCopy(current));
         }
-        TranscodeResult read = Transcoder.transcode(source);
+        TranscodeResult read = Transcoder.transcode(source.get());
         if (read.values().isEmpty()) {
             return read;
         }

@@ -25,11 +25,11 @@ record RebolFile(String path, FilePort filePort) {
     }
 
     TranscodeResult readTranscoded() {
-        return LibrarySource.read(path, textSource());
+        return LibrarySource.read(path, this::textSource);
     }
 
     boolean isLibraryFile() {
-        return exists() && readTranscoded().values().isPresent();
+        return exists() && LibrarySource.readsAsRebol(path, this::textSource);
     }
 
     LibraryFile readLibraryFile() {
