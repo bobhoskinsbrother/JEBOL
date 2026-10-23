@@ -201,18 +201,22 @@ decoding and encoding pictures, and the clipboard. Where the behaviour is JEBOL'
 own -- its form, its addresses, its history -- a Firefox run tests the same
 JavaScript twice and costs a browser start, so it is not added.
 
-**A browser is started once per test class, never per test.** `PageBrowsers`
-starts one per configuration (the browser, whether popups are blocked, whether
-leave prompts are watched) and quits them after the class. Each test works in a
-fresh WebDriver BiDi user context, which `AnOperatorAtThePage` removes on close:
-its tabs, storage, cookies, permissions and history go with it, and the shared
-downloads folder is emptied. `ABrowserSharedByAClassStartsEachTestCleanEndToEndTest`
-proves the next test finds none of it -- keep it passing, and keep any new
-per-test state inside the user context or torn down beside it. A class whose
-tests share other state (a temp folder, a list of requests) either clears it in
-`@AfterEach` or keeps one instance per test and closes its `PageBrowsers` after
-each. Firefox runs with its own testing preferences for the clipboard and for
-Web MIDI's test devices, set in `PageBrowsers`. Its TLS and http checks put the command line to servers
+**A browser is started once per suite, never per class or per test.** A page
+test class is `@ExtendWith(TheSuitesPageBrowsers.class)` and takes a
+`PageBrowsers` in its constructor; that one object lives in JUnit's root store,
+so every class in a test process shares it and JUnit quits the browsers when
+the run ends. It starts one browser per configuration (the browser, whether
+popups are blocked, whether leave prompts are watched), only when a test first
+asks, and replaces one that has died. Gradle runs end-to-end tests in several
+processes, and each starts its own. Each test works in a fresh WebDriver BiDi
+user context, which `AnOperatorAtThePage` removes on close, even when opening
+failed partway: its tabs, storage, cookies, permissions and history go with it,
+and the shared downloads folder is emptied. A browser serves one test at a
+time. `ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest` proves the next
+test finds none of what the last left -- keep it passing, and keep any new
+per-test state inside the user context or torn down beside it. Never close a
+`PageBrowsers` from a test class. Firefox runs with its own testing preferences
+for the clipboard and for Web MIDI's test devices, set in `PageBrowsers`. Its TLS and http checks put the command line to servers
 it spins itself up: a local server whose chain the test root vouches for is
 read, and local servers that are self-signed, expired, wrongly named or chained
 to a stranger are refused. It builds the core for the web

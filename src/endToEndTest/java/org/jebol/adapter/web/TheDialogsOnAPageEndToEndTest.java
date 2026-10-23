@@ -1,10 +1,8 @@
 package org.jebol.adapter.web;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -13,33 +11,19 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheDialogsOnAPageEndToEndTest {
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
     @TempDir
     Path operatorsDisk;
 
-    @AfterEach
-    void clearTheOperatorsDisk() throws IOException {
-        try (Stream<Path> inside = Files.walk(operatorsDisk)) {
-            for (Path each : inside.sorted(Comparator.reverseOrder()).toList()) {
-                if (!each.equals(operatorsDisk)) {
-                    Files.delete(each);
-                }
-            }
-        }
-    }
-
-    @AfterAll
-    void closeTheBrowsers() {
-        browsers.close();
+    TheDialogsOnAPageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private Path aFileOnTheOperatorsDisk(String name, String text) throws IOException {

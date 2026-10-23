@@ -87,8 +87,19 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     public AnOperatorAtThePage opensThePageAt(String hash) {
         started = browsers.browserFor(
                 new PageBrowsers.Configuration(browserName, everyPopupBlocked, leavingWatched));
+        started.inUse().lock();
         browser = started.driver();
         downloads = started.downloads();
+        try {
+            openInAContextOfItsOwn(hash);
+        } catch (RuntimeException couldNotOpen) {
+            close();
+            throw couldNotOpen;
+        }
+        return this;
+    }
+
+    private void openInAContextOfItsOwn(String hash) {
         userContext = new Browser(browser).createUserContext();
         if (leavingWatched) {
             watchForLeavePrompts();
@@ -99,7 +110,6 @@ public final class AnOperatorAtThePage implements AutoCloseable {
             settleChromesDownloadsAndPermissions();
             openChromeTabAt(hash);
         }
-        return this;
     }
 
     private void openFirefoxTabAt(String hash) {
@@ -347,10 +357,17 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         if (browser == null) {
             return;
         }
-        watchingForLeavePrompts.ifPresent(BrowsingContextInspector::close);
-        new Browser(browser).removeUserContext(userContext);
-        browser.switchTo().window(started.homeTab());
-        listDownloads().forEach(this::deleteDownload);
+        try {
+            watchingForLeavePrompts.ifPresent(BrowsingContextInspector::close);
+            if (userContext != null) {
+                new Browser(browser).removeUserContext(userContext);
+            }
+            browser.switchTo().window(started.homeTab());
+            listDownloads().forEach(this::deleteDownload);
+        } finally {
+            browser = null;
+            started.inUse().unlock();
+        }
     }
 
     private void deleteDownload(Path landed) {

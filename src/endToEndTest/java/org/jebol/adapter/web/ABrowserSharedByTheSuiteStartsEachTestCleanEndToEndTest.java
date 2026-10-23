@@ -7,6 +7,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -16,10 +17,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ABrowserSharedByAClassStartsEachTestCleanEndToEndTest {
+@ExtendWith(TheSuitesPageBrowsers.class)
+class ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest {
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
     private ShippedRunner runner;
+
+    ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     @BeforeAll
     void serveOnePageForBothTests() throws IOException {
@@ -29,8 +35,7 @@ class ABrowserSharedByAClassStartsEachTestCleanEndToEndTest {
     }
 
     @AfterAll
-    void closeTheBrowsersAndThePage() {
-        browsers.close();
+    void closeThePage() {
         runner.close();
     }
 

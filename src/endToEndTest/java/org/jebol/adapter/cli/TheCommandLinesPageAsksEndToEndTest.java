@@ -2,7 +2,8 @@ package org.jebol.adapter.cli;
 
 import org.jebol.adapter.web.AnOperatorAtThePage;
 import org.jebol.adapter.web.PageBrowsers;
-import org.junit.jupiter.api.AfterEach;
+import org.jebol.adapter.web.TheSuitesPageBrowsers;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -22,6 +23,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(180)
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheCommandLinesPageAsksEndToEndTest {
 
     private static final Pattern PAGES_ADDRESS = Pattern.compile("http://[^ ]+/");
@@ -31,11 +33,10 @@ class TheCommandLinesPageAsksEndToEndTest {
     @TempDir
     Path directory;
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterEach
-    void closeTheBrowsers() {
-        browsers.close();
+    TheCommandLinesPageAsksEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private String readPrinted() {

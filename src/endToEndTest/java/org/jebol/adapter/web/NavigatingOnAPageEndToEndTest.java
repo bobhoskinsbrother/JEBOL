@@ -1,8 +1,7 @@
 package org.jebol.adapter.web;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -13,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(240)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TheSuitesPageBrowsers.class)
 class NavigatingOnAPageEndToEndTest {
 
     private static final String AN_APP_WITH_THREE_PLACES = """
@@ -33,11 +32,10 @@ class NavigatingOnAPageEndToEndTest {
             ]
             """;
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterAll
-    void closeTheBrowsers() {
-        browsers.close();
+    NavigatingOnAPageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private ShippedRunner runnerFor(String steps) throws IOException {

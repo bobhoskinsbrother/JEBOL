@@ -2,8 +2,7 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -15,7 +14,7 @@ import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TheSuitesPageBrowsers.class)
 class PicturesOnAPageEndToEndTest {
 
     private static final String SIX_OPAQUE_PIXELS =
@@ -24,11 +23,10 @@ class PicturesOnAPageEndToEndTest {
     private static final String SIX_PIXELS_THE_LAST_CLEAR =
             "[255.0.0.255 0.255.0.255 0.0.255.255 255.255.255.255 0.0.0.255 0.0.0.0]";
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterAll
-    void closeTheBrowsers() {
-        browsers.close();
+    PicturesOnAPageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private byte[] readFixture(String name) throws IOException {

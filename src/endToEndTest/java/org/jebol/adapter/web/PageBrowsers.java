@@ -1,7 +1,9 @@
 package org.jebol.adapter.web;
 
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
@@ -15,9 +17,10 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-public final class PageBrowsers implements AutoCloseable {
+public final class PageBrowsers implements ExtensionContext.Store.CloseableResource {
 
     private static final String PROMPT_HANDLING = "unhandledPromptBehavior";
 
@@ -33,17 +36,35 @@ public final class PageBrowsers implements AutoCloseable {
         }
     }
 
-    record AStartedBrowser(WebDriver driver, Path downloads, String homeTab) {
+    record AStartedBrowser(WebDriver driver, Path downloads, String homeTab, ReentrantLock inUse) {
+
+        boolean isAlive() {
+            try {
+                driver.getWindowHandles();
+                return true;
+            } catch (WebDriverException gone) {
+                return false;
+            }
+        }
     }
 
     private final Map<Configuration, AStartedBrowser> started = new LinkedHashMap<>();
 
-    AStartedBrowser browserFor(Configuration wanted) {
-        return started.computeIfAbsent(wanted, this::start);
+    synchronized AStartedBrowser browserFor(Configuration wanted) {
+        AStartedBrowser known = started.get(wanted);
+        if (known != null && known.isAlive()) {
+            return known;
+        }
+        if (known != null) {
+            stopQuietly(known);
+        }
+        AStartedBrowser fresh = start(wanted);
+        started.put(wanted, fresh);
+        return fresh;
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         started.values().forEach(this::stop);
         started.clear();
     }
@@ -53,7 +74,15 @@ public final class PageBrowsers implements AutoCloseable {
         WebDriver driver = wanted.isFirefox()
                 ? openFirefox(wanted, downloads)
                 : openChrome(wanted);
-        return new AStartedBrowser(driver, downloads, driver.getWindowHandle());
+        return new AStartedBrowser(driver, downloads, driver.getWindowHandle(), new ReentrantLock());
+    }
+
+    private void stopQuietly(AStartedBrowser browser) {
+        try {
+            stop(browser);
+        } catch (WebDriverException alreadyGone) {
+            deleteFolder(browser.downloads());
+        }
     }
 
     private void stop(AStartedBrowser browser) {

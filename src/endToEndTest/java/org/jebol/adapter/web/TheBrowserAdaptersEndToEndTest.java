@@ -7,20 +7,20 @@ import org.jebol.domain.render.TextExtent;
 import org.jebol.domain.render.TextRun;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheBrowserAdaptersEndToEndTest {
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterEach
-    void closeTheBrowsers() {
-        browsers.close();
+    TheBrowserAdaptersEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private ShippedRunner servingTheScript(ShippedRunner runner) {

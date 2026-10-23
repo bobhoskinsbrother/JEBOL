@@ -2,8 +2,7 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openqa.selenium.Keys;
@@ -12,14 +11,13 @@ import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheLineFormOnThePageEndToEndTest {
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterAll
-    void closeTheBrowsers() {
-        browsers.close();
+    TheLineFormOnThePageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     @ParameterizedTest(name = "{0}")

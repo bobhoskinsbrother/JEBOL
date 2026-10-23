@@ -1,8 +1,8 @@
 package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -13,13 +13,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class PostingFromAPageEndToEndTest {
 
-    private final PageBrowsers browsers = new PageBrowsers();
+    private final PageBrowsers browsers;
 
-    @AfterEach
-    void closeTheBrowsers() {
-        browsers.close();
+    PostingFromAPageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
     }
 
     private final List<String> received = new CopyOnWriteArrayList<>();
