@@ -55,6 +55,10 @@ final class PendingCall {
         entered = true;
     }
 
+    boolean isRunning() {
+        return entered;
+    }
+
     Optional<String> findNameInBacktrace() {
         if (!entered) {
             return Optional.empty();

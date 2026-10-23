@@ -31,6 +31,6 @@ public final class ClosureValue extends DefinedFunctionValue {
 
     @Override
     public Context makeFreshCallFrame() {
-        return Context.makeChildOf(closedOver());
+        return makeFrameUnder(closedOver());
     }
 }

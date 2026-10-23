@@ -513,17 +513,31 @@ rule AWordBoundToAFunctionReadsTheCallThatIsRunning {
 -- By binding rather than by name, which is what keeps the two rules above
 -- true of a closure as well: a word put into the body afterwards never named
 -- the function, so the copy leaves it alone.
+--
+-- The copy is deep and takes every series in the body, not only the blocks:
+-- strings, files, tags, binaries, parens and paths are each new per call, so
+-- `closure [] [append {} {x}]` answers "x" every time and two calls of
+-- `closure [] [[1]]` answer blocks that are not SAME?. The C clones with
+-- TS_CODE, which is every series but images and vectors. A map is not a
+-- series and is shared between calls.
+--
+-- Each call's frame stays that call's. A later call of the same closure, a
+-- recursion included, does not take it over, so a block bound in an outer
+-- call and run in an inner one reads the outer call:
+-- `cr: closure [x b] [either x = 0 [do b] [cr x - 1 [x]]]  cr 2 none` is 1,
+-- where the same written with FUNC is 0.
 rule AClosureIsCopiedPerCallRatherThanLentAFrame {
     when: step: EvaluationStep.created
     requires: step.status = pending
     requires: step.bound_value.datatype = closure
 
     ensures:
-        the_body_run() = a_copy_of(the_body_of(step.bound_value))
+        the_body_run() = a_deep_copy_of_every_series_in(the_body_of(step.bound_value))
         for word in the_words_within(the_body_run()):
             word.binding =
                 if it_named(word, step.bound_value): the_frame_of_this_call()
                 else: word.binding
+        the_frame_of_this_call().is_lent_to_a_later_call = false
 }
 
 -- A word looks up its binding. What it finds decides whether the step
@@ -1255,48 +1269,36 @@ rule ABareParameterAcceptsAnyValueButUnset {
                 argument.value.datatype in parameter.accepted_types
 }
 
--- A call to a function opens a frame that knows which function it belongs
--- to. A call to a closure does not.
+-- A call to a closure gives its words an object. A call to a function does
+-- not: its words name the function, and reach the call only through it.
 --
--- Both build a context for the call's own words; the difference is only
--- whether that context is marked as the function's frame. It is observable
--- through one question: CONTEXT? of a word bound into the call. A function's
--- frame answers the function itself, which is how a body reaches its own
--- SPEC-OF from inside; a closure's frame is a real object, so CONTEXT?
--- answers that object.
+-- Two things a script can see follow from that, and they are the whole of
+-- what separates the two datatypes. The first is lifetime: a closure's word
+-- still answers after the call has returned, where a function's raises
+-- not-defined (AWordBoundToAFunctionReadsTheCallThatIsRunning). The second is
+-- CONTEXT?: a closure's word answers its object, and a function's answers
+-- whichever call is running at the moment of asking
+-- (ContextOfAWordAnswersWhicheverKindOfFrameHoldsIt in natives.allium).
 --
--- That single difference is the whole of what separates the two datatypes
--- here, and something depends on it: USE builds its scope as a closure's
+-- Something depends on the object: USE builds its scope as a closure's
 -- frame, so the words it introduces live in an object a script can reach
 -- rather than in a function's private word list.
-rule ACallFrameKnowsItsFunctionUnlessItIsAClosure {
+--
+-- The object's fields are the spec's words in the order the spec writes
+-- them, whichever refinements the call used, followed by LOCAL and the
+-- locals: `closure [a /r b /local c]` makes `[a: 1 r: _ b: _ local: _ c: _]`.
+-- Every field is there from the start, holding none until the call gives it
+-- something.
+rule ACallToAClosureGivesItsWordsAnObject {
     when: application: Application.status transitions_to invoked
     requires: is_a_written_function(application.applied)
 
     ensures:
-        frame_is_marked_as_belonging_to_its_function(the_call_frame_of(application))
-            = not is_a_closure(application.applied)
+        frame_is_an_object(the_call_frame_of(application))
+            = is_a_closure(application.applied)
+        the_fields_of(the_call_frame_of(application))
+            = the_words_of_the_spec_in_order(application.applied)
 }
-
--- A call's frame stops being the frame of a call when the call returns, and
--- it stops however the call left: normally, through RETURN, or through an
--- error thrown out of the body.
---
--- A word can outlive the call it was bound in. `f: func [a] [p: 'a]  f 1`
--- leaves P holding a word bound into a frame whose call is long over, and
--- something has to answer when that word is asked where it lives.
-rule ACallFrameKnowsWhenItsCallHasEnded {
-    when: application: Application.call_returned
-    requires: application.status = invoked
-    requires: is_a_written_function(application.applied)
-
-    ensures: the_call_frame_of(application).call_has_ended = true
-}
-
--- Whether a call has ended is a question about the frame, and it is asked
--- from outside the evaluator: CONTEXT? of a word bound into one answers
--- differently once the call is over, which is specified with the other
--- natives in natives.allium.
 
 -- The single place a call's gathering outcome is decided. Running out of
 -- block beats a type error, because a missing argument means the type
@@ -1579,7 +1581,5 @@ surface Evaluating {
 open question "An operator with nothing on its left reports two different error ids depending on where in the series it was reached -- no-op-arg at the head, missing-arg anywhere else -- and AnOperatorWithNothingOnItsLeftFails specifies that faithfully. It is an artefact rather than a design: the C's friendly error fires only when nothing has been pushed, and reached mid-series the C takes a bogus stack value whose imbalance surfaces later as the other id. A script cannot act differently on the two, because the mistake is identical; what it can do is catch by id and miss half the cases. So: does JEBOL reproduce the artefact because scripts and Rebol's own suite already depend on the exact id, or normalise both to no-op-arg on the grounds that one mistake should have one name? Reproducing costs nothing today and pins JEBOL to a detail of the C's stack discipline that has no meaning here."
 
 open question "AGetWordNamesARefinementTheCallDecidesOn and PathGathersRefinement disagree about a misspelled refinement, and it is not settled which of them is right. Written plainly, `append/bogus` raises no-refine, because PathGathersRefinement checks the name against the function before granting it. Written as a get-word, `append/:bogus` raises only when BOGUS holds something true; when it holds false the name is never checked at all and the call runs as though the refinement had not been written. So the same misspelling is caught or not caught depending on a value, which is precisely the kind of silence PathGathersRefinement exists to prevent -- and a script forwarding a refinement it spelled wrong would go years without hearing about it, because the false branch is the common one. Two readings. Check the name whatever the word holds, on the grounds that a refinement the function has not got is a mistake in the code rather than a fact about the run; or leave it, on the grounds that a get-word refinement is a request rather than an assertion and asking for nothing cannot be wrong. The first is almost certainly right and wants measuring against a real R3 before it is built, because Rebol's own library forwards refinements constantly and a newly strict check would raise on any of them that names something the callee dropped."
-
-open question "ACallFrameKnowsItsFunctionUnlessItIsAClosure makes the function-versus-closure difference observable through CONTEXT?, and nothing says whether that is the only observable difference or merely the only one built so far. If it is the only one, the two datatypes are one value with a flag and the spec should say so plainly; if more differences are coming -- lifetime of the frame, what a returned function closes over -- then modelling it as a flag is a shortcut that will have to be undone. Worth settling before anything else is hung off the distinction."
 
 open question "Evaluation state lives on the heap, so a running evaluation could in principle be suspended, resumed or moved between threads. Nothing here says whether JEBOL promises any of that, or at what granularity a script can be interrupted. A server that wants to bound how long one script runs needs an answer."

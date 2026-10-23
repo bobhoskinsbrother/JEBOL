@@ -9,12 +9,11 @@ public final class Context {
 
     private static final Context UNBOUND = new Context(null, true);
 
-    private final Map<String, ContextSlot> slotsByCanonicalName = new LinkedHashMap<>();
+    private final SlotTable slotsByCanonicalName;
     private final Context parent;
     private final boolean unbound;
     private boolean loopFrameWhichContextQuestionCannotReach;
     private Value ownedByFunction;
-    private boolean callEnded;
     private boolean onlyThroughCallThatIsRunning;
     private Context supersededBy;
     private boolean closedToNewNames;
@@ -23,8 +22,13 @@ public final class Context {
     private static final String WORD_OBJECT_ANSWERS_TO_FOR_ITSELF = "self";
 
     private Context(Context parent, boolean unbound) {
+        this(parent, unbound, new SlotTable());
+    }
+
+    private Context(Context parent, boolean unbound, SlotTable slots) {
         this.parent = parent;
         this.unbound = unbound;
+        this.slotsByCanonicalName = slots;
     }
 
     public static Context root() {
@@ -36,6 +40,23 @@ public final class Context {
             throw new IllegalArgumentException("a child context needs a parent");
         }
         return new Context(parent, false);
+    }
+
+    public static Context callFrameOf(Context parent, List<String> spellings, List<String> canonicalNames) {
+        if (parent == null) {
+            throw new IllegalArgumentException("a call frame needs a parent");
+        }
+        Context frame = new Context(parent, false, new SlotTable(spellings.size()));
+        for (int position = 0; position < spellings.size(); position++) {
+            ContextSlot slot = new ContextSlot(frame, spellings.get(position), canonicalNames.get(position));
+            slot.setValue(NoneValue.none());
+            frame.slotsByCanonicalName.add(canonicalNames.get(position), slot);
+        }
+        return frame;
+    }
+
+    public ContextSlot ownSlotAt(int position) {
+        return slotsByCanonicalName.at(position);
     }
 
     public static Context collectWordsFunctionDeclares() {
@@ -77,15 +98,8 @@ public final class Context {
         this.supersededBy = newer;
     }
 
-    public void markCallEnded() {
-        this.callEnded = true;
-    }
-
-    public boolean callHasEnded() {
-        if (supersededBy != null) {
-            return findResolvingFrame().callHasEnded();
-        }
-        return callEnded || onlyThroughCallThatIsRunning;
+    public boolean isFunctionFrame() {
+        return ownedByFunction != null;
     }
 
     public boolean isUnbound() {
@@ -221,7 +235,7 @@ public final class Context {
             return existing;
         }
         ContextSlot created = new ContextSlot(this, spelling, canonical);
-        slotsByCanonicalName.put(canonical, created);
+        slotsByCanonicalName.add(canonical, created);
         return created;
     }
 

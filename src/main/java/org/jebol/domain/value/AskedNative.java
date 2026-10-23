@@ -34,6 +34,11 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
+    public NativeValue withoutAskedRefinements() {
+        return asked.withoutAskedRefinements();
+    }
+
+    @Override
     public Optional<AnyBlockValue> ownSpec() {
         return asked.ownSpec();
     }

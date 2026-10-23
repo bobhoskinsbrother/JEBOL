@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -13,6 +14,9 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     private final List<String> localNames;
     private final Context closedOver;
     private final Context declaredWords;
+    private final List<String> frameSpellings = new ArrayList<>();
+    private final List<String> frameCanonicalNames = new ArrayList<>();
+    private final int[] framePositionOfParameter;
 
     DefinedFunctionValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
@@ -26,6 +30,42 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
         this.localNames = List.copyOf(localNames);
         this.closedOver = closedOver;
         this.declaredWords = declaredWords;
+        this.framePositionOfParameter = new int[this.parameters.size()];
+        layOutFrame();
+    }
+
+    private void layOutFrame() {
+        for (int index = 0; index < parameters.size(); index++) {
+            Parameter parameter = parameters.get(index);
+            boolean holdsSlot = parameter.consumesArgument() || parameter.kind() == ParameterKind.REFINEMENT;
+            framePositionOfParameter[index] = holdsSlot ? placeInFrame(parameter.name()) : NO_SLOT;
+        }
+        localNames.forEach(this::placeInFrame);
+    }
+
+    private int placeInFrame(String spelling) {
+        String canonical = Context.canonicalise(spelling);
+        int existing = frameCanonicalNames.indexOf(canonical);
+        if (existing >= 0) {
+            return existing;
+        }
+        frameSpellings.add(spelling);
+        frameCanonicalNames.add(canonical);
+        return frameCanonicalNames.size() - 1;
+    }
+
+    private static final int NO_SLOT = -1;
+
+    protected Context makeFrameUnder(Context parent) {
+        return Context.callFrameOf(parent, frameSpellings, frameCanonicalNames);
+    }
+
+    public boolean holdsFrameSlotForParameter(int parameterIndex) {
+        return framePositionOfParameter[parameterIndex] != NO_SLOT;
+    }
+
+    public ContextSlot frameSlotForParameter(Context frame, int parameterIndex) {
+        return frame.ownSlotAt(framePositionOfParameter[parameterIndex]);
     }
 
     @Override

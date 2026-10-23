@@ -213,6 +213,8 @@ public final class Binder {
                     word.bindTo(to);
             case AnyWordValue word -> word;
             case AnyBlockValue nested -> rebindWhatNamedFunction(nested, from, to);
+            case AnyStringValue text -> text.wrap(text.text());
+            case BinaryValue bytes -> bytes.copyFirst(bytes.lengthFromHere());
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, rebindOneThatNamedIt(map.select(key), from, to));

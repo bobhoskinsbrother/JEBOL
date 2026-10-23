@@ -1705,7 +1705,7 @@ final class SourceScanner {
             return built.get();
         }
         ScanFailure malformed = new ScanFailure(SyntaxFailure.MALCONSTRUCT,
-                List.of(BlockValue.of(spec.values())), Optional.empty());
+                List.of(constructions.describeRefusal(spec.values())), Optional.empty());
         if (!relaxed) {
             throw malformed;
         }

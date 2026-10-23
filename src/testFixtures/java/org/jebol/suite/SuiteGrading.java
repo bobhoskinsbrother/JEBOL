@@ -161,6 +161,18 @@ final class SuiteGrading {
         }
     }
 
+    private static final String IS_ANYTHING_LEFT = "not tail? jebol-rest";
+
+    private static final String RUN_REST_INSIDE_DO = "do jebol-rest";
+
+    private static final String OPEN_STEP_FOR_FIRST_EXPRESSION = "jebol-rest: next jebol-step: [\n";
+
+    private static final String RUN_FIRST_EXPRESSION_INSIDE_DO = "\n]\ndo/next jebol-step 'jebol-rest";
+
+    private static final String OPEN_DO = "do [\n";
+
+    private static final String CLOSE_DO = "\n]";
+
     private static void runFile(Grading grading, SuiteFile file) {
         Interpreter interpreter = makeAnInterpreterWithAHost();
         interpreter.defineNewWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
@@ -181,21 +193,20 @@ final class SuiteGrading {
             try {
                 interpreter.defineNewWordsIn(step.sourceToRun());
                 if (step.isAssertion()) {
-                    Interpreter.Step taken =
-                            interpreter.runNext(step.sourceToRun());
-                    verdict = taken.outcome().succeeded() && taken.outcome().value().isTruthy()
+                    ScriptOutcome first = interpreter.run(OPEN_STEP_FOR_FIRST_EXPRESSION
+                            + step.sourceToRun() + RUN_FIRST_EXPRESSION_INSIDE_DO);
+                    verdict = first.succeeded() && first.value().isTruthy()
                             ? Verdict.passed()
-                            : new Verdict(false, readTheReasonFrom(taken.outcome()));
-                    if (!taken.rest().isBlank()) {
-                        interpreter.defineNewWordsIn(taken.rest());
-                        ScriptOutcome after = interpreter.run(taken.rest());
+                            : new Verdict(false, readTheReasonFrom(first));
+                    if (interpreter.run(IS_ANYTHING_LEFT).value().isTruthy()) {
+                        ScriptOutcome after = interpreter.run(RUN_REST_INSIDE_DO);
                         recordWhatRanInside(grading, interpreter, step,
                                 after.succeeded() ? "" : readTheReasonFrom(after));
                     }
                 } else {
                     String toRun = step.sourceToRun();
                     interpreter.defineNewWordsIn(toRun);
-                    ScriptOutcome ran = interpreter.run(toRun);
+                    ScriptOutcome ran = interpreter.run(OPEN_DO + toRun + CLOSE_DO);
                     verdict = new Verdict(ran.succeeded(), "");
                     recordWhatRanInside(grading, interpreter, step,
                             ran.succeeded() ? "" : readTheReasonFrom(ran));
@@ -257,6 +268,7 @@ final class SuiteGrading {
     private static final String THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION = """
             jebol-nested: copy ""
             jebol-numbered: copy []
+            jebol-step: jebol-rest: none
             --assert: func [result [any-type!]] [
                 append jebol-nested either all [not error? :result :result] ["t"] ["f"]
                 :result

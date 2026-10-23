@@ -21,6 +21,10 @@ public sealed interface NativeValue extends DeclaresParameters
         return Optional.empty();
     }
 
+    default NativeValue withoutAskedRefinements() {
+        return this;
+    }
+
     default NativeValue askFor(Set<String> refinements) {
         return new AskedNative(this, Set.copyOf(refinements));
     }

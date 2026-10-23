@@ -1,6 +1,7 @@
 package org.jebol.domain.read;
 
 import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Catalogue;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.value.Datatype;
@@ -10,6 +11,7 @@ import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorKind;
 import org.jebol.domain.value.VectorSpec;
+import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,20 +42,19 @@ final class ConstructedValues {
     }
 
     private Value construct(List<Value> contents) {
-        if (contents.isEmpty() || !(contents.getFirst() instanceof AnyWordValue leading)) {
+        if (!startsWithWord(contents)) {
             throw new CannotConstruct();
         }
-        if (contents.size() == 1) {
-            Optional<Value> simple = switch (leading.canonical()) {
-                case "true" -> Optional.of(LogicValue.yes());
-                case "false" -> Optional.of(LogicValue.answerNo());
-                case "none" -> Optional.of(NoneValue.none());
-                case "unset" -> Optional.of(UnsetValue.unset());
-                default -> Optional.empty();
-            };
-            if (simple.isPresent()) {
-                return simple.get();
-            }
+        WordValue leading = (WordValue) contents.getFirst();
+        Optional<Value> named = switch (leading.canonical()) {
+            case "true" -> Optional.of(LogicValue.yes());
+            case "false" -> Optional.of(LogicValue.answerNo());
+            case "none" -> Optional.of(NoneValue.none());
+            case "unset" -> Optional.of(UnsetValue.unset());
+            default -> Optional.empty();
+        };
+        if (named.isPresent()) {
+            return named.get();
         }
         if (namesVector(leading, contents.size())) {
             return VectorSpec.readConstruction(contents).orElseThrow(CannotConstruct::new);
@@ -66,6 +67,16 @@ final class ConstructedValues {
             throw new CannotConstruct();
         }
         return buildWith(datatype, contents.subList(1, contents.size()));
+    }
+
+    Value describeRefusal(List<Value> contents) {
+        return startsWithWord(contents) || contents.isEmpty()
+                ? BlockValue.of(contents)
+                : contents.getFirst();
+    }
+
+    private boolean startsWithWord(List<Value> contents) {
+        return !contents.isEmpty() && contents.getFirst() instanceof WordValue;
     }
 
     private Value buildWith(Datatype datatype, List<Value> contents) {

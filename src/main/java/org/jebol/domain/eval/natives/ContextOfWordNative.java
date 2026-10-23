@@ -25,16 +25,10 @@ public class ContextOfWordNative extends DefaultNative {
             if (!word.isBound() || binding.isALoopFrame()) {
                 return NoneValue.none();
             }
-            if (binding.functionOwningThisFrame() == null) {
+            if (!binding.isFunctionFrame()) {
                 return new ObjectValue(binding);
             }
-            return binding.callHasEnded()
-                    ? findWhatDoIsInLibrary(evaluator.systemContext())
-                    : binding.functionOwningThisFrame();
+            return evaluator.findCallRunningBelowInnermost().orElse(NoneValue.none());
         };
-    }
-
-    private Value findWhatDoIsInLibrary(Context library) {
-        return library.contains("do") ? library.findSlotFor("do").value() : NoneValue.none();
     }
 }

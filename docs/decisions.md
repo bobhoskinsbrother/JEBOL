@@ -2233,3 +2233,67 @@ JEBOL treats it as Apache 2, as Rebol's own source is, and NOTICE says so.
 
 **Reverses part of decision 9.** The target is gobs on any screen rather than
 markup, and the Java that read a layout block straight into HTML is deleted.
+
+## 53. A call's frame is an array, and CONTEXT? answers whatever is running
+
+**Every context keeps its slots in an ordered array, not a `LinkedHashMap`.**
+`SlotTable` scans up to eight names in order and builds a hash index only
+past that, which covers every call frame and most objects. A function works
+out its frame's names and their lower-cased forms once, when it is made, and
+each call gets an array already holding none in every slot, in the order the
+spec writes them. Before, each call registered every argument, refinement and
+local into a fresh hash map, lower-casing its name again every time.
+
+**What it bought, measured on 2026-10-23.** `scripts/timing.py speed`, three
+runs each, before and after: function calls 308-331ms to 264-278ms (about
+13x a real 3.22.5 to about 11x); recursion 223-235ms before and 226-243ms
+after, unchanged. A Flight Recorder profile of the calls workload had
+building the frame at about 14% of the time and looking words up at about
+19%; afterwards the frame is about 10% and lookups 6%. Recursion did not move
+because the frame was never its cost: checking each argument's type is 13%
+of it, the largest single piece, and is where the next gain is.
+
+`./gradlew allTests` took 4m46s after the change. No gate time was taken
+the same day before it, so this is a figure to measure the next change
+against, not a before-and-after; decision 38's 4m19s was a different suite.
+
+**What it did not do: words still find their slot by name.** Giving each
+word its slot's position, as the C does, would change binding in every place
+that uses a context, for a gain this change had to be measured against
+first. It has been: the remaining frame cost is a tenth of a call.
+
+**CONTEXT? of a word bound to a function answers the call that is running
+when it is asked, not the word's function.** The C reads the call one below
+CONTEXT? on the stack (`Stack_Frame(1)` in `n-data.c`). Measured: EITHER
+from inside EITHER, the asking function for a word handed to it, TRY from
+inside TRY, and none when nothing at all is running, as at a bare console.
+JEBOL had answered the word's own function, or DO once the call had ended,
+which agreed with r3 only when CONTEXT? was written directly in the body or
+at the top of a script. The frame no longer records whether its call has
+ended, because nothing asks. A call written as a path answers the function
+it calls, not the refined copy the path makes: inside `do/next` it is the
+value `:do` is.
+
+**The suite harness now runs each step inside DO, as Rebol's runner does.**
+`run-tests.r3` runs a file as `wrap load file`, and WRAP calls DO, so DO is
+running under every test; func-test.r3's wish-2440 asserts
+`same? :do context? p` because of it, and says so in a comment. JEBOL's
+harness ran each step with nothing running, which the old CONTEXT? hid by
+answering DO regardless. `SuiteGrading` runs a setup step as `do [...]` and
+an assertion step's first expression through `do/next`, and `SweepRunner`
+and `SuiteStops` wrap the file the same way.
+
+**A closure's call copies every series in its body and keeps its frame.**
+r3 clones a closure body with TS_CODE, every series but images and vectors,
+so strings, files, tags and binaries are fresh per call; JEBOL had copied
+only blocks. And a recursive closure call took over the previous call's
+frame the way a function's does, so a block bound in an outer call read the
+inner one. A closure's frame is now never lent to a later call. Goal 12
+first proposed dropping the closure's copy altogether; scripts can see it
+(`same? cl cl` is false for `cl: closure [] [[1]]`), so it stays.
+
+**Found on the way: a malformed construct names its first item.** For
+`#(k: 1)` r3's malconstruct names `k:`, not `[k: 1]`, because the C reports
+the scanner-buffer slot the first item was scanned into and only overwrites
+it with the block after seeing a word. And `#(none 1)` is none: a keyword
+construct ignores what follows it.

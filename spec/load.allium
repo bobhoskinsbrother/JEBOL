@@ -431,6 +431,10 @@ entity TranscodeRequest {
     failure_position: SourcePosition when status = failed
     error_value: values/Value when status = failed
 
+    -- What the failure names as its first argument, where that is a value
+    -- rather than the offending text; a malconstruct is the one that does.
+    failure_argument: values/Value?
+
     -- The values the reader took before it met the failure. Reading stops at a
     -- failure either way; this is what the caller who asked for the failure as
     -- a value gets to keep of the work already done.
@@ -853,7 +857,9 @@ rule ANegativeBoundOnTheReadIsRefused {
 -- values round-trip.
 --
 -- Three shapes. `#(none)`, `#(true)`, `#(false)` and `#(unset)` name a
--- value directly. `#(integer!)` names a datatype and produces a
+-- value directly, in any letter case, and whatever follows the keyword is
+-- ignored: `#(true 1)` is true and `#(none [a])` is none. The C returns as
+-- soon as it has matched the keyword and never looks further. `#(integer!)` names a datatype and produces a
 -- datatype! value rather than an integer. `#(decimal! 1)` builds a value
 -- of the named datatype from what follows, so it reads as 1.0 rather
 -- than as the integer 1.
@@ -1623,7 +1629,37 @@ open question "A real R3 refuses % # $ \\ inside a word as well as an angle brac
 
 open question "UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments says the first argument carries the token kind, and the implementation writes the three spellings the C uses -- end-of-script, end-of-block, end-of-paren. Whether those exact words are behaviour a script may depend on, or a message detail free to change, is not settled. Rebol's own suite compares the second argument (the delimiter) directly and the money group compares an offending token's text directly, so at least some of these arguments are read; nothing yet shows the first argument being read. If it is behaviour, the three spellings belong in an enumeration here rather than as literals in the reader."
 
-open question "A malconstruct's first argument is the construct block itself in a real 3.22.5 -- `#(string! \"ab\" x)` gives `arg1: [string! \"ab\" x]`, a block! value -- and it is none here. Every other reader failure carries text: the argument pipeline from the reader to the error value is built out of strings, because a syntax failure's arguments are the token kind and the offending text. Carrying a block through it means threading a Value where a String goes, for one failure out of the whole reader. Nothing yet reads this argument -- Rebol's own suite asks only whether the load failed -- so the cost has not been paid. If a script is ever found reading it, the pipeline is what changes, not this one call site."
+-- A malconstruct names the construct's first item when that item is not a
+-- word, and the whole construct as a block when it is, or when there is no
+-- item at all.
+--
+-- Measured against a real 3.22.5 on 2026-10-23: `#(k: 1)` names `k:`,
+-- `#(1 2)` names 1, `#([a] 1)` names [a], `#(%f 1)` names %f, while
+-- `#(foo 1)` and `#(char! 65)` name `[foo 1]` and `[char! 65]`, and `#()`
+-- names `[]`.
+--
+-- It is an accident of the C rather than a design. CONSTRUCT scans the
+-- items into the scanner's buffer, copies them out into a block and reports
+-- the buffer slot the first item was scanned into. Construct_Value replaces
+-- that slot with the block only once it has seen a word first; a construct
+-- that does not start with one is refused before the slot is touched, so
+-- what the error carries is the first item left behind there. A script that
+-- catches the error and reads its argument sees this, so it is matched.
+rule AMalconstructNamesTheFirstItemUnlessItIsAWord {
+    when: request: TranscodeRequest.created
+    requires: request.status = reading
+    requires: source_holds_construct(request.source_text)
+    requires: not construct_can_be_built(request.source_text)
+
+    ensures:
+        request.status = failed
+        request.failure = malconstruct
+        request.failure_argument =
+            if the_construct_starts_with_a_non_word_item(request.source_text):
+                the_first_item_of_the_construct(request.source_text)
+            else:
+                the_construct_as_a_block(request.source_text)
+}
 
 open question "TranscodeRequest now carries both source_text and source, because the remainder a stepping read answers has to be the caller's own series advanced rather than a copy of its text. Two fields for one thing is a smell, and the honest alternative is to drop source_text and derive the text from the series. What stops that today is that every other rule in this module reads source_text and several measure lengths against it, so the change is wide. Which of the two is the real field?"
 

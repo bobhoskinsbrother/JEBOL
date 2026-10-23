@@ -118,6 +118,42 @@ public final class Evaluator {
                 : nameEveryCallOpen(walksInProgress.peek());
     }
 
+    public Optional<Value> findCallRunningBelowInnermost() {
+        List<Value> running = listCallsRunningInnermostFirst();
+        return running.size() < 2 ? Optional.empty() : Optional.of(running.get(1));
+    }
+
+    private List<Value> listCallsRunningInnermostFirst() {
+        List<Value> running = new ArrayList<>();
+        if (walksInProgress.isEmpty()) {
+            return running;
+        }
+        for (Deque<Frame> walk : listEveryWalkInnermostFirst(walksInProgress.peek())) {
+            for (Frame open : walk) {
+                if (open.callBeingMade != null && open.callBeingMade.isRunning()) {
+                    running.add(withoutAskedRefinements(open.callBeingMade.callee()));
+                }
+            }
+            if (!walk.isEmpty() && walk.peekLast().bodyOfAppliedFunction) {
+                findFunctionRunningIn(walk.peekLast().context).ifPresent(running::add);
+            }
+        }
+        return running;
+    }
+
+    private Value withoutAskedRefinements(Value callee) {
+        return callee instanceof NativeValue refined ? refined.withoutAskedRefinements() : callee;
+    }
+
+    private Optional<Value> findFunctionRunningIn(Context locals) {
+        for (OpenCall open : functionsBeingRun) {
+            if (open.locals() == locals) {
+                return Optional.of(open.function());
+            }
+        }
+        return Optional.empty();
+    }
+
     private static final String APPLIED_FUNCTION = "-apply-";
 
     private List<String> nameEveryCallOpen(Deque<Frame> innermostWalk) {
@@ -372,11 +408,9 @@ public final class Evaluator {
                 List<Parameter> parameters = function.parameters();
                 checkArgumentTypes(parameters, arguments, APPLIED_FUNCTION);
                 Context locals = function.makeFreshCallFrame();
-                function.localNames().forEach(
-                        name -> locals.register(name, NoneValue.none()));
-                bindArgumentsPositionally(locals, parameters, arguments);
+                bindArgumentsPositionally(locals, function, arguments);
                 AnyBlockValue running = findBodyThisCallRuns(function, locals);
-                findFrameThisCallTakesOverFrom(function).giveWayTo(locals);
+                lendFrameToFunction(function, locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
                     yield walk(running, locals, 1, null, APPLIED_FUNCTION_BODY);
@@ -384,7 +418,6 @@ public final class Evaluator {
                     yield returned.value();
                 } finally {
                     handBackFrameTakenOverBy(functionsBeingRun.pop());
-                    locals.markCallEnded();
                 }
             }
             case NativeValue built -> runNative(built, arguments, systemContext);
@@ -687,9 +720,6 @@ public final class Evaluator {
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
                     handBackFrameTakenOverBy(functionsBeingRun.pop());
                 }
-                if (frame.functionBody) {
-                    frame.context.markCallEnded();
-                }
                 frames.pop();
                 framesOpen = frames.size();
                 if (frames.isEmpty()) {
@@ -775,7 +805,7 @@ public final class Evaluator {
         framesOpen = frames.size();
         if (being != null) {
             functionsCalled++;
-            findFrameThisCallTakesOverFrom(being).giveWayTo(context);
+            lendFrameToFunction(being, context);
             functionsBeingRun.push(new OpenCall(nameOfCallBeingMade, being, context));
             nameOfCallBeingMade = "";
             lastWordCalledThrough = "";
@@ -791,7 +821,16 @@ public final class Evaluator {
         return function.declaredWords();
     }
 
+    private void lendFrameToFunction(DefinedFunctionValue being, Context locals) {
+        if (being instanceof FunctionValue) {
+            findFrameThisCallTakesOverFrom(being).giveWayTo(locals);
+        }
+    }
+
     private void handBackFrameTakenOverBy(OpenCall ending) {
+        if (ending.function() instanceof ClosureValue) {
+            return;
+        }
         ending.locals().giveWayTo(null);
         findFrameThisCallTakesOverFrom(ending.function()).giveWayTo(null);
     }
@@ -1151,48 +1190,37 @@ public final class Evaluator {
                 refinements::contains, arguments, call.nameInArgumentError());
         call.enter();
         Context locals = function.makeFreshCallFrame();
+        fillFrameFromCall(locals, function, refinements, arguments);
+        push(frames, findBodyThisCallRuns(function, locals), locals, function);
+        return StepOutcome.waiting();
+    }
 
+    private void fillFrameFromCall(
+            Context locals, DefinedFunctionValue function, List<String> refinements,
+            List<Value> arguments) {
+        List<Parameter> parameters = function.parameters();
         int at = 0;
-        for (Parameter parameter : function.parameters()) {
-            if (!parameter.consumesArgument()) {
+        for (int index = 0; index < parameters.size(); index++) {
+            Parameter parameter = parameters.get(index);
+            if (parameter.kind() == ParameterKind.REFINEMENT) {
+                ContextSlot switched = function.frameSlotForParameter(locals, index);
+                if (refinements.contains(switched.canonical())) {
+                    switched.setValue(LogicValue.yes());
+                }
                 continue;
             }
-            boolean granted = parameter.owningRefinement()
-                    .map(refinements::contains).orElse(true);
-            if (!granted) {
+            if (!parameter.consumesArgument() || !isGranted(parameter, refinements)) {
                 continue;
             }
             if (at < arguments.size()) {
-                locals.register(parameter.name(), arguments.get(at));
+                function.frameSlotForParameter(locals, index).setValue(arguments.get(at));
             }
             at++;
         }
+    }
 
-        for (Parameter parameter : function.parameters()) {
-            boolean alreadyGiven = parameter.owningRefinement().isPresent()
-                    && parameter.consumesArgument()
-                    && parameter.owningRefinement()
-                            .map(refinements::contains).orElse(true);
-            if (parameter.owningRefinement().isPresent() && !alreadyGiven) {
-                locals.register(parameter.name(), NoneValue.none());
-            }
-        }
-
-        for (Parameter parameter : function.parameters()) {
-            if (parameter.kind() != ParameterKind.REFINEMENT) {
-                continue;
-            }
-            locals.register(
-                    parameter.name(),
-                    refinements.contains(parameter.name().toLowerCase(Locale.ROOT))
-                            ? LogicValue.yes()
-                            : NoneValue.none());
-        }
-
-        function.localNames().forEach(name -> locals.register(name, NoneValue.none()));
-
-        push(frames, findBodyThisCallRuns(function, locals), locals, function);
-        return StepOutcome.waiting();
+    private boolean isGranted(Parameter parameter, List<String> refinements) {
+        return parameter.owningRefinement().map(refinements::contains).orElse(true);
     }
 
     private void checkArgumentTypes(
@@ -1859,38 +1887,31 @@ public final class Evaluator {
         }
     }
 
-    private static void bindArgumentsPositionally(
-            Context frame, List<Parameter> parameters, List<Value> arguments) {
+    private void bindArgumentsPositionally(
+            Context frame, DefinedFunctionValue function, List<Value> arguments) {
 
+        List<Parameter> parameters = function.parameters();
         for (int at = 0; at < parameters.size(); at++) {
-            Parameter parameter = parameters.get(at);
             Value supplied = at < arguments.size()
                     ? arguments.get(at)
                     : UnsetValue.unset();
-            if (parameter.kind() != ParameterKind.REFINEMENT) {
-                frame.register(parameter.name(), supplied);
+            if (parameters.get(at).kind() != ParameterKind.REFINEMENT) {
+                fillParameterSlot(frame, function, at, supplied);
                 continue;
             }
             boolean asked = supplied.datatype() != UnsetValue.TYPE && supplied.isTruthy();
-            frame.register(parameter.name(),
-                    asked ? LogicValue.of(true) : NoneValue.none());
-            if (asked) {
-                continue;
-            }
-            while (at + 1 < parameters.size()
+            fillParameterSlot(frame, function, at, asked ? LogicValue.of(true) : NoneValue.none());
+            while (!asked && at + 1 < parameters.size()
                     && parameters.get(at + 1).kind() != ParameterKind.REFINEMENT) {
                 at++;
-                frame.register(parameters.get(at).name(), NoneValue.none());
             }
         }
     }
 
-    private static java.util.Set<String> listNamesOwnedBy(DefinedFunctionValue function) {
-        java.util.Set<String> owned = new java.util.HashSet<>();
-        function.parameters().forEach(
-                parameter -> owned.add(parameter.name().toLowerCase(Locale.ROOT)));
-        function.localNames().forEach(
-                name -> owned.add(name.toLowerCase(Locale.ROOT)));
-        return owned;
+    private void fillParameterSlot(
+            Context frame, DefinedFunctionValue function, int parameterIndex, Value value) {
+        if (function.holdsFrameSlotForParameter(parameterIndex)) {
+            function.frameSlotForParameter(frame, parameterIndex).setValue(value);
+        }
     }
 }

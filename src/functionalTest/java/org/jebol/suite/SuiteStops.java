@@ -58,7 +58,7 @@ public final class SuiteStops {
             String went;
             try {
                 interpreter.defineNewWordsIn(source);
-                ScriptOutcome ran = interpreter.run(source);
+                ScriptOutcome ran = interpreter.run("do [\n" + source + "\n]");
                 went = ran.succeeded() ? null : interpreter.display(ran);
             } catch (RuntimeException | StackOverflowError broke) {
                 went = broke.toString();

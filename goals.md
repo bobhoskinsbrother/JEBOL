@@ -181,7 +181,12 @@ interpreters -- reads as missing.
   block from that value on; and R3's `where` names `catch` between a native
   and the TRY that caught it, which JEBOL's leaves out. Found by the sweeps on
   2026-10-15; no suite assertion asks.
-- **67 open questions across the spec files** on 2026-10-22, 27 of them in
+- **The table of word spellings only grows.** `Context.canonicalise` keeps
+  one lower-cased copy of every spelling ever read, in a static table every
+  interpreter in the process shares and nothing empties, so a long-running
+  process whose scripts make words in a loop (`to word! join "k" i`) grows it
+  without limit. Whether r3's own word table does the same is not measured.
+- **63 open questions across the spec files** on 2026-10-23, 26 of them in
   `natives.allium`. Unowned by any goal: the three in `parse.allium`, the eight
   in `embed.allium`, the one in `nav.allium` (whether a window should hear the
   trackpad's swipe, which Java gives no public way to), and the design
@@ -189,7 +194,7 @@ interpreters -- reads as missing.
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters).
 
-### 6. A debugger
+### 6. Debugging and tracing
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -284,14 +289,14 @@ The interpreter's first tier is done. Decision 38 took the streams off the
 per-call path, kept the parameter sequence per call instead of rescanning,
 made the argument list one copy instead of up to four, and interned
 canonical names: about 2x on the timing workloads, 75ms to 54ms on a warm
-boot, 5m16s to 4m19s on the test run. The profile's next tier, if the drag
-still reads slow after the paint work:
+boot, 5m16s to 4m19s on the test run. Decision 53 made a call's frame an
+array: calls about 15% faster, recursion unchanged. The profile's next tier,
+if the drag still reads slow after the paint work:
 
-1. **The per-call frame machinery.** Every function call makes a fresh
-   `Context` and registers each parameter into its `LinkedHashMap`
-   (`HashMap.putVal` is the top frame in the call workload), then tears it
-   down. An array-backed call frame is the next measurable thing.
-2. **`BlockStorage.at(int)`**, 7 to 8 per cent of some workloads: every value
+1. **Checking each argument's type**, 13 per cent of the recursion workload
+   and its largest single piece: `Evaluator.checkArgumentTypes` asks an
+   immutable set for each argument's datatype on every call.
+2. **`BlockStorage.at(int)`**, 6 to 8 per cent of some workloads: every value
    read from a block pays bounds arithmetic and an indirection.
 3. **The wasm worker's cold start**, 459ms, which is the JVM's first create
    by another route; the per-boot parse of the borrowed library is its

@@ -1,0 +1,48 @@
+0
+[not-defined a _ _]
+7
+4
+[a b]
+[expect-arg in object #(function!)]
+[expect-arg values-of value #(function!)]
+[a]
+[1 _ _ _]
+[1 #(true) 2 _]
+7
+[1 12]
+3
+2
+3
+500
+[not-defined n _ _]
+[1 2]
+1
+[a + 1]
+#(false)
+[1]
+"x"
+#{01}
+%ab
+<ab>
+#(false)
+#(false)
+#(true)
+[1 2]
+#(object! [a: 1 r: _ b: _ local: _ c: _])
+#(object! [a: 1 r: #(true) b: 2 local: _ c: _])
+[1 2 3]
+#(object! [a: 9 local: _])
+#(false)
+#(true)
+#(true)
+#(true)
+"make function! [[x][mold context? x]]"
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)

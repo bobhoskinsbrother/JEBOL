@@ -30,7 +30,7 @@ public final class FunctionValue extends DefinedFunctionValue {
 
     @Override
     public Context makeFreshCallFrame() {
-        Context frame = Context.makeChildOf(closedOver());
+        Context frame = makeFrameUnder(closedOver());
         frame.markAsCallFrameOf(this);
         return frame;
     }

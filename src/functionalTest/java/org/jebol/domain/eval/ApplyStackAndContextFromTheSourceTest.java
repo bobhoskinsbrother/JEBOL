@@ -240,12 +240,12 @@ class ApplyStackAndContextFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a word kept past the end of its call still names a frame")
-        void stillNamesAFrameForAWordOutlivingItsCall() {
+        @DisplayName("a word kept past the end of its call answers the DO that is running")
+        void answersTheRunningDoForAWordOutlivingItsCall() {
             assertThat(answerTo("""
                     keeps-its-word: func [arg] [kept: 'arg]
                     keeps-its-word 1
-                    same? :do context? kept""")).isEqualTo("#(true)");
+                    same? :do do [context? kept]""")).isEqualTo("#(true)");
         }
 
         @Test
