@@ -1,3 +1,10 @@
+import java.io.ByteArrayOutputStream
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+import javax.xml.parsers.DocumentBuilderFactory
+
 plugins {
     java
     application
@@ -97,12 +104,13 @@ val assembleSite = tasks.register<Sync>("assembleSite") {
             "jebol-navigation.js", "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
+    val siteDirectory = layout.buildDirectory.dir("site")
+    val app = file(theApp)
     doLast {
-        val site = layout.buildDirectory.dir("site").get().asFile
+        val site = siteDirectory.get().asFile
         if (site.resolve("index.html").exists()) {
             return@doLast
         }
-        val app = file(theApp)
         val names = app.walkTopDown().filter { it.isFile }
             .map { it.relativeTo(app).invariantSeparatorsPath }
             .sorted()
@@ -125,11 +133,12 @@ val writeTheWebResourceList = tasks.register("writeTheWebResourceList") {
     val library = fileTree("src/main/resources/org/jebol")
     inputs.files(library).withPropertyName("libraryFiles")
     val list = layout.buildDirectory.file("generated/web/jebol-resources.txt")
+    val resourcesRoot = file("src/main/resources")
     outputs.file(list)
     doLast {
         list.get().asFile.parentFile.mkdirs()
         list.get().asFile.writeText(library.files
-            .map { it.relativeTo(file("src/main/resources")).invariantSeparatorsPath }
+            .map { it.relativeTo(resourcesRoot).invariantSeparatorsPath }
             .sorted()
             .joinToString("\n"))
     }
@@ -247,6 +256,7 @@ val functionalTests = tasks.register<Test>("functionalTests") {
 val endToEndTests = tasks.register<Test>("endToEndTests") {
     description = "Tests that drive a real interface: the command line, a real browser, and local servers"
     runsTheTestsIn(endToEndTest)
+    systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
     systemProperty(
         "jebol.webBuild",
         layout.buildDirectory.dir("generated/teavm/wasm-gc").get().asFile.path,
@@ -294,10 +304,120 @@ val checkSpec = tasks.register<Exec>("checkSpec") {
     commandLine("./scripts/check-spec.sh")
 }
 
+abstract class ArchiveTestResults : DefaultTask() {
+
+    @get:Inject
+    abstract val fileSystem: FileSystemOperations
+
+    @get:Inject
+    abstract val processes: ExecOperations
+
+    @get:Internal
+    abstract val results: DirectoryProperty
+
+    @get:Internal
+    abstract val history: DirectoryProperty
+
+    @get:Internal
+    abstract val suites: ListProperty<String>
+
+    @TaskAction
+    fun archive() {
+        val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
+        val archived = history.get().dir(stamp).asFile
+        suites.get().forEach { suite ->
+            fileSystem.copy {
+                from(results.get().dir(suite))
+                exclude("binary/**")
+                into(archived.resolve(suite))
+            }
+        }
+        archived.resolve("summary.txt").writeText(summarise(archived))
+        logger.lifecycle("Test results archived in {}", archived)
+    }
+
+    private fun summarise(archived: File): String {
+        val lines = mutableListOf("commit ${readCommit()}")
+        var earliestStart = Long.MAX_VALUE
+        var latestEnd = Long.MIN_VALUE
+        suites.get().forEach { suite ->
+            val reports = archived.resolve(suite).listFiles { file -> file.name.endsWith(".xml") }.orEmpty()
+            var tests = 0
+            var failed = 0
+            var skipped = 0
+            var seconds = 0.0
+            var suiteStart = Long.MAX_VALUE
+            var suiteEnd = Long.MIN_VALUE
+            reports.forEach { report ->
+                val suiteElement = DocumentBuilderFactory.newInstance()
+                    .newDocumentBuilder().parse(report).documentElement
+                tests += suiteElement.getAttribute("tests").toInt()
+                failed += suiteElement.getAttribute("failures").toInt() + suiteElement.getAttribute("errors").toInt()
+                skipped += suiteElement.getAttribute("skipped").toInt()
+                val took = suiteElement.getAttribute("time").toDouble()
+                seconds += took
+                val started = Instant.parse(suiteElement.getAttribute("timestamp")).toEpochMilli()
+                suiteStart = minOf(suiteStart, started)
+                suiteEnd = maxOf(suiteEnd, started + (took * 1000).toLong())
+            }
+            earliestStart = minOf(earliestStart, suiteStart)
+            latestEnd = maxOf(latestEnd, suiteEnd)
+            val wall = if (reports.isEmpty()) "not run" else formatMinutes(suiteEnd - suiteStart)
+            lines += "$suite: ${reports.size} classes, $tests tests, $failed failed, $skipped skipped, " +
+                "wall $wall, summed ${"%.0f".format(seconds)}s"
+        }
+        if (latestEnd > earliestStart) {
+            lines += "tests wall, first class started to last class finished: ${formatMinutes(latestEnd - earliestStart)}"
+        }
+        return lines.joinToString("\n", postfix = "\n")
+    }
+
+    private fun formatMinutes(milliseconds: Long): String =
+        "${milliseconds / 60_000}m${(milliseconds / 1000) % 60}s"
+
+    private fun readCommit(): String {
+        val head = ByteArrayOutputStream()
+        processes.exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            standardOutput = head
+            isIgnoreExitValue = true
+        }
+        val changed = ByteArrayOutputStream()
+        processes.exec {
+            commandLine("git", "status", "--porcelain")
+            standardOutput = changed
+            isIgnoreExitValue = true
+        }
+        val uncommitted = if (changed.toString().isBlank()) "" else " with uncommitted changes"
+        return head.toString().trim() + uncommitted
+    }
+}
+
+val gateSuites = listOf("unitTests", "functionalTests", "endToEndTests")
+
+val gateWasAskedFor = gradle.startParameter.taskNames
+    .map { it.removePrefix(":") }
+    .any { it in setOf("allTests", "test", "check") }
+
+val archiveTestResults = tasks.register<ArchiveTestResults>("archiveTestResults") {
+    group = "verification"
+    description = "Copy the gate's test results into test-history/<timestamp>, with a summary, so a later run cannot overwrite them"
+    results = layout.buildDirectory.dir("test-results")
+    history = layout.projectDirectory.dir("test-history")
+    suites = gateSuites
+    val asked = gateWasAskedFor
+    onlyIf("the gate was asked for") { asked }
+}
+
 val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "The spec check, then unitTests, functionalTests and endToEndTests"
+    description = "The spec check, then unitTests, functionalTests and endToEndTests, then archiveTestResults"
     dependsOn(checkSpec, unitTests, functionalTests, endToEndTests)
+    finalizedBy(archiveTestResults)
+}
+
+listOf(unitTests, functionalTests, endToEndTests).forEach { suite ->
+    suite { finalizedBy(archiveTestResults) }
 }
 
 unitTests { mustRunAfter(checkSpec) }

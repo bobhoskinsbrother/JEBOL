@@ -2253,10 +2253,17 @@ building the frame at about 14% of the time and looking words up at about
 because the frame was never its cost: checking each argument's type is 13%
 of it, the largest single piece, and is where the next gain is.
 
-`./gradlew allTests` went from 5m22s to 4m46s, 36 seconds or about 11%
-faster, both on 2026-10-23 with one test process per core. Two small commits
-landed between the two runs (the stats template and PARSE's `??`), adding a
-handful of tests and no measurable work.
+It did not measurably change the gate. `./gradlew allTests` read 5m22s the
+morning before and 4m46s once after it, but then 5m22s and 5m21s on later
+runs, while a warm `Interpreter.create()` stayed at 39-40ms median. The gate
+is dominated by booting about 16,300 interpreters and by the corpus and suite
+classes, none of which this touches; one run each side cannot show a change
+smaller than the run-to-run spread.
+
+Checking each argument's type once, against a bit mask, was built the same
+day as the next tier and measured: recursion 226-243ms to 204-213ms, and the
+gate 5m21s without it, 5m22s with it. It was dropped as complexity that
+bought nothing the gate can see.
 
 **What it did not do: words still find their slot by name.** Giving each
 word its slot's position, as the C does, would change binding in every place

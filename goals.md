@@ -217,7 +217,9 @@ test a deep copy of it. Measure the copy first and stop if it is not clearly
 under about 15ms; if it is, every piece of interpreter state -- contexts,
 functions, objects, and ports holding host resources -- must copy, proven by
 isolation tests of the whole interpreter like `LibrarySourceIsolationTest`.
-The gate is 4m46s on 2026-10-23, with one test process per core.
+The gate read 5m21s to 5m22s on 2026-10-23, with one test process per core,
+in three of four runs; the fourth read 4m46s and was not explained. Runs are
+kept in `test-history/`.
 
 ### 7. Dev tools
 
@@ -293,12 +295,9 @@ boot, 5m16s to 4m19s on the test run. Decision 53 made a call's frame an
 array: calls about 15% faster, recursion unchanged. The profile's next tier,
 if the drag still reads slow after the paint work:
 
-1. **Checking each argument's type**, 13 per cent of the recursion workload
-   and its largest single piece: `Evaluator.checkArgumentTypes` asks an
-   immutable set for each argument's datatype on every call.
-2. **`BlockStorage.at(int)`**, 6 to 8 per cent of some workloads: every value
+1. **`BlockStorage.at(int)`**, 6 to 8 per cent of some workloads: every value
    read from a block pays bounds arithmetic and an indirection.
-3. **The wasm worker's cold start**, 459ms, which is the JVM's first create
+2. **The wasm worker's cold start**, 459ms, which is the JVM's first create
    by another route; the per-boot parse of the borrowed library is its
    biggest single piece and the candidate for a build-time form of it.
 

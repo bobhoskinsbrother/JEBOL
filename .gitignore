@@ -14,6 +14,11 @@
 /.gradle/
 /build/
 
+# Every gate run's test results and summary, one timestamped folder each,
+# written by `archiveTestResults` at the end of `allTests`. Outside build/ so
+# `clean` keeps them; local history, not source.
+/test-history/
+
 # The Allium CLI's one-time notice marker, when the cache directory is not
 # writable and it falls back to the project root.
 /.allium-cli-notice-shown

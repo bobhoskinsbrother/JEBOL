@@ -1,6 +1,7 @@
 package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Order(1)
 @Timeout(240)
 @ExtendWith(TheSuitesPageBrowsers.class)
 class NavigatingOnAPageEndToEndTest {

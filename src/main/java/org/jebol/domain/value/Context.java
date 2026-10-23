@@ -42,7 +42,7 @@ public final class Context {
         return new Context(parent, false);
     }
 
-    public static Context callFrameOf(Context parent, List<String> spellings, List<String> canonicalNames) {
+    public static Context makeCallFrame(Context parent, List<String> spellings, List<String> canonicalNames) {
         if (parent == null) {
             throw new IllegalArgumentException("a call frame needs a parent");
         }

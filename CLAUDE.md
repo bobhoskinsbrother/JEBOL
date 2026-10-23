@@ -192,6 +192,19 @@ matches. Helpers and every resource the three share are in `src/testFixtures`.
 `./gradlew test` and `./gradlew check` both run `allTests`, so no name runs
 less than it sounds like.
 
+Every `allTests` run, failing ones included, ends with `archiveTestResults`,
+which copies the three suites' result XML into `test-history/<timestamp>/`
+with a `summary.txt`: the commit, each suite's counts and wall time, and the
+time from the first test class starting to the last finishing. Compare runs
+there rather than against `build/test-results`, which the next run overwrites.
+The gate's wall time varies by tens of seconds between runs, so one run each
+side does not measure a change.
+
+The end-to-end suite runs classes in `@Order`, unannotated last: the longest
+classes carry `@Order(1)`, `@Order(2)` so they start first in their test
+process rather than holding the run open at the end. Give a new class that
+takes most of a minute an `@Order` too; `test-history/` shows which those are.
+
 `endToEndTests` needs Chrome and Firefox installed, and Selenium fetches both
 browser drivers the first time it runs. The page's services -- navigation, the
 dialogs, the clipboard, pictures, MIDI, POST and the console's line -- are driven

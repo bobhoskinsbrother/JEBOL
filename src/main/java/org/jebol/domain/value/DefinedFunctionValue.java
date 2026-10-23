@@ -16,7 +16,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     private final Context declaredWords;
     private final List<String> frameSpellings = new ArrayList<>();
     private final List<String> frameCanonicalNames = new ArrayList<>();
-    private final int[] framePositionOfParameter;
+    private final int[] parameterFramePositions;
 
     DefinedFunctionValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
@@ -30,7 +30,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
         this.localNames = List.copyOf(localNames);
         this.closedOver = closedOver;
         this.declaredWords = declaredWords;
-        this.framePositionOfParameter = new int[this.parameters.size()];
+        this.parameterFramePositions = new int[this.parameters.size()];
         layOutFrame();
     }
 
@@ -38,7 +38,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
         for (int index = 0; index < parameters.size(); index++) {
             Parameter parameter = parameters.get(index);
             boolean holdsSlot = parameter.consumesArgument() || parameter.kind() == ParameterKind.REFINEMENT;
-            framePositionOfParameter[index] = holdsSlot ? placeInFrame(parameter.name()) : NO_SLOT;
+            parameterFramePositions[index] = holdsSlot ? placeInFrame(parameter.name()) : NO_SLOT;
         }
         localNames.forEach(this::placeInFrame);
     }
@@ -57,15 +57,15 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     private static final int NO_SLOT = -1;
 
     protected Context makeFrameUnder(Context parent) {
-        return Context.callFrameOf(parent, frameSpellings, frameCanonicalNames);
+        return Context.makeCallFrame(parent, frameSpellings, frameCanonicalNames);
     }
 
     public boolean holdsFrameSlotForParameter(int parameterIndex) {
-        return framePositionOfParameter[parameterIndex] != NO_SLOT;
+        return parameterFramePositions[parameterIndex] != NO_SLOT;
     }
 
     public ContextSlot frameSlotForParameter(Context frame, int parameterIndex) {
-        return frame.ownSlotAt(framePositionOfParameter[parameterIndex]);
+        return frame.ownSlotAt(parameterFramePositions[parameterIndex]);
     }
 
     @Override

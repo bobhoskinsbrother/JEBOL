@@ -1,6 +1,7 @@
 package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Order(2)
 @ExtendWith(TheSuitesPageBrowsers.class)
 class TheDialogsOnAPageEndToEndTest {
 

@@ -28,7 +28,7 @@ final class SlotTable {
     }
 
     ContextSlot get(String canonicalName) {
-        int position = positionOf(canonicalName);
+        int position = findPosition(canonicalName);
         return position < 0 ? null : slots[position];
     }
 
@@ -40,7 +40,7 @@ final class SlotTable {
     }
 
     boolean containsKey(String canonicalName) {
-        return positionOf(canonicalName) >= 0;
+        return findPosition(canonicalName) >= 0;
     }
 
     void add(String canonicalName, ContextSlot slot) {
@@ -74,7 +74,7 @@ final class SlotTable {
         }
     }
 
-    private int positionOf(String canonicalName) {
+    private int findPosition(String canonicalName) {
         if (isIndexed()) {
             Integer position = positionByCanonicalName.get(canonicalName);
             return position == null ? -1 : position;
