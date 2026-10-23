@@ -9,12 +9,12 @@ import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.WheelInput;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -25,29 +25,27 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
-    private static final int PAGE_WIDE = 800;
-    private static final int PAGE_HIGH = 800;
-
+    private final PageBrowsers browsers;
     private WebScreenServer serving;
     private BrowserScreen screen;
-    private ChromeDriver browser;
+    private AnOperatorAtThePage operator;
+    private WebDriver browser;
     private Interpreter interpreter;
+
+    AnOperatorInABrowserDrivesAGuiEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0, new ClasspathFiles());
         screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new",
-                "--window-size=" + PAGE_WIDE + "," + PAGE_HIGH,
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars",
-                "--no-sandbox");
-        browser = new ChromeDriver(asked);
-        browser.get(serving.address());
+        operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();
+        browser = operator.browser();
         new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> screen.hasDisplay());
 
         Bounds everything = Bounds.standard().withTimeLimit(Duration.ofSeconds(100));
@@ -66,8 +64,8 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     @AfterEach
     void closeThePage() {
-        if (browser != null) {
-            browser.quit();
+        if (operator != null) {
+            operator.close();
         }
         serving.close();
     }
@@ -257,7 +255,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
             answerTo("wait [gui-event-port 0.05]");
             return "#(true)".equals(answerTo("clicked"));
         });
-        assertThat(browser.executeScript("return typeof window.jebolInjected")).isEqualTo("undefined");
+        assertThat(operator.runsInThePage("return typeof window.jebolInjected")).isEqualTo("undefined");
         assertThat(browser.findElements(By.tagName("img"))).isEmpty();
     }
 

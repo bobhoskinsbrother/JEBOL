@@ -6,13 +6,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -28,15 +29,19 @@ import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class AScriptInAPageTagRunsInABrowserEndToEndTest {
 
-    private static final int PAGE_WIDE = 800;
-    private static final int PAGE_HIGH = 600;
-
+    private final PageBrowsers browsers;
     private Path theWebBuild;
     private String thePage;
     private HttpServer serving;
-    private ChromeDriver browser;
+    private AnOperatorAtThePage operator;
+    private WebDriver browser;
+
+    AScriptInAPageTagRunsInABrowserEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     @BeforeEach
     void serveTheWebBuild() throws IOException {
@@ -48,21 +53,25 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
         serving = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         serving.createContext("/", this::answer);
         serving.start();
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new", "--no-sandbox",
-                "--window-size=" + PAGE_WIDE + "," + PAGE_HIGH,
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars");
-        browser = new ChromeDriver(asked);
-        browser.get("http://127.0.0.1:" + serving.getAddress().getPort() + "/");
+        operator = new AnOperatorAtThePage(browsers, "chrome",
+                "http://127.0.0.1:" + serving.getAddress().getPort() + "/").opensThePage();
+        browser = operator.browser();
     }
 
     @AfterEach
     void closeTheBrowser() {
-        if (browser != null) {
-            browser.quit();
+        if (operator != null) {
+            operator.close();
         }
         serving.stop(0);
+    }
+
+    private String readTheWindowsInnerSize() {
+        return (String) operator.runsInThePage("return window.innerWidth + 'x' + window.innerHeight;");
+    }
+
+    private long readTheWindowsInnerWidth() {
+        return (Long) operator.runsInThePage("return window.innerWidth;");
     }
 
     private WebDriverWait patientBrowser() {
@@ -101,7 +110,7 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
     }
 
     private String readThePixelAt(int across, int down) {
-        return browser.executeScript("""
+        return ((JavascriptExecutor) browser).executeScript("""
                 const d = document.getElementById('screen').getContext('2d')
                     .getImageData(arguments[0], arguments[1], 1, 1).data;
                 return [d[0], d[1], d[2], d[3]].join(',');
@@ -134,9 +143,9 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
         waitUntilTheOutputSays(9, "open");
 
         WebElement canvas = browser.findElement(By.id("screen"));
+        waitUntilThePageSaysOrGivesUp("a canvas as wide as the window to click",
+                () -> canvas.getRect().getWidth() == readTheWindowsInnerWidth());
         Rectangle where = canvas.getRect();
-        waitUntilThePageSaysOrGivesUp("a canvas the right size to click",
-                () -> where.getWidth() == PAGE_WIDE);
 
         new Actions(browser).moveToElement(canvas,
                 70 - where.getWidth() / 2, 80 - where.getHeight() / 2).click().perform();
@@ -148,13 +157,14 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
     @DisplayName("a browser resized while the script waits is taken, and the script sees the new size")
     void takesABrowserResizeWhileTheScriptWaits() {
         waitUntilTheOutputSays(9, "open");
+        String before = readTheWindowsInnerSize();
 
         browser.manage().window().setSize(new Dimension(500, 400));
 
         waitUntilThePageSaysOrGivesUp("the new size",
                 () -> readTheLinesSoFar().stream()
                         .anyMatch(line -> line.startsWith("now ")
-                                && !line.equals("now " + PAGE_WIDE + "x" + PAGE_HIGH)));
+                                && !line.equals("now " + before)));
     }
 
     private void answer(HttpExchange exchange) throws IOException {

@@ -12,11 +12,11 @@ import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ObjectValue;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import javax.imageio.ImageIO;
@@ -33,14 +33,18 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class PageRendersLikeTheDesktopTest {
 
-    private static final int PAGE_WIDE = 600;
-    private static final int PAGE_HIGH = 400;
-
+    private final PageBrowsers browsers;
     private WebScreenServer serving;
     private BrowserScreen screen;
-    private ChromeDriver browser;
+    private AnOperatorAtThePage operator;
+    private WebDriver browser;
+
+    PageRendersLikeTheDesktopTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     @BeforeEach
     void openAPage() throws IOException {
@@ -48,14 +52,8 @@ class PageRendersLikeTheDesktopTest {
         screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
 
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new",
-                "--window-size=" + PAGE_WIDE + "," + PAGE_HIGH,
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars",
-                "--no-sandbox");
-        browser = new ChromeDriver(asked);
-        browser.get(serving.address());
+        operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();
+        browser = operator.browser();
 
         new WebDriverWait(browser, Duration.ofSeconds(20))
                 .until(anything -> screen.hasDisplay());
@@ -63,8 +61,8 @@ class PageRendersLikeTheDesktopTest {
 
     @AfterEach
     void closeThePage() {
-        if (browser != null) {
-            browser.quit();
+        if (operator != null) {
+            operator.close();
         }
         serving.close();
     }

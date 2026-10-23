@@ -74,6 +74,7 @@ public final class PageBrowsers implements ExtensionContext.Store.CloseableResou
         WebDriver driver = wanted.isFirefox()
                 ? openFirefox(wanted, downloads)
                 : openChrome(wanted);
+        driver.manage().window().maximize();
         return new AStartedBrowser(driver, downloads, driver.getWindowHandle(), new ReentrantLock());
     }
 

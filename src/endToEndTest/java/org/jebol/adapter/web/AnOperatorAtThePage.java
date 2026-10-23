@@ -154,6 +154,10 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         watchingForLeavePrompts = Optional.of(inspector);
     }
 
+    WebDriver browser() {
+        return browser;
+    }
+
     Object runsInThePage(String script) {
         return ((JavascriptExecutor) browser).executeScript(script);
     }
@@ -363,6 +367,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
                 new Browser(browser).removeUserContext(userContext);
             }
             browser.switchTo().window(started.homeTab());
+            browser.manage().window().maximize();
             listDownloads().forEach(this::deleteDownload);
         } finally {
             browser = null;

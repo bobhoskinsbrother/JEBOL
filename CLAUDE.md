@@ -207,7 +207,11 @@ test class is `@ExtendWith(TheSuitesPageBrowsers.class)` and takes a
 so every class in a test process shares it and JUnit quits the browsers when
 the run ends. It starts one browser per configuration (the browser, whether
 popups are blocked, whether leave prompts are watched), only when a test first
-asks, and replaces one that has died. Gradle runs end-to-end tests in several
+asks, maximises it, and replaces one that has died. Nothing else in the suite
+starts a browser: a test that drives the page itself takes `operator.browser()`
+from an `AnOperatorAtThePage` opened on its own server. A test reads the
+window's size from the page (`window.innerWidth`) rather than assuming one, and
+a test that resizes the window has it maximised again on close. Gradle runs end-to-end tests in several
 processes, and each starts its own. Each test works in a fresh WebDriver BiDi
 user context, which `AnOperatorAtThePage` removes on close, even when opening
 failed partway: its tabs, storage, cookies, permissions and history go with it,

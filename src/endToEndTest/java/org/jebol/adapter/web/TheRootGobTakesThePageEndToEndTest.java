@@ -12,8 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import javax.imageio.ImageIO;
@@ -25,10 +25,8 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheRootGobTakesThePageEndToEndTest {
-
-    private static final int PAGE_WIDE = 600;
-    private static final int PAGE_HIGH = 400;
 
     private static final int WINDOW_WIDE = 200;
     private static final int WINDOW_HIGH = 100;
@@ -41,9 +39,15 @@ class TheRootGobTakesThePageEndToEndTest {
             view/no-wait/options make gob! [size: 200x100 color: 232.93.74] [offset: 'center]
             """;
 
+    private final PageBrowsers browsers;
     private WebScreenServer serving;
     private BrowserScreen screen;
-    private ChromeDriver browser;
+    private AnOperatorAtThePage operator;
+    private WebDriver browser;
+
+    TheRootGobTakesThePageEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     private final class ThePage {
 
@@ -57,11 +61,11 @@ class TheRootGobTakesThePageEndToEndTest {
         }
 
         private int wide() {
-            return ((Number) browser.executeScript("return window.innerWidth")).intValue();
+            return ((Number) operator.runsInThePage("return window.innerWidth")).intValue();
         }
 
         private int high() {
-            return ((Number) browser.executeScript("return window.innerHeight")).intValue();
+            return ((Number) operator.runsInThePage("return window.innerHeight")).intValue();
         }
 
         private String sizeAsRebolWritesIt() {
@@ -93,14 +97,8 @@ class TheRootGobTakesThePageEndToEndTest {
         screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
 
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new",
-                "--window-size=" + PAGE_WIDE + "," + PAGE_HIGH,
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars",
-                "--no-sandbox");
-        browser = new ChromeDriver(asked);
-        browser.get(serving.address());
+        operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();
+        browser = operator.browser();
 
         new WebDriverWait(browser, Duration.ofSeconds(20))
                 .until(anything -> screen.hasDisplay());
@@ -108,8 +106,8 @@ class TheRootGobTakesThePageEndToEndTest {
 
     @AfterEach
     void closeThePage() {
-        if (browser != null) {
-            browser.quit();
+        if (operator != null) {
+            operator.close();
         }
         serving.close();
     }

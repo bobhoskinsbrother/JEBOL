@@ -8,9 +8,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.WheelInput;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -26,14 +26,18 @@ import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(TheSuitesPageBrowsers.class)
 class TheExamplesWithNoServerEndToEndTest {
-    private static final int PAGE_WIDE = 1200;
 
-    private static final int PAGE_HIGH = 900;
-
+    private final PageBrowsers browsers;
     private Path theSite;
     private HttpServer serving;
-    private ChromeDriver browser;
+    private AnOperatorAtThePage operator;
+    private WebDriver browser;
+
+    TheExamplesWithNoServerEndToEndTest(PageBrowsers browsers) {
+        this.browsers = browsers;
+    }
 
     @BeforeEach
     void serveTheSite() throws IOException {
@@ -41,19 +45,15 @@ class TheExamplesWithNoServerEndToEndTest {
         serving = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         serving.createContext("/", this::answer);
         serving.start();
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new", "--no-sandbox",
-                "--window-size=" + PAGE_WIDE + "," + PAGE_HIGH,
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars");
-        browser = new ChromeDriver(asked);
-        browser.get("http://127.0.0.1:" + serving.getAddress().getPort() + "/");
+        operator = new AnOperatorAtThePage(browsers, "chrome",
+                "http://127.0.0.1:" + serving.getAddress().getPort() + "/").opensThePage();
+        browser = operator.browser();
     }
 
     @AfterEach
     void closeTheBrowser() {
-        if (browser != null) {
-            browser.quit();
+        if (operator != null) {
+            operator.close();
         }
         serving.stop(0);
     }

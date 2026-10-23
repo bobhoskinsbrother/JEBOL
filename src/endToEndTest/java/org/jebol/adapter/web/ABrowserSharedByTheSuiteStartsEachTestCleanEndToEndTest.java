@@ -10,6 +10,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openqa.selenium.Dimension;
 
 import java.io.IOException;
 
@@ -57,6 +58,7 @@ class ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest {
                     document.body.appendChild(link);
                     link.click();""");
             operator.opensAnotherTab();
+            operator.browser().manage().window().setSize(new Dimension(500, 400));
 
             operator.waitForDownload("left-behind.txt");
             assertThat(operator.countTabs()).isEqualTo(2);
@@ -78,6 +80,9 @@ class ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest {
             assertThat(operator.readTheAddressHash()).isEmpty();
             assertThat(operator.countTabs()).isEqualTo(1);
             assertThat(operator.listDownloads()).isEmpty();
+            assertThat(operator.browser().manage().window().getSize().getWidth())
+                    .as("the window is maximised again, not left at the 500 the last test chose")
+                    .isGreaterThan(500);
         }
     }
 }
