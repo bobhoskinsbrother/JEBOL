@@ -7,18 +7,21 @@ import org.jebol.domain.render.TextExtent;
 import org.jebol.domain.render.TextRun;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.AfterEach;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TheBrowserAdaptersEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterEach
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private ShippedRunner servingTheScript(ShippedRunner runner) {
         return runner
@@ -51,7 +54,7 @@ class TheBrowserAdaptersEndToEndTest {
     @DisplayName("a script on the shipped page fetches, keeps a file, reads a line typed into the form, tells the time, measures text, and is refused the rest")
     void letsTheScriptReachTheOutside() throws IOException {
         try (ShippedRunner runner = servingTheScript(new ShippedRunner());
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, "chrome", runner).opensThePage()) {
 
             operator.waitUntilOutputContains("kept");
             operator.types("typed-here");

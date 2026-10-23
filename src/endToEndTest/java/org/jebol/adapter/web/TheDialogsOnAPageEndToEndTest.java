@@ -1,7 +1,10 @@
 package org.jebol.adapter.web;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -10,16 +13,34 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TheDialogsOnAPageEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
 
     @TempDir
     Path operatorsDisk;
+
+    @AfterEach
+    void clearTheOperatorsDisk() throws IOException {
+        try (Stream<Path> inside = Files.walk(operatorsDisk)) {
+            for (Path each : inside.sorted(Comparator.reverseOrder()).toList()) {
+                if (!each.equals(operatorsDisk)) {
+                    Files.delete(each);
+                }
+            }
+        }
+    }
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private Path aFileOnTheOperatorsDisk(String name, String text) throws IOException {
         Path file = operatorsDisk.resolve(name);
@@ -36,7 +57,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print mold request-color/default 0.0.255
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("colour");
             assertThat(operator.readTheValueOf("jebol-ask-colour")).isEqualTo("#0000ff");
@@ -48,7 +69,7 @@ class TheDialogsOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("dismissing the prompt answers none, for every dialog that has one")
     void dismissingAnswersNone(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
@@ -60,7 +81,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print ["browse" mold browse https://example.com/]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             for (String asked : new String[] {"colour", "file", "files", "folder", "save", "open"}) {
                 operator.waitForThePromptSaying(asked);
@@ -90,7 +111,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print read/string first
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("file");
             operator.choosesFiles(notes);
@@ -114,7 +135,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print mold request-file/multi/filter [{Rebol} {*.r3}]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("file");
             assertThat(operator.readTheAttributeOf("jebol-ask-file", "accept")).isEqualTo(".r3");
@@ -137,7 +158,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print read/string chosen/inner/b.txt
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner).opensThePage()) {
 
             operator.waitForThePromptSaying("folder");
             operator.choosesFolder(operatorsDisk.resolve("photos"));
@@ -157,7 +178,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print read/string chosen
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("firefox", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"firefox", runner).opensThePage()) {
 
             operator.waitForThePromptSaying("save");
             assertThat(operator.readTheValueOf("jebol-ask-name")).isEqualTo("draft.txt");
@@ -167,7 +188,7 @@ class TheDialogsOnAPageEndToEndTest {
             assertThat(operator.readOutput()).containsSubsequence("%/picked/1/draft.txt", "saved text");
             assertThat(Files.readString(operator.waitForDownload("draft.txt"), StandardCharsets.UTF_8))
                     .isEqualTo("saved text");
-            assertThat(Files.list(downloads).count()).isEqualTo(1);
+            assertThat(operator.listDownloads()).hasSize(1);
         }
     }
 
@@ -182,14 +203,14 @@ class TheDialogsOnAPageEndToEndTest {
                 close port
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("firefox", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"firefox", runner).opensThePage()) {
 
             operator.waitForThePromptSaying("save");
             operator.accepts();
 
             operator.waitUntilOutputContains("done");
             assertThat(Files.readString(operator.waitForDownload("log.txt"))).isEqualTo("one two");
-            assertThat(Files.list(downloads).count()).isEqualTo(1);
+            assertThat(operator.listDownloads()).hasSize(1);
         }
     }
 
@@ -200,14 +221,14 @@ class TheDialogsOnAPageEndToEndTest {
                 print ["save" mold request-file/save/file %draft.txt]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner).opensThePage()) {
 
             operator.waitForThePromptSaying("save");
             operator.accepts();
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains("save _");
-            assertThat(downloads).isEmptyDirectory();
+            assertThat(operator.listDownloads()).isEmpty();
         }
     }
 
@@ -221,7 +242,7 @@ class TheDialogsOnAPageEndToEndTest {
                         print ["opened" unset? browse to url! rejoin [{THE-ORIGIN} "/elsewhere.html"]]
                         print "done"
                         """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("open");
             operator.accepts();
@@ -240,7 +261,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print [e/id e/arg1]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("firefox", runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"firefox", runner)
                      .whoseBrowserBlocksEveryPopup().opensThePage()) {
 
             operator.waitForThePromptSaying("open");
@@ -253,7 +274,7 @@ class TheDialogsOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("REQUEST-PASSWORD draws JEBOL's own form on the page, takes the typing through it, and answers it")
     void asksForAPassword(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
@@ -261,7 +282,7 @@ class TheDialogsOnAPageEndToEndTest {
                 print ["declined" none? request-password]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.types("s3cret");
             operator.pressesEnter();

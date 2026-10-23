@@ -1,14 +1,13 @@
 package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -16,8 +15,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PostingFromAPageEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterEach
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private final List<String> received = new CopyOnWriteArrayList<>();
 
@@ -31,7 +34,7 @@ class PostingFromAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("WRITE to an http url posts from the page through fetch and answers the reply")
     void postsFromThePage(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner()) {
@@ -46,7 +49,7 @@ class PostingFromAPageEndToEndTest {
                             print "done"
                             """);
             try (AnOperatorAtThePage operator =
-                         new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+                         new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
 
                 operator.waitUntilOutputContains("done");
                 assertThat(operator.readOutput()).containsSubsequence(

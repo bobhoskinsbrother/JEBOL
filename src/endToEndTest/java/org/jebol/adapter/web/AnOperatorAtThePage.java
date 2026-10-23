@@ -3,24 +3,23 @@ package org.jebol.adapter.web;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
-import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.WindowType;
 import org.openqa.selenium.bidi.browsingcontext.BrowsingContext;
+import org.openqa.selenium.bidi.browsingcontext.CreateContextParameters;
 import org.openqa.selenium.bidi.browsingcontext.UserPromptOpened;
 import org.openqa.selenium.bidi.browsingcontext.UserPromptType;
+import org.openqa.selenium.bidi.module.Browser;
 import org.openqa.selenium.bidi.module.BrowsingContextInspector;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxOptions;
-import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -39,31 +38,31 @@ public final class AnOperatorAtThePage implements AutoCloseable {
 
     private static final Duration PATIENCE = Duration.ofSeconds(60);
 
-    private static final String PROMPT_HANDLING = "unhandledPromptBehavior";
+    private static final List<String> PERMISSIONS_EVERY_PAGE_IS_GRANTED =
+            List.of("clipboardReadWrite", "clipboardSanitizedWrite", "midi", "midiSysex");
 
-    private static final Map<String, String> LEAVE_EVERY_PROMPT_TO_THE_TEST =
-            Map.of("default", "ignore", "beforeUnload", "ignore");
-
-    private static final String BIDI = "webSocketUrl";
-
+    private final PageBrowsers browsers;
     private final String browserName;
     private final String origin;
-    private final Path downloads;
     private final List<String> deniedPermissions = new ArrayList<>();
     private final BlockingQueue<UserPromptOpened> leavePrompts = new LinkedBlockingQueue<>();
     private Optional<UserPromptOpened> openLeavePrompt = Optional.empty();
+    private Optional<BrowsingContextInspector> watchingForLeavePrompts = Optional.empty();
     private boolean everyPopupBlocked;
     private boolean leavingWatched;
+    private PageBrowsers.AStartedBrowser started;
+    private String userContext;
     private WebDriver browser;
+    private Path downloads;
 
-    public AnOperatorAtThePage(String browserName, String address, Path downloads) {
+    public AnOperatorAtThePage(PageBrowsers browsers, String browserName, String address) {
+        this.browsers = browsers;
         this.browserName = browserName;
         this.origin = address.endsWith("/") ? address.substring(0, address.length() - 1) : address;
-        this.downloads = downloads;
     }
 
-    AnOperatorAtThePage(String browserName, ShippedRunner runner, Path downloads) {
-        this(browserName, runner.origin(), downloads);
+    AnOperatorAtThePage(PageBrowsers browsers, String browserName, ShippedRunner runner) {
+        this(browsers, browserName, runner.origin());
     }
 
     public AnOperatorAtThePage whoseBrowserBlocksEveryPopup() {
@@ -86,16 +85,80 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     }
 
     public AnOperatorAtThePage opensThePageAt(String hash) {
-        browser = isFirefox() ? openFirefox() : openChrome();
+        started = browsers.browserFor(
+                new PageBrowsers.Configuration(browserName, everyPopupBlocked, leavingWatched));
+        browser = started.driver();
+        downloads = started.downloads();
+        userContext = new Browser(browser).createUserContext();
         if (leavingWatched) {
-            new BrowsingContextInspector(browser).onUserPromptOpened(asked -> {
-                if (asked.getType() == UserPromptType.BEFORE_UNLOAD) {
-                    leavePrompts.add(asked);
-                }
-            });
+            watchForLeavePrompts();
         }
-        browser.get(origin + "/" + hash);
+        if (isFirefox()) {
+            openFirefoxTabAt(hash);
+        } else {
+            settleChromesDownloadsAndPermissions();
+            openChromeTabAt(hash);
+        }
         return this;
+    }
+
+    private void openFirefoxTabAt(String hash) {
+        BrowsingContext tab = new BrowsingContext(browser,
+                new CreateContextParameters(WindowType.TAB).userContext(userContext));
+        browser.switchTo().window(tab.getId());
+        browser.get(origin + "/" + hash);
+    }
+
+    private void openChromeTabAt(String hash) {
+        Map<String, Object> created = ((ChromeDriver) browser).executeCdpCommand("Target.createTarget", Map.of(
+                "url", origin + "/" + hash,
+                "browserContextId", userContext));
+        browser.switchTo().window((String) created.get("targetId"));
+    }
+
+    private void settleChromesDownloadsAndPermissions() {
+        ChromeDriver chrome = (ChromeDriver) browser;
+        chrome.executeCdpCommand("Browser.setDownloadBehavior", Map.of(
+                "behavior", "allow", "downloadPath", downloads.toString(),
+                "browserContextId", userContext));
+        chrome.executeCdpCommand("Browser.grantPermissions", Map.of(
+                "origin", origin,
+                "permissions", PERMISSIONS_EVERY_PAGE_IS_GRANTED,
+                "browserContextId", userContext));
+        for (String permission : deniedPermissions) {
+            chrome.executeCdpCommand("Browser.setPermission", Map.of(
+                    "permission", Map.of("name", permission),
+                    "setting", "denied",
+                    "origin", origin,
+                    "browserContextId", userContext));
+        }
+    }
+
+    private void watchForLeavePrompts() {
+        BrowsingContextInspector inspector = new BrowsingContextInspector(browser);
+        inspector.onUserPromptOpened(asked -> {
+            if (asked.getType() == UserPromptType.BEFORE_UNLOAD) {
+                leavePrompts.add(asked);
+            }
+        });
+        watchingForLeavePrompts = Optional.of(inspector);
+    }
+
+    Object runsInThePage(String script) {
+        return ((JavascriptExecutor) browser).executeScript(script);
+    }
+
+    void opensAnotherTab() {
+        new BrowsingContext(browser,
+                new CreateContextParameters(WindowType.TAB).userContext(userContext));
+    }
+
+    public List<Path> listDownloads() {
+        try (var listed = Files.list(downloads)) {
+            return listed.toList();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
     }
 
     public void reloadsThePage() {
@@ -264,7 +327,9 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     }
 
     public int countTabs() {
-        return browser.getWindowHandles().size();
+        return (int) browser.getWindowHandles().stream()
+                .filter(tab -> !tab.equals(started.homeTab()))
+                .count();
     }
 
     public void waitForTabs(int count) {
@@ -279,8 +344,20 @@ public final class AnOperatorAtThePage implements AutoCloseable {
 
     @Override
     public void close() {
-        if (browser != null) {
-            browser.quit();
+        if (browser == null) {
+            return;
+        }
+        watchingForLeavePrompts.ifPresent(BrowsingContextInspector::close);
+        new Browser(browser).removeUserContext(userContext);
+        browser.switchTo().window(started.homeTab());
+        listDownloads().forEach(this::deleteDownload);
+    }
+
+    private void deleteDownload(Path landed) {
+        try {
+            Files.deleteIfExists(landed);
+        } catch (IOException undeletable) {
+            throw new UncheckedIOException(undeletable);
         }
     }
 
@@ -315,58 +392,4 @@ public final class AnOperatorAtThePage implements AutoCloseable {
                 line.startsWith("failed ") || line.startsWith("worker error"));
     }
 
-    private WebDriver openChrome() {
-        ChromeOptions asked = new ChromeOptions();
-        asked.addArguments("--headless=new", "--no-sandbox", "--window-size=1000,700",
-                "--force-device-scale-factor=1", "--hide-scrollbars");
-        handOverLeavePrompts(asked);
-        asked.setExperimentalOption("prefs", Map.of(
-                "download.default_directory", downloads.toString(),
-                "download.prompt_for_download", false));
-        ChromeDriver chrome = new ChromeDriver(asked);
-        chrome.executeCdpCommand("Browser.setDownloadBehavior", Map.of(
-                "behavior", "allow", "downloadPath", downloads.toString()));
-        chrome.executeCdpCommand("Browser.grantPermissions", Map.of(
-                "origin", origin,
-                "permissions", List.of("clipboardReadWrite", "clipboardSanitizedWrite", "midi", "midiSysex")));
-        for (String permission : deniedPermissions) {
-            chrome.executeCdpCommand("Browser.setPermission", Map.of(
-                    "permission", Map.of("name", permission),
-                    "setting", "denied",
-                    "origin", origin));
-        }
-        return chrome;
-    }
-
-    private WebDriver openFirefox() {
-        FirefoxProfile profile = new FirefoxProfile();
-        profile.setPreference("browser.download.folderList", 2);
-        profile.setPreference("browser.download.dir", downloads.toString());
-        profile.setPreference("browser.download.useDownloadDir", true);
-        profile.setPreference("browser.download.always_ask_before_handling_new_types", false);
-        profile.setPreference("dom.events.testing.asyncClipboard", true);
-        profile.setPreference("dom.webmidi.enabled", true);
-        profile.setPreference("midi.testing", true);
-        profile.setPreference("midi.prompt.testing", true);
-        profile.setPreference("media.navigator.permission.disabled", true);
-        profile.setPreference("dom.webmidi.gated", false);
-        profile.setPreference("dom.disable_beforeunload", false);
-        if (everyPopupBlocked) {
-            profile.setPreference("dom.popup_allowed_events", "");
-            profile.setPreference("dom.popup_maximum", 0);
-            profile.setPreference("dom.disable_open_click_delay", 0);
-        }
-        FirefoxOptions asked = new FirefoxOptions();
-        asked.addArguments("-headless", "-width=1000", "-height=700");
-        asked.setProfile(profile);
-        handOverLeavePrompts(asked);
-        return new FirefoxDriver(asked);
-    }
-
-    private void handOverLeavePrompts(MutableCapabilities asked) {
-        if (leavingWatched) {
-            asked.setCapability(PROMPT_HANDLING, LEAVE_EVERY_PROMPT_TO_THE_TEST);
-            asked.setCapability(BIDI, true);
-        }
-    }
 }

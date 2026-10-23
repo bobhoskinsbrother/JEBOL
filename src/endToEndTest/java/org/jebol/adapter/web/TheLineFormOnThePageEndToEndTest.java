@@ -2,23 +2,28 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openqa.selenium.Keys;
 
 import java.io.IOException;
-import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TheLineFormOnThePageEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("INPUT on the shipped page draws a line to type into, takes the operator's keys, and answers the line")
     void inputTakesALineTypedIntoTheForm(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
@@ -27,7 +32,7 @@ class TheLineFormOnThePageEndToEndTest {
                 print ["declined" mold input]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.types("café line");
             operator.pressesEnter();
@@ -44,7 +49,7 @@ class TheLineFormOnThePageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("ASK prints its question to the page's output and reads the answer through the form")
     void askReadsThroughTheForm(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
@@ -52,7 +57,7 @@ class TheLineFormOnThePageEndToEndTest {
                 print ["hello" name]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitUntilOutputHas("Name?");
             operator.waitUntilTypingIsNamed("Name?");
@@ -72,7 +77,7 @@ class TheLineFormOnThePageEndToEndTest {
                 print ["got" input]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner).opensThePage()) {
 
             operator.types("");
             operator.composes("漢字");

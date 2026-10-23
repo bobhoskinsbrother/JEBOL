@@ -2,19 +2,20 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PicturesOnAPageEndToEndTest {
 
     private static final String SIX_OPAQUE_PIXELS =
@@ -23,8 +24,12 @@ class PicturesOnAPageEndToEndTest {
     private static final String SIX_PIXELS_THE_LAST_CLEAR =
             "[255.0.0.255 0.255.0.255 0.0.255.255 255.255.255.255 0.0.0.255 0.0.0.0]";
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private byte[] readFixture(String name) throws IOException {
         try (InputStream fixture = PicturesOnAPageEndToEndTest.class
@@ -77,7 +82,7 @@ class PicturesOnAPageEndToEndTest {
                 pixels-of "six.bmp"
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains(
@@ -98,7 +103,7 @@ class PicturesOnAPageEndToEndTest {
                 print ["jpeg" img/size mold out]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains(
@@ -120,7 +125,7 @@ class PicturesOnAPageEndToEndTest {
                 print ["webp" to string! copy/part image/save/as none img 'webp 4]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains(
@@ -146,7 +151,7 @@ class PicturesOnAPageEndToEndTest {
                 print ["bmp" bmp/id bmp/arg1]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains(

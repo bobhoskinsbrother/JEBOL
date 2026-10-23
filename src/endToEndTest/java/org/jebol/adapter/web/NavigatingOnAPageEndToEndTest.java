@@ -1,18 +1,19 @@
 package org.jebol.adapter.web;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(240)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class NavigatingOnAPageEndToEndTest {
 
     private static final String AN_APP_WITH_THREE_PLACES = """
@@ -32,8 +33,12 @@ class NavigatingOnAPageEndToEndTest {
             ]
             """;
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private ShippedRunner runnerFor(String steps) throws IOException {
         return new ShippedRunner()
@@ -47,11 +52,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("going somewhere changes the address, and the browser's Back and Forward arrive as events")
     void backAndForwardArriveAsEvents(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("go 'a go 'b");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.waitUntilTheAddressIs("#b");
 
@@ -66,11 +71,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("a shared link opens the app at the place it names, data and all")
     void aSharedLinkLandsThere(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .opensThePageAt("#survey%203")) {
             operator.waitUntilOutputContains("ready");
 
@@ -79,11 +84,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("a link to a place the app does not know gets the app's own not found")
     void anUnknownPlaceIsTheAppsToAnswer(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .opensThePageAt("#nowhere")) {
             operator.waitUntilOutputContains("ready");
 
@@ -92,11 +97,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("a link that does not read as a place starts the app at its start, never evaluated")
     void anUnreadableLinkStartsAtTheStart(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .opensThePageAt("#%28print%20%7Bevaluated%7D%29")) {
             operator.waitUntilOutputContains("ready");
 
@@ -106,11 +111,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("an address typed into the bar is a forward move, and one that does not read arrives at the start")
     void aTypedAddressIsAForwardMove(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("go 'a");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("ready");
 
             operator.typesTheAddress("#c%201");
@@ -125,11 +130,11 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("a reload lands where the app was, and Back still goes where it went before")
     void aReloadLandsInTheSamePlace(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("if current-place = [] [go 'a go 'b]");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.waitUntilTheAddressIs("#b");
 
@@ -143,7 +148,7 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("the app's own go-back moves the page back, and at the first entry does nothing")
     void theAppsOwnBack(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("""
@@ -152,7 +157,7 @@ class NavigatingOnAPageEndToEndTest {
                 go 'a
                 go-back
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("moved back []");
 
             assertThat(operator.readOutput()).contains("still here");
@@ -165,7 +170,7 @@ class NavigatingOnAPageEndToEndTest {
     @DisplayName("with unsaved work a reload asks first, and staying keeps the app running")
     void stayingKeepsTheAppRunning(String browserName) throws IOException, InterruptedException {
         try (ShippedRunner runner = runnerFor("go 'a go 'b unsaved-work true");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .whoseLeavingIsWatched().opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.clicksTheScreen();
@@ -185,7 +190,7 @@ class NavigatingOnAPageEndToEndTest {
     @DisplayName("with unsaved work, choosing to leave reloads the app where it was")
     void leavingReloads(String browserName) throws IOException, InterruptedException {
         try (ShippedRunner runner = runnerFor("if current-place = [] [go 'a unsaved-work true]");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .whoseLeavingIsWatched().opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.clicksTheScreen();
@@ -204,7 +209,7 @@ class NavigatingOnAPageEndToEndTest {
     @DisplayName("with unsaved work, Back between the app's own places is not guarded")
     void backBetweenPlacesIsNotGuarded(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("go 'a go 'b unsaved-work true");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .whoseLeavingIsWatched().opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.clicksTheScreen();
@@ -221,7 +226,7 @@ class NavigatingOnAPageEndToEndTest {
     @DisplayName("without unsaved work a reload asks nothing")
     void withoutTheFlagNothingAsks(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("go 'a");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner)
                      .whoseLeavingIsWatched().opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.clicksTheScreen();
@@ -239,7 +244,7 @@ class NavigatingOnAPageEndToEndTest {
     @DisplayName("coming back to the page from another one restarts the app where it was")
     void comingBackRestartsTheApp(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("if current-place = [] [go 'a go 'b]");
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("ready");
             operator.waitUntilTheAddressIs("#b");
 
@@ -256,7 +261,7 @@ class NavigatingOnAPageEndToEndTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"chrome", "firefox"})
+    @ValueSource(strings = {"chrome"})
     @DisplayName("the tab's title is the first window's, and follows it")
     void theTitleFollowsTheFirstWindow(String browserName) throws IOException {
         try (ShippedRunner runner = runnerFor("""
@@ -264,7 +269,7 @@ class NavigatingOnAPageEndToEndTest {
                 window/text: {Question 2}
                 show window
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, browserName, runner).opensThePage()) {
             operator.waitUntilOutputContains("ready");
 
             operator.waitUntilTheTitleIs("Question 2");

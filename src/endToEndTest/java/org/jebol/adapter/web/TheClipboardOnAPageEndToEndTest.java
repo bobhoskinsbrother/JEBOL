@@ -2,19 +2,24 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TheClipboardOnAPageEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"chrome", "firefox"})
@@ -25,7 +30,7 @@ class TheClipboardOnAPageEndToEndTest {
                 print ["read" read clipboard://]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("copied");
             operator.accepts();
@@ -43,7 +48,7 @@ class TheClipboardOnAPageEndToEndTest {
                 print ["read" mold read clipboard://]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage(browserName, runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
             operator.waitForThePromptSaying("copied");
             operator.declines();
@@ -60,7 +65,7 @@ class TheClipboardOnAPageEndToEndTest {
                 print ["read" mold read clipboard://]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner)
                      .whoseBrowserDenies("clipboard-read").opensThePage()) {
 
             operator.waitForThePromptSaying("copied");

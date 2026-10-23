@@ -1,6 +1,8 @@
 package org.jebol.adapter.cli;
 
 import org.jebol.adapter.web.AnOperatorAtThePage;
+import org.jebol.adapter.web.PageBrowsers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -29,8 +31,12 @@ class TheCommandLinesPageAsksEndToEndTest {
     @TempDir
     Path directory;
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterEach
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     private String readPrinted() {
         synchronized (printed) {
@@ -71,7 +77,7 @@ class TheCommandLinesPageAsksEndToEndTest {
                 """);
 
         try (AnOperatorAtThePage operator =
-                     new AnOperatorAtThePage("chrome", awaitAddress(), downloads).opensThePage()) {
+                     new AnOperatorAtThePage(browsers, "chrome", awaitAddress()).opensThePage()) {
             operator.waitForThePromptSaying("colour");
             operator.choosesColour("#102030");
             operator.waitForThePromptSaying("file");

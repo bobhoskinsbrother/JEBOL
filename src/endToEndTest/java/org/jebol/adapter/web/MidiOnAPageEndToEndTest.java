@@ -2,17 +2,22 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.TestInstance;
 
 import java.io.IOException;
-import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MidiOnAPageEndToEndTest {
 
-    @TempDir
-    Path downloads;
+    private final PageBrowsers browsers = new PageBrowsers();
+
+    @AfterAll
+    void closeTheBrowsers() {
+        browsers.close();
+    }
 
     @Test
     @DisplayName("in Chrome with MIDI allowed and nothing plugged in, QUERY lists two empty blocks")
@@ -21,7 +26,7 @@ class MidiOnAPageEndToEndTest {
                 print ["in" mold query midi:// 'devices-in "out" mold query midi:// 'devices-out]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains("in [] out []");
@@ -35,7 +40,7 @@ class MidiOnAPageEndToEndTest {
                 print ["in" mold query midi:// 'devices-in "out" mold query midi:// 'devices-out]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("chrome", runner, downloads)
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner)
                      .whoseBrowserDenies("midi").opensThePage()) {
 
             operator.waitUntilOutputContains("done");
@@ -60,7 +65,7 @@ class MidiOnAPageEndToEndTest {
                 print ["heard" mold copy/part heard 3]
                 print "done"
                 """);
-             AnOperatorAtThePage operator = new AnOperatorAtThePage("firefox", runner, downloads).opensThePage()) {
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"firefox", runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
             assertThat(operator.readOutput()).contains(
