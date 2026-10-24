@@ -220,6 +220,18 @@ tidier and produced duplicate ids wherever two tests shared a name, which made
 any list keyed by those ids unusable: one assertion under a shared id passed
 while another failed.
 
+**An assertion takes the group and test written above it, however deep it
+sits.** Rebol's files often open a group inside a guard - `if find codecs 'der
+[===start-group=== "DER codec" --test-- "Load DER file" --assert ...]` - and the
+reader used to count the assertions inside a block without reading the harness
+words beside them. Every one was filed under the last test written at the top
+level, so every WAV, DER, CRT, ZIP, PNG and plist assertion was
+"loading a binary longer than 32262 bytes", the uni-replacement-char group was
+"integer! repeat", BLUR was "premultiply image 3", and the whole of each crypto
+file was "(no test)". The names now follow the file in the order it is written,
+into and out of blocks; the ordinals did not move. `SuiteFileTest`'s
+`NamingInsideABlock` holds both halves.
+
 **The `Rebol [...]` header is data, not code** - evaluating it would call whatever
 REBOL is bound to.
 
@@ -512,3 +524,65 @@ The words are matched as substrings of the failure, so each is the shortest piec
 that names the gap rather than the whole message. Keeping the empty map rather than
 deleting the test is the point of the ratchet: a file that starts stopping again
 fails there and names itself, rather than quietly defining less than it used to.
+
+## What the assertions Rebol fails too are, and which of them Rebol knows about
+
+`fails-on-rebol-too.txt` holds 160 assertions a real 3.22.5 does not pass, each
+with the evidence above it. Read against the suite files on 24 October 2026, they
+fall into three kinds, and the split that matters for anyone reporting upstream is
+whether Rebol's own file links an issue for them. Rebol marks a tracked failure
+with a `;@@ https://github.com/Oldes/Rebol-issues/issues/NNN` line on the test or
+on the group around it, so an assertion counts as filed when one of those sits
+there.
+
+**80 never run anywhere.** `aes-test.r3`, `chacha20-test.r3`, `poly1305-test.r3`
+and `handle-test.r3` are guarded on natives 3.22.5 has not got. They are not
+failures and nothing upstream is owed for them.
+
+**37 carry a link.** A link is not proof of an open bug, and several of these are
+the test falling behind an issue that was settled:
+
+- `make-test.r3` #14, `to char! #FF` (issue 1130), and `module-test.r3` #18,
+  `module [type: :print]` (1444): the C answers the other way, deliberately.
+- `codecs-test.r3` #30-32, SAVE/compress (1466): only the two zlib header bytes
+  differ, because libdeflate is given no level.
+- `port-test.r3` #135, `write/part` (445): a stale checksum.
+- `make-test.r3` #498 and #533, MAKE and TO of a map from a paren (982, 2451),
+  `object-test.r3` #50 (894), `codecs-test.r3` #33-36, the UCS loads (2424), and
+  `lexer-test.r3` #418, a comment inside a binary (wish 23): real disagreements,
+  already tracked.
+- 23 more are platform or version arms that cannot run on the measuring machine:
+  the Windows arms and `/proc` reads in `port-test.r3` (1545, 2031, 2317, 2303,
+  2447), `file-test.r3`'s issue-1115 Windows arm, the uni-replacement-char guard
+  in `parse-test.r3` (2476), and three `struct-test.r3` assertions behind
+  `system/version < 3.19.1`.
+
+Three of the links point somewhere other than Rebol-issues: `struct-test.r3` #175
+and #176 cite `zsx/r3` issues 50 and 51, and `lexer-test.r3` #418 cites
+`Oldes/Rebol-wishes` 23, a wish rather than a bug.
+
+**43 carry no link, and 25 of those look like real Rebol bugs nobody has filed.**
+These are the ones worth reporting:
+
+| Assertions | What fails on a real 3.22.5 |
+| --- | --- |
+| `codecs-test.r3` #62-70, #71-78, #218 | The DER codec at verbosity 2 raises `not-defined SEQUENCE` while printing its trace. Because it raises before setting the verbosity back, the CRT group and the mobileprovision load raise the same way when the file runs in order. |
+| `codecs-test.r3` #94 | `codec-zip.reb` reads the stored CRC with `SI32LE`, signed, and CHECKSUM answers unsigned, so the two disagree whenever the top bit is set. |
+| `codecs-test.r3` #132, #133 | Rebol's PNG codec reports "CRC check failed!" on `png-from-photoshop.png`. |
+| `parse-test.r3` #98-100 | Nested COLLECT leaves an empty block at the tail. The test is named "known issues" and its comment says so, but no issue is linked. |
+| `series-test.r3` #973 | SWAP leaves an index past the end of a string it has changed. Marked ";@@ Known issue!!!" with no link. |
+
+The other 18 are the test files' own faults, or arms that cannot run:
+
+- Stale expectations nobody noticed because the block never runs or the answer
+  changed type: the WAV checksums (`codecs-test.r3` #51, #54, behind a delayed
+  module) and the BLUR checksums (`image-test.r3` #204, #205, still the signed
+  numbers CHECKSUM used to answer).
+- A typo: `unicode-test.r3` #381 wraps its assertion in a block after the
+  `--test--` title, so it is data and never runs.
+- Guards on names the modern build does not use: `codecs-test.r3` #4-8 and
+  #27-29, on `codecs/png/entry`, `codecs/jpeg/entry`, `codecs/gif/entry` and
+  `'jpg`.
+- Arms not taken: the four "algorithm not available" branches of
+  `compress-test.r3` (#62, #83, #102, #121), which cannot run on a build that has
+  all four, and the Windows arm of ENLINE (`series-test.r3` #1229).

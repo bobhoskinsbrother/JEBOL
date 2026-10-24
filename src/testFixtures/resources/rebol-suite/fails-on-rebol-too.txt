@@ -70,86 +70,86 @@ series-test.r3 / SWAP / swap invalidating index (known issue) #973
 # chacha20-test.r3 says so itself, above its guard:
 #   ";- this tests are only for the now deprecated `chacha20` native function!"
 #
-aes-test.r3 / (no group) / (no test) #1
-aes-test.r3 / (no group) / (no test) #2
-aes-test.r3 / (no group) / (no test) #3
-aes-test.r3 / (no group) / (no test) #4
-chacha20-test.r3 / (no group) / (no test) #1
-chacha20-test.r3 / (no group) / (no test) #10
-chacha20-test.r3 / (no group) / (no test) #11
-chacha20-test.r3 / (no group) / (no test) #12
-chacha20-test.r3 / (no group) / (no test) #13
-chacha20-test.r3 / (no group) / (no test) #14
-chacha20-test.r3 / (no group) / (no test) #15
-chacha20-test.r3 / (no group) / (no test) #16
-chacha20-test.r3 / (no group) / (no test) #17
-chacha20-test.r3 / (no group) / (no test) #18
-chacha20-test.r3 / (no group) / (no test) #19
-chacha20-test.r3 / (no group) / (no test) #2
-chacha20-test.r3 / (no group) / (no test) #3
-chacha20-test.r3 / (no group) / (no test) #4
-chacha20-test.r3 / (no group) / (no test) #5
-chacha20-test.r3 / (no group) / (no test) #6
-chacha20-test.r3 / (no group) / (no test) #7
-chacha20-test.r3 / (no group) / (no test) #8
-chacha20-test.r3 / (no group) / (no test) #9
-handle-test.r3 / context handles / (no test) #1
-handle-test.r3 / context handles / (no test) #10
-handle-test.r3 / context handles / (no test) #11
-handle-test.r3 / context handles / (no test) #12
-handle-test.r3 / context handles / (no test) #13
-handle-test.r3 / context handles / (no test) #14
-handle-test.r3 / context handles / (no test) #15
-handle-test.r3 / context handles / (no test) #16
-handle-test.r3 / context handles / (no test) #17
-handle-test.r3 / context handles / (no test) #18
-handle-test.r3 / context handles / (no test) #19
-handle-test.r3 / context handles / (no test) #2
-handle-test.r3 / context handles / (no test) #20
-handle-test.r3 / context handles / (no test) #21
-handle-test.r3 / context handles / (no test) #22
-handle-test.r3 / context handles / (no test) #23
-handle-test.r3 / context handles / (no test) #24
-handle-test.r3 / context handles / (no test) #25
-handle-test.r3 / context handles / (no test) #26
-handle-test.r3 / context handles / (no test) #27
-handle-test.r3 / context handles / (no test) #28
-handle-test.r3 / context handles / (no test) #29
-handle-test.r3 / context handles / (no test) #3
-handle-test.r3 / context handles / (no test) #30
-handle-test.r3 / context handles / (no test) #31
-handle-test.r3 / context handles / (no test) #32
-handle-test.r3 / context handles / (no test) #33
-handle-test.r3 / context handles / (no test) #34
-handle-test.r3 / context handles / (no test) #35
-handle-test.r3 / context handles / (no test) #36
-handle-test.r3 / context handles / (no test) #37
-handle-test.r3 / context handles / (no test) #38
-handle-test.r3 / context handles / (no test) #39
-handle-test.r3 / context handles / (no test) #4
-handle-test.r3 / context handles / (no test) #40
-handle-test.r3 / context handles / (no test) #41
-handle-test.r3 / context handles / (no test) #42
-handle-test.r3 / context handles / (no test) #43
-handle-test.r3 / context handles / (no test) #44
-handle-test.r3 / context handles / (no test) #45
-handle-test.r3 / context handles / (no test) #46
-handle-test.r3 / context handles / (no test) #47
-handle-test.r3 / context handles / (no test) #5
-handle-test.r3 / context handles / (no test) #6
-handle-test.r3 / context handles / (no test) #7
-handle-test.r3 / context handles / (no test) #8
-handle-test.r3 / context handles / (no test) #9
-poly1305-test.r3 / (no group) / (no test) #1
-poly1305-test.r3 / (no group) / (no test) #10
-poly1305-test.r3 / (no group) / (no test) #2
-poly1305-test.r3 / (no group) / (no test) #3
-poly1305-test.r3 / (no group) / (no test) #4
-poly1305-test.r3 / (no group) / (no test) #5
-poly1305-test.r3 / (no group) / (no test) #6
-poly1305-test.r3 / (no group) / (no test) #7
-poly1305-test.r3 / (no group) / (no test) #8
-poly1305-test.r3 / (no group) / (no test) #9
+aes-test.r3 / The Advanced Encryption Standard (AES) test vectors / AES-128 #1
+aes-test.r3 / The Advanced Encryption Standard (AES) test vectors / AES-128 #2
+aes-test.r3 / The Advanced Encryption Standard (AES) test vectors / AES-128 #3
+aes-test.r3 / The Advanced Encryption Standard (AES) test vectors / AES-128 #4
+chacha20-test.r3 / ChaCha20 test vectors / join #1
+chacha20-test.r3 / ChaCha20 test vectors / join #10
+chacha20-test.r3 / ChaCha20 test vectors / join #11
+chacha20-test.r3 / ChaCha20 test vectors / join #12
+chacha20-test.r3 / ChaCha20 test vectors / join #13
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #14
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #15
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #16
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #17
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #18
+chacha20-test.r3 / ChaCha20Poly1305 / TLS with ChaCha20Poly1305 use-case simulation #19
+chacha20-test.r3 / ChaCha20 test vectors / join #2
+chacha20-test.r3 / ChaCha20 test vectors / join #3
+chacha20-test.r3 / ChaCha20 test vectors / join #4
+chacha20-test.r3 / ChaCha20 test vectors / join #5
+chacha20-test.r3 / ChaCha20 test vectors / join #6
+chacha20-test.r3 / ChaCha20 test vectors / join #7
+chacha20-test.r3 / ChaCha20 test vectors / join #8
+chacha20-test.r3 / ChaCha20 test vectors / join #9
+handle-test.r3 / context handles / same? handles #1
+handle-test.r3 / context handles / same? handles #10
+handle-test.r3 / context handles / equal? handles #11
+handle-test.r3 / context handles / equal? handles #12
+handle-test.r3 / context handles / equal? handles #13
+handle-test.r3 / context handles / equal? handles #14
+handle-test.r3 / context handles / equal? handles #15
+handle-test.r3 / context handles / equal? handles #16
+handle-test.r3 / context handles / equal? handles #17
+handle-test.r3 / context handles / equal? handles #18
+handle-test.r3 / context handles / equal? handles #19
+handle-test.r3 / context handles / same? handles #2
+handle-test.r3 / context handles / equal? handles #20
+handle-test.r3 / context handles / equal? handles #21
+handle-test.r3 / context handles / equal? handles #22
+handle-test.r3 / context handles / lesser? / greater? handles #23
+handle-test.r3 / context handles / lesser? / greater? handles #24
+handle-test.r3 / context handles / lesser? / greater? handles #25
+handle-test.r3 / context handles / lesser? / greater? handles #26
+handle-test.r3 / context handles / sort/find handles #27
+handle-test.r3 / context handles / sort/find handles #28
+handle-test.r3 / context handles / sort/find handles #29
+handle-test.r3 / context handles / same? handles #3
+handle-test.r3 / context handles / sort/find handles #30
+handle-test.r3 / context handles / sort/find handles #31
+handle-test.r3 / context handles / sort/find handles #32
+handle-test.r3 / context handles / handle as a key in map #33
+handle-test.r3 / context handles / handle as a key in map #34
+handle-test.r3 / context handles / handle as a key in map #35
+handle-test.r3 / context handles / handle as a key in map #36
+handle-test.r3 / context handles / handle as a key in map #37
+handle-test.r3 / context handles / set operations with handles #38
+handle-test.r3 / context handles / set operations with handles #39
+handle-test.r3 / context handles / same? handles #4
+handle-test.r3 / context handles / set operations with handles #40
+handle-test.r3 / context handles / set operations with handles #41
+handle-test.r3 / context handles / set operations with handles #42
+handle-test.r3 / context handles / query handle's type #43
+handle-test.r3 / context handles / query handle's type #44
+handle-test.r3 / context handles / query handle's type #45
+handle-test.r3 / context handles / query handle's type #46
+handle-test.r3 / context handles / query handle's type #47
+handle-test.r3 / context handles / same? handles #5
+handle-test.r3 / context handles / same? handles #6
+handle-test.r3 / context handles / same? handles #7
+handle-test.r3 / context handles / same? handles #8
+handle-test.r3 / context handles / same? handles #9
+poly1305-test.r3 / Poly1305 test vectors / join #1
+poly1305-test.r3 / Poly1305 test vectors / Poly1305 with failed verification #10
+poly1305-test.r3 / Poly1305 test vectors / join #2
+poly1305-test.r3 / Poly1305 test vectors / join #3
+poly1305-test.r3 / Poly1305 test vectors / join #4
+poly1305-test.r3 / Poly1305 test vectors / join #5
+poly1305-test.r3 / Poly1305 test vectors / join #6
+poly1305-test.r3 / Poly1305 test vectors / join #7
+poly1305-test.r3 / Poly1305 test vectors / join #8
+poly1305-test.r3 / Poly1305 test vectors / Poly1305 with failed verification #9
 
 # compress-test.r3: the CRUSH group opens
 #     either error? e: try [compress "test" 'crush][--assert 'feature-na = e/id][...]
@@ -329,15 +329,15 @@ codecs-test.r3 / TEXT codec / load UCS32-BE txt #36
 #   >> e: try [load %units/files/test.pfx]  mold reduce [e/id e/arg1]
 #   == [not-defined SEQUENCE]      ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #62
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #63
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #64
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #65
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #66
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #67
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #68
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #69
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #70
+codecs-test.r3 / DER codec / Load DER file #62
+codecs-test.r3 / DER codec / Load DER file #63
+codecs-test.r3 / DER codec / Load DER file #64
+codecs-test.r3 / DER codec / Load DER file #65
+codecs-test.r3 / DER codec / Load DER file #66
+codecs-test.r3 / DER codec / form-OID #67
+codecs-test.r3 / DER codec / form-OID #68
+codecs-test.r3 / DER codec / decode-OID #69
+codecs-test.r3 / DER codec / decode-OID #70
 
 # The CRT group is the same raise reached a second way. A certificate is DER
 # inside, so loading one calls the DER codec -- and the DER group above raised
@@ -351,14 +351,14 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #70
 #   >> e: try [load %units/files/google.crt]  mold reduce [e/id e/arg1]
 #   == [not-defined SEQUENCE]      ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #71
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #72
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #73
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #74
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #75
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #76
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #77
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
+codecs-test.r3 / CRT codec / Load CRT file #71
+codecs-test.r3 / CRT codec / Load CRT file #72
+codecs-test.r3 / CRT codec / Load CRT file #73
+codecs-test.r3 / CRT codec / Load CRT file #74
+codecs-test.r3 / CRT codec / Load Docker's CRT file #75
+codecs-test.r3 / CRT codec / Load Docker's CRT file #76
+codecs-test.r3 / CRT codec / Load Docker's CRT file #77
+codecs-test.r3 / CRT codec / Load Docker's CRT file #78
 
 # Both png/chunks assertions read %units/files/png-from-photoshop.png, and a
 # real 3.22.5 refuses that file: its own PNG codec prints "** Error: CRC check
@@ -370,8 +370,8 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #78
 #   [PNG] ** Error: CRC check failed!
 #   == false           ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #132
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #133
+codecs-test.r3 / PNG codec / png/chunks #132
+codecs-test.r3 / PNG codec / png/chunks #133
 
 # The ZIP central directory stores a file's CRC as a signed thirty-two bit
 # number -- codec-zip.reb reads it with `crc: SI32LE` -- and CHECKSUM answers
@@ -386,7 +386,7 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #133
 #   >> mold reduce [info/2/6  checksum data 'crc32  info/2/6 = checksum data 'crc32]
 #   == [-586684923 3708282373 #(false)]     ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
+codecs-test.r3 / ZIP codec / Decode ZIP using info #94
 
 # The mobileprovision assertion is the DER raise reached a third way. It ends
 # on `object? decode 'crt data/DeveloperCertificates/1`, a certificate is DER
@@ -401,7 +401,7 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
 #   >> e: try [decode 'crt data/DeveloperCertificates/1]  mold e/id
 #   == not-defined     ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
+codecs-test.r3 / PLIST codec / Load mobileprovision file #218
 
 # The two WAV checksums are stale, and Rebol has never noticed because it
 # never runs them. The codec is a delayed module, so `find codecs 'wav` is
@@ -421,8 +421,8 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #218
 #   >> checksum to-binary snd/data 'crc24   ; the file asks for 4283614
 #   == 5445824                              ; r3-head 3.22.5, and JEBOL
 #
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #51
-codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
+codecs-test.r3 / WAV codec / Load WAV file #51
+codecs-test.r3 / WAV codec / Decode WAV data #54
 
 # Two of the four BLUR checksums are stale in the same way the WAV ones are,
 # and for a plainer reason: CHECKSUM stopped answering a signed number and the
@@ -437,8 +437,8 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #54
 #   >> blur t 5  checksum to binary! t 'crc32    ; the file asks for -583506697
 #   == 3711460599      ; r3-head 3.22.5, and JEBOL
 #
-image-test.r3 / BLUR / premultiply image 3 (input not at its head) #204
-image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
+image-test.r3 / BLUR / blur #204
+image-test.r3 / BLUR / blur #205
 
 # unicode-test.r3's take/last assertion never runs in a real 3.22.5 either,
 # because of a stray pair of brackets in the test file itself. `--test--` takes
@@ -475,15 +475,15 @@ unicode-test.r3 / /part refines with utf8 strings / take/last #381
 #   >> if not error? try [str: to string! #{A032}][print "ran"]
 #   == none            ; r3-head 3.22.5, and JEBOL
 #
-parse-test.r3 / Other parse issues / integer! repeat #374
-parse-test.r3 / Other parse issues / integer! repeat #375
-parse-test.r3 / Other parse issues / integer! repeat #376
-parse-test.r3 / Other parse issues / integer! repeat #377
-parse-test.r3 / Other parse issues / integer! repeat #378
-parse-test.r3 / Other parse issues / integer! repeat #379
-parse-test.r3 / Other parse issues / integer! repeat #380
-parse-test.r3 / Other parse issues / integer! repeat #381
-parse-test.r3 / Other parse issues / integer! repeat #382
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #374
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #375
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #376
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #377
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #378
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #379
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #380
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #381
+parse-test.r3 / Other parse issues / parse with uni-replacement-char #382
 
 # file-test.r3's issue-1115 test has a Windows arm and a Unix arm, and only one
 # of them runs. The two here are the Windows arm, and the machine this port is
@@ -537,12 +537,12 @@ port-test.r3 / file port / write/part #135
 # Linux's virtual files. There is no /proc on macOS.
 #
 port-test.r3 / directory port / DELETE-DIR #51
-port-test.r3 / directory port / RENAME dir #57
+port-test.r3 / directory port / read %/ #57
 port-test.r3 / directory port / exists? %/ #63
-port-test.r3 / file port / APPEND file-port #163
-port-test.r3 / file port / APPEND file-port #164
-port-test.r3 / file port / APPEND file-port #165
-port-test.r3 / file port / APPEND file-port #166
+port-test.r3 / file port / Reading from /proc files on Linux #163
+port-test.r3 / file port / Reading from /proc files on Linux #164
+port-test.r3 / file port / Reading from /proc files on Linux #165
+port-test.r3 / file port / Reading from /proc files on Linux #166
 
 # And two more of the same shape in the DELETE file test: #155 is the Windows
 # arm of an either whose other arm (#156) is the one that runs here, and #157
@@ -576,6 +576,6 @@ series-test.r3 / DELINE / ENLINE / ENLINE #1229
 # 3.19.1, so the other arm is the one that runs and these three are about a
 # Rebol older than the one being matched.
 #
-struct-test.r3 / Invalid struct construction / (no test) #175
-struct-test.r3 / Invalid struct construction / (no test) #176
-struct-test.r3 / Invalid struct construction / (no test) #177
+struct-test.r3 / Invalid struct construction / Missing struct init value #175
+struct-test.r3 / Invalid struct construction / Don't allow evaluation inside struct construction #176
+struct-test.r3 / Invalid struct construction / Invalid array type initialisation #177

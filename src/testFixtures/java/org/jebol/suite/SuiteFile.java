@@ -192,16 +192,59 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return here == after.size();
     }
 
-    private static int countTheAssertionsNestedIn(List<Value> values) {
-        int found = 0;
-        for (Value value : values) {
+    private record Heading(String group, String test) {
+
+        Heading withGroup(String opened) {
+            return new Heading(opened, test);
+        }
+
+        Heading withTest(String opened) {
+            return new Heading(group, opened);
+        }
+    }
+
+    private record NestedAssertions(List<Heading> headings, Heading after) {
+    }
+
+    private record Progress(int ordinal, Heading heading) {
+    }
+
+    private static NestedAssertions nameNestedAssertions(List<Value> values, Heading before) {
+        List<Heading> headings = new ArrayList<>();
+        Heading current = before;
+        for (int at = 0; at < values.size(); at++) {
+            Value value = values.get(at);
             if (value instanceof AnyBlockValue block) {
-                found += countTheAssertionsNestedIn(block.remaining());
-            } else if (value instanceof AnyWordValue word && ASSERT.equals(word.spelling())) {
-                found++;
+                NestedAssertions inner = nameNestedAssertions(block.remaining(), current);
+                headings.addAll(inner.headings());
+                current = inner.after();
+            } else if (value instanceof AnyWordValue word) {
+                switch (word.spelling()) {
+                    case ASSERT -> headings.add(current);
+                    case START_GROUP -> current = current.withGroup(readNameAfter(values, at, current.group()));
+                    case TEST -> current = current.withTest(readNameAfter(values, at, current.test()));
+                    default -> { }
+                }
             }
         }
-        return found;
+        return new NestedAssertions(List.copyOf(headings), current);
+    }
+
+    private static String readNameAfter(List<Value> values, int harnessWordAt, String fallback) {
+        int nameAt = harnessWordAt + 1;
+        return nameAt < values.size() && !isHarnessWord(values.get(nameAt))
+                ? Molder.form(values.get(nameAt))
+                : fallback;
+    }
+
+    private static List<Assertion> numberNestedAssertions(String file, List<Heading> headings,
+            int lastOrdinal, String source, int from, int to) {
+        List<Assertion> numbered = new ArrayList<>();
+        for (Heading heading : headings) {
+            numbered.add(new Assertion(file, heading.group(), heading.test(),
+                    lastOrdinal + numbered.size() + 1, source, from, to));
+        }
+        return List.copyOf(numbered);
     }
 
     static SuiteFile read(Path path) {
@@ -265,9 +308,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static List<Step> listTheStepsIn(Interpreter reader, String file, String source,
                                              List<Value> values, List<Transcoder.SourceSpan> spans) {
         List<Step> found = new ArrayList<>();
-        String group = "(no group)";
-        String test = "(no test)";
-        int ordinal = 0;
+        Progress progress = new Progress(0, new Heading("(no group)", "(no test)"));
         boolean nextAssertionDescribesRed = false;
         int at = skipScriptHeader(values);
 
@@ -275,7 +316,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             Value current = values.get(at);
             if (!(current instanceof AnyWordValue word) || !isHarnessWord(current)) {
                 List<Value> run = takeTheValuesUntilTheNextHarnessWord(values, at);
-                ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
+                progress = addSetupSteps(reader, found, file, progress,
                         source, values, spans, at, run.size());
                 at += Math.max(1, run.size());
                 continue;
@@ -286,37 +327,32 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
             switch (spelling) {
                 case START_GROUP, TEST -> {
-                    if (spelling.equals(START_GROUP)) {
-                        group = readTheOnlyString(until, group);
-                    } else {
-                        test = readTheOnlyString(until, test);
-                    }
+                    Heading heading = progress.heading();
+                    Heading opened = spelling.equals(START_GROUP)
+                            ? heading.withGroup(readTheOnlyString(until, heading.group()))
+                            : heading.withTest(readTheOnlyString(until, heading.test()));
                     int howMany = Math.max(0, until.size() - 1);
-                    ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
+                    progress = addSetupSteps(reader, found, file, new Progress(progress.ordinal(), opened),
                             source, values, spans, at + 2, howMany);
                 }
                 case RED_ONLY -> nextAssertionDescribesRed = true;
                 case ASSERT -> {
-                    ordinal++;
                     String written = readTheSourceOf(source, spans, at + 1, until.size());
-                    Assertion asserted = new Assertion(file, group, test, ordinal,
-                            written, findTheBeginningOf(spans, at + 1),
-                            endOf(spans, at + 1, until.size()),
-                            nextAssertionDescribesRed);
+                    int from = findTheBeginningOf(spans, at + 1);
+                    int to = endOf(spans, at + 1, until.size());
+                    Heading heading = progress.heading();
+                    Assertion asserted = new Assertion(file, heading.group(), heading.test(),
+                            progress.ordinal() + 1, written, from, to, nextAssertionDescribesRed);
                     nextAssertionDescribesRed = false;
-                    int began = ordinal;
-                    List<Assertion> alsoInside = new ArrayList<>();
-                    for (int more = countTheAssertionsNestedIn(until); more > 0; more--) {
-                        ordinal++;
-                        alsoInside.add(new Assertion(file, group, test, ordinal,
-                                written, findTheBeginningOf(spans, at + 1),
-                                endOf(spans, at + 1, until.size())));
-                    }
-                    found.add(new Step(asserted, null, List.copyOf(alsoInside),
+                    NestedAssertions inside = nameNestedAssertions(until, heading);
+                    List<Assertion> alsoInside = numberNestedAssertions(file, inside.headings(),
+                            asserted.ordinal(), written, from, to);
+                    found.add(new Step(asserted, null, alsoInside,
                             alsoInside.isEmpty() ? null
-                                    : numberTheSource(reader, written, began)));
+                                    : numberTheSource(reader, written, asserted.ordinal())));
+                    progress = new Progress(asserted.ordinal() + alsoInside.size(), inside.after());
                 }
-                default -> ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
+                default -> progress = addSetupSteps(reader, found, file, progress,
                         source, values, spans, at + 1, until.size());
             }
             at = next;
@@ -335,24 +371,22 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     }
 
 
-    private static int addSetupSteps(Interpreter reader, List<Step> found, String file,
-            String group, String test, int ordinal, String source, List<Value> values,
+    private static Progress addSetupSteps(Interpreter reader, List<Step> found, String file,
+            Progress before, String source, List<Value> values,
             List<Transcoder.SourceSpan> spans, int from, int count) {
 
+        Progress progress = before;
         for (int[] piece : findTheExpressionsIn(reader, source, values, spans, from, count)) {
             List<Value> body = values.subList(piece[0], piece[0] + piece[1]);
             String setup = readTheSourceOf(source, spans, piece[0], piece[1]);
-            int began = ordinal;
-            List<Assertion> nested = new ArrayList<>();
-            for (int more = countTheAssertionsNestedIn(body); more > 0; more--) {
-                ordinal++;
-                nested.add(new Assertion(file, group, test, ordinal, setup,
-                        findTheBeginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1])));
-            }
-            found.add(new Step(null, setup, List.copyOf(nested),
-                    nested.isEmpty() ? null : numberTheSource(reader, setup, began)));
+            NestedAssertions inside = nameNestedAssertions(body, progress.heading());
+            List<Assertion> nested = numberNestedAssertions(file, inside.headings(), progress.ordinal(),
+                    setup, findTheBeginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1]));
+            found.add(new Step(null, setup, nested,
+                    nested.isEmpty() ? null : numberTheSource(reader, setup, progress.ordinal())));
+            progress = new Progress(progress.ordinal() + nested.size(), inside.after());
         }
-        return ordinal;
+        return progress;
     }
 
     private static List<int[]> findTheExpressionsIn(Interpreter reader, String source,

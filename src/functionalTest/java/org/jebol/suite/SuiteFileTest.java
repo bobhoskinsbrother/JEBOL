@@ -108,6 +108,125 @@ class SuiteFileTest {
     }
 
     @Nested
+    @DisplayName("naming an assertion written inside a block")
+    class NamingInsideABlock {
+
+        @Test
+        @DisplayName("takes the group and test the block opens, not the ones outside it")
+        void takesTheNamesTheBlockOpens() {
+            SuiteFile.Assertion inside = makeAFileHolding("""
+                    if true [
+                        ===start-group=== "inner group"
+                        --test-- "inner test"
+                        --assert true
+                    ]""").assertions().getFirst();
+
+            assertThat(List.of(inside.group(), inside.test()))
+                    .containsExactly("inner group", "inner test");
+        }
+
+        @Test
+        @DisplayName("keeps the outer group when the block opens only a test")
+        void keepsTheOuterGroupForATestAlone() {
+            SuiteFile.Assertion inside = makeAFileHolding("""
+                    if true [
+                        --test-- "inner test"
+                        --assert true
+                    ]""").assertions().getFirst();
+
+            assertThat(List.of(inside.group(), inside.test()))
+                    .containsExactly("a group", "inner test");
+        }
+
+        @Test
+        @DisplayName("an assertion before the block's own test keeps the test outside it")
+        void anAssertionBeforeTheInnerTestKeepsTheOuterOne() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
+                    if true [
+                        --assert true
+                        --test-- "inner test"
+                        --assert true
+                    ]""").assertions();
+
+            assertThat(assertions).extracting(SuiteFile.Assertion::test)
+                    .containsExactly("a test", "inner test");
+        }
+
+        @Test
+        @DisplayName("reaches a test opened two blocks deep")
+        void reachesTwoBlocksDeep() {
+            SuiteFile.Assertion inside = makeAFileHolding("""
+                    if true [
+                        either true [
+                            --test-- "deep test"
+                            --assert true
+                        ][]
+                    ]""").assertions().getFirst();
+
+            assertThat(inside.test()).isEqualTo("deep test");
+        }
+
+        @Test
+        @DisplayName("a block's names carry on to the assertions after it, in the order the file is written")
+        void carriesOnAfterTheBlock() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
+                    if true [
+                        ===start-group=== "inner group"
+                        --test-- "inner test"
+                        --assert true
+                    ]
+                    --assert true""").assertions();
+
+            assertThat(assertions).extracting(SuiteFile.Assertion::test)
+                    .containsExactly("inner test", "inner test");
+        }
+
+        @Test
+        @DisplayName("a test word with no name after it, last in its block, leaves the name as it was")
+        void aTestWordWithNoNameLeavesTheNameAlone() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
+                    if true [
+                        --assert true
+                        --test--
+                    ]
+                    --assert true""").assertions();
+
+            assertThat(assertions).extracting(SuiteFile.Assertion::test)
+                    .containsExactly("a test", "a test");
+        }
+
+        @Test
+        @DisplayName("names inside a block change no assertion's number")
+        void changesNoOrdinal() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
+                    --assert true
+                    if true [
+                        --test-- "inner test"
+                        --assert true
+                        --assert true
+                    ]
+                    --assert true""").assertions();
+
+            assertThat(assertions).extracting(SuiteFile.Assertion::ordinal)
+                    .containsExactly(1, 2, 3, 4);
+        }
+
+        @Test
+        @DisplayName("Rebol's own WAV checks, inside an if, are named for the WAV test and not the one above the if")
+        void namesTheWavChecksInRebolsOwnFile() {
+            SuiteFile.Assertion wav = SuiteGrading.filesInSuite().stream()
+                    .filter(file -> file.name().equals("codecs-test.r3"))
+                    .flatMap(file -> file.assertions().stream())
+                    .filter(assertion -> assertion.ordinal() == 51)
+                    .findFirst()
+                    .orElseThrow();
+
+            assertThat(List.of(wav.group(), wav.test()))
+                    .containsExactly("WAV codec", "Load WAV file");
+        }
+    }
+
+    @Nested
     @DisplayName("keeping the source the file wrote")
     class Fidelity {
 
