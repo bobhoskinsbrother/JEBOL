@@ -7,6 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.TimeoutException;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.WebDriver;
@@ -94,9 +97,28 @@ class TheExamplesWithNoServerEndToEndTest {
 
     private Actions placeTheOperatorAt(int pageAcross, int pageDown) {
         WebElement canvas = browser.findElement(By.id("screen"));
+        Rectangle drawn = waitUntilTheCanvasFillsTheView(canvas);
         return new Actions(browser).moveToElement(canvas,
-                pageAcross - canvas.getRect().getWidth() / 2,
-                pageDown - canvas.getRect().getHeight() / 2);
+                pageAcross - drawn.getWidth() / 2,
+                pageDown - drawn.getHeight() / 2);
+    }
+
+    private Rectangle waitUntilTheCanvasFillsTheView(WebElement canvas) {
+        try {
+            return patientBrowser().until(anything -> {
+                Rectangle drawn = canvas.getRect();
+                return drawn.getDimension().equals(readTheViewSize()) ? drawn : null;
+            });
+        } catch (TimeoutException late) {
+            throw new AssertionError("the canvas never grew to fill the view " + readTheViewSize()
+                    + "; it is " + canvas.getRect().getDimension(), late);
+        }
+    }
+
+    private Dimension readTheViewSize() {
+        List<?> widthAndHeight = (List<?>) ((JavascriptExecutor) browser)
+                .executeScript("return [window.innerWidth, window.innerHeight]");
+        return new Dimension(((Number) widthAndHeight.get(0)).intValue(), ((Number) widthAndHeight.get(1)).intValue());
     }
 
     private static int readTheAcrossOf(String pair) {

@@ -8,13 +8,22 @@ set -u
 
 cd "$(dirname "$0")/.."
 
+allium="$(command -v allium || true)"
+if [ -z "$allium" ] && [ -x "$HOME/.cargo/bin/allium" ]; then
+    allium="$HOME/.cargo/bin/allium"
+fi
+if [ -z "$allium" ]; then
+    echo "allium is not on the PATH or in ~/.cargo/bin - install it with cargo install allium-cli" >&2
+    exit 1
+fi
+
 echo "== allium check =="
-allium check spec/ 2>&1 | python3 scripts/allium_report.py
+"$allium" check spec/ 2>&1 | python3 scripts/allium_report.py
 check_status=$?
 
 echo
 echo "== allium analyse =="
-allium analyse spec/ 2>&1 | python3 scripts/allium_report.py
+"$allium" analyse spec/ 2>&1 | python3 scripts/allium_report.py
 analyse_status=$?
 
 if [ "$check_status" -ne 0 ] || [ "$analyse_status" -ne 0 ]; then

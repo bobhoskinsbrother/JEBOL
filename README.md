@@ -161,6 +161,12 @@ Java2D draws from the same paint list, pixel for pixel. It is the reason a page
 and a window showing the same picture is a thing the build knows. `docs/web-port.md`
 is the port's record and decisions 31 to 35 carry the shapes it settled on.
 
+They need Chrome and Firefox, and on Ubuntu the Firefox has to be Mozilla's own
+build from packages.mozilla.org, not the snap Ubuntu installs by default. The
+snap's launcher is a shell script the Firefox driver refuses, and its private
+`/tmp` hides the files the tests upload and download. `CLAUDE.md` has the
+details.
+
 ## What is Ported, and What is Copied?
 
 The two are kept apart on purpose, and the split is the whole design.

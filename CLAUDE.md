@@ -206,7 +206,22 @@ process rather than holding the run open at the end. Give a new class that
 takes most of a minute an `@Order` too; `test-history/` shows which those are.
 
 `endToEndTests` needs Chrome and Firefox installed, and Selenium fetches both
-browser drivers the first time it runs. The page's services -- navigation, the
+browser drivers the first time it runs.
+
+**Firefox must be Mozilla's own build, not the snap Ubuntu installs by
+default.** On Ubuntu `/usr/bin/firefox` is a shell script that launches the
+snap, and the Firefox driver refuses it ("binary is not a Firefox
+executable"), so no Firefox test starts. Pointing the driver past the script
+at the snap's real binary does not rescue it: the snap has a private `/tmp`,
+so the file choosers cannot see the files a test offers and the downloads a
+test waits for never arrive. Remove the snap (`sudo snap remove firefox`) and
+install Firefox from Mozilla's apt repository at packages.mozilla.org, pinned
+above Ubuntu's archive -- Ubuntu's `firefox` package is a placeholder that
+reinstalls the snap. `file -L $(command -v firefox)` should say ELF, not
+shell script. Removing the snap also removes its `geckodriver`, and Selenium
+fetches a matching one itself.
+
+The page's services -- navigation, the
 dialogs, the clipboard, pictures, MIDI, POST and the console's line -- are driven
 in Chrome, and in Firefox only where the two browsers really differ: leaving the
 page and coming back to it, the colour and file choosers, BROWSE's popups,

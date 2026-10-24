@@ -18,16 +18,16 @@ class MidiOnAPageEndToEndTest {
     }
 
     @Test
-    @DisplayName("in Chrome with MIDI allowed and nothing plugged in, QUERY lists two empty blocks")
-    void chromeListsNothingPluggedIn() throws IOException {
+    @DisplayName("in Chrome with MIDI allowed, QUERY lists a block of inputs and a block of outputs, whatever the machine has")
+    void chromeAllowedListsBlocks() throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
-                print ["in" mold query midi:// 'devices-in "out" mold query midi:// 'devices-out]
+                print ["in" block? query midi:// 'devices-in "out" block? query midi:// 'devices-out]
                 print "done"
                 """);
              AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,"chrome", runner).opensThePage()) {
 
             operator.waitUntilOutputContains("done");
-            assertThat(operator.readOutput()).contains("in [] out []");
+            assertThat(operator.readOutput()).contains("in true out true");
         }
     }
 
