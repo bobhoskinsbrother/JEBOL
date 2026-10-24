@@ -41,7 +41,13 @@ def read_reports(text):
             at += 1
         if at >= len(text):
             break
-        report, at = decoder.raw_decode(text, at)
+        try:
+            report, at = decoder.raw_decode(text, at)
+        except json.JSONDecodeError:
+            raise SystemExit(
+                "allium did not print the JSON this expects. It said:\n"
+                + text.strip()
+            ) from None
         reports.append(report)
     return reports
 

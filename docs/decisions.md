@@ -2305,3 +2305,74 @@ first proposed dropping the closure's copy altogether; scripts can see it
 the scanner-buffer slot the first item was scanned into and only overwrites
 it with the block after seeing a word. And `#(none 1)` is none: a keyword
 construct ignores what follows it.
+
+## 54. The wasm compiler runs in the Gradle daemon, not a JVM of its own
+
+**TeaVM's plugin will compile in a forked JVM and talk to it over RMI, and
+this build no longer asks it to.** `outOfProcess` is now false, which is the
+plugin's own default, and the heap the fork used to get through
+`teavm.processMemory` is the daemon's through `org.gradle.jvmargs=-Xmx2g`.
+`generateWasmGC` read 59s on a cold daemon after the change; there is no
+before figure from this machine, because out of process is what stopped
+working.
+
+**What it stopped doing is worth the entry, because the error named none of
+it.** `generateWasmGC` failed with
+
+```
+org.teavm.tooling.builder.BuildException: java.rmi.ConnectIOException:
+  error during JRMP connection establishment; nested exception is:
+  java.io.EOFException
+```
+
+The fork starts, prints its port, and the registry lookup over loopback
+succeeds. The stub that lookup returns carries the endpoint RMI gives an
+exported object, and that is `InetAddress.getLocalHost()` -- here
+`192.168.86.90`, the machine's address on its LAN, not loopback. macOS's
+application firewall holds one entry per `java` binary, this one said *block
+incoming connections*, and a blocked connection is accepted and then dropped
+rather than refused, which RMI reports as end of file. Reproduced outside
+Gradle and outside TeaVM in twenty lines: bind a `UnicastRemoteObject` in one
+JVM, look it up from another, and the first call over the stub fails the same
+way.
+
+It had worked because the firewall's entry is per path and the daemon had
+been running on a Temurin 21 that was never in the list. The fork is the
+daemon's own JVM, which is whatever `java` launched Gradle and not the
+toolchain's 25; that `java` became a Homebrew 26, a binary the firewall had
+never been asked about. So pinning the toolchain back to 25 does not prevent
+this, and nothing about the build does: the next machine would meet it on
+whatever JDK it happens to run Gradle with. Compiling in the daemon is what
+prevents it.
+
+**`java.rmi.server.hostname` would have fixed it and cannot be set.**
+`BuildDaemon.start` assembles the fork's whole command itself -- the
+classpath, `-Dteavm.daemon.incremental`, `-Xmx`, a heap dump flag -- and
+takes no extra JVM arguments, so a build cannot pin the fork's RMI endpoint
+to `127.0.0.1`. The alternative was `sudo socketfilterfw --unblockapp` on
+every JDK the project is ever built with, on every machine. Compiling in the
+daemon opens no socket at all.
+
+## 55. The toolchain is 25 because ArchUnit reads a 26's classes as nothing
+
+**ArchUnit 1.4.1 carries an ASM that stops at class file 69.** Java 25 writes
+69 and Java 26 writes 70, so a test tree compiled by a 26 is a tree
+`ClassFileImporter` imports as empty, and every architecture rule over it
+passes having read no class. The toolchain is pinned to 25 for the Foreign
+Function and Memory API as well, but this is the reason that bites a reader
+who sees a newer LTS and raises the number. Decision 54 says how close the
+build already came: the JDK that launches Gradle had become a Homebrew 26.
+
+**Three of `EveryPropertyIsActuallyRunTest`'s assertions exist for this and
+nothing else.** They check that the importer found classes at all, that some
+of them declare a jqwik check, and that some of them are Jupiter containers --
+each saying "with none of these the rule below holds vacuously". They are the
+guard for the whole architecture tree rather than for their own rule, because
+nothing else in the suite can tell an empty import from a clean one: both are
+a green build.
+
+**So a rule whose subject can go missing gets an assertion that it is there.**
+A rule asserting a set is empty holds on a set that was never filled, and
+being wrong that way is silent. A path handed in by a system property, an
+annotation that has to be on the classpath to be seen, a suite's classes --
+assert each is found before asserting anything about it.

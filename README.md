@@ -384,11 +384,23 @@ editor does, so a bad regex cannot land quietly.
 
 ## Building
 
-**What you need: a JDK to run Gradle, and nothing else.** The build asks for a
-Java 25 toolchain and downloads one itself (the toolchain resolver in
-`settings.gradle.kts`), so the JDK on your PATH does not have to be 25. There are
-no runtime dependencies; the jar carries everything it needs. Running JEBOL does
-need Java 25 or later, and a launch on an older one says so and stops.
+**What you need for the jar: a JDK to run Gradle, and nothing else.** The build
+asks for a Java 25 toolchain and downloads one itself (the toolchain resolver in
+`settings.gradle.kts`), so the JDK on your PATH does not have to be 25 and you
+do not have to find one -- which matters on an Intel Mac, where Homebrew has no
+`openjdk@25` bottle to install. It builds on 25 whatever Gradle itself runs on,
+because what reads the classes is not only javac: ArchUnit's bundled ASM stops
+at class file 69, so a test tree compiled by a 26 is a tree it imports as empty.
+There are no runtime dependencies; the jar carries everything it needs. Running
+JEBOL does need Java 25 or later, and a launch on an older one says so and
+stops.
+
+**The gate asks for two more, and each names itself when it is missing.**
+
+| What | Which task wants it | Where it comes from |
+| --- | --- | --- |
+| `allium` | `checkSpec`, which validates `spec/` | `cargo install allium-cli`, or `brew install juxt/allium/allium` |
+| Chrome and Firefox | `endToEndTests`, which drives both | installed as applications; Selenium fetches the two drivers itself, and on Ubuntu the Firefox cannot be the snap (see above, and `CLAUDE.md`) |
 
 ```
 ./gradlew allTests         # the spec check and all three suites below

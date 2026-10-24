@@ -13,7 +13,9 @@ if [ -z "$allium" ] && [ -x "$HOME/.cargo/bin/allium" ]; then
     allium="$HOME/.cargo/bin/allium"
 fi
 if [ -z "$allium" ]; then
-    echo "allium is not on the PATH or in ~/.cargo/bin - install it with cargo install allium-cli" >&2
+    echo "allium is not on the PATH or in ~/.cargo/bin, so spec/ cannot be checked." >&2
+    echo "    cargo install allium-cli" >&2
+    echo "    brew install juxt/allium/allium   (the same tool, on a Mac)" >&2
     exit 1
 fi
 

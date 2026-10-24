@@ -1,4 +1,6 @@
+import com.sun.management.OperatingSystemMXBean
 import java.io.ByteArrayOutputStream
+import java.lang.management.ManagementFactory
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -20,6 +22,12 @@ java {
     // 25 rather than 21 for the Foreign Function and Memory API, which
     // struct!, routine! and library! will need. Final in 22, but 22 is
     // non-LTS and out of support, and 25 is the current LTS.
+    //
+    // And 25 rather than 26, which this reader will be tempted by: ArchUnit
+    // 1.4.1 carries an ASM that stops at class file 69, so a 26 compiles a
+    // test tree that ClassFileImporter reads as empty and every rule over it
+    // passes saying nothing. EveryPropertyIsActuallyRunTest's guards caught
+    // it; decision 55 has the rest.
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
@@ -56,7 +64,7 @@ teavm {
         mainClass.set("org.jebol.adapter.web.WorkerInterpreter")
         targetFileName.set("jebol-web")
         obfuscated.set(false)
-        outOfProcess.set(true)
+        outOfProcess.set(false)
     }
 }
 
@@ -210,6 +218,13 @@ fun Test.runsTheTestsIn(suite: SourceSet) {
         "jebol.testClassesDirs",
         testSuites.joinToString(File.pathSeparator) { it.output.classesDirs.asPath },
     )
+    // How deep a test can recurse is its thread's stack, and HotSpot takes
+    // the default for that from the architecture: 1 MB on x86_64, 2 MB on
+    // arm64. call-frames.r3 records a real 3.22.5 answering `dp 500`, which
+    // needs about 850 KB measured, so under JUnit's own frames it fits on an
+    // arm64 Mac and overflows on an x86_64 one. Pinning it to the larger of
+    // the two defaults makes the gate answer the same on both.
+    jvmArgs("-Xss2m")
     maxParallelForks = Runtime.getRuntime().availableProcessors()
     inputs.dir(layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")
@@ -256,6 +271,19 @@ val functionalTests = tasks.register<Test>("functionalTests") {
 val endToEndTests = tasks.register<Test>("endToEndTests") {
     description = "Tests that drive a real interface: the command line, a real browser, and local servers"
     runsTheTestsIn(endToEndTest)
+    // Each process here holds a browser for every configuration its classes
+    // touch, and a Chrome with its renderers is hundreds of megabytes, so what
+    // bounds these forks is memory and not the processor count the other two
+    // suites use. Twelve on a six-core 16 GB machine put swap at its ceiling
+    // and Chrome took a SIGSEGV mid-run, failing two tests with a browser that
+    // had stopped answering: one waited 30 seconds for a browser, the other
+    // timed out removing its BiDi user context on the way out. Four gibibytes
+    // a fork leaves a machine with memory to spare at its processor count.
+    val memoryThisMachineHas =
+        (ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean).totalMemorySize
+    val forksItsMemoryAllows = (memoryThisMachineHas / (4L * 1024 * 1024 * 1024)).toInt()
+    maxParallelForks = providers.gradleProperty("endToEndForks").map(String::toInt)
+        .getOrElse(maxOf(2, minOf(maxParallelForks, forksItsMemoryAllows)))
     systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
     systemProperty(
         "jebol.webBuild",
