@@ -100,7 +100,7 @@ public class QueryAction extends PortAction {
 
         PortValue port = ports.makePortFor(target, evaluator, context);
         return ActionSentToPort
-                .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
+                .answerOnPort(port, this, arguments, refinements, evaluator)
                 .orElseGet(() -> arguments.get(1) instanceof NoneValue
                         ? portFieldNames(port, evaluator)
                         : askNativelyServedPort(port, arguments.get(1), evaluator));

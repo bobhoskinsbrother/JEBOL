@@ -42,7 +42,7 @@ public class DeleteAction extends PortAction {
             Value target = arguments.getFirst();
             PortValue port = ports.makePortFor(target, evaluator, context);
             return ActionSentToPort
-                    .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
+                    .answerOnPort(port, this, arguments, refinements, evaluator)
                     .orElseGet(() -> delete(target, port, evaluator));
         };
     }

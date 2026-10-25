@@ -35,7 +35,7 @@ public record ActionSentToPort(
      * What the actor of the port in front of {@code arguments} answers, or
      * nothing when this call does not reach an actor at all.
      */
-    public static Optional<Value> answerFor(NativeValue action, List<Value> arguments,
+    public static Optional<Value> answer(NativeValue action, List<Value> arguments,
             Set<String> refinements, Evaluator evaluator) {
 
         if (arguments.isEmpty() || !(arguments.getFirst() instanceof PortValue port)
@@ -43,7 +43,7 @@ public record ActionSentToPort(
             return Optional.empty();
         }
         return new ActionSentToPort(action, arguments, refinements)
-                .answerFromActorOf(port, evaluator);
+                .answerFromActor(port, evaluator);
     }
 
     /**
@@ -51,12 +51,12 @@ public record ActionSentToPort(
      * port instead of being one, which the C answers by putting the port it
      * made in the first argument's place.
      */
-    public static Optional<Value> answerForPortNamedBy(PortValue port, NativeValue action,
+    public static Optional<Value> answerOnPort(PortValue port, NativeValue action,
             List<Value> arguments, Set<String> refinements, Evaluator evaluator) {
 
         List<Value> onThePort = new ArrayList<>(arguments);
         onThePort.set(0, port);
-        return answerFor(action, onThePort, refinements, evaluator);
+        return answer(action, onThePort, refinements, evaluator);
     }
 
     /**
@@ -65,7 +65,7 @@ public record ActionSentToPort(
      * one this call holds for the same refinement, or none where the caller
      * asked for nothing there.
      */
-    public List<Value> laidOutFor(DeclaresParameters actorsFunction) {
+    public List<Value> layOut(DeclaresParameters actorsFunction) {
         List<Value> laidOut = new ArrayList<>();
         Map<Optional<String>, Integer> reached = new HashMap<>();
         for (Parameter parameter : actorsFunction.parameters()) {
@@ -74,20 +74,20 @@ public record ActionSentToPort(
                 continue;
             }
             int which = reached.merge(parameter.owningRefinement(), 1, Integer::sum) - 1;
-            laidOut.add(findArgumentFor(parameter.owningRefinement(), which)
+            laidOut.add(findArgumentAt(parameter.owningRefinement(), which)
                     .orElseGet(NoneValue::none));
         }
         return laidOut;
     }
 
-    private Optional<Value> findArgumentFor(Optional<String> owningRefinement, int which) {
-        if (!wasAskedFor(owningRefinement)) {
+    private Optional<Value> findArgumentAt(Optional<String> owningRefinement, int which) {
+        if (!isAsked(owningRefinement)) {
             return Optional.empty();
         }
         int at = 0;
         int seenOfThisRefinement = 0;
         for (Parameter parameter : action.parameters()) {
-            if (!parameter.consumesArgument() || !wasAskedFor(parameter.owningRefinement())) {
+            if (!parameter.consumesArgument() || !isAsked(parameter.owningRefinement())) {
                 continue;
             }
             if (parameter.owningRefinement().equals(owningRefinement)
@@ -99,11 +99,11 @@ public record ActionSentToPort(
         return Optional.empty();
     }
 
-    private boolean wasAskedFor(Optional<String> owningRefinement) {
+    private boolean isAsked(Optional<String> owningRefinement) {
         return owningRefinement.map(refinements::contains).orElse(true);
     }
 
-    private Optional<Value> answerFromActorOf(PortValue port, Evaluator evaluator) {
+    private Optional<Value> answerFromActor(PortValue port, Evaluator evaluator) {
         port.requireObjectSpec();
         port.requireNativeOrObjectActor();
         if (port.hasNoActor()) {

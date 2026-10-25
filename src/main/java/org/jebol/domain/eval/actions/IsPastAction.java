@@ -19,7 +19,7 @@ public class IsPastAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    LogicValue.of(findFileBehind(port, evaluator).isPastItsEnd());
+                    LogicValue.of(findFileBehind(port, evaluator).pastItsEnd());
             case RebolSeries series -> LogicValue.of(series.isPastEnd());
             case Value anythingElse -> refuseArgument(anythingElse, "series");
         };

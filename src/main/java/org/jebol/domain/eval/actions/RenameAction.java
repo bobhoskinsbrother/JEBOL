@@ -44,7 +44,7 @@ public class RenameAction extends PortAction {
             Value asked = arguments.getFirst();
             PortValue from = ports.makePortFor(asked, evaluator, context);
             return ActionSentToPort
-                    .answerForPortNamedBy(from, this, arguments, refinements, evaluator)
+                    .answerOnPort(from, this, arguments, refinements, evaluator)
                     .orElseGet(() -> rename(asked, from, arguments.get(1), evaluator));
         };
     }

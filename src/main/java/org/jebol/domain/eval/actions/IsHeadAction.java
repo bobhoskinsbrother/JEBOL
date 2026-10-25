@@ -19,7 +19,7 @@ public class IsHeadAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    LogicValue.of(findFileBehind(port, evaluator).isAtItsHead());
+                    LogicValue.of(findFileBehind(port, evaluator).atItsHead());
             case RebolSeries series -> LogicValue.of(series.atHead());
             case Value anythingElse -> refuseArgument(anythingElse, "series");
         };

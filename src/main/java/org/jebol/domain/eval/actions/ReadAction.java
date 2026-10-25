@@ -58,7 +58,7 @@ public class ReadAction extends PortAction {
             if (behindUrl.isEmpty() && ports.routesToScheme(source)) {
                 PortValue routed = ports.openPortFor(source, evaluator, context);
                 return ActionSentToPort
-                        .answerForPortNamedBy(routed, this, arguments, refinements, evaluator)
+                        .answerOnPort(routed, this, arguments, refinements, evaluator)
                         .orElseGet(() -> ports.readFrom(routed, evaluator, arguments, asked));
             }
             return ports.readFile(

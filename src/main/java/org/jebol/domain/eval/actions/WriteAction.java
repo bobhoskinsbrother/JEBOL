@@ -56,7 +56,7 @@ public class WriteAction extends PortAction {
             if (ports.routesToScheme(destination)) {
                 PortValue routed = ports.openPortFor(destination, evaluator, context);
                 return ActionSentToPort
-                        .answerForPortNamedBy(routed, this, arguments, refinements, evaluator)
+                        .answerOnPort(routed, this, arguments, refinements, evaluator)
                         .orElseGet(() -> ports.writeTo(routed, data, evaluator, asked));
             }
             return ports.writeFile(destination, data, evaluator, asked);

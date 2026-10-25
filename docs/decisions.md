@@ -2463,3 +2463,50 @@ itself, beside the three that already do. A built-in scheme still keeps a
 list, because the C's actor is a `switch` and that list *is* the actor's
 declaration -- the equivalent of the functions an actor written in REBOL
 holds, not a gate in front of the dispatch.
+
+## 57. The construct form is decided where a value is written, not where MOLD was called
+
+**`mold/all` wrote the positioned construct for the value it was handed and
+for nothing inside it.** `mold/all next "abc"` was `#(string! "abc" 2)` and
+`mold/all reduce [next "abc"]` was `["bc"]`, which loads back as a different
+string standing at its head. The decision now happens in `Molder.render`, the
+one place every value goes through, so a series away from its head carries its
+position at any depth -- inside a block, a paren, an object, a map, or inside
+another construct's own body, which is what a real 3.22.5 does:
+`mold/all next reduce [next "abc" 1]` is `#(block! [#(string! "abc" 2) 1] 2)`.
+
+**Which is where the round trip was actually broken, and the shape of the
+defect is worth remembering.** /ALL exists for saving data and loading it
+back, and data is nested, so writing the construct for the outermost value
+only means every single value a caller tries reads back and the first block of
+them does not. The sweep that found it is 96 rows -- sixteen series datatypes
+at a non-head position, each alone and inside five containers -- and
+sixty-five of them differed. One value at a time would have shown none of it.
+
+**The same move fixed three more rules that were also top-level only**: a hash
+is a construct even at its head, an empty tag is a construct, and a series at
+its tail carries the index past its end. All four had been written once in
+`moldAll` and never consulted again.
+
+**A struct molds over lines, and names its layout by a number.** `Mold_Struct`
+writes `#(struct! ` and then the spec under /ALL or `VAL_STRUCT_SPEC`'s
+identity without it, then `New_Indented_Line` before each `name: value`. JEBOL
+wrote the spec either way, on one line. The number is an identity and not a
+hash of the spec -- two structs built from the same spec text mold with
+different numbers in a real 3.22.5 -- so a test can hold that it is digits and
+that the fields fall on lines, and pinning its value would be pinning an
+address. The indentation is the molder's own, so a struct inside an object
+indents to where it sits.
+
+**An event molds its fields even when formed**, as a task molds its header
+either way: `Mold_Event` calls `Mold_Value(mold, &val, TRUE)` and the TRUE is
+not the caller's, so `form` keeps the set-word and the quote. JEBOL passed its
+own `forReading` down and lost the colon.
+
+**And forming a block puts no space after an item that ended a line.**
+`Form_Block_Series` asks `*STR_LAST(mold->series) != LF` first, so
+`reform ["a" newline "b"]` is `"a ^/b"`. JEBOL joined with a space always,
+which put one at the start of every line after the first for any value that
+molds over lines -- an event, a struct, an object, an error. It surfaced as a
+leading space in a probe's own output, which is the way a delimiter bug
+usually surfaces: in the tool you were using to look at something else.

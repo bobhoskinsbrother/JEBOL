@@ -39,7 +39,7 @@ public class CreateAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             PortValue port = ports.makePortFor(arguments.getFirst(), evaluator, context);
             return ActionSentToPort
-                    .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
+                    .answerOnPort(port, this, arguments, refinements, evaluator)
                     .orElseGet(() -> create(port, evaluator));
         };
     }

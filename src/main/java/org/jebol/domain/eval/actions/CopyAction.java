@@ -39,11 +39,11 @@ public class CopyAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 arguments.getFirst() instanceof PortValue port && port.isAFile()
-                        ? ports.readFromFileBehind(port, evaluator, howMuchToCopy(arguments, refinements))
+                        ? ports.readFromFileBehind(port, evaluator, copyRequest(arguments, refinements))
                         : copy(arguments, refinements);
     }
 
-    private PortRequest howMuchToCopy(List<Value> arguments, Set<String> refinements) {
+    private PortRequest copyRequest(List<Value> arguments, Set<String> refinements) {
         return new PortRequest(
                 refinementArgument("part", 0, arguments, refinements),
                 Optional.empty(),

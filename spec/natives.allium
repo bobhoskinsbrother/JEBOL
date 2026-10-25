@@ -9142,6 +9142,31 @@ rule MoldAllKeepsASeriesPosition {
     ensures: MoldResult(text: the_positioned_construct_form_of(subject))
 }
 
+-- And at every depth, not only on the value MOLD was handed. A series inside
+-- a block, a paren, an object or a map carries its position the same way, and
+-- so does one inside a construct's own body: `mold/all next reduce [next
+-- "abc" 1]` is `#(block! [#(string! "abc" 2) 1] 2)`.
+--
+-- Which is where the round trip actually breaks, because the whole point of
+-- /ALL is saving data and loading it back, and data is nested. Writing the
+-- construct for the outermost value only is the shape of the defect: every
+-- single value a caller tries reads back, and the first block of them does
+-- not. `mold/all reduce [next "abc"]` wrote `["bc"]`, which loads as a
+-- different string at its head.
+--
+-- So this is one decision made in one place, for every value the molder
+-- writes, rather than a property of the call's own subject. The rules below
+-- about bodies, hashes and empty tags apply at every depth for the same
+-- reason.
+rule MoldAllKeepsThePositionOfEveryNestedSeriesToo {
+    when: EvaluateMold(subject)
+    requires: refinement_asked(all)
+    requires: holds_a_series_away_from_its_head(subject)
+
+    ensures: MoldResult(text:
+        every_nested_series_written_in_its_positioned_construct_form())
+}
+
 -- A series already at its head molds as plain MOLD does, and so does
 -- anything that is not a series -- unless the literal form would not read
 -- back as the same value. There is no position to keep, so the construct
@@ -9259,6 +9284,67 @@ rule AnEmptyTagUnderAllMoldsAsAConstruct {
     requires: subject.length = 0
 
     ensures: MoldResult(text: the_construct_form_naming(tag, ""))
+}
+
+-- A struct is laid out over lines, one field to a line, and names its layout
+-- by a number unless /ALL was asked for.
+--
+-- `Mold_Struct` writes `#(struct! ` and then either the spec or
+-- `VAL_STRUCT_SPEC`'s own identity, by the same MOPT_MOLD_ALL the other rules
+-- here turn on; then `New_Indented_Line` before each `name: value`, and again
+-- before the closing bracket. So plain MOLD is
+-- `#(struct! 1141701721 [` then a line for each field, and /ALL replaces the
+-- number with the spec written out the same way, over lines of its own.
+--
+-- The number is the spec's identity rather than anything derived from it: two
+-- structs built from the same spec text mold with different numbers. So it
+-- names this struct's layout and nothing more, a script cannot predict it,
+-- and a test that pinned its digits would be pinning an address. What a test
+-- can hold is that it is digits, and that the fields fall on lines.
+--
+-- The indentation is the molder's own, so a struct inside an object is
+-- indented to where it sits rather than to a fixed four, and MOLD/FLAT puts
+-- the whole thing back on one line like everything else.
+rule AStructMoldsOverLinesAndNamesItsLayoutByANumber {
+    when: EvaluateMold(subject)
+    requires: is_struct(subject)
+
+    ensures: MoldResult(
+        layout: if refinement_asked(all): the_spec_written_over_lines(subject)
+                else: the_identity_of(the_spec_of(subject)),
+        body: each_field_on_a_line_of_its_own(subject))
+}
+
+-- An event molds its fields whether it was molded or formed, as a task molds
+-- its header either way.
+--
+-- `Mold_Event` writes the field name, a colon and a space, and then
+-- `Mold_Value(mold, &val, TRUE)` -- the TRUE is `molded`, and it does not
+-- come from the caller. So `form make event! [type: 'down]` is the same text
+-- as `mold` of it, set-word and quote included, and a formed event inside a
+-- block carries them too.
+rule AnEventMoldsItsFieldsWhetherItIsMoldedOrFormed {
+    when: EvaluateForm(subject)
+    requires: is_event(subject)
+
+    ensures: the_text = what_mold_would_write(subject)
+}
+
+-- Forming a block puts a space between its items, except after one that
+-- ended a line.
+--
+-- `Form_Block_Series` asks `*STR_LAST(mold->series) != LF` before appending
+-- the space, so a value that molded over several lines is followed by the
+-- next item directly: `reform ["a" newline "b"]` is `"a ^/b"` and not
+-- `"a ^/ b"`. An event, a struct, an object and an error all mold over lines,
+-- so this is what keeps a block of them from gaining a space at the start of
+-- every line after the first.
+rule FormingABlockPutsNoSpaceAfterAnItemThatEndedALine {
+    when: EvaluateForm(subject)
+    requires: is_any_block(subject)
+    requires: an_item_written_ends_with_a_line_break()
+
+    ensures: the_text = the_items_joined_with_a_space_except_after_a_break()
 }
 
 -- MOLD/PART cuts the molded text at the limit, and a limit outside what a

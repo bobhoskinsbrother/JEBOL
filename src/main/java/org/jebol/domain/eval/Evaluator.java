@@ -288,7 +288,7 @@ public final class Evaluator {
         if (!(function instanceof DefinedFunctionValue able)) {
             throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(named));
         }
-        return applyFunction(able, sent.laidOutFor(able));
+        return applyFunction(able, sent.layOut(able));
     }
 
     public Value readSimpleValue(Value given, Context where) {
@@ -1115,7 +1115,7 @@ public final class Evaluator {
         nativesCalled++;
         Value produced;
         try {
-            Optional<Value> theActorsOwn = ActionSentToPort.answerFor(
+            Optional<Value> theActorsOwn = ActionSentToPort.answer(
                     built, arguments, built.askedRefinements(), this);
             produced = theActorsOwn.isPresent()
                     ? theActorsOwn.orElseThrow()

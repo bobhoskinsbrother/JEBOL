@@ -93,21 +93,21 @@ public final class SchemeActorNative extends DefaultNative implements ServesPort
         if (!(arguments.getFirst() instanceof PortValue port)) {
             return Optional.empty();
         }
-        refuseWhatNeedsAnOpenPort(action, port);
+        refuseWhenClosed(action, port);
         if (!WHAT_EACH_SCHEME_SERVES.getOrDefault(scheme, Set.of()).contains(action)) {
             throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(action));
         }
         return Optional.empty();
     }
 
-    private void refuseWhatNeedsAnOpenPort(String action, PortValue port) {
-        if (port.isOpen() || !needsThePortOpen(action)) {
+    private void refuseWhenClosed(String action, PortValue port) {
+        if (port.isOpen() || !needsOpenPort(action)) {
             return;
         }
         throw Raised.of(EvaluationFailure.NOT_OPEN, port.reference());
     }
 
-    private boolean needsThePortOpen(String action) {
+    private boolean needsOpenPort(String action) {
         Set<String> servedWhileClosed = WHAT_EACH_SCHEME_SERVES_WHILE_CLOSED.get(scheme);
         return servedWhileClosed == null
                 ? WHAT_EACH_SCHEME_NEEDS_OPEN_FOR.getOrDefault(scheme, Set.of()).contains(action)

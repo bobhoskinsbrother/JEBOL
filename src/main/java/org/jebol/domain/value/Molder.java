@@ -114,27 +114,23 @@ public final class Molder {
      * that is not a series, molds as it always does.
      */
     public static String moldAll(Value value) {
-        return writeEverythingOut(() -> {
-            if (value instanceof VectorValue vector) {
-                return writeAsVector(vector, 1, true, vector.index());
-            }
-            if (value instanceof ImageValue picture) {
-                return render(picture, true);
-            }
-            if (value instanceof HashValue hash) {
-                return writeHashAsConstruct(hash);
-            }
-            if (value instanceof RebolSeries series
-                    && standsWithinNeverPastEndForBlockOrPath(series) > 1) {
-                return "#(" + value.datatype().literalSpelling() + " "
-                        + constructBodyOf(series) + " "
-                        + standsWithinNeverPastEndForBlockOrPath(series) + ")";
-            }
-            if (value instanceof TagValue tag && tag.storageLength() == 0) {
-                return "#(tag! " + moldText("") + ")";
-            }
-            return render(value, true);
-        });
+        return writeEverythingOut(() -> render(value, true));
+    }
+
+    private static Optional<String> writeAsConstruct(Value value) {
+        return switch (value) {
+            case VectorValue vector ->
+                    Optional.of(writeAsVector(vector, 1, true, vector.index()));
+            case HashValue hash -> Optional.of(writeHashAsConstruct(hash));
+            case ImageValue picture -> Optional.empty();
+            case TagValue tag when tag.storageLength() == 0 ->
+                    Optional.of("#(tag! " + moldText("") + ")");
+            case RebolSeries series when standsWithinNeverPastEndForBlockOrPath(series) > 1 ->
+                    Optional.of("#(" + series.datatype().literalSpelling() + " "
+                            + constructBodyOf(series) + " "
+                            + standsWithinNeverPastEndForBlockOrPath(series) + ")");
+            default -> Optional.empty();
+        };
     }
 
     private static String writeHashAsConstruct(HashValue hash) {
@@ -193,6 +189,12 @@ public final class Molder {
                     new IdentityHashMap<>()));
 
     private static String render(Value value, boolean forReading) {
+        if (forReading && WRITING_EVERYTHING_OUT.get()) {
+            Optional<String> construct = writeAsConstruct(value);
+            if (construct.isPresent()) {
+                return construct.orElseThrow();
+            }
+        }
         Object nesting = nestingKey(value);
         if (nesting != null) {
             if (!ALREADY_INSIDE.get().add(nesting)) {
@@ -239,7 +241,7 @@ public final class Molder {
                     ? "#\"" + escape(character.toString()) + "\""
                     : character.toString();
             case PairValue pair -> moldHalf(pair.x()) + "x" + moldHalf(pair.y());
-            case EventValue event -> renderEvent(event, forReading);
+            case EventValue event -> renderEvent(event);
             case HandleValue handle -> "#(handle! " + handle.typeName() + ")";
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
@@ -285,11 +287,30 @@ public final class Molder {
     }
 
     private static String renderStruct(StructValue struct, boolean forReading) {
-        String layout = forReading
-                ? render(struct.spec().declaration(), true)
+        String layout = WRITING_EVERYTHING_OUT.get()
+                ? writePairsOverLines(struct.spec().declaration().remaining())
                 : Integer.toUnsignedString(struct.spec().declaration().hashCode());
         return "#(struct! " + layout + " "
-                + render(BlockValue.of(struct.readBody()), forReading) + ")";
+                + writePairsOverLines(struct.readBody()) + ")";
+    }
+
+    private static String writePairsOverLines(List<Value> pairs) {
+        if (WRITING_ON_ONE_LINE.get()) {
+            return "[" + pairs.stream().map(each -> render(each, true))
+                    .collect(Collectors.joining(" ")) + "]";
+        }
+        int outer = LINED_DEPTH.get();
+        String lines = stepOneLevelIn(() -> {
+            StringBuilder written = new StringBuilder();
+            for (int at = 0; at + 1 < pairs.size(); at += 2) {
+                written.append(indentLineAsDeepAsWeAre())
+                        .append(render(pairs.get(at), true))
+                        .append(' ')
+                        .append(render(pairs.get(at + 1), true));
+            }
+            return written.toString();
+        });
+        return "[" + lines + "\n" + ONE_INDENT.repeat(outer) + "]";
     }
 
     private static final int SIGNIFICANT_DIGITS = 15;
@@ -785,15 +806,27 @@ public final class Molder {
         if (forReading && block.moldsInBrackets()) {
             return renderLined(block, forReading, BETWEEN_BRACKETS);
         }
-        String items = block.remaining().stream()
+        String items = joinWithSpacesExceptAfterLines(block.remaining().stream()
                 .map(item -> render(item, forReading))
-                .collect(Collectors.joining(" "));
+                .toList());
         if (!forReading && block.moldsInBrackets()) {
             return items;
         }
         return block instanceof AnyPathValue path
                 ? joinPath(path, path.markBefore(forReading), path.markAfter(forReading))
                 : "[" + items + "]";
+    }
+
+    private static String joinWithSpacesExceptAfterLines(List<String> items) {
+        StringBuilder written = new StringBuilder();
+        for (int at = 0; at < items.size(); at++) {
+            written.append(items.get(at));
+            if (at + 1 < items.size()
+                    && (written.isEmpty() || written.charAt(written.length() - 1) != '\n')) {
+                written.append(' ');
+            }
+        }
+        return written.toString();
     }
 
     private static String joinPath(AnyBlockValue path, String prefix, String suffix) {
@@ -818,7 +851,7 @@ public final class Molder {
                 || !(segments.getFirst() instanceof WordValue);
     }
 
-    private static String renderEvent(EventValue event, boolean forReading) {
+    private static String renderEvent(EventValue event) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
         List<Value> spec = event.moldSpec();
         String fields = stepOneLevelIn(() -> {
@@ -832,7 +865,7 @@ public final class Molder {
                 }
                 Value shown = spec.get(at);
                 boolean quoted = shown instanceof WordValue;
-                written.append(quoted ? "'" : "").append(render(shown, forReading));
+                written.append(quoted ? "'" : "").append(render(shown, ALWAYS_MOLDED));
             }
             return written.toString();
         });

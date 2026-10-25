@@ -84,7 +84,60 @@ in a second where `./gradlew` takes five minutes, and it catches the whole class
 mistakes -- a missing import, an unreachable branch, a dangling doc comment under
 `-Werror` -- that have cost several round trips here.
 
-## Rebol's suite is a ratchet. JEBOL's own tests are the record
+## Names: a method name is a message, not a sentence
+
+**You are sending the receiver a message -- `object.dispatchCommand()` -- and
+the name is the message.** A command or a question, not prose about the code:
+`a`, `an` and `the` are words a sentence needs and a message does not.
+`scanTheItem` is `scanItem`, `copyTheMap` is `copyMap`,
+`combineWithANumber` is `combineWithNumber`, `combineFromTheLeft` is
+`combineFromLeft`, `asMoneyInTheCurrencyOf` is `asMoneyUsingCurrency`. A
+fresh `aBlah` or `theBlah` is the sign that a sentence was written and then
+pointed at an object. The same words are furniture in a variable or a type
+name.
+
+**A predicate is a question, and there the article is the question.**
+`isAFile` keeps its: "is a file" is what is being asked, not furniture
+around it.
+
+**And the verb is the operation.** `may` hedges the answer into nothing:
+`mayLoseATime` is `willDeductTime`, `mayMeetADate` is
+`canBeUsedToCalculateDate`. A metaphor hides the operation (`meet`,
+`lose`) -- name the operation. A relative clause is the same failure in a
+longer shape: `confineAnyInterpreterThisOneStarts` is `constrainInterpreter`,
+`writeWhatConsolePrints` is `responseBasedOnOutcome`.
+
+**And `of` belongs to the static constructor, and almost nowhere else.**
+`IntegerValue.of(...)` and `List.of(...)` keep it, because it is the idiom
+and it builds the object - sparingly even there. Anywhere else a trailing
+`Of` is naming the method's own argument, and it goes: `formThePairsOf` is
+`formPairs`, `readTheOctetOf` is `readOctetAt`, `findTheChildOf` is
+`childAt`.
+
+**A name flagged for review is read, not stripped.** Look at what the body
+does and name that. `hasNoOrderToTakeTheFirstSoManyOf` is
+`isObjectErrorModuleOrPort` - the positive question the body answers, never
+flipped to `isNot` to make a call site read well. `isTheStarThatMeansKeepIt`
+is `isWildcard`, `giveBackWhatTheCollectorTook` is
+`removeCollectedReservations`, `furnitureOfAResizableWindow` is
+`resizableWindowInsets`. Naming the branches is right when the branches are
+the method: `lendTheElementOf` is `convertToCharacterValueOrReturnInput`.
+
+**If the shorter name is lossy, keep the longer one.** `canonFor` was
+shorter; `canonicalIndexFor` was the name.
+
+The older names are all over the tree and are renamed as they are touched
+(`ide_refactor_rename`, never by hand), with `relatedRenamingStrategy:
+"none"`: the default also renames what it judges related, which here has
+caught test classes, a tree the rule leaves alone. A rename aimed at an
+enum constant's declaration can land on the enum type itself; aim it at a
+use site. What this rule is for is the new one.
+
+The test tree is outside the rule: a test class and a test method name what
+the test exercises -- a description of behaviour, not a message sent to an
+object -- and a sentence belongs there.
+
+## Rebol's own test suite runs fully in JEBOL. JEBOL's own tests are the record
 
 Two different things run here and they have different jobs.
 
@@ -336,59 +389,6 @@ on the grounds that it named the C function each expectation was read from --
 and that carve-out kept three hundred and sixty essays in the test tree. The
 evidence is worth having and it belongs in `docs/`, where the next reader looks
 for it, rather than above a class they have to open the file to find.
-
-## Names: a method name is a message, not a sentence
-
-**You are sending the receiver a message -- `object.dispatchCommand()` -- and
-the name is the message.** A command or a question, not prose about the code:
-`a`, `an` and `the` are words a sentence needs and a message does not.
-`scanTheItem` is `scanItem`, `copyTheMap` is `copyMap`,
-`combineWithANumber` is `combineWithNumber`, `combineFromTheLeft` is
-`combineFromLeft`, `asMoneyInTheCurrencyOf` is `asMoneyUsingCurrency`. A
-fresh `aBlah` or `theBlah` is the sign that a sentence was written and then
-pointed at an object. The same words are furniture in a variable or a type
-name.
-
-**A predicate is a question, and there the article is the question.**
-`isAFile` keeps its: "is a file" is what is being asked, not furniture
-around it.
-
-**And the verb is the operation.** `may` hedges the answer into nothing:
-`mayLoseATime` is `willDeductTime`, `mayMeetADate` is
-`canBeUsedToCalculateDate`. A metaphor hides the operation (`meet`,
-`lose`) -- name the operation. A relative clause is the same failure in a
-longer shape: `confineAnyInterpreterThisOneStarts` is `constrainInterpreter`,
-`writeWhatConsolePrints` is `responseBasedOnOutcome`.
-
-**And `of` belongs to the static constructor, and almost nowhere else.**
-`IntegerValue.of(...)` and `List.of(...)` keep it, because it is the idiom
-and it builds the object - sparingly even there. Anywhere else a trailing
-`Of` is naming the method's own argument, and it goes: `formThePairsOf` is
-`formPairs`, `readTheOctetOf` is `readOctetAt`, `findTheChildOf` is
-`childAt`.
-
-**A name flagged for review is read, not stripped.** Look at what the body
-does and name that. `hasNoOrderToTakeTheFirstSoManyOf` is
-`isObjectErrorModuleOrPort` - the positive question the body answers, never
-flipped to `isNot` to make a call site read well. `isTheStarThatMeansKeepIt`
-is `isWildcard`, `giveBackWhatTheCollectorTook` is
-`removeCollectedReservations`, `furnitureOfAResizableWindow` is
-`resizableWindowInsets`. Naming the branches is right when the branches are
-the method: `lendTheElementOf` is `convertToCharacterValueOrReturnInput`.
-
-**If the shorter name is lossy, keep the longer one.** `canonFor` was
-shorter; `canonicalIndexFor` was the name.
-
-The older names are all over the tree and are renamed as they are touched
-(`ide_refactor_rename`, never by hand), with `relatedRenamingStrategy:
-"none"`: the default also renames what it judges related, which here has
-caught test classes, a tree the rule leaves alone. A rename aimed at an
-enum constant's declaration can land on the enum type itself; aim it at a
-use site. What this rule is for is the new one.
-
-The test tree is outside the rule: a test class and a test method name what
-the test exercises -- a description of behaviour, not a message sent to an
-object -- and a sentence belongs there.
 
 ## Writing tests that carry REBOL source
 
