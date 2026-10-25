@@ -21,6 +21,11 @@ public class ToAction extends DefaultNative implements ActionValue {
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return false;
+    }
+
+    @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value converted = arguments.getFirst().findDatatypeItStandsFor()

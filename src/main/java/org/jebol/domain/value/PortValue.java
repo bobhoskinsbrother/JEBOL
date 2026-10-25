@@ -76,6 +76,13 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
                 : Optional.empty();
     }
 
+    /** What the port was opened on, which is what a failure about it names. */
+    public Value reference() {
+        return readFieldValue("spec") instanceof ObjectValue spec
+                ? spec.readFieldValue("ref")
+                : NoneValue.none();
+    }
+
     public void requireObjectSpec() {
         if (!(readFieldValue("spec") instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_PORT);

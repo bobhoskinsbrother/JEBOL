@@ -29,6 +29,11 @@ public class ReflectAction extends DefaultNative implements ActionValue {
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return false;
+    }
+
+    @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 reflect(arguments.getFirst(), (AnyWordValue) arguments.get(1));

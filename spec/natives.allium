@@ -3817,7 +3817,7 @@ rule BytesThatArriveAreAddedToThePortsData {
 -- decided which protocols existed, rather than which service each one needed.
 rule APortWithAnActorWrittenInRebolNeedsNoServiceToOpen {
     when: EvaluateCall(verb, target)
-    requires: verb in {open, read, write, delete, query}
+    requires: verb in {create, delete, open, read, write, query, rename}
     requires: names_a_scheme_whose_actor_is_an_object(target)
 
     ensures: not CallFails(error: no_service)
@@ -3925,33 +3925,102 @@ rule AnActionOnSuchAPortCallsTheFunctionOfThatName {
     ensures: CallResult(value: what_that_function_answered())
 }
 
--- And the refinements go with it. An actor's function declares its own, and
--- what a caller asked for is part of what the action was given: `read/binary`
--- means the actor's READ runs with BINARY true.
+-- However the port was reached. An address that names a port rather than being
+-- one -- a file, a url, a block of a specification, a word naming a scheme --
+-- makes its port on the way to the verb, and the verb then goes to that port's
+-- actor exactly as it would have gone to one opened by hand. The C does it by
+-- putting the port it made in the first argument's place, so the two routes
+-- stop differing at that line.
 --
--- Dropping them is quiet and total. HTTP's READ answers a decoded string for
--- `read`, the raw bytes for `read/binary` and a three-part block for
--- `read/all`, all from the same function reading the same response -- so an
--- actor called with no refinements can only ever give the first of the three,
--- and gives it without complaining.
-rule TheRefinementsAskedForReachTheActor {
+-- Which verbs can arrive that way is settled by what each one's first argument
+-- accepts, and not by the dispatch: the seven below are the actions declaring
+-- a file, url or block beside the port, and CLOSE, OPEN?, UPDATE and FLUSH
+-- take a port and nothing else. Routing fewer than the seven is how
+-- `query https://x` came to answer the names of a scheme's INFO fields while
+-- the protocol's own QUERY, which it declares, was never called.
+rule AnActionOnAnAddressNamingSuchAPortReachesTheActorToo {
+    when: EvaluateCall(verb, target)
+    requires: names_a_scheme_whose_actor_is_an_object(target)
+    requires: verb in {create, delete, open, read, write, query, rename}
+    requires: the_actor_holds_a_function_called(verb)
+
+    ensures: CallResult(value: what_that_function_answered())
+}
+
+-- And the whole call goes with it: every argument and every refinement, as the
+-- caller gave them. An actor's function declares its own parameters, so what
+-- arrives is laid out against those -- each refinement true or false as it was
+-- asked for, and each argument under a refinement the one the caller put
+-- there, matched by the refinement's name rather than by its position, which
+-- is what `Redo_Func` does with the frame it is handed.
+--
+-- Rebuilding the list instead of passing it through loses the arguments
+-- quietly and keeps the refinements, which is the worst of the two. HTTP's
+-- READ answers a decoded string for `read`, the raw bytes for `read/binary`
+-- and a three-part block for `read/all`, all from the same function reading
+-- the same response -- so an actor called with no refinements can only ever
+-- give the first of the three. And `copy/part port 10` handed over as the port
+-- alone reaches the actor with PART true and LENGTH none, so the actor limits
+-- the copy to nothing and says so to nobody.
+rule TheArgumentsAndRefinementsAsGivenReachTheActor {
     when: EvaluateCall(verb, target)
     requires: is_port(target)
     requires: the_actor_is_an_object(target)
     requires: the_actor_holds_a_function_called(verb)
 
-    ensures: the_refinements_of(the_actors_function) =
+    ensures: the_parameters_of(the_actors_function) =
         what_the_caller_asked_for()
 }
 
 -- An action the actor has no function for is refused by name, so a caller
 -- learns which verb this port does not do rather than that something went
 -- wrong somewhere inside it.
+--
+-- Which is the other half of sending the lot: a verb that is not wired reaches
+-- the actor, finds nothing, and says which verb it was. `prot-mysql.reb`
+-- declares an INSERT, and a dispatch that knew only its own list of verbs left
+-- that INSERT uncallable while answering `cannot-use` -- a complaint about the
+-- datatype, from a port that had the function all along.
 rule AnActionTheActorHasNoFunctionForIsRefused {
     when: EvaluateCall(verb, target)
     requires: is_port(target)
     requires: the_actor_is_an_object(target)
     requires: not the_actor_holds_a_function_called(verb)
+    requires: not (verb in {make, to, reflect})
+
+    ensures: CallFails(error: no_port_action, about: verb)
+}
+
+-- A built-in actor refuses by name too, and the list it refuses from is its
+-- own. Each scheme this build serves itself has one: a file port serves
+-- twenty-six verbs and a directory port ten, a transport ten, an event queue
+-- nine, a checksum six. Every other verb on such a port is `no-port-action`,
+-- exactly as it is on an actor written in REBOL, because in the C each of
+-- these is a `switch` whose `default` is `Trap1(RE_NO_PORT_ACTION, ...)`.
+--
+-- Which is the half that is easy to get wrong in the other direction. A verb
+-- a scheme does not serve has an ordinary meaning for a series, and a port is
+-- not a series: `find` on a file port answered none, `flush` answered the
+-- port, and `copy` answered the port object rather than the file's bytes --
+-- three answers a script cannot tell from a real one. `no-port-action` is the
+-- answer precisely because it cannot be mistaken for success.
+--
+-- A verb the scheme serves but that needs something open is refused earlier
+-- and differently, as `not-open`: a closed socket serves only OPEN, CLOSE,
+-- OPEN? and UPDATE and answers `not-open` to everything else, served or not,
+-- because `Transport_Actor` tests the socket before it reaches the verb.
+--
+-- Reading each list means reading the fall-through with the cases. `p-event.c`
+-- ends with `case A_FIND: // add it` and then `default:`, so FIND is a label
+-- on the refusal rather than a verb the event queue serves, and `find` on one
+-- is `no-port-action` -- which a real 3.22.5 confirms, and which the comment
+-- beside it reads as the opposite of.
+rule ABuiltInActorServesItsSchemesVerbsAndRefusesTheRest {
+    when: EvaluateCall(verb, target)
+    requires: is_port(target)
+    requires: the_actor_is_a_word(target)
+    requires: not (verb in {make, to, reflect})
+    requires: not the_scheme_serves(verb)
 
     ensures: CallFails(error: no_port_action, about: verb)
 }
@@ -3968,12 +4037,14 @@ rule AnActionTheActorHasNoFunctionForIsRefused {
 --
 -- So `p: open %f  p/spec: 5  close p` raises invalid-port, and the message is
 -- "invalid port object (invalid field values)" rather than anything about
--- closing. The check is on the port and not on the verb, so read, write,
--- close and query all answer the same.
+-- closing. The check is on the port and not on the verb, so every action that
+-- goes to the actor answers the same -- `Validate_Port_Value` is the first
+-- line of `Do_Port_Action`, before the actor is even read, so `length?` and
+-- `head` refuse such a port as surely as `read` does.
 rule APortWhoseSpecIsNotAnObjectIsInvalid {
     when: EvaluateCall(verb, target)
     requires: is_port(target)
-    requires: verb in {open, close, read, write, query}
+    requires: not (verb in {make, to, reflect})
     requires: not the_spec_is_an_object(target)
 
     ensures: CallFails(error: invalid_port)
@@ -3991,12 +4062,6 @@ rule AnActorThatIsNeitherIsAnInvalidActor {
 
     ensures: CallFails(error: invalid_actor)
 }
-
-open question "Only fifteen verbs reach a port's actor, where `T_Port` sends every action except MAKE, TO and REFLECT. POKE, PUT, SELECT, LENGTH?, PICK, COPY, REMOVE, UPDATE, OPEN?, CLOSE, MODIFY, QUERY, READ, WRITE and OPEN are wired by hand; APPEND, INSERT, CHANGE, CLEAR, TAKE, FIND, INDEX?, HEAD, TAIL, SKIP, AT, CREATE and RENAME run their ordinary series path on a port instead, and none of them raises no-port-action either. It is not hypothetical: prot-mysql.reb's actor declares an INSERT that can never be called. The question is whether the dispatch should be made general, as the C's is, or whether the rule should be narrowed to the verbs that are wired -- and the first cannot be done without deciding what every series action means for a port that does not serve it."
-
-open question "A url reaches an actor for OPEN, READ and WRITE and not for QUERY or DELETE. `query https://x` never reaches prot-http's own QUERY, which it does declare, and answers no-service instead; `delete https://x` has no actor hook at all and answers the same, where the right answer would be no-port-action because the protocol declares no DELETE. So APortWithAnActorWrittenInRebolNeedsNoServiceToOpen is satisfied by neither path, and its verb list is either too long or the routing is too short."
-
-open question "The refinement arguments an actor is given are truncated on three paths, because the argument list handed over is rebuilt rather than passed through: COPY hands over the port alone, OPEN the port alone, WRITE the port and the data. The missing positions are filled with none, so `copy/part port 10` reaches the actor with PART true and LENGTH none. Latent rather than live -- HTTP's COPY and OPEN take only a port and TLS's WRITE takes a port and a value -- and the fix is the one READ already has, which keeps everything after the first position. TheRefinementsAskedForReachTheActor says nothing about the arguments, which is the half that is wrong."
 
 open question "BIND with a bound word as its target walks up from that word's context; BIND with a block does not. So `bind 'outer 'local` binds OUTER and `bind [outer] 'local` leaves it alone, which is one native disagreeing with itself. The block form matches `Bind_Block` and the C has no parent chain to walk, so the word form is the one to change -- but it is the older of the two and something may be relying on it. It wants measuring against a real 3.22.5 on a word target before either is moved."
 

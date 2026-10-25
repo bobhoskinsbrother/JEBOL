@@ -10,23 +10,25 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
-2026-10-13.
+Measured on 2026-10-12, the test count row on 2026-10-25 and the timing rows on
+2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
+an Intel one read about 122ms median and 187ms p95, so compare a change against
+a baseline from the same machine rather than against the row.
 
-| Measure | Reads |
-| --- | --- |
-| `fails-on-rebol-too.txt` | 160 a real 3.22.5 also fails or never runs |
-| `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
-| `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
-| `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 5 |
-| `./gradlew allTests` | 29,137 tests on 2026-10-22: `unitTests` 2,976, `functionalTests` 24,161, `endToEndTests` 2,000 |
-| `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
-| `corpus/` | 1,140 of 1,140 entries pass |
-| the shipped jar | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies |
-| the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
+| Measure                       | Reads                                                                                                                                                                                                             |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `fails-on-rebol-too.txt`      | 160 a real 3.22.5 also fails or never runs                                                                                                                                                                        |
+| `scripts/c-parity.py`         | 279 of 279 C functions match R3's surface                                                                                                                                                                         |
+| `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
+| `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
+| `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
+| `./gradlew allTests`          | 29,499 tests on 2026-10-25: `unitTests` 2,980, `functionalTests` 24,450, `endToEndTests` 2,069                                                                                                                    |
+| `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
+| `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
+| the shipped jar               | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                    |
+| the web build                 | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
-| the interpreter's speed | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser |
+| the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
 
 ---
 
@@ -35,7 +37,9 @@ Measured on 2026-10-12, the test count row on 2026-10-22 and the timing rows on
 Read `CLAUDE.md` first.
 
 - **`./r3-head`** is a real Rebol 3.22.5 and the authority. It takes a script
-  file with a `Rebol []` header. Ask it rather than guessing.
+  file with a `Rebol []` header. Ask it rather than guessing. It is not
+  checked in: `scripts/build-r3.sh` builds it from `rebol3-source/`, and says
+  how to get the one Rebol it needs to do that.
 - **`rebol3-source/`** is the C, searched through the IntelliJ MCP.
 - **`scripts/sweep.py <file.r3>`** shows which suite assertions answer
   differently; **`org.jebol.suite.SuiteStops`** shows which raise. Fix a
@@ -66,49 +70,31 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Seventeen pieces of work, in the order to do them.
+Sixteen pieces of work, in the order to do them.
 
-**1a to 1l come first: each makes the same script answer differently on a
+**1a to 1k come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: a scheme written in
-REBOL (1a), saving and loading data (1b, 1c), binding (1d), the compressions
-and modules a script can ask for (1e to 1g), the console and https (1h, 1i),
-then what a script sees when it fails (1j to 1l).
+either. Ordered by how much ordinary code they break: saving and loading
+data (1a, 1b), binding (1c), the compressions and modules a script can ask
+for (1d to 1f), the console and https (1g, 1h), then what a script sees when
+it fails (1i to 1k).
 
-**1m to 1q change nothing a script run on both would see**: the spec, a
+**1l to 1p change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
-JEBOL fixes on purpose (1p), which make the two differ deliberately.
+JEBOL fixes on purpose (1o), which make the two differ deliberately.
 
-#### 1a. Every verb reaches a port's actor, with all its arguments
+**And one Rebol file that does not run here is this project's own**:
+`scripts/resolve-nest.r3`, the pre-make step `scripts/build-r3.sh` needs, so
+JEBOL cannot bootstrap `./r3-head` and a release has to be fetched to get the
+first one (the script says how). It stops at `foreach key listed [spec/:key:
+copy []]` with `invalid-path`, naming `:key`. Measured on 2026-10-25: the same
+write works on a fresh map, in a `foreach`, after `secure [file allow]`, and
+with `scan-names` run over a small literal block -- it fails only once
+`scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
+1,200 lines of `set-word!` and `to word!`. Shrink that input until the
+smallest failing case is one line before reading any code.
 
-A scheme written in REBOL, with an actor declaring INSERT, APPEND, FIND,
-CLEAR, COPY, READ and WRITE, measured on 2026-10-23:
-
-| Call | R3 | JEBOL |
-| --- | --- | --- |
-| `insert p 1`, `append p 1`, `clear p` | the actor's answer | `cannot-use` |
-| `find p 1` | the actor's answer | none |
-| `take p` (not declared) | `no-port-action` | `cannot-use` |
-| `copy/part p 10` | the actor gets PART true, LENGTH 10 | LENGTH none |
-| `read/part p 10`, `write/append p "x"` | as declared | the same |
-
-JEBOL wires fifteen verbs to an actor by hand; R3's `T_Port` sends every
-action except MAKE, TO and REFLECT. `prot-mysql.reb` declares an INSERT that
-can never be called. COPY and OPEN rebuild the argument list instead of
-passing it through, which loses the refinement values.
-
-1. Spec: replace the open questions under `TheRefinementsAskedForReachTheActor`
-   and the url routing with one rule: every action but MAKE, TO and
-   REFLECT goes to the actor with its arguments as given, and an action the
-   actor does not declare is `no-port-action`.
-2. Tests through a REBOL-written scheme for every action, declared and not,
-   with every refinement.
-3. One general dispatch replacing the fifteen hand-wired verbs.
-
-**Done when** every action R3 sends to an actor reaches JEBOL's with the same
-arguments, and an undeclared one is `no-port-action`.
-
-#### 1b. MOLD keeps a nested series' position, and lays a struct out as R3 does
+#### 1a. MOLD keeps a nested series' position, and lays a struct out as R3 does
 
 - `mold/all reduce [next "abc"]` is `["bc"]` here and `[#(string! "abc" 2)]`
   in R3. A series at the top keeps its position (`mold/all next "abc"`
@@ -124,7 +110,7 @@ arguments, and an undeclared one is `no-port-action`.
 
 **Done when** the sweep shows no difference, and is a test.
 
-#### 1c. LOAD and TRANSCODE keep the line breaks at the top level
+#### 1b. LOAD and TRANSCODE keep the line breaks at the top level
 
 `mold load "a^/b"` is `[a b]` here and `[a^/b]` in R3, and
 `new-line? next load "a^/b"` is false here and true there. The same for
@@ -135,7 +121,7 @@ error's `near` prints the whole script on one line.
 **Done when** the outermost block carries its line breaks as R3's does, for
 LOAD, TRANSCODE and a script run from a file.
 
-#### 1d. BIND with a word target does not look outward
+#### 1c. BIND with a word target does not look outward
 
 `bind 'outer in ctx/inner 'local`, where only the outer object has OUTER, is
 `not-in-context` in R3 and 1 in JEBOL: the word form walks up to a parent
@@ -151,7 +137,7 @@ word is left alone).
 
 **Done when** both forms answer as R3 does on all three.
 
-#### 1e. Port `lz4` and `lzav` to COMPRESS
+#### 1d. Port `lz4` and `lzav` to COMPRESS
 
 R3 lists `[deflate zlib gzip br crush lz4 lzav lzma lzw]` in
 `system/catalog/compressions`; JEBOL lists
@@ -175,7 +161,7 @@ the gap, not of R3, which changes with the port.
 **Done when** both compress and decompress as R3 does at every level, and
 the catalogue reads as R3's.
 
-#### 1f. Review the sixteen missing entries of `system/modules`
+#### 1e. Review the sixteen missing entries of `system/modules`
 
 R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
 downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
@@ -195,9 +181,9 @@ For each of the sixteen, and the `serial` scheme:
    leave it out on purpose and list it under Standing.
 
 **Done when** each has a decision written down, and the ones to build are
-goals of their own. Brotli is reviewed: 1g.
+goals of their own. Brotli is reviewed: 1f.
 
-#### 1g. The `brotli` module, and the streaming encoder it needs
+#### 1f. The `brotli` module, and the streaming encoder it needs
 
 `compress` and `decompress` with `'br` already run on JEBOL's Brotli and
 write R3's bytes. `system/modules/brotli` is something else: a link to
@@ -208,15 +194,15 @@ declares the commands, `src/brotli-commands.c` implements them). A real
 
 What `import brotli` gives a script, against what JEBOL's port has:
 
-| Command | What it does | In the Java port |
-| --- | --- | --- |
-| `version` | the Brotli library's version | no; the vendored C is 1.2.0 |
-| `compress` `/part` `/level` | compress in one call | yes, `Brotli.compress` |
-| `decompress` `/part` `/size` | decompress in one call | yes, `Brotli.decompress` |
-| `make-encoder` `/level`, `make-decoder` | a handle holding a stream's state | no |
-| `write` `/flush` `/finish`, `read` | feed a stream in chunks and take its output | no |
-| an encoder's `/mode` and `/size-hint`, a codec's `/finished` | tune the encoder; ask whether a stream ended | no |
-| on import | appends `br` to `system/schemes/http/headers/Accept-Encoding` | trivial |
+| Command                                                      | What it does                                                  | In the Java port            |
+|--------------------------------------------------------------|---------------------------------------------------------------|-----------------------------|
+| `version`                                                    | the Brotli library's version                                  | no; the vendored C is 1.2.0 |
+| `compress` `/part` `/level`                                  | compress in one call                                          | yes, `Brotli.compress`      |
+| `decompress` `/part` `/size`                                 | decompress in one call                                        | yes, `Brotli.decompress`    |
+| `make-encoder` `/level`, `make-decoder`                      | a handle holding a stream's state                             | no                          |
+| `write` `/flush` `/finish`, `read`                           | feed a stream in chunks and take its output                   | no                          |
+| an encoder's `/mode` and `/size-hint`, a codec's `/finished` | tune the encoder; ask whether a stream ended                  | no                          |
+| on import                                                    | appends `br` to `system/schemes/http/headers/Accept-Encoding` | trivial                     |
 
 The port compresses and decompresses a whole input in one call. It has no
 encoder that keeps its state between calls, never flushes a block partway
@@ -253,7 +239,7 @@ list, and Brotli's own corpus round-trips through the streaming API in
 chunks.
 
 
-#### 1h. The console honours echo, and `call/console` runs without one
+#### 1g. The console honours echo, and `call/console` runs without one
 
 - **Echo.** `modify system/ports/output 'echo false` is accepted and changes
   nothing: what is typed is still shown, so a script asking for a password
@@ -269,7 +255,7 @@ chunks.
 through the command line), the port has no extra field, and `call/console`
 runs under a host with no console.
 
-#### 1i. TLS: an out-of-order chain, and a Unicode host name
+#### 1h. TLS: an out-of-order chain, and a Unicode host name
 
 R3 trusts every server, so a script reading a server like these works there
 and fails here.
@@ -287,7 +273,7 @@ wrongly named ones it already has.
 **Done when** both are rules, and the command line reads a local server that
 sends its chain backwards and one named in Unicode.
 
-#### 1j. An error a native raises carries its `near` and `where`
+#### 1i. An error a native raises carries its `near` and `where`
 
 For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
 and `where: [compress try ...]`; JEBOL gives none for both. Errors from
@@ -301,14 +287,14 @@ that stops on such an error prints a different `** Near:` and `** Where:`.
 
 **Done when** the sweep shows no difference, and is a test.
 
-#### 1k. An operator with nothing on its left raises what R3 raises
+#### 1j. An operator with nothing on its left raises what R3 raises
 
 Measured on 2026-10-23:
 
-| Source | R3 | JEBOL |
-| --- | --- | --- |
-| `do [+ 1]` | `no-op-arg`, arg1 `+` | `no-op-arg`, arg1 the sentence "the operator + has nothing on its left" |
-| `do [1 + + 3]` | `cannot-use`, arg1 `add:`, arg2 none | `missing-arg`, arg1 the same sentence |
+| Source         | R3                                   | JEBOL                                                                   |
+|----------------|--------------------------------------|-------------------------------------------------------------------------|
+| `do [+ 1]`     | `no-op-arg`, arg1 `+`                | `no-op-arg`, arg1 the sentence "the operator + has nothing on its left" |
+| `do [1 + + 3]` | `cannot-use`, arg1 `add:`, arg2 none | `missing-arg`, arg1 the same sentence                                   |
 
 `AnOperatorWithNothingOnItsLeftFails` in `spec/eval.allium` names
 `missing-arg` for the second case, which R3 does not raise there: the rule is
@@ -321,10 +307,10 @@ wrong, so it is fixed first.
 
 **Done when** every position probed answers R3's id and arguments.
 
-#### 1l. An error's arguments are values, not sentences
+#### 1k. An error's arguments are values, not sentences
 
 Twice now JEBOL has put an English sentence where R3 puts a value: arg1 of
-the operator error (1k), and arg1 of `gui-metric/set 'restore true` ("no host
+the operator error (1j), and arg1 of `gui-metric/set 'restore true` ("no host
 serves the metric restore"). A script that reads `e/arg1` gets prose.
 
 1. Sweep: raise every error JEBOL can raise, read arg1, arg2 and arg3, and
@@ -337,11 +323,13 @@ serves the metric restore"). A script that reads `e/arg1` gets prose.
 **Done when** no error argument is a sentence, proven by the sweep as a
 test.
 
-#### 1m. Clear the spec's open questions
+#### 1l. Clear the spec's open questions
 
 All 63 were read against the code and `./r3-head` on 2026-10-23 and each has
-an answer. The work that follows from the answers is 1h, 1i, 1o, 1p and 1q;
-this sub-goal is the spec's side of it. Every edit runs `allium check` clean.
+an answer; 60 are left, the three about a port's actor having become rules
+with the dispatch they describe. The work that follows from the answers is
+1g, 1h, 1n, 1o and 1p; this sub-goal is the spec's side of it. Every edit
+runs `allium check` clean.
 
 1. **Already answered: the question becomes a rule, or goes.** Each of
    these now matches R3 or is built. Where the behaviour is not already a
@@ -361,18 +349,18 @@ this sub-goal is the spec's side of it. Every edit runs `allium check` clean.
      and DUMP-OBJ exist; the unbalanced-delimiter spellings match R3.
      Delete the paren-led path question outright: R3 reads
      `(make object! [q: 7])/q` as a paren and a refinement too.
-   - `natives.allium`: `delete` and `query` on a url answer as R3's;
-     the two error ids for giving a native a body match R3 on all three
-     spellings; `read %*.r3` lists matches; REMOVE on a complemented bitset
-     matches; PROTECT/HIDE hides; REPEAT takes a series and a decimal; the
-     six natives waiting on datatypes exist; a handle holds a value and
-     stays opaque; `CompressedBytesAreTheOnesARealRebolWrites` now holds for
-     all seven methods (zlib, gzip and deflate write R3's bytes at levels 0,
-     1, 6 and 9), so the libdeflate question goes and the invariant loses
-     its exception; a wait on a connection with no timeout answers none
-     until connections are read on their own thread (a rule, not a
-     question); `system/options/boot` serves children only, which is enough
-     (owner's answer); a byte-exact CHECK over a vector is dropped.
+   - `natives.allium`: the two error ids for giving a native a body match
+     R3 on all three spellings; `read %*.r3` lists matches; REMOVE on a
+     complemented bitset matches; PROTECT/HIDE hides; REPEAT takes a
+     series and a decimal; the six natives waiting on datatypes exist; a
+     handle holds a value and stays opaque;
+     `CompressedBytesAreTheOnesARealRebolWrites` now holds for all seven
+     methods (zlib, gzip and deflate write R3's bytes at levels 0, 1, 6 and
+     9), so the libdeflate question goes and the invariant loses its
+     exception; a wait on a connection with no timeout answers none until
+     connections are read on their own thread (a rule, not a question);
+     `system/options/boot` serves children only, which is enough (owner's
+     answer); a byte-exact CHECK over a vector is dropped.
    - `screen.allium`: VIEW waits until a deadline ends it, built; a draw
      block on a gob paints; a missing screen's metrics are zero, as R3's
      host answers; the window's size is settled by the sliders example
@@ -391,9 +379,9 @@ this sub-goal is the spec's side of it. Every edit runs `allium check` clean.
      folder; no browser can name it.
 2. **Answered by the owner, with work to do: the question becomes a rule
    when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: console echo and `call/console` (1h), TLS chains and Unicode
-   hosts (1i), home and values between interpreters (1o), the Rebol bugs
-   (1p), `effect` in DRAW and GUI-METRIC/SET (1q). The `call/console`
+   together: console echo and `call/console` (1g), TLS chains and Unicode
+   hosts (1h), home and values between interpreters (1n), the Rebol bugs
+   (1o), `effect` in DRAW and GUI-METRIC/SET (1p). The `call/console`
    question is in `embed.allium` and `natives.allium` both; the rule goes
    in `embed.allium` and the copy in `natives.allium` is deleted.
 3. **Not a question for JEBOL:** move the `open/new` question -- a real
@@ -441,7 +429,7 @@ this sub-goal is the spec's side of it. Every edit runs `allium check` clean.
 **Done when** the spec holds only the four questions in step 6, each in
 plain English, and every answered one is a rule or gone.
 
-#### 1n. The table of word spellings belongs to an interpreter
+#### 1m. The table of word spellings belongs to an interpreter
 
 `Context.ONE_NAME_PER_SPELLING` keeps one lower-cased copy of every spelling
 ever read, in a static table every interpreter in the process shares and
@@ -453,7 +441,7 @@ held in a static, and it goes.
 interpreter is, proven by a test that makes words in one interpreter and
 finds none of them in the next.
 
-#### 1o. A confined script's home, and values between interpreters
+#### 1n. A confined script's home, and values between interpreters
 
 The command line confines a script to its folder as R3 does, and both report
 the machine's home, so neither changes what a script run on both answers.
@@ -471,7 +459,7 @@ the machine's home, so neither changes what a script run on both answers.
 **Done when** both are rules with tests, and a confined interpreter can make
 REBOL's user file at home.
 
-#### 1p. Fix five Rebol bugs, and copy one
+#### 1o. Fix five Rebol bugs, and copy one
 
 Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
 real 3.22.5 does not, so each gets a Standing entry saying what and why.
@@ -496,16 +484,28 @@ real 3.22.5 does not, so each gets a Standing entry saying what and why.
    bytes for chacha20-poly1305, in both. Find which of those are the bug
    (a GCM stream may simply need its tag read differently) and raise on
    those.
-5. **Opening a MIDI port that is already open raises `already-open`**, as the
+5. **Opening a port that is already open raises `already-open`**, as the
    crypt port does, instead of connecting again and leaking the first
-   connection.
+   connection. MIDI is the one that leaks; the sweep of every built-in
+   scheme on 2026-10-25 found three more places where a port's state should
+   gate a verb and does not, each measured against `./r3-head`:
+   - `open p` on an open file port is `already-open %held.txt` in R3 and
+     answers the port here; `create p` on an open directory port the same.
+   - `delete p` on an *open* file port is `no-delete %held.txt` in R3, and
+     here it deletes the file.
+   - `rename p %zz` refuses in both, as `no-rename`, but arg1 is the file in
+     R3 and the whole port object here.
+   These are the only differences left on any built-in scheme after 1a:
+   every one of the thirty-seven verbs otherwise answers what R3 answers,
+   on each of file, dir, tcp, udp, dns, console, event, system, callback,
+   checksum, crypt and midi.
 6. **Copied, not fixed:** `change/part` on an image with a count changes
    nothing. The question becomes a finding in `docs/rebol-findings.md`.
 
 **Done when** the five behave as above, each with a rule, tests, and a
 Standing entry, and the suite records the `image-diff` difference.
 
-#### 1q. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
+#### 1p. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
 
 - **`effect`** is the one DRAW command (of the 34 in `dial-draw.reb`) JEBOL
   does not paint, and it is skipped without a word. It raises until it is
@@ -528,7 +528,7 @@ restores and maximises a real window.
    canvas and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled. The system back gesture (and
    the back button) moves the app's history back, through Android's back
-   handler, as a swipe does in a browser (1m, `spec/nav.allium`).
+   handler, as a swipe does in a browser (1l, `spec/nav.allium`).
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
    console view. CALL is refused. And a task's body must run on the host's
    ports too: `ThreadTasks`
@@ -572,7 +572,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    on Android, using goal 2 step 4's work in the 2010 GUI. iOS has no system
    back gesture, so the app recognises a swipe from the left edge as back
    and from the right edge as forward, the way a browser on the phone
-   does (1m, `spec/nav.allium`).
+   does (1l, `spec/nav.allium`).
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
@@ -592,7 +592,7 @@ which lists nothing. What is left is an adapter behind `MidiDevices` over
 arrives on another thread and reaches the port's `awake` through the
 interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Opening a port that is already open raises `already-open`
-rather than connecting twice (1p).
+rather than connecting twice (1o).
 
 ### 5. The type-major refactor: what is left
 

@@ -54,6 +54,16 @@ public final class OpenFile {
         return answerAcrossHost(() -> seekable.atTail(files));
     }
 
+    public boolean isAtItsHead() {
+        return position() == 0;
+    }
+
+    public boolean isPastItsEnd() {
+        refuseClosedPosition();
+        granted.require(HostService.FILES);
+        return position() > measureWholeSize();
+    }
+
     public Value measureLengthLeft() {
         refuseClosedPosition();
         granted.require(HostService.FILES);

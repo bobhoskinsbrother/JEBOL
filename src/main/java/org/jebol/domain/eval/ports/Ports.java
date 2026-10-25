@@ -202,11 +202,6 @@ public final class Ports {
     }
 
     public Value readFrom(PortValue port, Evaluator evaluator, List<Value> arguments, PortRequest asked) {
-        Optional<Value> itsOwn = evaluator.askRebolActor(
-                "read", withPortInFront(port, arguments), asked.refinements());
-        if (itsOwn.isPresent()) {
-            return itsOwn.get();
-        }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromConsole(evaluator);
             case "clipboard" -> lastCopiedText(port, evaluator, asked);
@@ -222,12 +217,6 @@ public final class Ports {
             default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
                     "nothing here reads the " + port.schemeName() + " scheme");
         };
-    }
-
-    private List<Value> withPortInFront(PortValue port, List<Value> arguments) {
-        List<Value> asActorTakesThem = new ArrayList<>(arguments);
-        asActorTakesThem.set(0, port);
-        return asActorTakesThem;
     }
 
     private Value lineReadFromConsole(Evaluator evaluator) {
@@ -423,11 +412,6 @@ public final class Ports {
     }
 
     public Value writeTo(PortValue port, Value data, Evaluator evaluator, PortRequest asked) {
-        Optional<Value> itsOwn = evaluator.askRebolActor(
-                "write", List.of(port, data), asked.refinements());
-        if (itsOwn.isPresent()) {
-            return itsOwn.get();
-        }
         return switch (port.schemeName()) {
             case "console" -> writeToConsole(port, data, evaluator);
             case "clipboard" -> putOnClipboard(port, data, evaluator);

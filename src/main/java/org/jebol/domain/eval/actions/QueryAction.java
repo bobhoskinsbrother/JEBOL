@@ -3,6 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.QueriedFields;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.ServesPortActions;
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
@@ -76,10 +77,6 @@ public class QueryAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> itsOwn = evaluator.askRebolActor(nativeName(), arguments, refinements);
-            if (itsOwn.isPresent()) {
-                return itsOwn.get();
-            }
             Value target = arguments.getFirst();
             Value field = arguments.get(1);
             return switch (target) {
@@ -88,20 +85,25 @@ public class QueryAction extends PortAction {
                 case HandleValue handle -> new HandleFields(handle).answer(field, evaluator);
                 case PortValue console when console.schemeName().equals("console") ->
                         new ConsoleMeasurements().answer(field, evaluator);
-                default -> field instanceof NoneValue
-                        ? portFieldNames(target, evaluator, context)
-                        : askFileOrRoutedPort(target, field, evaluator, context);
+                case FileValue file when !(field instanceof NoneValue) ->
+                        askFile(file.text(), field, evaluator);
+                case PortValue port -> field instanceof NoneValue
+                        ? portFieldNames(port, evaluator)
+                        : askNativelyServedPort(port, field, evaluator);
+                default -> askPortNamedBy(target, arguments, refinements, evaluator, context);
             };
         };
     }
 
-    private Value askFileOrRoutedPort(Value target, Value field, Evaluator evaluator, Context context) {
-        if (target instanceof FileValue file) {
-            return askFile(file.text(), field, evaluator);
-        }
+    private Value askPortNamedBy(Value target, List<Value> arguments, Set<String> refinements,
+            Evaluator evaluator, Context context) {
+
         PortValue port = ports.makePortFor(target, evaluator, context);
-        return evaluator.askRebolActor(nativeName(), List.of(port, field), Set.of())
-                .orElseGet(() -> askNativelyServedPort(port, field, evaluator));
+        return ActionSentToPort
+                .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
+                .orElseGet(() -> arguments.get(1) instanceof NoneValue
+                        ? portFieldNames(port, evaluator)
+                        : askNativelyServedPort(port, arguments.get(1), evaluator));
     }
 
     private Value askNativelyServedPort(PortValue port, Value field, Evaluator evaluator) {
@@ -127,8 +129,7 @@ public class QueryAction extends PortAction {
                 .orElseGet(NoneValue::none));
     }
 
-    private Value portFieldNames(Value target, Evaluator evaluator, Context context) {
-        PortValue port = ports.makePortFor(target, evaluator, context);
+    private Value portFieldNames(PortValue port, Evaluator evaluator) {
         return listNamesItsJavaActorGives(port, evaluator)
                 .orElseGet(() -> listNamesInSchemesInfo(port));
     }

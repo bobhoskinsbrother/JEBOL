@@ -21,6 +21,11 @@ public class MakeAction extends DefaultNative implements ActionValue {
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return false;
+    }
+
+    @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value made = arguments.getFirst().make(arguments.get(1), evaluator.makeMakerIn(context));

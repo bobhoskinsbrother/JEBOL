@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.PortRequest;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
@@ -49,15 +50,16 @@ public class ReadAction extends PortAction {
             PortRequest asked = readRequest(arguments, refinements);
             Value source = arguments.getFirst();
             if (source instanceof PortValue port) {
-                return evaluator.askRebolActor(nativeName(), arguments, refinements)
-                        .orElseGet(() -> port.isAFile()
-                                ? ports.readFromFileBehind(port, evaluator, asked)
-                                : ports.readFrom(port, evaluator, arguments, asked));
+                return port.isAFile()
+                        ? ports.readFromFileBehind(port, evaluator, asked)
+                        : ports.readFrom(port, evaluator, arguments, asked);
             }
             Optional<String> behindUrl = ports.findFileNamedByUrl(source, evaluator, context);
             if (behindUrl.isEmpty() && ports.routesToScheme(source)) {
-                return ports.readFrom(ports.openPortFor(source, evaluator, context),
-                        evaluator, arguments, asked);
+                PortValue routed = ports.openPortFor(source, evaluator, context);
+                return ActionSentToPort
+                        .answerForPortNamedBy(routed, this, arguments, refinements, evaluator)
+                        .orElseGet(() -> ports.readFrom(routed, evaluator, arguments, asked));
             }
             return ports.readFile(
                     behindUrl.orElseGet(() -> ((AnyStringValue) source).text()), evaluator, asked);

@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.PortRequest;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
@@ -53,8 +54,10 @@ public class WriteAction extends PortAction {
                 return ports.writeTo(port, data, evaluator, asked);
             }
             if (ports.routesToScheme(destination)) {
-                return ports.writeTo(ports.openPortFor(destination, evaluator, context),
-                        data, evaluator, asked);
+                PortValue routed = ports.openPortFor(destination, evaluator, context);
+                return ActionSentToPort
+                        .answerForPortNamedBy(routed, this, arguments, refinements, evaluator)
+                        .orElseGet(() -> ports.writeTo(routed, data, evaluator, asked));
             }
             return ports.writeFile(destination, data, evaluator, asked);
         };

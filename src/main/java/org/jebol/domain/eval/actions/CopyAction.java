@@ -1,13 +1,21 @@
 package org.jebol.domain.eval.actions;
 
+import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.ports.PortRequest;
+import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.value.*;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
-public class CopyAction extends DefaultNative implements ActionValue {
+public class CopyAction extends PortAction {
+
+    public CopyAction(GrantedServices granted, Ports ports) {
+        super(granted, ports);
+    }
 
     @Override
     public String nativeName() {
@@ -29,9 +37,17 @@ public class CopyAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor(nativeName(), List.of(arguments.getFirst()), refinements)
-                .orElseGet(() -> copy(arguments, refinements));
+        return (arguments, evaluator, context, refinements) ->
+                arguments.getFirst() instanceof PortValue port && port.isAFile()
+                        ? ports.readFromFileBehind(port, evaluator, howMuchToCopy(arguments, refinements))
+                        : copy(arguments, refinements);
+    }
+
+    private PortRequest howMuchToCopy(List<Value> arguments, Set<String> refinements) {
+        return new PortRequest(
+                refinementArgument("part", 0, arguments, refinements),
+                Optional.empty(),
+                refinements);
     }
 
     private Set<Datatype> listWhatCanBeCopied() {

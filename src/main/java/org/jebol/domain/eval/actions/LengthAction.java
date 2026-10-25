@@ -32,9 +32,8 @@ public class LengthAction extends SeriesOrFileAction {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor(nativeName(), arguments, Set.of())
-                .orElseGet(() -> lengthFor(arguments.getFirst(), evaluator));
+        return (arguments, evaluator, context, refinements) ->
+                lengthFor(arguments.getFirst(), evaluator);
     }
 
     private Value lengthFor(Value subject, Evaluator evaluator) {

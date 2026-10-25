@@ -30,9 +30,8 @@ public class PickAction extends PickingNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor(nativeName(), arguments, Set.of())
-                .orElseGet(() -> pick(arguments.getFirst(), arguments.get(1)));
+        return (arguments, evaluator, context, refinements) ->
+                pick(arguments.getFirst(), arguments.get(1));
     }
 
     private Value pick(Value subject, Value selector) {

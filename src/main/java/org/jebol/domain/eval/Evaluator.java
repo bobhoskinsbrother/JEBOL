@@ -1,8 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.*;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.HttpSchemeActor;
-import org.jebol.domain.eval.ports.ServesPortActions;
 import org.jebol.domain.eval.security.PolicyEnforcement;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.read.TranscodeResult;
@@ -280,65 +280,15 @@ public final class Evaluator {
         return ++lastCipherIdentity;
     }
 
-    public Optional<Value> askRebolActor(String action,
-                                         List<Value> arguments, Set<String> refinements) {
-
-        if (!(arguments.getFirst() instanceof PortValue port)) {
-            return Optional.empty();
-        }
-        port.requireObjectSpec();
-        port.requireNativeOrObjectActor();
-        if (port.hasNoActor()) {
-            return Optional.of(NoneValue.none());
-        }
-        Optional<ObjectValue> writtenInRebol = port.actorWrittenInRebol();
-        if (writtenInRebol.isPresent()) {
-            return writtenInRebol.map(actor ->
-                    askActor(actor, action, arguments, refinements));
-        }
-        Value actor = port.readFieldValue("actor");
-        if (actor instanceof ServesPortActions serves) {
-            return serves.answers(action, arguments, refinements, this);
-        }
-        return Optional.empty();
-    }
-
-    public Value askActor(ObjectValue actor, String action,
-                          List<Value> arguments, Set<String> refinements) {
-
-        Value function = actor.context().holds(action)
-                ? actor.context().ownSlotFor(action).value()
+    public Value askActor(ObjectValue actor, ActionSentToPort sent) {
+        String named = sent.action().nativeName();
+        Value function = actor.context().holds(named)
+                ? actor.context().ownSlotFor(named).value()
                 : NoneValue.none();
         if (!(function instanceof DefinedFunctionValue able)) {
-            throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                    SetWordValue.of(action));
+            throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(named));
         }
-        return applyFunction(able, layOutAsActorDeclaresThem(able, arguments, refinements));
-    }
-
-    private List<Value> layOutAsActorDeclaresThem(
-            DefinedFunctionValue able, List<Value> arguments, Set<String> refinements) {
-
-        List<Value> laidOut = new ArrayList<>();
-        int fromNative = 0;
-        boolean theseArgumentsWereSupplied = true;
-        for (Parameter parameter : able.parameters()) {
-            if (parameter.kind() == ParameterKind.REFINEMENT) {
-                boolean asked = refinements.contains(parameter.name());
-                laidOut.add(LogicValue.of(asked));
-                theseArgumentsWereSupplied = asked;
-                continue;
-            }
-            if (!theseArgumentsWereSupplied) {
-                laidOut.add(NoneValue.none());
-                continue;
-            }
-            laidOut.add(fromNative < arguments.size()
-                    ? arguments.get(fromNative)
-                    : NoneValue.none());
-            fromNative++;
-        }
-        return laidOut;
+        return applyFunction(able, sent.laidOutFor(able));
     }
 
     public Value readSimpleValue(Value given, Context where) {
@@ -1165,7 +1115,11 @@ public final class Evaluator {
         nativesCalled++;
         Value produced;
         try {
-            produced = behaviour.call(arguments, this, context, built.askedRefinements());
+            Optional<Value> theActorsOwn = ActionSentToPort.answerFor(
+                    built, arguments, built.askedRefinements(), this);
+            produced = theActorsOwn.isPresent()
+                    ? theActorsOwn.orElseThrow()
+                    : behaviour.call(arguments, this, context, built.askedRefinements());
         } catch (ProtectedFromChange refused) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         } catch (SlotIsProtected refused) {

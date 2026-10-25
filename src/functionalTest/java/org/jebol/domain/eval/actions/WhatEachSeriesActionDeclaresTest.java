@@ -4,6 +4,8 @@ import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.natives.*;
+import org.jebol.domain.eval.ports.Ports;
+import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.DefaultNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -58,7 +60,8 @@ class WhatEachSeriesActionDeclaresTest {
                 Arguments.of(new ClearAction(granted), "clear", Set.of()),
                 Arguments.of(new RemoveAction(), "remove", Set.of("part", "key")),
                 Arguments.of(new ReverseAction(), "reverse", Set.of("part")),
-                Arguments.of(new CopyAction(), "copy", Set.of("part", "deep", "types")),
+                Arguments.of(new CopyAction(granted, new Ports(granted, new JvmDigests())),
+                        "copy", Set.of("part", "deep", "types")),
                 Arguments.of(new FindAction(), "find", Set.of("tail", "last", "only", "case",
                         "any", "same", "part", "with", "skip", "reverse", "match")),
                 Arguments.of(new SortAction(), "sort", Set.of("case", "compare", "skip",

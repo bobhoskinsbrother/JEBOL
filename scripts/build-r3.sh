@@ -31,13 +31,37 @@ out=${2:-$jebol/r3-head}
 spec=$jebol/build/r3/spec-$product.reb
 part_built=$out.part
 
+# This machine's architecture, not a fixed one: an arm64 binary will not run on
+# an Intel Mac and the compiler cross-compiles happily without complaining.
+case $(uname -m) in
+  arm64)  arch=arm64; rebol_arch=arm64 ;;
+  x86_64) arch=x86_64; rebol_arch=x86_64 ;;
+  *) echo "$0 builds for arm64 and x86_64 macs, not $(uname -m)" >&2; exit 1 ;;
+esac
+
 if [[ ! -x $bootstrap ]]; then
-  echo "no ./r3-head to build with: the pre-make step is a Rebol script" >&2
+  cat >&2 <<'WHY'
+no ./r3-head to build with: the pre-make step is a Rebol script.
+
+To get the first one, fetch a release of the same fork and let it build its
+replacement from the checkout. A release is older than rebol3-source/ and must
+not be consulted for an answer -- that is what .gitignore's note is about -- but
+bootstrapping is the one job it is right for, because what it produces is the
+checkout's own build:
+
+    curl -sL -o /tmp/r3.gz https://github.com/Oldes/Rebol3/releases/download/3.22.1/rebol3-bulk-macos-x64.gz
+    gunzip -c /tmp/r3.gz > ./r3-head && chmod +x ./r3-head
+    scripts/build-r3.sh          # overwrites ./r3-head with the checkout's
+    rm /tmp/r3.gz
+
+Use rebol3-bulk-macos-arm64.gz on Apple silicon. JEBOL cannot bootstrap itself
+yet: scripts/resolve-nest.r3 does not run on it.
+WHY
   exit 1
 fi
 
 mkdir -p ${spec:h}
-$bootstrap $here/resolve-nest.r3 $rebol/make/ $product $spec
+$bootstrap $here/resolve-nest.r3 $rebol/make/ $product $spec $rebol_arch
 
 # pre-make must run from make/, because it reaches its own tools by relative path
 (cd $rebol/make && $bootstrap pre-make.r3 $spec > /dev/null)
@@ -53,7 +77,7 @@ PY
 
 cd $rebol
 clang -O2 -w \
-  -arch arm64 -mmacosx-version-min=10.9 \
+  -arch $arch -mmacosx-version-min=10.9 \
   -DTO_MACOS -DENDIAN_LITTLE -DREB_EXE -DUNICODE -DUSE_OLD_PIPE \
   -D_FILE_OFFSET_BITS=64 -D__LP64__ \
   -DREBOL_OPTIONS_FILE='"gen-config.h"' \

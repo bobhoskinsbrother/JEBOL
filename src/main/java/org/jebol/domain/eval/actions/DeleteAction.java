@@ -3,6 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.security.PolicyAccess;
@@ -40,7 +41,8 @@ public class DeleteAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
             PortValue port = ports.makePortFor(target, evaluator, context);
-            return evaluator.askRebolActor(nativeName(), List.of(port), Set.of())
+            return ActionSentToPort
+                    .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
                     .orElseGet(() -> delete(target, port, evaluator));
         };
     }

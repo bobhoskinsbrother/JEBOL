@@ -745,6 +745,20 @@ class TheMidiPortFromTheSourceTest {
                 "copy p            | copy:",
                 "remove p          | remove:",
                 "modify p 'x 1     | modify:",
+                "insert p 1        | insert:",
+                "append p 1        | append:",
+                "change p 1        | change:",
+                "clear p           | clear:",
+                "find p 1          | find:",
+                "take p            | take:",
+                "head p            | head:",
+                "tail p            | tail:",
+                "next p            | next:",
+                "index? p          | index?:",
+                "flush p           | flush:",
+                "create p          | create:",
+                "delete p          | delete:",
+                "rename p %x       | rename:",
         })
         void refuseEveryOtherVerbByName(String expression, String verb) {
             assertThat(answerTo("p: make port! midi://1 failure: try [" + expression

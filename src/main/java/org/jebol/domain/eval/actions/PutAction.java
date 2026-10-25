@@ -31,9 +31,7 @@ public class PutAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor("put", arguments, refinements)
-                .orElseGet(() -> put(arguments, refinements));
+        return (arguments, evaluator, context, refinements) -> put(arguments, refinements);
     }
 
     private Value put(List<Value> arguments, Set<String> refinements) {

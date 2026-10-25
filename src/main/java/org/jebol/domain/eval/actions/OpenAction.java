@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BlockValue;
@@ -37,7 +38,8 @@ public class OpenAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             PortValue port = ports.makePortFor(arguments.getFirst(), evaluator, context);
-            return evaluator.askRebolActor(nativeName(), List.of(port), refinements)
+            return ActionSentToPort
+                    .answerForPortNamedBy(port, this, arguments, refinements, evaluator)
                     .orElseGet(() -> ports.open(port, evaluator, refinements));
         };
     }

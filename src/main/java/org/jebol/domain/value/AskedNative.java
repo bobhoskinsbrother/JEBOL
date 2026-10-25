@@ -39,6 +39,11 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return asked.reachesPortActor();
+    }
+
+    @Override
     public Optional<AnyBlockValue> ownSpec() {
         return asked.ownSpec();
     }

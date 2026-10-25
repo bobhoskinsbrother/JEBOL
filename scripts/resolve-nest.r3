@@ -34,7 +34,8 @@ scan-names: func [block][
 ]
 scan-names nest
 
-;- this build is always macOS on arm64, so the platform tests are settled
+;- this build is always macOS, on whichever architecture the machine is, so the
+;- platform tests are settled: both of these hold on Intel and on Apple silicon
 holds?: func [test][
 	all [word? :test  find [Posix? macOS?] test]
 ]
@@ -110,7 +111,7 @@ spec/source:   %src/
 spec/version:  3.22.5
 spec/product:  either 'bulk = wanted ['Bulk]['Core]
 spec/os:       'macos
-spec/arch:     'arm64
+spec/arch:     to word! fourth arguments
 spec/compiler: 'clang
 
 text: copy ajoin ["REBOL [Title: {generated " wanted " spec}]" newline]

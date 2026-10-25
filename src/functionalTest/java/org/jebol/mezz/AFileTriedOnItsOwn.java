@@ -23,10 +23,15 @@ final class AFileTriedOnItsOwn {
         }
     }
 
+    private static final String WRITTEN_BY_THE_REBOL_BUILD_AND_NOT_IN_THE_CHECKOUT =
+            "base-collected.reb";
+
     static List<Attempt> attemptsIn(Path directory) {
         List<Attempt> attempts = new ArrayList<>();
         try (var files = Files.list(directory)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".reb"))
+                    .filter(path -> !path.getFileName().toString()
+                            .equals(WRITTEN_BY_THE_REBOL_BUILD_AND_NOT_IN_THE_CHECKOUT))
                     .sorted().toList()) {
                 attempts.add(attempt(file));
             }

@@ -25,10 +25,20 @@ public class PokeAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor("poke", arguments, Set.of())
-                .orElseGet(() -> Actions.of(arguments.getFirst())
-                        .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), this))
-                        .poke(arguments.get(1), arguments.get(2)));
+        return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
+            case PortValue queue when queue.findEventQueue().isPresent() ->
+                    pokeIntoQueue(queue.findEventQueue().orElseThrow(), arguments);
+            case Value subject -> Actions.of(subject)
+                    .orElseThrow(() -> Raised.cannotUse(subject, this))
+                    .poke(arguments.get(1), arguments.get(2));
+        };
+    }
+
+    private Value pokeIntoQueue(AnyBlockValue queued, List<Value> arguments) {
+        if (!(arguments.get(2) instanceof EventValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(2));
+        }
+        return Actions.of(queued).orElseThrow()
+                .poke(arguments.get(1), arguments.get(2));
     }
 }

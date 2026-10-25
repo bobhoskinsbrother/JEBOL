@@ -37,6 +37,15 @@ public sealed interface NativeValue extends DeclaresParameters
         return refinementsDeclaredApart().contains(refinement);
     }
 
+    /**
+     * Whether a port as this call's first argument is handed to the port's
+     * actor rather than acted on here. Only an action is, and not all of
+     * those.
+     */
+    default boolean reachesPortActor() {
+        return false;
+    }
+
     default int countArity() {
         long base = parameters().stream()
                 .filter(parameter -> parameter.owningRefinement().isEmpty())

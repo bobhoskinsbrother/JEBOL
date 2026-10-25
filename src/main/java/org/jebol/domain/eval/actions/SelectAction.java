@@ -30,9 +30,7 @@ public class SelectAction extends SeriesSearchAction {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor("select", arguments, refinements)
-                .orElseGet(() -> select(arguments, refinements));
+        return (arguments, evaluator, context, refinements) -> select(arguments, refinements);
     }
 
     private Value select(List<Value> arguments, Set<String> refinements) {

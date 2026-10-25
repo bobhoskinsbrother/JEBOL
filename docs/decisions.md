@@ -2376,3 +2376,90 @@ A rule asserting a set is empty holds on a set that was never filled, and
 being wrong that way is silent. A path handed in by a system property, an
 annotation that has to be on the classpath to be seen, a suite's classes --
 assert each is found before asserting anything about it.
+
+## 56. Every action goes to a port's actor, through one dispatch
+
+**A port's actor is reached from one place, and no list of verbs decides which
+ones get there.** `Evaluator.runNative` asks `ActionSentToPort.answerFor`
+before it calls any native's behaviour: if the first argument is a port and
+the native is an action that reaches an actor, the actor answers and the
+behaviour never runs. That is `T_Port` in the C, which sends every action to
+`Do_Port_Action` and names only three exceptions.
+
+**The exceptions are a question the native answers about itself**,
+`NativeValue.reachesPortActor`, false by default and true for every
+`ActionValue` but four. MAKE and TO build a port rather than act on one,
+REFLECT reads the object a port is rather than the thing it stands for, and a
+datatype test looks at a value instead of sending it anything -- which is the
+C's `Do_Action` short-circuiting on action number zero, since `integer?` and
+its forty-nine siblings are `REB_ACTION` values too. The two wrappers that a
+call puts round a native, `AskedNative` and `RespecifiedNative`, forward the
+question; the first of those is why the hand-wired dispatch is worth
+replacing rather than extending, because a call with a refinement arrives
+wrapped and a dispatch keyed on the class of the callee sees the wrapper.
+
+**Fifteen verbs were wired by hand and the other forty-two were not.** The
+cost was not the missing fifteen in the abstract: `prot-mysql.reb` declares
+an INSERT that could never be called, `insert port x` answered `cannot-use`
+-- a complaint about the datatype from a port that had the function all along
+-- `find port x` answered none, and a verb the actor did not declare answered
+`cannot-use` where R3 answers `no-port-action`.
+
+**The arguments are the ones the caller gave, laid out again against the
+actor's own parameters.** Three paths rebuilt the list instead of passing it
+through -- COPY handed over the port alone, OPEN the port alone, WRITE the
+port and the data -- so `copy/part port 10` reached the actor with PART true
+and LENGTH none, and limited the copy to nothing without saying so. Laying
+out is by name rather than by position: a refinement of the actor's takes its
+logic from the refinement of that name at the call site, and an argument
+under it takes the value the caller put under the same refinement, so an
+actor declaring `/seek` before `/part` gets `read/seek/part port 5 10` right.
+`Redo_Func` is where the C does this, and it searches the frame it is handed
+for each refinement by name for the same reason.
+
+**A port whose spec is not an object is now refused for every action**, not
+for the five that were wired, because `Validate_Port_Value` is the first line
+of `Do_Port_Action` and runs before the actor is read. So `length? p` and
+`head p` raise `invalid-port` where `read p` always did.
+
+**An address that names a port reaches the actor too**, through the same
+dispatch with the port put in the first argument's place, which is `As_Port`.
+Which verbs can arrive that way is settled by what each one's first argument
+accepts and not by the dispatch: CREATE, DELETE, OPEN, READ, WRITE, QUERY and
+RENAME declare a file, url or block beside the port, and CLOSE, OPEN?, UPDATE
+and FLUSH take a port and nothing else. QUERY was the one missing, and
+answered the names of the scheme's INFO fields while the protocol's own
+QUERY, which `prot-http.reb` declares, was never called.
+
+**A built-in actor declares what it serves, and that is the same answer.**
+`SchemeActorNative` is now a `ServesPortActions` that answers nothing and
+refuses what its scheme does not serve. Each list is the `case A_` list of
+that scheme's actor in the C, which was checked against `./r3-head` verb by
+verb rather than only read: a file port serves twenty-six verbs, a directory
+port ten, a transport ten, an event queue nine, a checksum six, a cipher
+eight, DNS six, the console nine, the clipboard six. Every scheme JEBOL
+serves itself now answers what a real 3.22.5 answers for all thirty-seven
+verbs, where a file port differed on eleven of them.
+
+**Two things the verb list alone got wrong, and both come from the C's
+order.** A closed socket answers `not-open` to every verb but OPEN, CLOSE,
+OPEN? and UPDATE -- served or not -- because `Transport_Actor` tests the
+socket before it reaches the verb, so a verb list on its own would have made
+`insert closedPort 1` say `no-port-action` where R3 says `not-open`. And
+`A_FIND` in `p-event.c` is a labelled case that falls straight through to
+`default`, so an event queue does *not* serve FIND, however much the comment
+beside it (`// add it`) suggests otherwise. Reading the switch is not enough;
+the fall-through has to be read with it.
+
+**COPY of a file port answers the file's bytes**, from where the port stands,
+honouring `/part`, and leaves the port past what it answered -- which is
+`read` with a limit, and is what `p-file.c`'s `A_COPY` does. It answered the
+port object before. HEAD? and PAST? read the position too, where they refused
+a port outright.
+
+**What this rules out** is adding a verb to a list to make it reach an actor.
+A new action reaches one by being an action; one that must not says so on
+itself, beside the three that already do. A built-in scheme still keeps a
+list, because the C's actor is a `switch` and that list *is* the actor's
+declaration -- the equivalent of the functions an actor written in REBOL
+holds, not a gate in front of the dispatch.

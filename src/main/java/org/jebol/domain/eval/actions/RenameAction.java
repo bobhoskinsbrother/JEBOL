@@ -3,6 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.ports.ActionSentToPort;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.security.PolicyAccess;
@@ -42,7 +43,8 @@ public class RenameAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
             PortValue from = ports.makePortFor(asked, evaluator, context);
-            return evaluator.askRebolActor(nativeName(), List.of(from, arguments.get(1)), Set.of())
+            return ActionSentToPort
+                    .answerForPortNamedBy(from, this, arguments, refinements, evaluator)
                     .orElseGet(() -> rename(asked, from, arguments.get(1), evaluator));
         };
     }

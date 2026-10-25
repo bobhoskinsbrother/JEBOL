@@ -30,6 +30,11 @@ public record RespecifiedNative(NativeValue original, AnyBlockValue spec, List<P
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return original.reachesPortActor();
+    }
+
+    @Override
     public Optional<AnyBlockValue> ownSpec() {
         return Optional.of(spec);
     }

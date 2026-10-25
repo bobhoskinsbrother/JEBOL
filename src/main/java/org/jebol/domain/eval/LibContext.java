@@ -101,9 +101,9 @@ public final class LibContext {
         registerAction(new IsEvenAction());
         registerAction(new HeadAction(grantedServices));
         registerAction(new TailAction(grantedServices));
-        registerAction(new IsHeadAction());
+        registerAction(new IsHeadAction(grantedServices));
         registerAction(new IsTailAction(grantedServices));
-        registerAction(new IsPastAction());
+        registerAction(new IsPastAction(grantedServices));
         registerAction(new NextAction(grantedServices));
         registerAction(new BackAction(grantedServices));
         registerAction(new SkipAction(grantedServices));
@@ -118,7 +118,7 @@ public final class LibContext {
         registerAction(new ReflectAction(declarations));
         registerAction(new MakeAction());
         registerAction(new ToAction());
-        registerAction(new CopyAction());
+        registerAction(new CopyAction(grantedServices, ports));
         registerAction(new TakeAction(ports.cryptPort()));
         registerAction(new PutAction());
         registerAction(new InsertAction(grantedServices));

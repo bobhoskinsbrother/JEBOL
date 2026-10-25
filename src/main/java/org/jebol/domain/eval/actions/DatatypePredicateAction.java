@@ -28,6 +28,11 @@ public class DatatypePredicateAction extends DefaultNative implements ActionValu
     }
 
     @Override
+    public boolean reachesPortActor() {
+        return false;
+    }
+
+    @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 LogicValue.of(arguments.getFirst().datatype() == asked);

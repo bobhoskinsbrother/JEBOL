@@ -43,9 +43,8 @@ public class ModifyAction extends PortAction {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> evaluator
-                .askRebolActor(nativeName(), arguments, Set.of())
-                .orElseGet(() -> modify(arguments.getFirst(), arguments.get(1), arguments.get(2)));
+        return (arguments, evaluator, context, refinements) ->
+                modify(arguments.getFirst(), arguments.get(1), arguments.get(2));
     }
 
     private Value modify(Value target, Value field, Value given) {

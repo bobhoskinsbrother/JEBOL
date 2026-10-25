@@ -40,8 +40,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             if (arguments.getFirst() instanceof NoneValue nothing) {
                 return nothing;
             }
-            return evaluator.askRebolActor(nativeName(), arguments, refinements)
-                    .orElseGet(() -> removeFrom(arguments.getFirst(), arguments, refinements));
+            return removeFrom(arguments.getFirst(), arguments, refinements);
         };
     }
 

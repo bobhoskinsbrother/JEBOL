@@ -207,11 +207,12 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
     class NoneOfThemIsADevice {
 
         @Test
-        @DisplayName("the callback port opens and then serves nothing")
+        @DisplayName("the callback port opens and then serves no reading, naming the verb")
         void leavesTheCallbackPortServingNothing() {
             assertThat(answerTo("""
-                    failure: try [read open callback://] failure/id"""))
-                    .isEqualTo("no-service");
+                    failure: try [read open callback://]
+                    reduce [failure/id failure/arg1]"""))
+                    .isEqualTo("[no-port-action read:]");
         }
 
         @Test
