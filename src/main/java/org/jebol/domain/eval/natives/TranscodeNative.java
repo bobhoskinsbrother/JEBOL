@@ -79,9 +79,9 @@ public class TranscodeNative extends DefaultNative {
         if (asked.answeringValueAlone()) {
             return values.getFirst();
         }
-        return BlockValue.of(stopsShortOfEnd(asked)
+        return reading.markWhereLinesStart(BlockValue.of(stopsShortOfEnd(asked)
                 ? withWhatWasLeftUnread(asked, values, reading)
-                : values);
+                : values));
     }
 
     private Value bindCallLocations(Value read, Evaluator evaluator) {

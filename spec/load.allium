@@ -631,6 +631,33 @@ rule TranscodeProducesUnboundBlock {
         -- error.
 }
 
+-- A block remembers which of its values the source started a line with, and
+-- molding it writes those lines back where they were written. The mark is on
+-- the value rather than between two of them: `Scan_Block` meets TOKEN_LINE,
+-- keeps a flag -- `line = TRUE; continue;` -- and spends it on the next value
+-- it emits, so several blank lines mark one value once.
+--
+-- The outermost block is a block like any other, and saying so is the whole
+-- point of the rule. It is the one block nobody wrote: a script has no
+-- brackets around it, the reader builds the block itself, and so it is the
+-- one a reader can forget to mark. Forgetting it is not cosmetic -- an error's
+-- `near` is the loaded source molded, so a script that stops prints itself on
+-- a single line.
+--
+-- A line break after a block's last value marks nothing. At `exit_block` the C
+-- sets the flag on the slot past the tail and then copies only as far as the
+-- tail, and the line that would have carried the mark across to the new block
+-- is commented out beside it. So `load "a b^/"` reads two values and no mark,
+-- and a mark can only ever name a value that is there.
+rule EveryBlockRecordsWhichOfItsValuesStartedALine {
+    when: request: TranscodeRequest.status transitions_to succeeded
+
+    ensures: for series in the_result_and_every_block_within(request.result):
+        for position in the_positions_of(series):
+            starts_a_line(series, position) =
+                a_line_break_stands_before(request.source_text, series, position)
+}
+
 rule TranscodeRejectsMalformedSource {
     when: request: TranscodeRequest.created
 

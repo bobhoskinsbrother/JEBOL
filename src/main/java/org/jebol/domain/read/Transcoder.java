@@ -86,7 +86,14 @@ public final class Transcoder {
             Set<Integer> lineStartPositions) {
 
         public AnyBlockValue asBlock() {
-            AnyBlockValue block = BlockValue.of(valuesReadBeforeStopping);
+            return markWhereLinesStart(BlockValue.of(valuesReadBeforeStopping));
+        }
+
+        /**
+         * Marks the positions the source started a line at, so the block this reading becomes
+         * molds back the way it was written.
+         */
+        public AnyBlockValue markWhereLinesStart(AnyBlockValue block) {
             for (int position : lineStartPositions) {
                 block.storage().setLineBreakAt(position, true);
             }
