@@ -20,7 +20,7 @@ inline.
 
 ## Searching this codebase: use the IntelliJ MCP, not grep
 
-**Every search of code in this repository goes through `mcp__intellij-mcp__*`.**
+**Every search of code in this repository goes through `mcp__intellij-index__*`.**
 Reaching for `grep`, `rg`, `sed` or `awk` on a path under this project is a
 mistake, and one I have made repeatedly after being told not to.
 
@@ -83,6 +83,30 @@ build files -- is the project, and the MCP is how it gets searched.
 in a second where `./gradlew` takes five minutes, and it catches the whole class of
 mistakes -- a missing import, an unreachable branch, a dangling doc comment under
 `-Werror` -- that have cost several round trips here.
+
+## Two IDE servers, and which one does what
+
+Two MCP servers talk to the same running IntelliJ, and they barely overlap.
+
+**`intellij-index`** (`mcp__intellij-index__*`, the IDE Index MCP Server plugin)
+answers questions about the code: every tool in the table above. It is the one
+for searching, navigating, diagnostics and refactoring.
+
+**`jetbrains`** (`mcp__jetbrains__*`, JetBrains' own MCP Server, port 64342)
+does what the index server cannot:
+
+| The job | The tool |
+| --- | --- |
+| Run a run configuration, or list them | `execute_run_configuration`, `get_run_configurations` |
+| Debug: breakpoints, stepping, the stack, evaluating an expression | `xdebug_*` |
+| Build in the IDE and get its errors | `build_project` |
+| A one-off structural check across files | `run_inspection_kts` |
+| The project's modules and dependencies | `get_project_modules`, `get_project_dependencies` |
+
+Where both offer a tool -- text and symbol search, rename, call hierarchy, a
+file's problems -- use the index server's, so there is one way to ask each
+question. The gate is still `./gradlew allTests` from the shell; a run
+configuration is for running one test class while working, not for the gate.
 
 ## Names: a method name is a message, not a sentence
 
