@@ -4,9 +4,11 @@ import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Isolated
 class SeriesMemoryFromTheSourceTest {
 
     private static final int A_LARGE_STRING = 5_000_000;
