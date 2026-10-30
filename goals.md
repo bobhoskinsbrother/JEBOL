@@ -72,11 +72,11 @@ something a real 3.22.5 does not is a defect.
 
 Twelve pieces of work, in the order to do them.
 
-**1b to 1h come first: each makes the same script answer differently on a
+**1a to 1g come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
 either. Ordered by how much ordinary code they break: the modules a script
-can ask for (1b, 1c), the console and
-https (1d, 1e), then what a script sees when it fails (1f to 1h).
+can ask for (1a, 1b), the console and
+https (1c, 1d), then what a script sees when it fails (1e to 1g).
 
 **A script file loses its own definition of a lib word inside a loop that
 binds its body.** Found on 2026-10-30 while porting LZ4: a script that says
@@ -85,11 +85,11 @@ binds its body.** Found on 2026-10-30 while porting LZ4: a script that says
 REPEAT and FOREACH lose it; LOOP and IF keep it, and so does a word lib does
 not have. Typed at the console instead of run from a file, all three keep it,
 so it is the script's context and not the loops alone. It breaks ordinary
-code, so it belongs ahead of 1b.
+code, so it belongs ahead of 1a.
 
-**1i to 1m change nothing a script run on both would see**: the spec, a
+**1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
-JEBOL fixes on purpose (1l), which make the two differ deliberately.
+JEBOL fixes on purpose (1k), which make the two differ deliberately.
 
 **And one Rebol file that does not run here is this project's own**:
 `scripts/resolve-nest.r3`, the pre-make step `scripts/build-r3.sh` needs, so
@@ -102,7 +102,7 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1b. Review the sixteen missing entries of `system/modules`
+#### 1a. Review the sixteen missing entries of `system/modules`
 
 R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
 downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
@@ -122,9 +122,9 @@ For each of the sixteen, and the `serial` scheme:
    leave it out on purpose and list it under Standing.
 
 **Done when** each has a decision written down, and the ones to build are
-goals of their own. Brotli is reviewed: 1c.
+goals of their own. Brotli is reviewed: 1b.
 
-#### 1c. The `brotli` module, and the streaming encoder it needs
+#### 1b. The `brotli` module, and the streaming encoder it needs
 
 `compress` and `decompress` with `'br` already run on JEBOL's Brotli and
 write R3's bytes. `system/modules/brotli` is something else: a link to
@@ -180,7 +180,7 @@ list, and Brotli's own corpus round-trips through the streaming API in
 chunks.
 
 
-#### 1d. The console honours echo, and `call/console` runs without one
+#### 1c. The console honours echo, and `call/console` runs without one
 
 - **Echo.** `modify system/ports/output 'echo false` is accepted and changes
   nothing: what is typed is still shown, so a script asking for a password
@@ -196,7 +196,7 @@ chunks.
 through the command line), the port has no extra field, and `call/console`
 runs under a host with no console.
 
-#### 1e. TLS: an out-of-order chain, and a Unicode host name
+#### 1d. TLS: an out-of-order chain, and a Unicode host name
 
 R3 trusts every server, so a script reading a server like these works there
 and fails here.
@@ -214,7 +214,7 @@ wrongly named ones it already has.
 **Done when** both are rules, and the command line reads a local server that
 sends its chain backwards and one named in Unicode.
 
-#### 1f. An error a native raises carries its `near` and `where`
+#### 1e. An error a native raises carries its `near` and `where`
 
 For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
 and `where: [compress try ...]`; JEBOL gives none for both. Errors from
@@ -228,7 +228,7 @@ that stops on such an error prints a different `** Near:` and `** Where:`.
 
 **Done when** the sweep shows no difference, and is a test.
 
-#### 1g. An operator with nothing on its left raises what R3 raises
+#### 1f. An operator with nothing on its left raises what R3 raises
 
 Measured on 2026-10-23:
 
@@ -248,10 +248,10 @@ wrong, so it is fixed first.
 
 **Done when** every position probed answers R3's id and arguments.
 
-#### 1h. An error's arguments are values, not sentences
+#### 1g. An error's arguments are values, not sentences
 
 Three times now JEBOL has put an English sentence where R3 puts a value: arg1
-of the operator error (1g), arg1 of `gui-metric/set 'restore true` ("no host
+of the operator error (1f), arg1 of `gui-metric/set 'restore true` ("no host
 serves the metric restore"), and arg1 of `no-value`, which for `get first
 [zork]` is a `word!` spelt `zork has no value` where R3's is `zork`. A script
 that reads `e/arg1` gets prose.
@@ -266,12 +266,12 @@ that reads `e/arg1` gets prose.
 **Done when** no error argument is a sentence, proven by the sweep as a
 test.
 
-#### 1i. Clear the spec's open questions
+#### 1h. Clear the spec's open questions
 
 All 63 were read against the code and `./r3-head` on 2026-10-23 and each has
 an answer; 60 are left, the three about a port's actor having become rules
 with the dispatch they describe. The work that follows from the answers is
-1d, 1e, 1k, 1l and 1m; this sub-goal is the spec's side of it. Every edit
+1c, 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it. Every edit
 runs `allium check` clean.
 
 1. **Already answered: the question becomes a rule, or goes.** Each of
@@ -322,9 +322,9 @@ runs `allium check` clean.
      folder; no browser can name it.
 2. **Answered by the owner, with work to do: the question becomes a rule
    when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: console echo and `call/console` (1d), TLS chains and Unicode
-   hosts (1e), home and values between interpreters (1k), the Rebol bugs
-   (1l), `effect` in DRAW and GUI-METRIC/SET (1m). The `call/console`
+   together: console echo and `call/console` (1c), TLS chains and Unicode
+   hosts (1d), home and values between interpreters (1j), the Rebol bugs
+   (1k), `effect` in DRAW and GUI-METRIC/SET (1l). The `call/console`
    question is in `embed.allium` and `natives.allium` both; the rule goes
    in `embed.allium` and the copy in `natives.allium` is deleted.
 3. **Not a question for JEBOL:** move the `open/new` question -- a real
@@ -372,7 +372,7 @@ runs `allium check` clean.
 **Done when** the spec holds only the four questions in step 6, each in
 plain English, and every answered one is a rule or gone.
 
-#### 1j. The table of word spellings belongs to an interpreter
+#### 1i. The table of word spellings belongs to an interpreter
 
 `Context.ONE_NAME_PER_SPELLING` keeps one lower-cased copy of every spelling
 ever read, in a static table every interpreter in the process shares and
@@ -384,7 +384,7 @@ held in a static, and it goes.
 interpreter is, proven by a test that makes words in one interpreter and
 finds none of them in the next.
 
-#### 1k. A confined script's home, and values between interpreters
+#### 1j. A confined script's home, and values between interpreters
 
 The command line confines a script to its folder as R3 does, and both report
 the machine's home, so neither changes what a script run on both answers.
@@ -402,7 +402,7 @@ the machine's home, so neither changes what a script run on both answers.
 **Done when** both are rules with tests, and a confined interpreter can make
 REBOL's user file at home.
 
-#### 1l. Fix five Rebol bugs, and copy one
+#### 1k. Fix five Rebol bugs, and copy one
 
 Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
 real 3.22.5 does not, so each gets a Standing entry saying what and why.
@@ -449,7 +449,7 @@ real 3.22.5 does not, so each gets a Standing entry saying what and why.
 **Done when** the five behave as above, each with a rule, tests, and a
 Standing entry, and the suite records the `image-diff` difference.
 
-#### 1m. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
+#### 1l. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
 
 - **`effect`** is the one DRAW command (of the 34 in `dial-draw.reb`) JEBOL
   does not paint, and it is skipped without a word. It raises until it is
@@ -472,7 +472,7 @@ restores and maximises a real window.
    canvas and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled. The system back gesture (and
    the back button) moves the app's history back, through Android's back
-   handler, as a swipe does in a browser (1i, `spec/nav.allium`).
+   handler, as a swipe does in a browser (1h, `spec/nav.allium`).
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
    console view. CALL is refused. And a task's body must run on the host's
    ports too: `ThreadTasks`
@@ -516,7 +516,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    on Android, using goal 2 step 4's work in the 2010 GUI. iOS has no system
    back gesture, so the app recognises a swipe from the left edge as back
    and from the right edge as forward, the way a browser on the phone
-   does (1i, `spec/nav.allium`).
+   does (1h, `spec/nav.allium`).
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
@@ -536,7 +536,7 @@ which lists nothing. What is left is an adapter behind `MidiDevices` over
 arrives on another thread and reaches the port's `awake` through the
 interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Opening a port that is already open raises `already-open`
-rather than connecting twice (1l).
+rather than connecting twice (1k).
 
 ### 5. The type-major refactor: what is left
 
