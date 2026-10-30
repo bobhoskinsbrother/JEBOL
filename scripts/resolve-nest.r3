@@ -34,10 +34,28 @@ scan-names: func [block][
 ]
 scan-names nest
 
-;- this build is always macOS, on whichever architecture the machine is, so the
-;- platform tests are settled: both of these hold on Intel and on Apple silicon
+;- the build is for the machine it runs on, macOS or Linux, so the platform
+;- tests are settled by the fifth argument. A word test is one of the nest's
+;- predicates; a paren test reads system/platform or system/build/arch, and is
+;- evaluated against the target rather than whatever Rebol is running this.
+target-os: to word! fifth arguments
+target: make object! [
+	platform: select [macos macOS linux Linux] target-os
+	macos?:   'macos = target-os
+	linux?:   'linux = target-os
+	posix?:   true
+	system:   make object! [
+		platform: none
+		build:    make object! [arch: to word! fourth arguments]
+	]
+]
+target/system/platform: target/platform
 holds?: func [test][
-	all [word? :test  find [Posix? macOS?] test]
+	case [
+		word? :test  [all [in target test  get in target test]]
+		paren? :test [to logic! do bind to block! test target]
+		true         [false]
+	]
 ]
 
 listed: [
@@ -110,9 +128,9 @@ spec/root:     clean-path %../
 spec/source:   %src/
 spec/version:  3.22.5
 spec/product:  either 'bulk = wanted ['Bulk]['Core]
-spec/os:       'macos
+spec/os:       target-os
 spec/arch:     to word! fourth arguments
-spec/compiler: 'clang
+spec/compiler: either target-os = 'linux ['gcc]['clang]
 
 text: copy ajoin ["REBOL [Title: {generated " wanted " spec}]" newline]
 foreach key [root source version product os arch compiler] [

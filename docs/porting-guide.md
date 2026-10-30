@@ -115,13 +115,14 @@ cd rebol3-source/src/tests && ../../../r3-head run-tests.r3
 **`r3-head` builds its own replacement, and there is no second binary.**
 Rebol's pre-make step is itself a Rebol script, so building a Rebol needs a
 working Rebol. `scripts/build-r3.sh` bootstraps from `r3-head` itself and
-compiles to `r3-head.part`, moving it into place only if clang succeeds,
+compiles to `r3-head.part`, moving it into place only if the compiler succeeds,
 because a half-text binary there would leave nothing able to build the next
 one.
 
 Rebol's own build tool, Siskin, is a separate download and is not needed --
 `scripts/resolve-nest.r3` reads `make/rebol3.nest` far enough to answer the one
-question pre-make asks, and clang does the rest.
+question pre-make asks, and the compiler does the rest: clang on macOS, gcc on
+Linux, each with the defines and libraries the nest gives that platform.
 
 **On a fresh clone with no `r3-head` there is nothing to bootstrap from**, and
 that is a genuine hole rather than an oversight to work around quietly: fetch a

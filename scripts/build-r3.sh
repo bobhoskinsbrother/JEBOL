@@ -31,37 +31,42 @@ out=${2:-$jebol/r3-head}
 spec=$jebol/build/r3/spec-$product.reb
 part_built=$out.part
 
-# This machine's architecture, not a fixed one: an arm64 binary will not run on
-# an Intel Mac and the compiler cross-compiles happily without complaining.
+# This machine's system and architecture, not fixed ones: an arm64 binary will
+# not run on an Intel Mac and the compiler cross-compiles happily without
+# complaining.
+case $(uname -s) in
+  Darwin) os=macos; release_os=macos ;;
+  Linux)  os=linux; release_os=linux ;;
+  *) echo "$0 builds on macOS and Linux, not $(uname -s)" >&2; exit 1 ;;
+esac
 case $(uname -m) in
-  arm64)  arch=arm64; rebol_arch=arm64 ;;
-  x86_64) arch=x86_64; rebol_arch=x86_64 ;;
-  *) echo "$0 builds for arm64 and x86_64 macs, not $(uname -m)" >&2; exit 1 ;;
+  arm64|aarch64) arch=arm64; rebol_arch=arm64; release_arch=arm64 ;;
+  x86_64)        arch=x86_64; rebol_arch=x86_64; release_arch=x64 ;;
+  *) echo "$0 builds for arm64 and x86_64, not $(uname -m)" >&2; exit 1 ;;
 esac
 
 if [[ ! -x $bootstrap ]]; then
-  cat >&2 <<'WHY'
+  cat >&2 <<WHY
 no ./r3-head to build with: the pre-make step is a Rebol script.
 
 To get the first one, fetch a release of the same fork and let it build its
 replacement from the checkout. A release is older than rebol3-source/ and must
 not be consulted for an answer -- that is what .gitignore's note is about -- but
 bootstrapping is the one job it is right for, because what it produces is the
-checkout's own build:
+checkout's own build. For this machine:
 
-    curl -sL -o /tmp/r3.gz https://github.com/Oldes/Rebol3/releases/download/3.22.1/rebol3-bulk-macos-x64.gz
+    curl -sL -o /tmp/r3.gz https://github.com/Oldes/Rebol3/releases/download/3.22.1/rebol3-bulk-$release_os-$release_arch.gz
     gunzip -c /tmp/r3.gz > ./r3-head && chmod +x ./r3-head
     scripts/build-r3.sh          # overwrites ./r3-head with the checkout's
     rm /tmp/r3.gz
 
-Use rebol3-bulk-macos-arm64.gz on Apple silicon. JEBOL cannot bootstrap itself
-yet: scripts/resolve-nest.r3 does not run on it.
+JEBOL cannot bootstrap itself yet: scripts/resolve-nest.r3 does not run on it.
 WHY
   exit 1
 fi
 
 mkdir -p ${spec:h}
-$bootstrap $here/resolve-nest.r3 $rebol/make/ $product $spec $rebol_arch
+$bootstrap $here/resolve-nest.r3 $rebol/make/ $product $spec $rebol_arch $os
 
 # pre-make must run from make/, because it reaches its own tools by relative path
 (cd $rebol/make && $bootstrap pre-make.r3 $spec > /dev/null)
@@ -76,18 +81,29 @@ PY
 )
 
 cd $rebol
-clang -O2 -w \
-  -arch $arch -mmacosx-version-min=10.9 \
-  -DTO_MACOS -DENDIAN_LITTLE -DREB_EXE -DUNICODE -DUSE_OLD_PIPE \
-  -D_FILE_OFFSET_BITS=64 -D__LP64__ \
-  -DREBOL_OPTIONS_FILE='"gen-config.h"' \
-  -Isrc/include -Isrc/core/lz4 -Isrc/include/brotli \
-  ${=sources} src/os/host-main.c \
-  -framework AppKit -framework Foundation -framework CoreFoundation \
-  -framework CoreGraphics -framework CoreImage -framework ImageIO \
-  -framework CoreServices -framework CoreMIDI -framework AudioToolbox \
-  -lm -liconv \
-  -o $part_built
+common_defines=(-DENDIAN_LITTLE -DREB_EXE -DUNICODE
+  -D_FILE_OFFSET_BITS=64 -D__LP64__
+  -DREBOL_OPTIONS_FILE='"gen-config.h"')
+includes=(-Isrc/include -Isrc/core/lz4 -Isrc/include/brotli)
+
+if [[ $os == macos ]]; then
+  clang -O2 -w \
+    -arch $arch -mmacosx-version-min=10.9 \
+    -DTO_MACOS -DUSE_OLD_PIPE $common_defines $includes \
+    ${=sources} src/os/host-main.c \
+    -framework AppKit -framework Foundation -framework CoreFoundation \
+    -framework CoreGraphics -framework CoreImage -framework ImageIO \
+    -framework CoreServices -framework CoreMIDI -framework AudioToolbox \
+    -lm -liconv \
+    -o $part_built
+else
+  # target-linux and common in rebol3.nest: TO_LINUX, -fPIC, libm and libdl
+  gcc -O2 -w -fPIC \
+    -DTO_LINUX $common_defines $includes \
+    ${=sources} src/os/host-main.c \
+    -lm -ldl -lpthread \
+    -o $part_built
+fi
 
 mv $part_built $out
 echo "built $out"
