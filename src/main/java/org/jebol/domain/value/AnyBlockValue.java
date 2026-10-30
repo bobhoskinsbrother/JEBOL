@@ -370,22 +370,20 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseWhatOnlyTextServes();
-        List<Value> items = new ArrayList<>(remaining());
+        refuseChangeIfProtected();
         if (trimming.everywhere()) {
-            items.removeIf(NoneValue.class::isInstance);
-        } else {
-            while (trimming.fromHead() && !items.isEmpty() && items.getFirst() instanceof NoneValue) {
-                items.removeFirst();
+            for (int at = storageLength(); at >= index; at--) {
+                if (storage.at(at) instanceof NoneValue) {
+                    storage.removeAt(at);
+                }
             }
-            while (trimming.fromTail() && !items.isEmpty() && items.getLast() instanceof NoneValue) {
-                items.removeLast();
-            }
+            return this;
         }
-        for (int at = storageLength(); at >= index; at--) {
-            storage.removeAt(at);
+        while (trimming.fromTail() && !atTail() && storage.at(storageLength()) instanceof NoneValue) {
+            storage.removeAt(storageLength());
         }
-        for (int at = items.size(); at > 0; at--) {
-            storage.insertAt(index, items.get(at - 1));
+        while (trimming.fromHead() && !atTail() && storage.at(index) instanceof NoneValue) {
+            storage.removeAt(index);
         }
         return this;
     }

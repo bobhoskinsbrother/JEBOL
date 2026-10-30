@@ -6899,3 +6899,22 @@ whole suite, every one green.
 (`Ports.java:654`); `open?` reads that field (`Ports.java:647`); the sum is
 consulted only while the port is open (`ChecksumPort.java:79`).
 `ChecksumPortFromTheSourceTest`'s "CLOSE shuts the port" pins it.
+
+## 234. A line mark is in the cell, and LOAD swallows the line feed after a header
+
+Where the reader puts a mark is `EveryBlockRecordsWhichOfItsValuesStartedALine`
+in `spec/load.allium`. This is what happens to it afterwards.
+
+The mark is a flag in the value's own cell, so it travels with the value.
+INSERT pushes it along, REMOVE takes it out with the value, and TRIM
+(`Trim_Block`, `s-trim.c:347`) copies whole cells, so what is kept keeps its
+mark. JEBOL keeps marks beside the values by position, in `BlockStorage`, and
+`insertAt` and `removeAt` move them to match.
+
+**A script's first value is never marked by the line its header ends on.**
+`load-header` steps over one CR and one LF after the header
+(`sys-load.reb:253-262`) before the body is read, so `load "Rebol []^/a^/b"`
+is `[a^/b]`, with `a` unmarked. A blank line under the header does mark it.
+`load/header` puts the header object in front with INSERT, so the marks stay
+on `a` and `b`. `LineMarksTravelWithTheirValuesFromTheSourceTest` pins all of
+it, and `./r3-head` answers each of its cases alike.

@@ -70,7 +70,9 @@ public class RemoveEachNative extends LoopingNative {
         names.forEach(name -> locals.register(name.spelling()));
         AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
         List<Value> items = series.remaining();
+        List<Boolean> marks = readLineBreaksFromHere(series);
         List<Value> kept = new ArrayList<>();
+        List<Boolean> keptMarks = new ArrayList<>();
         int taken = 0;
         int at = 0;
         Optional<Value> stoppedWith = Optional.empty();
@@ -83,6 +85,7 @@ public class RemoveEachNative extends LoopingNative {
                 drop = evaluator.evaluateOrRaise(bound, locals).isTruthy();
             } catch (LoopSignal stopped) {
                 kept.addAll(items.subList(at, items.size()));
+                keptMarks.addAll(marks.subList(at, items.size()));
                 stoppedWith = Optional.of(stopped.answer());
                 break;
             }
@@ -90,23 +93,33 @@ public class RemoveEachNative extends LoopingNative {
                 taken += through - at;
             } else {
                 kept.addAll(items.subList(at, through));
+                keptMarks.addAll(marks.subList(at, through));
             }
             at = reached;
         }
-        replaceRestWith(series, kept);
+        replaceRestWith(series, kept, keptMarks);
         if (stoppedWith.isPresent() && !(stoppedWith.get() instanceof UnsetValue)) {
             return stoppedWith.get();
         }
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    private void replaceRestWith(AnyBlockValue series, List<Value> kept) {
+    private List<Boolean> readLineBreaksFromHere(AnyBlockValue series) {
+        List<Boolean> marks = new ArrayList<>();
+        for (int at = series.index(); at <= series.storageLength(); at++) {
+            marks.add(series.storage().breaksLineAt(at));
+        }
+        return marks;
+    }
+
+    private void replaceRestWith(AnyBlockValue series, List<Value> kept, List<Boolean> keptMarks) {
         int had = series.lengthFromHere();
         for (int removed = 0; removed < had; removed++) {
             series.storage().removeAt(series.index());
         }
         for (int back = kept.size(); back > 0; back--) {
             series.storage().insertAt(series.index(), kept.get(back - 1));
+            series.storage().setLineBreakAt(series.index(), keptMarks.get(back - 1));
         }
     }
 

@@ -84,11 +84,23 @@ public final class BlockStorage extends ProtectableStorage {
     public void insertAt(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.add(oneBasedIndex - 1, value);
+        moveLineBreaksFrom(oneBasedIndex, 1);
     }
 
     public Value removeAt(int oneBasedIndex) {
         refuseIfProtected();
-        return items.remove(oneBasedIndex - 1);
+        Value removed = items.remove(oneBasedIndex - 1);
+        lineBreaks.remove(oneBasedIndex);
+        moveLineBreaksFrom(oneBasedIndex + 1, -1);
+        return removed;
+    }
+
+    private void moveLineBreaksFrom(int oneBasedIndex, int distance) {
+        List<Integer> moving = lineBreaks.stream()
+                .filter(marked -> marked >= oneBasedIndex)
+                .toList();
+        lineBreaks.removeAll(moving);
+        moving.forEach(marked -> lineBreaks.add(marked + distance));
     }
 
     /** Whether the position carries a line break. */
@@ -129,11 +141,7 @@ public final class BlockStorage extends ProtectableStorage {
             BlockStorage marksFrom, int marksFromIndex) {
 
         refuseIfProtected();
-        List<Integer> shifted = lineBreaks.stream()
-                .filter(marked -> marked >= oneBasedIndex)
-                .toList();
-        lineBreaks.removeAll(shifted);
-        shifted.forEach(marked -> lineBreaks.add(marked + incoming.size()));
+        moveLineBreaksFrom(oneBasedIndex, incoming.size());
         for (int offset = 0; offset < incoming.size(); offset++) {
             items.add(oneBasedIndex - 1 + offset, incoming.get(offset));
             if (marksFrom != null && marksFrom.breaksLineAt(marksFromIndex + offset)) {
