@@ -92,6 +92,19 @@ class HiddenFieldTest {
     }
 
     @Test
+    @DisplayName("a path hides a module's field as it hides an object's, which IMPORT relies on to hide lib-boot")
+    void aPathHidesAModulesField() {
+        assertThat(answerTo("""
+                m: make module! [[name: hidden-field] [a: 1 b: 2 c: 3]]
+                protect/hide 'm/b
+                words-of m""")).isEqualTo("[lib-local a c]");
+        assertThat(answerTo("""
+                o: make object! [inner: make module! [[name: hidden-inner] [a: 1 b: 2]]]
+                protect/hide 'o/inner/a
+                words-of o/inner""")).isEqualTo("[lib-local b]");
+    }
+
+    @Test
     @DisplayName("hiding a field is still not the same as not having one")
     void staysInTheObject() {
         assertThat(answerTo("equal? context [a: 1 protect/hide 'a] context [a: 1]"))

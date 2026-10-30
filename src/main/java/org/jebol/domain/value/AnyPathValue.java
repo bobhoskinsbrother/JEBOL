@@ -61,20 +61,20 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
         }
         Value reached = start.binding().findSlotFor(start.canonical()).value();
         for (Value between : segments.subList(1, segments.size() - 1)) {
-            Optional<ContextSlot> field = findFieldNamed(reached, between);
+            Optional<ContextSlot> field = findField(reached, between);
             if (field.isEmpty()) {
                 return Optional.empty();
             }
             reached = field.get().value();
         }
-        return findFieldNamed(reached, segments.getLast());
+        return findField(reached, segments.getLast());
     }
 
-    private static Optional<ContextSlot> findFieldNamed(Value holder, Value name) {
-        return holder instanceof ObjectValue(Context context)
+    private static Optional<ContextSlot> findField(Value holder, Value name) {
+        return holder instanceof PathTargetWithFields fielded
                 && name instanceof AnyWordValue word
-                && context.holds(word.canonical())
-                ? Optional.of(context.ownSlotFor(word.canonical()))
+                && fielded.context().holds(word.canonical())
+                ? Optional.of(fielded.context().ownSlotFor(word.canonical()))
                 : Optional.empty();
     }
 }
