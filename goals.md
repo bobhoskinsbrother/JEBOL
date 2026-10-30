@@ -70,12 +70,12 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Fourteen pieces of work, in the order to do them.
+Thirteen pieces of work, in the order to do them.
 
-**1a to 1i come first: each makes the same script answer differently on a
+**1b to 1i come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: binding (1a), the
-compressions and modules a script can ask for (1b to 1d), the console and
+either. Ordered by how much ordinary code they break: the compressions and
+modules a script can ask for (1b to 1d), the console and
 https (1e, 1f), then what a script sees when it fails (1g to 1i).
 
 **1j to 1n change nothing a script run on both would see**: the spec, a
@@ -92,22 +92,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1a. BIND with a word target does not look outward
-
-`bind 'outer in ctx/inner 'local`, where only the outer object has OUTER, is
-`not-in-context` in R3 and 1 in JEBOL: the word form walks up to a parent
-context, which R3 has no chain for. The block form already matches R3 (the
-word is left alone).
-
-1. Spec: the rule for BIND says neither form looks past the target's own
-   context.
-2. Tests for both forms, a word in the target, a word only in a parent, a
-   word in neither.
-3. Change the word form; run the functional suite for anything relying on
-   the old walk.
-
-**Done when** both forms answer as R3 does on all three.
 
 #### 1b. Port `lz4` and `lzav` to COMPRESS
 
@@ -281,9 +265,11 @@ wrong, so it is fixed first.
 
 #### 1i. An error's arguments are values, not sentences
 
-Twice now JEBOL has put an English sentence where R3 puts a value: arg1 of
-the operator error (1h), and arg1 of `gui-metric/set 'restore true` ("no host
-serves the metric restore"). A script that reads `e/arg1` gets prose.
+Three times now JEBOL has put an English sentence where R3 puts a value: arg1
+of the operator error (1h), arg1 of `gui-metric/set 'restore true` ("no host
+serves the metric restore"), and arg1 of `no-value`, which for `get first
+[zork]` is a `word!` spelt `zork has no value` where R3's is `zork`. A script
+that reads `e/arg1` gets prose.
 
 1. Sweep: raise every error JEBOL can raise, read arg1, arg2 and arg3, and
    list every one that is a sentence. `scripts/error-parity.py` is the place

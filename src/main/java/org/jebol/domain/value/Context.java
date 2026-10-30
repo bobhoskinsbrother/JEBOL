@@ -168,6 +168,10 @@ public final class Context {
         return slot != null && !slot.isHidden();
     }
 
+    public boolean holdsWhereResolved(String canonicalName) {
+        return findResolvingFrame().holds(canonicalName);
+    }
+
     public boolean declaresItRelatively(String canonicalName) {
         return onlyThroughCallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
     }

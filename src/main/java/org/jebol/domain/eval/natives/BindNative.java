@@ -35,8 +35,7 @@ public class BindNative extends DefaultNative {
                                     + targetGiven.datatype().literalSpelling()));
             boolean addsWhatIsMissing = refinements.contains("new") || refinements.contains("set");
             return switch (arguments.getFirst()) {
-                case AnyWordValue word -> bindWordInto(
-                        word, target, targetGiven instanceof AnyWordValue, addsWhatIsMissing);
+                case AnyWordValue word -> bindWordInto(word, target, addsWhatIsMissing);
                 case AnyBlockValue block -> bindBlockInto(
                         block, target, refinements, addsWhatIsMissing);
                 default -> refuseArgument(arguments.getFirst(), "word");
@@ -51,22 +50,14 @@ public class BindNative extends DefaultNative {
         return target.fieldsAsContext();
     }
 
-    private Value bindWordInto(AnyWordValue word, Context target,
-                               boolean targetWasWord, boolean addsWhatIsMissing) {
-
+    private Value bindWordInto(AnyWordValue word, Context target, boolean addsWhatIsMissing) {
         if (addsWhatIsMissing) {
             target.register(word.canonical());
-        }
-        if (!targetWasWord) {
-            if (!target.holds(word.canonical())) {
-                throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
-            }
-            return word.bindTo(target);
         }
         if (target.declaresItRelatively(word.canonical())) {
             return word.bindTo(target);
         }
-        if (!target.contains(word.canonical())) {
+        if (!target.holdsWhereResolved(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
         }
         return word.bindTo(target.contextHolding(word.canonical()));

@@ -7474,10 +7474,9 @@ open question "Does /console on CALL differ observably from plain inheritance on
 
 -- Resolved: an object is asked only for its own fields, and a word it has
 -- not got raises not-in-context. The nesting JEBOL stores an object in is an
--- implementation detail and binding does not see it. A WORD as the target is
--- the other question and keeps the outward search, because "wherever this
--- word is bound" is a scope rather than a list. See
--- BindingAWordToAnObjectAsksThatObjectAlone.
+-- implementation detail and binding does not see it. A WORD as the target
+-- names the context it is bound to and is asked the same question, as the C
+-- asks it. See BindingAWordAsksTheTargetsOwnContextAlone.
 
 -- Resolved against a real R3: ROUND/TO rounds to a multiple of what it
 -- is given rather than to a number of places, so `round/to 1.234 0.01`
@@ -14072,27 +14071,28 @@ rule EmptyOfAnObjectAsksWhetherItHasAnyFieldOfItsOwn {
     ensures: CallResult(value: the_own_fields_of(subject).count = 0)
 }
 
--- BIND given an OBJECT and a word the object does not itself have raises
--- not-in-context. Given a WORD as the target it keeps searching outwards.
+-- BIND given a word the target's own context does not hold raises
+-- not-in-context, whether the target is an OBJECT or a WORD. Neither form
+-- looks past that one context.
 --
--- Two targets, two questions, and they are genuinely different. An object is
--- a place with a fixed word list: `Bind_Word` searches that frame's own words
--- and refuses anything else -- `else Trap1(RE_NOT_IN_CONTEXT, arg);` -- and
--- only /NEW or /SET may add a name to it. A word target means "wherever this
--- word is bound", which is a scope rather than a list, so the search runs
--- outwards through the enclosing scopes; base-defs.reb relies on that to hang
--- six generated words off REFLECT's own context without naming it.
+-- A word target only names a context: the C takes `VAL_WORD_FRAME(arg)` and
+-- then asks it exactly what it asks an object's frame. `Bind_Word` searches
+-- that frame's own words and refuses anything else -- `else
+-- Trap1(RE_NOT_IN_CONTEXT, arg);` -- and only /NEW or /SET may add a name to
+-- it. `Find_Word_Index(frame, sym, FALSE)` passes over hidden words and never
+-- matches slot zero, so SELF and a word PROTECT/HIDE has hidden are refused
+-- too. base-defs.reb hangs six generated words off REFLECT's context with
+-- `bind/new word 'reflect`, which adds them there; it never needed a search
+-- outwards.
 --
--- This resolves an open question that stood here: whether an object should
--- reach its parent scopes because JEBOL's contexts nest. It should not.
--- Nesting is how the implementation stores an object, and binding should not
--- be able to see it -- otherwise `bind 'anything obj` succeeds against
--- whatever happens to be in scope where the object was written, and a
--- misspelt field name binds silently to a global.
-rule BindingAWordToAnObjectAsksThatObjectAlone {
+-- Nesting is how JEBOL stores an object, and binding must not see it --
+-- otherwise `bind 'outer in ctx/inner 'local` succeeds against whatever was
+-- in scope where the inner object was written, and a misspelt field name
+-- binds silently to a global. A real R3 answers not-in-context there.
+rule BindingAWordAsksTheTargetsOwnContextAlone {
     when: EvaluateCall(bind, subject, target)
     requires: is_any_word(subject)
-    requires: is_object(target)
+    requires: is_object(target) or is_any_word(target)
     requires: not refinement_asked(new) and not refinement_asked(set)
 
     ensures:
