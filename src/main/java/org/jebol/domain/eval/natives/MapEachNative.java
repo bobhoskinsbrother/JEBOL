@@ -33,7 +33,7 @@ public class MapEachNative extends LoopingNative {
             Context locals = Context.loopFrameOf(context);
             List<AnyWordValue> names = loopNamesIn(arguments.get(0));
             names.forEach(name -> locals.register(name.spelling()));
-            AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
+            AnyBlockValue bound = Binder.bindCopyOfWhatTargetHoldsItself((AnyBlockValue) arguments.get(2), locals);
             List<Value> items = arguments.get(1).listItems();
             List<Value> gathered = new ArrayList<>();
             int at = 0;

@@ -68,7 +68,7 @@ public class RemoveEachNative extends LoopingNative {
         Context locals = Context.loopFrameOf(within);
         List<AnyWordValue> names = loopNamesIn(arguments.get(0));
         names.forEach(name -> locals.register(name.spelling()));
-        AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
+        AnyBlockValue bound = Binder.bindCopyOfWhatTargetHoldsItself((AnyBlockValue) arguments.get(2), locals);
         List<Value> items = series.remaining();
         List<Boolean> marks = readLineBreaksFromHere(series);
         List<Value> kept = new ArrayList<>();
@@ -131,7 +131,7 @@ public class RemoveEachNative extends LoopingNative {
         Context locals = Context.loopFrameOf(within);
         AnyWordValue word = (AnyWordValue) arguments.getFirst();
         locals.register(word.spelling());
-        AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
+        AnyBlockValue body = Binder.bindCopyOfWhatTargetHoldsItself((AnyBlockValue) arguments.get(2), locals);
         List<Value> kept = new ArrayList<>();
         int taken = 0;
         for (int at = series.index(); at <= series.storageLength(); at++) {
@@ -180,7 +180,7 @@ public class RemoveEachNative extends LoopingNative {
         MapActions.refuseMoreNamesThanPairHas(map, keepNamesThatTakeValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
-        AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
+        AnyBlockValue body = Binder.bindCopyOfWhatTargetHoldsItself((AnyBlockValue) arguments.get(2), locals);
         List<Value> pairs = map.listItems();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {

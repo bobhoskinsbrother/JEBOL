@@ -49,7 +49,7 @@ public class ForEachNative extends LoopingNative {
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
-        AnyBlockValue bound = Binder.bind(body, locals);
+        AnyBlockValue bound = Binder.bindCopyOfWhatTargetHoldsItself(body, locals);
 
         return runLoop(() -> {
             Value last = NoneValue.none();

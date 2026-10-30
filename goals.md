@@ -22,7 +22,7 @@ a baseline from the same machine rather than against the row.
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `./gradlew allTests`          | 29,629 tests on 2026-10-30: `unitTests` 3,018, `functionalTests` 24,542, `endToEndTests` 2,069                                                                                                                    |
+| `./gradlew allTests`          | 29,634 tests on 2026-10-30: `unitTests` 3,018, `functionalTests` 24,546, `endToEndTests` 2,070                                                                                                                    |
 | `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
 | the shipped jar               | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                    |
@@ -77,15 +77,6 @@ real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
 either. Ordered by how much ordinary code they break: the modules a script
 can ask for (1a, 1b), the console and
 https (1c, 1d), then what a script sees when it fails (1e to 1g).
-
-**A script file loses its own definition of a lib word inside a loop that
-binds its body.** Found on 2026-10-30 while porting LZ4: a script that says
-`show: func [x][print x]` or `probe: func [x][print ["mine" x]]` and then
-`repeat n 1 [probe "x"]` calls lib's PROBE in JEBOL and its own in R3. FOR,
-REPEAT and FOREACH lose it; LOOP and IF keep it, and so does a word lib does
-not have. Typed at the console instead of run from a file, all three keep it,
-so it is the script's context and not the loops alone. It breaks ordinary
-code, so it belongs ahead of 1a.
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs

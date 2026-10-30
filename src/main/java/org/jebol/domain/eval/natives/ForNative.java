@@ -60,7 +60,7 @@ public class ForNative extends LoopingNative {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
-        AnyBlockValue bound = Binder.bind(body, locals);
+        AnyBlockValue bound = Binder.bindCopyOfWhatTargetHoldsItself(body, locals);
 
         if (start instanceof RebolSeries series) {
             return stepOverSeries(evaluator, locals, counter, series, end, step, bound);

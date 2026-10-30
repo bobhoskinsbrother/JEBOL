@@ -14160,6 +14160,25 @@ rule BindingAWordAsksTheTargetsOwnContextAlone {
             CallFails(error: not_in_context, about: subject)
 }
 
+-- A loop binds a copy of its body to its own words, and to nothing else.
+--
+-- `Init_Loop` in n-loop.c clones the body and calls
+-- `Bind_Block(frame, BLK_HEAD(body), BIND_DEEP)`, and Bind_Block marks the
+-- frame's own words and rebinds only those. FOR, REPEAT, FOREACH, MAP-EACH and
+-- REMOVE-EACH all go through it. Every other word keeps the binding it came
+-- with.
+--
+-- The search outwards it replaced was wrong in a way a script sees: a script
+-- that redefined PROBE called lib's PROBE inside REPEAT, because the context a
+-- script runs in reaches lib without passing the user context its own
+-- definition lives in. A body bound to an object lost the object the same way.
+rule ALoopBindsOnlyItsOwnWords {
+    when: EvaluateCall(loop_native, words, series, body)
+    requires: goes_through_init_loop(loop_native)
+    ensures: the_words_bound_to_the_loop_frame(body) = words
+    ensures: every_other_word_keeps_the_binding_it_came_with(body) = true
+}
+
 -- BIND accepts an ERROR as its context, and binds through the error's own
 -- fields.
 --
