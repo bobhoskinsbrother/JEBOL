@@ -7457,7 +7457,7 @@ rule TheCatalogueListsWhatRebolDeclaresInItsOrder {
 
 open question "Refusing a body to a native comes back under two different error ids in the C, depending on how the make was written, and it is not settled that JEBOL should keep them apart. The prototype form `make :read [[][]]` reaches Copy_Function, which returns FALSE for a value that is not a function or closure, and the make arm reports that with Trap_Reflect -- cannot-use, arg1 the definition block. The datatype form `make native! [[][]]` and `make action! [[][]]` never reach Copy_Function: Make_Function refuses REB_NATIVE and REB_ACTION outright and the arm reports that with Trap_Make -- bad-make-arg, arg1 the type. Same mistake, two doors, two ids. MakingFromANativePrototypeWithABodyIsRefused specifies the prototype form as cannot-use, matching the C for the case the suite exercises and the derivation contrast turns on. What is undecided is whether JEBOL should reproduce the datatype form's bad-make-arg as faithfully, or unify the two on one id on the grounds that a script cannot tell which arm it hit and the distinction is an artefact of the C's control flow rather than a fact about the value. It wants measuring against a real R3 on all three spellings before either is built."
 
-open question "CompressedBytesAreTheOnesARealRebolWrites holds for the four methods this build writes itself and not for the three of the deflate family -- zlib, gzip and deflate -- which a real 3.22.5 writes through libdeflate. The streams read back correctly and are a little larger, because libdeflate's parse is not the one the JVM's own deflater uses and no setting brings the two together. Three ways out and none is free. Port libdeflate, which is a second compressor of comparable size to the ones already here and buys nothing but the bytes. Declare the three methods reproducible only against JEBOL itself, which is honest and quietly makes the invariant say two different things depending on the method. Or say that reproducibility is a property of the format rather than of the encoder, and that a caller who needs the same bytes must record them rather than recompute them -- which is the most defensible position and the least useful one, since the whole point is comparing against something already written. It wants deciding before anything is built on it, because a caller who reads the invariant and does not read this cannot tell which three of the seven will disappoint them."
+open question "CompressedBytesAreTheOnesARealRebolWrites holds for the six methods this build writes itself and not for the three of the deflate family -- zlib, gzip and deflate -- which a real 3.22.5 writes through libdeflate. The streams read back correctly and are a little larger, because libdeflate's parse is not the one the JVM's own deflater uses and no setting brings the two together. Three ways out and none is free. Port libdeflate, which is a second compressor of comparable size to the ones already here and buys nothing but the bytes. Declare the three methods reproducible only against JEBOL itself, which is honest and quietly makes the invariant say two different things depending on the method. Or say that reproducibility is a property of the format rather than of the encoder, and that a caller who needs the same bytes must record them rather than recompute them -- which is the most defensible position and the least useful one, since the whole point is comparing against something already written. It wants deciding before anything is built on it, because a caller who reads the invariant and does not read this cannot tell which three of the nine will disappoint them."
 
 open question "A wildcard in a path read as a directory listing in the C, and cannot-open here. `read %*.r3` in a real R3 lists the matching files, because the path goes to the directory scheme and the pattern is handed to the operating system's own matcher. JEBOL takes the path literally, finds no file spelled that way and raises cannot-open. Three things to settle before it is built: whether the matching belongs in JEBOL or in the host, given that the JVM's own path matcher and a Windows shell disagree about several patterns; whether a wildcard should list only where the path names no real file, since a file genuinely called `*.r3` is legal on every system JEBOL runs on; and whether the answer is the plain names a directory listing gives, which is what would make the two forms interchangeable. Backlogged rather than open in the sense of blocking: nothing in Rebol's own library reads a wildcard, so this costs no assertions today."
 
@@ -10199,18 +10199,72 @@ rule CompressNeedsAMethodTheHostHas {
     ensures: CallFails(error: invalid_arg, about: method)
 }
 
--- And they are inverses, which is the whole of what a caller needs.
+-- And they are inverses, which is the whole of what a caller needs -- for
+-- the seven methods whose stream says how long its answer is.
 --
 -- At every level, not only at the one a caller who says nothing gets. A level
 -- changes how hard the method tries and therefore which bytes come out; it
 -- never changes what reading them back answers. Checked against a real 3.22.5
--- across all seven methods at eighteen levels each, including levels none of
--- them has.
+-- across those seven at eighteen levels each, including levels none of them
+-- has.
 invariant CompressAndDecompressAreInversesAtEveryLevel {
-    for method in host_compression_methods():
+    for method in host_compression_methods() where its_stream_says_how_long_the_answer_is(method):
         for level in AnyInteger:
             for octets in AnyBinary:
                 decompress(compress(octets, method, level), method) = octets
+}
+
+-- LZ4 and LZAV write a bare block: no length, no header, nothing to say
+-- where the answer ends. So neither is an inverse on its own, and each fails
+-- in its own way.
+--
+-- LZAV refuses outright. DECOMPRESS without /SIZE never reaches the decoder,
+-- and with it the size has to be the answer's own length to the octet,
+-- because LZAV checks that it filled exactly what it was given: fewer octets
+-- is its own code -3 and more is -5, both raised as bad-press carrying the
+-- code.
+rule LzavReadsBackOnlyGivenItsSize {
+    when: EvaluateCall(decompress, data, method)
+    requires: method = lzav
+    requires: not refinement_asked(size)
+    ensures: CallFails(error: bad_press)
+}
+
+-- LZ4 decodes into room rather than to a length, and the room is the
+-- series Rebol makes for it: /SIZE rounded up to the memory pool that holds
+-- it, or three times the compressed length when nobody says. Whatever fits
+-- comes back whole -- longer than /SIZE asked for, if the pool has the room
+-- -- and whatever does not is refused. So a block that grew more than
+-- threefold when it was decompressed reads back only given /SIZE.
+rule Lz4ReadsBackWhateverFitsItsRoom {
+    when: EvaluateCall(decompress, data, method)
+    requires: method = lz4
+    requires: length(lz4_decoded(data)) <= the_room_rebol_makes_for(data)
+    ensures: CallResult(value: lz4_decoded(data))
+}
+
+rule Lz4RefusesWhatOverflowsItsRoom {
+    when: EvaluateCall(decompress, data, method)
+    requires: method = lz4
+    requires: length(lz4_decoded(data)) > the_room_rebol_makes_for(data)
+    ensures: CallFails(error: bad_press)
+}
+
+-- And neither has a stream for nothing. LZ4 writes the one zero octet, and
+-- its decoder refuses an answer of no octets as it refuses a broken block;
+-- LZAV will not write anything at all.
+rule Lz4RefusesToReadBackNothing {
+    when: EvaluateCall(decompress, data, method)
+    requires: method = lz4
+    requires: length(lz4_decoded(data)) = 0
+    ensures: CallFails(error: bad_press)
+}
+
+rule LzavRefusesToCompressNothing {
+    when: EvaluateCall(compress, data, method)
+    requires: method = lzav
+    requires: length(data) = 0
+    ensures: CallFails(error: bad_press)
 }
 
 -- A level the method has no such setting for is clamped, never refused.
@@ -10223,7 +10277,10 @@ invariant CompressAndDecompressAreInversesAtEveryLevel {
 --
 -- The clamp is one-sided in the C and reads as a bug that has become the
 -- behaviour: the level arrives unsigned, so `MIN(top, level)` sends every
--- negative number to the top rather than to the bottom.
+-- negative number to the top rather than to the bottom. LZ4 is the
+-- exception, because `CompressLz4` casts the level back to a signed int
+-- before clamping it: a negative level is level one, and only the low
+-- thirty-two bits of a level are read, so 4294967299 is level three.
 rule ACompressionLevelOutsideTheMethodsRangeIsClamped {
     when: EvaluateCall(compress, data, method)
     requires: refinement_asked(level)
@@ -10237,9 +10294,10 @@ rule ACompressionLevelOutsideTheMethodsRangeIsClamped {
 -- for all of them.
 --
 -- It cannot be worked out from the range. For the deflate family, CRUSH and
--- LZW it is the hardest setting; for LZMA it is five of nine and for Brotli
--- six of eleven. So a caller who wants the smallest answer has to say so for
--- two of the seven and must not for the other five.
+-- LZW it is the hardest setting; for LZMA it is five of nine, for Brotli six
+-- of eleven, and for LZ4 the fastest of twelve. LZAV has no levels and
+-- ignores the one it is given. So a caller who wants the smallest answer has
+-- to say so for three of the nine and must not for the other five.
 --
 -- Which makes minus one the one number that means two things. The C spells
 -- "nobody asked" as an unsigned value of all ones, so a caller who writes -1

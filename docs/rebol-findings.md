@@ -6918,3 +6918,42 @@ is `[a^/b]`, with `a` unmarked. A blank line under the header does mark it.
 `load/header` puts the header object in front with INSERT, so the marks stay
 on `a` and `b`. `LineMarksTravelWithTheirValuesFromTheSourceTest` pins all of
 it, and `./r3-head` answers each of its cases alike.
+
+## 235. LZ4 and LZAV say nothing about how long their answer is
+
+Both are written as a bare block, so DECOMPRESS has to be told or has to guess,
+and the two methods do it differently. `docs/lz4-and-lzav-port.md` has how the
+port was checked; this is what a script sees.
+
+**LZAV is not told, so it refuses.** `DecompressLzav` returns before decoding when
+there is no /SIZE, and bad-press says 0. Given /SIZE, LZAV insists on it exactly
+and its own codes come through as bad-press's argument: `decompress/size
+(compress "abc" 'lzav) 'lzav 2` is -3 and `... 5` is -5. Nothing at all cannot be
+compressed either -- `compress "" 'lzav` is bad-press 0, because `lzav_compress`
+answers no octets for no input and `CompressLzav` takes that as a failure.
+
+**LZ4 guesses, and the guess is the series' memory pool.** Without /SIZE the room
+is three times the compressed length; with it, /SIZE. Either way the room is then
+rounded up to the pool `Make_Binary` takes it from, because `DecompressLz4` passes
+`SERIES_REST` rather than the size it asked for. So:
+
+- `decompress/size (compress "abcabc" 'lz4) 'lz4 3` is all six octets, not three:
+  the room for three is eight;
+- sixty-four `a`s compress to eleven octets and read back, and sixty-five compress
+  to eleven too and are refused, since the room for 33 is 64;
+- a /SIZE whose room rounds up to two gigabytes is refused (2147482624 is the first)
+  because LZ4 takes the room as an `int`, and 2147483647 is no-memory before LZ4
+  is asked.
+
+**LZ4's level is signed after all.** Every other method takes the level unsigned,
+so a negative one goes to the top (`ACompressionLevelOutsideTheMethodsRangeIsClamped`).
+`CompressLz4` casts it back with `(int)level` before `MAX(1, MIN(12, ...))`, so -5
+is level one, and 4294967299 is level three. The default is level one too: nobody
+asking is all ones, which the cast makes -1.
+
+**The catalogue's order is the order the C registers them**:
+`[deflate zlib gzip br crush lz4 lzav lzma lzw]`, from `Init_Compression`. JEBOL's
+used to be its own.
+
+`Lz4FromTheSourceTest` and `LzavFromTheSourceTest` pin all of it, every expectation
+read off `./r3-head`.

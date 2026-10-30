@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count row on 2026-10-29 and the timing rows on
+Measured on 2026-10-12, the test count row on 2026-10-30 and the timing rows on
 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
 an Intel one read about 122ms median and 187ms p95, so compare a change against
 a baseline from the same machine rather than against the row.
@@ -22,7 +22,7 @@ a baseline from the same machine rather than against the row.
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `./gradlew allTests`          | 29,532 tests on 2026-10-29: `unitTests` 2,980, `functionalTests` 24,483, `endToEndTests` 2,069                                                                                                                    |
+| `./gradlew allTests`          | 29,629 tests on 2026-10-30: `unitTests` 3,018, `functionalTests` 24,542, `endToEndTests` 2,069                                                                                                                    |
 | `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
 | the shipped jar               | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                    |
@@ -70,13 +70,22 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Thirteen pieces of work, in the order to do them.
+Twelve pieces of work, in the order to do them.
 
-**1a to 1h come first: each makes the same script answer differently on a
+**1b to 1h come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: the compressions and
-modules a script can ask for (1a to 1c), the console and
+either. Ordered by how much ordinary code they break: the modules a script
+can ask for (1b, 1c), the console and
 https (1d, 1e), then what a script sees when it fails (1f to 1h).
+
+**A script file loses its own definition of a lib word inside a loop that
+binds its body.** Found on 2026-10-30 while porting LZ4: a script that says
+`show: func [x][print x]` or `probe: func [x][print ["mine" x]]` and then
+`repeat n 1 [probe "x"]` calls lib's PROBE in JEBOL and its own in R3. FOR,
+REPEAT and FOREACH lose it; LOOP and IF keep it, and so does a word lib does
+not have. Typed at the console instead of run from a file, all three keep it,
+so it is the script's context and not the loops alone. It breaks ordinary
+code, so it belongs ahead of 1b.
 
 **1i to 1m change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
@@ -92,30 +101,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1a. Port `lz4` and `lzav` to COMPRESS
-
-R3 lists `[deflate zlib gzip br crush lz4 lzav lzma lzw]` in
-`system/catalog/compressions`; JEBOL lists
-`[zlib gzip deflate crush lzw lzma br]` and answers `feature-na` for both.
-`compress "aaaa" 'lz4` is `#{4061616161}` in R3.
-
-Neither is in the JDK. Both are in the C, wired into `u-compress.c`:
-`rebol3-source/src/core/lz4/` (`lz4.c`, and `lz4hc.c` for the high levels)
-and `rebol3-source/src/include/sys-lzav.h` (LZAV 5.5).
-
-1. The reference probe for each, built from the C, before any Java.
-2. A boundary list from the C's block and window sizes, with the test
-   beside each.
-3. The port, byte-exact against the probe.
-4. The catalogue in R3's order.
-
-Today `Encodings.COMPRESSIONS_ELSEWHERE` names them and
-`CompressionThisBuildLacksFromTheSourceTest` pins `feature-na` -- a test of
-the gap, not of R3, which changes with the port.
-
-**Done when** both compress and decompress as R3 does at every level, and
-the catalogue reads as R3's.
 
 #### 1b. Review the sixteen missing entries of `system/modules`
 
@@ -312,9 +297,9 @@ runs `allium check` clean.
      complemented bitset matches; PROTECT/HIDE hides; REPEAT takes a
      series and a decimal; the six natives waiting on datatypes exist; a
      handle holds a value and stays opaque;
-     `CompressedBytesAreTheOnesARealRebolWrites` now holds for all seven
+     `CompressedBytesAreTheOnesARealRebolWrites` now holds for all nine
      methods (zlib, gzip and deflate write R3's bytes at levels 0, 1, 6 and
-     9), so the libdeflate question goes and the invariant loses its
+     9; LZ4 and LZAV were ported byte for byte), so the libdeflate question goes and the invariant loses its
      exception; a wait on a connection with no timeout answers none until
      connections are read on their own thread (a rule, not a question);
      `system/options/boot` serves children only, which is enough (owner's

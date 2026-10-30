@@ -267,17 +267,5 @@ class LzmaFromTheSourceTest {
                         not error? try [compress "x" 'lzma]
                     ]""")).isEqualTo("[#(true) #(true)]");
         }
-
-        @Test
-        @DisplayName("and the two this build still has not got say feature-na")
-        void leavesTheOthersSayingFeatureNa() {
-            assertThat(answerTo("""
-                    collect [
-                        foreach method [lz4 lzav][
-                            raised: try [compress "x" method]
-                            keep raised/id
-                        ]
-                    ]""")).isEqualTo("[feature-na feature-na]");
-        }
     }
 }

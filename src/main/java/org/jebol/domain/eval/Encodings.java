@@ -6,6 +6,8 @@ import org.jebol.domain.eval.compression.Lzma;
 import org.jebol.domain.eval.compression.Lzw;
 import org.jebol.domain.eval.compression.Octets;
 import org.jebol.domain.eval.compression.deflate.DeflateCompressor;
+import org.jebol.domain.eval.compression.lz4.Lz4;
+import org.jebol.domain.eval.compression.lzav.Lzav;
 import org.jebol.domain.eval.hashing.Md4;
 import org.jebol.domain.eval.hashing.RipeMd160;
 import org.jebol.domain.eval.hashing.XxHash;
@@ -674,9 +676,9 @@ public final class Encodings {
             List.of("zlib", "gzip", "deflate");
 
     public static final List<String> COMPRESSIONS =
-            List.of("zlib", "gzip", "deflate", "crush", "lzw", "lzma", "br");
+            List.of("deflate", "zlib", "gzip", "br", "crush", "lz4", "lzav", "lzma", "lzw");
 
-    public static final List<String> COMPRESSIONS_ELSEWHERE =
+    private static final List<String> COMPRESSIONS_SIZED_BY_THEIR_OWN_DECODER =
             List.of("lz4", "lzav");
 
     public byte[] compress(byte[] octets, String method, int level) {
@@ -688,6 +690,8 @@ public final class Encodings {
             case "lzw" -> lzw.compress(octets, level);
             case "lzma" -> Lzma.compress(octets, level);
             case "br" -> Brotli.compress(octets, level);
+            case "lz4" -> Lz4.compress(octets, level);
+            case "lzav" -> Lzav.compress(octets);
             default -> throw new IllegalArgumentException(method);
         };
     }
@@ -695,6 +699,9 @@ public final class Encodings {
     public byte[] decompress(byte[] octets, String method, int wanted) {
         if (octets.length == 0 && COMPRESSIONS_WITH_NO_HEADER.contains(method)) {
             return octets;
+        }
+        if (COMPRESSIONS_SIZED_BY_THEIR_OWN_DECODER.contains(method)) {
+            return "lz4".equals(method) ? Lz4.decompress(octets, wanted) : Lzav.decompress(octets, wanted);
         }
         byte[] whole = switch (method) {
             case "gzip" -> ungzip(octets);

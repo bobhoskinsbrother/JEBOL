@@ -122,17 +122,5 @@ class CrushFromTheSourceTest {
                         not error? try [compress "x" 'crush]
                     ]""")).isEqualTo("[#(true) #(true)]");
         }
-
-        @Test
-        @DisplayName("and the two this build has not got still say so")
-        void leavesTheOthersSayingFeatureNa() {
-            assertThat(answerTo("""
-                    collect [
-                        foreach method [lz4 lzav][
-                            raised: try [compress "x" method]
-                            keep raised/id
-                        ]
-                    ]""")).isEqualTo("[feature-na feature-na]");
-        }
     }
 }
