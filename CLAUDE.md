@@ -248,14 +248,22 @@ nothing else in the build will ever notice.
 
 ## Running the suite
 
-**`./gradlew allTests` is the gate.** It runs the spec check, then three suites,
-each its own source set and its own task:
+**`./gradlew allTests` is the gate.** It runs the spec check, then four suites,
+each its own task, and all but one its own source set:
 
 | Task | Source set | What is in it |
 | --- | --- | --- |
 | `unitTests` | `src/unitTest` | Tests that never build an interpreter: values, codecs, the reader, the domain on its own |
 | `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
+| `heapExhaustionTests` | `src/functionalTest` | The functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
+
+Every test fork leaves a GC log in `build/test-results/<suite>/jvm/`, and an
+`hs_err` file if the JVM dies. Outside `heapExhaustionTests` it also leaves a
+heap dump if it runs out of memory, so a dump there always means something:
+tag a test `exhausts-the-heap` if it runs the heap out on purpose. The archive
+copies the folder with the results, and `summary.txt` names any dump or crash
+log it finds.
 
 A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 `./gradlew networkTests` runs the twelve suite assertions named in

@@ -207,9 +207,9 @@ final class SuiteGrading {
                     String toRun = step.sourceToRun();
                     interpreter.defineNewWordsIn(toRun);
                     ScriptOutcome ran = interpreter.run(OPEN_DO + toRun + CLOSE_DO);
-                    verdict = new Verdict(ran.succeeded(), "");
-                    recordWhatRanInside(grading, interpreter, step,
+                    verdict = new Verdict(ran.succeeded(),
                             ran.succeeded() ? "" : readTheReasonFrom(ran));
+                    recordWhatRanInside(grading, interpreter, step, verdict.reason());
                 }
             } catch (RuntimeException refused) {
                 verdict = new Verdict(false,

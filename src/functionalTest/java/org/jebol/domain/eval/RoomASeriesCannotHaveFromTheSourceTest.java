@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +78,7 @@ class RoomASeriesCannotHaveFromTheSourceTest {
     }
 
     @Test
+    @Tag("exhausts-the-heap")
     @DisplayName("a count the host cannot serve is the same failure, not a host exception")
     void aCountTheHostCannotServeIsTheSameFailure() {
         assertThat(failureOf("make string! " + A_COUNT_NO_HEAP_CAN_SERVE))

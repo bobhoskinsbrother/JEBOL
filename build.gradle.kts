@@ -205,7 +205,26 @@ testSuites.forEach { suite ->
     suite.runtimeClasspath += sourceSets.main.get().output + launcher.output
 }
 
-fun Test.runsTheTestsIn(suite: SourceSet) {
+val testsThatExhaustTheHeap = "exhausts-the-heap"
+
+fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
+    val resultsOfThisRun = reports.junitXml.outputLocation.get().asFile
+    val jvmEvidence = resultsOfThisRun.resolve("jvm")
+    jvmArgs(
+        "-XX:ErrorFile=$jvmEvidence/hs_err_pid%p.log",
+        "-Xlog:gc,gc+init:file=$jvmEvidence/gc-%p.log:time,uptime",
+    )
+    if (dumpsTheHeapWhenItRunsOut) {
+        jvmArgs("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=$jvmEvidence")
+    }
+    doFirst {
+        resultsOfThisRun.listFiles { file -> file.name.endsWith(".xml") }.orEmpty().forEach { it.delete() }
+        jvmEvidence.deleteRecursively()
+        jvmEvidence.mkdirs()
+    }
+}
+
+fun Test.runsTheTestsIn(suite: SourceSet, dumpsTheHeapWhenItRunsOut: Boolean = true) {
     group = "verification"
     testClassesDirs = suite.output.classesDirs
     classpath = suite.runtimeClasspath
@@ -225,6 +244,7 @@ fun Test.runsTheTestsIn(suite: SourceSet) {
     // arm64 Mac and overflows on an x86_64 one. Pinning it to the larger of
     // the two defaults makes the gate answer the same on both.
     jvmArgs("-Xss2m")
+    leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut)
     maxParallelForks = Runtime.getRuntime().availableProcessors()
     inputs.dir(layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")
@@ -265,6 +285,15 @@ val functionalTests = tasks.register<Test>("functionalTests") {
         fileTree("rebol3-source/src/modules"),
         fileTree("rebol3-source/src/tests"),
     )
+    useJUnitPlatform { excludeTags(testsThatExhaustTheHeap) }
+    mustRunAfter(unitTests)
+}
+
+val heapExhaustionTests = tasks.register<Test>("heapExhaustionTests") {
+    description = "The functional tests that run the heap out on purpose, apart, so a heap dump in the others always means something"
+    runsTheTestsIn(functionalTest, dumpsTheHeapWhenItRunsOut = false)
+    useJUnitPlatform { includeTags(testsThatExhaustTheHeap) }
+    maxParallelForks = 1
     mustRunAfter(unitTests)
 }
 
@@ -393,6 +422,12 @@ abstract class ArchiveTestResults : DefaultTask() {
             val wall = if (reports.isEmpty()) "not run" else formatMinutes(suiteEnd - suiteStart)
             lines += "$suite: ${reports.size} classes, $tests tests, $failed failed, $skipped skipped, " +
                 "wall $wall, summed ${"%.0f".format(seconds)}s"
+            val jvmEvidence = archived.resolve(suite).resolve("jvm")
+            val heapDumps = jvmEvidence.listFiles { file -> file.name.endsWith(".hprof") }.orEmpty().size
+            val crashLogs = jvmEvidence.listFiles { file -> file.name.startsWith("hs_err") }.orEmpty().size
+            if (heapDumps + crashLogs > 0) {
+                lines += "jvm evidence for $suite: $heapDumps heap dumps and $crashLogs JVM crash logs in $suite/jvm"
+            }
         }
         if (latestEnd > earliestStart) {
             lines += "tests wall, first class started to last class finished: ${formatMinutes(latestEnd - earliestStart)}"
@@ -421,7 +456,7 @@ abstract class ArchiveTestResults : DefaultTask() {
     }
 }
 
-val gateSuites = listOf("unitTests", "functionalTests", "endToEndTests")
+val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests")
 
 val gateWasAskedFor = gradle.startParameter.taskNames
     .map { it.removePrefix(":") }
@@ -439,12 +474,12 @@ val archiveTestResults = tasks.register<ArchiveTestResults>("archiveTestResults"
 
 val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "The spec check, then unitTests, functionalTests and endToEndTests, then archiveTestResults"
-    dependsOn(checkSpec, unitTests, functionalTests, endToEndTests)
+    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests and endToEndTests, then archiveTestResults"
+    dependsOn(checkSpec, unitTests, functionalTests, heapExhaustionTests, endToEndTests)
     finalizedBy(archiveTestResults)
 }
 
-listOf(unitTests, functionalTests, endToEndTests).forEach { suite ->
+listOf(unitTests, functionalTests, heapExhaustionTests, endToEndTests).forEach { suite ->
     suite { finalizedBy(archiveTestResults) }
 }
 
@@ -461,8 +496,8 @@ tasks.check {
 }
 
 tasks.jacocoTestReport {
-    dependsOn(unitTests, functionalTests, endToEndTests)
-    executionData(unitTests.get(), functionalTests.get(), endToEndTests.get())
+    dependsOn(unitTests, functionalTests, heapExhaustionTests, endToEndTests)
+    executionData(unitTests.get(), functionalTests.get(), heapExhaustionTests.get(), endToEndTests.get())
     reports {
         xml.required = true
         html.required = true
