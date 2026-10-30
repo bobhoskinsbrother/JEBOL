@@ -87,6 +87,7 @@ public final class Interpreter {
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
         installation.installDelayed(EasingExtension.create());
+        installation.installDelayed(BlurHashExtension.create());
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
         handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();

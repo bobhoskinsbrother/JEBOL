@@ -129,10 +129,9 @@ first:
    `docs/easing-port.md`). The eighteen arithmetic curves agree with the C to
    the bit; the twelve that call `sin`, `cos` or `pow` agree to within the
    last bit, because JEBOL takes no LGPL libm to close that.
-2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). `encode img` and
-   `decode text image /contrast punch`. The text an image encodes to must be
-   the extension's character for character, and the pixels `decode` paints
-   its byte for byte: a probe from its C first.
+2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). Done on 2026-10-30
+   (`docs/blurhash-port.md`): every hash and every pixel agrees with the C
+   byte for byte, red and blue swapped as R3's memory swaps them.
 3. **deflate** 0.1.0 (libdeflate) and **zlib-ng** 2.3.2, one piece because
    both are DEFLATE. `version`, `compress` and `decompress` with `/part`,
    `/level`, `/size`, `/zlib` and `/gzip`; zlib-ng adds `make-encoder`
