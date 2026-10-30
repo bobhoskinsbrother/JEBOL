@@ -86,6 +86,7 @@ public final class Interpreter {
         SealedLibrary library = new SealedLibrary(systemContext);
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
+        installation.installDelayed(EasingExtension.create());
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
         handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();

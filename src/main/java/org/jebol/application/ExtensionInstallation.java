@@ -32,6 +32,12 @@ final class ExtensionInstallation {
     private static final String LOAD_BOOT_EXTENSIONS_REBOL_STRING =
             "make module! sys/load-ext-module load-extension/dispatch the-source :the-dispatcher";
 
+    private static final String STORE_DELAYED_EXTENSION_REBOL_STRING = """
+            extension: load-extension/dispatch the-source :the-dispatcher
+            set [header: body:] sys/load-header/only/required extension/lib-boot
+            header/name: the-name
+            append system/modules reduce [to set-word! the-name reduce [header extension]]""";
+
     private final Evaluator evaluator;
 
     private final SealedLibrary library;
@@ -50,6 +56,17 @@ final class ExtensionInstallation {
         } catch (Raised refused) {
             return new ExtensionReport(extension.name(), Optional.of(refused.error().errorId()));
         }
+    }
+
+    void installDelayed(BundledExtension bundled) {
+        Extension extension = bundled.extension();
+        Context context = Context.makeChildOf(evaluator.systemContext());
+        context.register("the-source", BinaryValue.ofBytes(
+                writeRebolSource(bundled.header(), extension).getBytes(StandardCharsets.UTF_8)));
+        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
+                evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
+        context.register("the-name", WordValue.of(extension.name()));
+        evaluateOrRaise(evaluator.read(STORE_DELAYED_EXTENSION_REBOL_STRING), context);
     }
 
     private void install(Extension extension) {
@@ -119,7 +136,7 @@ final class ExtensionInstallation {
 
     private ModuleValue makeModule(Extension extension) {
         Context context = Context.makeChildOf(evaluator.systemContext());
-        context.register("the-source", BinaryValue.ofBytes(writeRebolSourceFor(extension).getBytes(StandardCharsets.UTF_8)));
+        context.register("the-source", BinaryValue.ofBytes(writeRebolSource(extension).getBytes(StandardCharsets.UTF_8)));
         context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
                 evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
         TranscodeResult read = evaluator.read(LOAD_BOOT_EXTENSIONS_REBOL_STRING);
@@ -137,12 +154,17 @@ final class ExtensionInstallation {
         return evaluator.evaluateOrRaise(Binder.bindAndDefine(read.values().orElseThrow(), context), context);
     }
 
-    private String writeRebolSourceFor(Extension extension) {
-        StringBuilder source = new StringBuilder("REBOL [name: ").append(extension.name())
-                .append(" version: ").append(extension.version())
-                .append(" type: module exports: [")
-                .append(extension.commands().stream().map(ExtensionCommand::name).collect(Collectors.joining(" ")))
-                .append("]]\n");
+    private String writeRebolSource(Extension extension) {
+        String header = "REBOL [name: " + extension.name()
+                + " version: " + extension.version()
+                + " type: module exports: ["
+                + extension.commands().stream().map(ExtensionCommand::name).collect(Collectors.joining(" "))
+                + "]]";
+        return writeRebolSource(header, extension);
+    }
+
+    private String writeRebolSource(String header, Extension extension) {
+        StringBuilder source = new StringBuilder(header).append('\n');
         extension.commands().forEach(command ->
                 source.append(command.name()).append(": command [").append(command.spec()).append("]\n"));
         return source.append(extension.script()).append('\n').toString();

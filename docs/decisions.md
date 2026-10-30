@@ -2510,3 +2510,37 @@ which put one at the start of every line after the first for any value that
 molds over lines -- an event, a struct, an object, an error. It surfaced as a
 leading space in a probe's own output, which is the way a delimiter bug
 usually surfaces: in the tool you were using to look at something else.
+
+## 58. R3's compiled extensions are served from inside the build, and never fetched
+
+**R3 names fourteen compiled extensions in `system/modules` as release
+addresses, and IMPORT downloads one and loads it.** A real 3.22.5 asks for
+`<name>-<platform>-<arch>.rebx.gz`, writes it to the modules directory and runs
+it as native code. JEBOL will not do that, at any address: a build that fetches
+and runs code nobody has read is not one anyone can put in production.
+
+**So an extension JEBOL serves is ported to Java and carried in the build.** At
+boot each one goes through `load-extension/dispatch` with a Java dispatcher, as a
+host's own extension does, and is stored in `system/modules` as R3's
+`load-boot-exts` stores an extension whose header asks for `delay`: a block of
+the header and the extension object. IMPORT's LOAD-MODULE already makes a module
+from such a block on first use and puts the module in the table, so nothing in
+`sys-load.reb` changes. The commands stay in the module, only the header's
+exports reach `lib`, and a script that never imports it never sees it.
+
+**The header is the extension's own, named as IMPORT names it.** R3's extension
+headers carry no `Name:`; LOAD-MODULE's `/as` supplies it for a downloaded one.
+The delayed entry sets the same name when it is stored, so `spec-of` answers
+what it answers after R3 imports the file.
+
+**Before import the entry is a block where R3's is a url.** That is the visible
+difference and it is the point: there is no address to fetch.
+
+**Easing is the first** (`docs/easing-port.md`). Its boot cost was within the
+noise of `scripts/timing.py boot`: medians of 58.0 and 51.1 ms without it, 53.4
+and 53.7 ms with it.
+
+**The work turned up one core defect.** `protect/hide 'm/field` hid a field of an
+object and ignored a field of a module, so a module made by IMPORT kept
+`lib-boot` among its words where R3's hides it. A path now hides a field of any
+value that carries a context: an object, a module, a port or a task.

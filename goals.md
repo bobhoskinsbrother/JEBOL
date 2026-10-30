@@ -22,7 +22,7 @@ a baseline from the same machine rather than against the row.
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `./gradlew allTests`          | 29,634 tests on 2026-10-30: `unitTests` 3,018, `functionalTests` 24,546, `endToEndTests` 2,070                                                                                                                    |
+| `./gradlew allTests`          | 29,838 tests on 2026-10-30: `unitTests` 3,207, `functionalTests` 24,560, `endToEndTests` 2,070                                                                                                                    |
 | `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
 | the shipped jar               | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                    |
@@ -93,38 +93,42 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. Review the sixteen missing entries of `system/modules`
+#### 1a. Serve six of R3's compiled extensions from inside the build
 
-R3 has 69 entries; JEBOL has 55. Fourteen are links to native extensions R3
-downloads on import: blend2d, blurhash, brotli, bzip2, deflate, easing,
+R3 has 69 entries in `system/modules`. Fourteen are release addresses of
+compiled extensions: blend2d, blurhash, brotli, bzip2, deflate, easing,
 mathpresso, miniaudio, speak, sqlite, triangulate, webp, zlib-ng and zstd.
-Two are host modules: `window` (none in a macOS r3) and `osx-dialogs`. Some
-of what they serve is here another way -- `'br` is JEBOL's own Brotli and
-writes R3's bytes, and the request dialogs come from the Java window service
--- but nobody has checked what each one exports. Meanwhile
-`system/modules/brotli` raises `cannot access` where R3 answers its url.
+IMPORT downloads one and runs it as native code. Two more are host modules:
+`window` (none in a macOS r3) and `osx-dialogs`.
 
-For each of the sixteen, and the `serial` scheme:
+**JEBOL never fetches an extension** (decision 58). One it serves is ported to
+Java and carried in the build as a delayed entry, which IMPORT makes into a
+module the first time a script asks for it. One it does not serve has no
+entry at all: the table carries no address, so there is nothing to fetch.
 
-1. Import it in `./r3-head` (this needs the network) and list what it
-   exports.
-2. Say which of those JEBOL already serves another way, and which it lacks.
-3. Decide: carry the entry as R3 does, serve it by an extension in Java, or
-   leave it out on purpose and list it under Standing.
+**What each exports is read from its source, never from running it.** Each
+repository's `src/*-rebol-extension.r3`, at the tag R3's address names, declares
+the commands and holds the REBOL its module runs on import; read it as text.
+No release binary is run, and `./r3-head` could not import one anyway: it asks
+for `<name>-linux-x86_64.rebx` where every release names the file `x64`, and
+bzip2's and webp's addresses lack the `v` their tags carry. Where a test needs
+what the extension answers, the answer comes from its C, read and then compiled
+alone into a probe, or from the REBOL the extension carries.
 
-Once `system/modules` carries the entries and IMPORT refuses each address
-unread, six of the fourteen are to be served by an extension in Java, so that
-`import 'easing` answers a module as it does on a real 3.22.5 that can fetch
-it. In the order to build them, smallest first:
+**For the rest the decision is still to write down**: bzip2, miniaudio, speak,
+sqlite and triangulate, `window`, `osx-dialogs` and the `serial` scheme -- each
+served in Java as a goal of its own, or left out on purpose under Standing.
+Brotli is 1b and webp is goal 10.
 
-1. **easing** 1.0.0 (Siskin-framework/Rebol-Easing). Thirty functions of one
-   `decimal!` -- `linear`, then `in-`, `out-` and `in-out-` for quad, cubic,
-   quart, quint, sine, circ, expo, elastic, back and bounce, with no
-   `in-out-quint` -- and the exported `tween val1 val2 t ease`, which is
-   REBOL in the extension and can be carried as it is. The C is a few lines
-   per function, but it calls `sin`, `pow` and `sqrt`: check the answers
-   against the extension's own C compiled into a probe, to the last bit,
-   rather than against the formulas.
+Six are to be served in Java, so that `import 'easing` answers a module as it
+does on a real 3.22.5 that can fetch it. In the order to build them, smallest
+first:
+
+1. **easing** 1.0.0 (Siskin-framework/Rebol-Easing). Done on 2026-10-30:
+   `import 'easing` answers the module from inside the build (decision 58,
+   `docs/easing-port.md`). The eighteen arithmetic curves agree with the C to
+   the bit; the twelve that call `sin`, `cos` or `pow` agree to within the
+   last bit, because JEBOL takes no LGPL libm to close that.
 2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). `encode img` and
    `decode text image /contrast punch`. The text an image encodes to must be
    the extension's character for character, and the pixels `decode` paints
@@ -136,6 +140,8 @@ it. In the order to build them, smallest first:
    makers, `make-decoder`, and `write` (`/flush`, `/finish`) and `read`.
    Importing deflate appends `,deflate` to the http scheme's
    `Accept-Encoding` unless it is there already, which on both it always is.
+   Importing zlib-ng changes nothing there: its edit is commented out at
+   2.3.2.
    Decompressing is JEBOL's inflate as it stands. Compressing is not: neither
    library writes zlib's bytes, so each encoder is a port of its own, done to
    the rules in `CLAUDE.md` -- the probe, the boundary list, the corpus.

@@ -56,3 +56,18 @@ Font License, Version 1.1, which is copied beside the font. The font
 ships: it is inside the jar under org/jebol/fonts/ and inside the
 WebAssembly module, and it is the face every renderer draws with and the
 metrics SIZE-TEXT, wrapping and carets are answered from.
+
+------------------------------------------------------------------------
+
+This product includes a port of Rebol-Easing 1.0.0
+(https://github.com/Siskin-framework/Rebol-Easing), whose easing
+functions come from Warren Moore's AHEasing.
+
+src/main/java/org/jebol/domain/eval/easing/Easing.java is written from
+its src/easing.c, and the command specs and TWEEN in
+src/main/java/org/jebol/application/EasingExtension.java from its
+src/easing-rebol-extension.r3. Rebol-Easing is released into the public
+domain under the Unlicense (https://unlicense.org), and these files remain
+under the Unlicense; they are not relicensed under the Apache License. They
+ship: they are inside the jar. The test table and its generators under
+src/testFixtures/resources/easing/ are its output and do not ship.
