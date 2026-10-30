@@ -112,8 +112,61 @@ For each of the sixteen, and the `serial` scheme:
 3. Decide: carry the entry as R3 does, serve it by an extension in Java, or
    leave it out on purpose and list it under Standing.
 
-**Done when** each has a decision written down, and the ones to build are
-goals of their own. Brotli is reviewed: 1b.
+Once `system/modules` carries the entries and IMPORT refuses each address
+unread, six of the fourteen are to be served by an extension in Java, so that
+`import 'easing` answers a module as it does on a real 3.22.5 that can fetch
+it. In the order to build them, smallest first:
+
+1. **easing** 1.0.0 (Siskin-framework/Rebol-Easing). Thirty functions of one
+   `decimal!` -- `linear`, then `in-`, `out-` and `in-out-` for quad, cubic,
+   quart, quint, sine, circ, expo, elastic, back and bounce, with no
+   `in-out-quint` -- and the exported `tween val1 val2 t ease`, which is
+   REBOL in the extension and can be carried as it is. The C is a few lines
+   per function, but it calls `sin`, `pow` and `sqrt`: check the answers
+   against the extension's own C compiled into a probe, to the last bit,
+   rather than against the formulas.
+2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). `encode img` and
+   `decode text image /contrast punch`. The text an image encodes to must be
+   the extension's character for character, and the pixels `decode` paints
+   its byte for byte: a probe from its C first.
+3. **deflate** 0.1.0 (libdeflate) and **zlib-ng** 2.3.2, one piece because
+   both are DEFLATE. `version`, `compress` and `decompress` with `/part`,
+   `/level`, `/size`, `/zlib` and `/gzip`; zlib-ng adds `make-encoder`
+   (`/level`, `/window`, `/strategy`), the zlib and gzip encoder and decoder
+   makers, `make-decoder`, and `write` (`/flush`, `/finish`) and `read`.
+   Importing deflate appends `,deflate` to the http scheme's
+   `Accept-Encoding` unless it is there already, which on both it always is.
+   Decompressing is JEBOL's inflate as it stands. Compressing is not: neither
+   library writes zlib's bytes, so each encoder is a port of its own, done to
+   the rules in `CLAUDE.md` -- the probe, the boundary list, the corpus.
+   Settle before the spec whether the encoders are ported or whether the
+   module compresses validly with JEBOL's encoder and says so under Standing.
+4. **zstd** 0.1.0. The same seven commands as brotli's and the same
+   `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
+   all, so this is a port of the size of Brotli's, decoder first, and every
+   rule in `CLAUDE.md` for a codec applies. Zstandard's own test corpus is
+   the corpus.
+5. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
+   `eval expression variables`, a vector of doubles. MathPresso compiles to
+   machine code with asmjit; JEBOL evaluates the same grammar and must give
+   the same double for every operator and function it accepts, and refuse
+   what it refuses.
+6. **blend2d** 0.12.0. Exports `draw image commands`, which paints a block of
+   its command words (`move`, `line`, `curve`, `box`, `circle`, `text`,
+   `fill`, `pen`, `line-width`, `blend`, `rotate`, `clip`, `font` and the
+   rest) onto an image or a new one of a size, and the module also holds
+   `path`, `font`, `image`, `info` and `set-threads`. JEBOL's own DRAW
+   dialect renders through `PaintList` and goes most of the way. Blend2D's
+   anti-aliasing cannot be matched pixel for pixel short of porting it, so
+   the spec says which commands are served and what a test may compare --
+   geometry and colour, not the edge pixels.
+
+**Done when** each of the sixteen has a decision written down, and each of
+the six imports as a module that works fully: every word it exports answers
+as the extension's does on a real 3.22.5, its exports reach `lib`, its
+`Accept-Encoding` edit is made, and `system/modules/<name>` is the module
+afterwards. Each gets a `*FromTheSourceTest` with expectations read off its
+probe. Brotli is reviewed: 1b.
 
 #### 1b. The `brotli` module, and the streaming encoder it needs
 
