@@ -137,10 +137,11 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    fill loop with its curve flattening: `polygon`, `triangle`, `circle`,
    `ellipse`, `arc` with `pie` and `chord`, rounded boxes and `cubic` all fill
    under any transform, and the stroker draws `line` and every outline under
-   `pen`, `line-width`, `line-join` and `line-cap`. `info`, `image` from an
-   image and `set-threads` answer as the release does. Left, in the order to
-   build it: `shape` and `path`; gradients and image patterns; image blits,
-   and images read from files; `point`; then fonts and `text`. Until then each
+   `pen`, `line-width`, `line-join` and `line-cap`, and `shape` and `path`
+   take the path dialect with its smooth curves and SVG arcs. `info`, `image`
+   from an image and `set-threads` answer as the release does. Left, in the
+   order to build it: gradients and image patterns; image blits, and images
+   read from files; `point`; then fonts and `text`. Until then each
    of those raises an error naming what it cannot draw rather than drawing it
    wrongly. Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
    JEBOL's are `StrictMath`'s, so an edge pixel can differ in their last bit

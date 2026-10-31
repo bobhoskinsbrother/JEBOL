@@ -20,6 +20,10 @@ public final class Blend2DShape {
         return path;
     }
 
+    static Blend2DShape fromPath(Blend2DPath path) {
+        return new Blend2DShape(path);
+    }
+
     public static Blend2DShape polygon(double[] points) {
         Blend2DPath path = new Blend2DPath();
         if (points.length > 0) {

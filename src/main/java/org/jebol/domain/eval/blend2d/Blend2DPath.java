@@ -18,6 +18,8 @@ final class Blend2DPath {
 
     private static final double EPSILON = 1e-14;
 
+    private static final double ANGLE_EPSILON = 1e-8;
+
     private static final double PI_MUL_2 = 6.28318530717958647692;
 
     private static final double[] QUARTER_TURNS = {
@@ -97,6 +99,166 @@ final class Blend2DPath {
 
     void cubicTo(Point first, Point second, Point end) {
         cubicTo(first.x(), first.y(), second.x(), second.y(), end.x(), end.y());
+    }
+
+    void quadTo(double x1, double y1, double x2, double y2) {
+        add(QUAD, x1, y1);
+        add(LINE, x2, y2);
+    }
+
+    void smoothQuadTo(double x2, double y2) {
+        if (size == 0 || commands[size - 1] >= CLOSE) {
+            return;
+        }
+        double x1 = xAt(size - 1);
+        double y1 = yAt(size - 1);
+        if (size >= 2 && commands[size - 2] == QUAD) {
+            x1 += x1 - xAt(size - 2);
+            y1 += y1 - yAt(size - 2);
+        }
+        quadTo(x1, y1, x2, y2);
+    }
+
+    void smoothCubicTo(double x2, double y2, double x3, double y3) {
+        if (size == 0 || commands[size - 1] >= CLOSE) {
+            return;
+        }
+        double x1 = xAt(size - 1);
+        double y1 = yAt(size - 1);
+        if (size >= 2 && commands[size - 2] == CUBIC) {
+            x1 += x1 - xAt(size - 2);
+            y1 += y1 - yAt(size - 2);
+        }
+        cubicTo(x1, y1, x2, y2, x3, y3);
+    }
+
+    Point lastVertex() {
+        if (size == 0) {
+            return new Point(0, 0);
+        }
+        int at = size - 1;
+        if (commands[at] != CLOSE) {
+            return pointAt(at);
+        }
+        while (at > 0) {
+            byte command = commands[--at];
+            if (command == CLOSE) {
+                return new Point(0, 0);
+            }
+            if (command == MOVE) {
+                return pointAt(at);
+            }
+        }
+        return new Point(0, 0);
+    }
+
+    void ellipticArcTo(double radiusX, double radiusY, double rotation, boolean isLarge, boolean isSweep,
+                       double endX, double endY) {
+        if (size == 0 || commands[size - 1] > LINE) {
+            return;
+        }
+        Point p0 = pointAt(size - 1);
+        Point p1 = new Point(endX, endY);
+        double rx = Math.abs(radiusX);
+        double ry = Math.abs(radiusY);
+        if (p0.isSameAs(p1)) {
+            return;
+        }
+        if (!(rx > EPSILON) | !(ry > EPSILON)) {
+            lineTo(p1);
+            return;
+        }
+        double rotationSin = StrictMath.sin(rotation);
+        double rotationCos = StrictMath.cos(rotation);
+        double[] matrix = {rotationCos, -rotationSin, rotationSin, rotationCos, 0, 0};
+        Point v = map(matrix, p0.minus(p1).times(0.5));
+        double scale = v.x() * v.x() / (rx * rx) + v.y() * v.y() / (ry * ry);
+        if (scale > 1.0) {
+            scale = Math.sqrt(scale);
+            rx *= scale;
+            ry *= scale;
+        }
+        postScale(matrix, 1.0 / rx, 1.0 / ry);
+        Point pp0 = map(matrix, p0);
+        Point pp1 = map(matrix, p1);
+        v = pp1.minus(pp0).times(0.5);
+        Point centre = pp0.plus(v);
+        double lengthSquared = v.lengthSquared();
+        if (lengthSquared < 1.0) {
+            v = v.normal().times(Math.sqrt(1.0 / lengthSquared - 1.0));
+            centre = isLarge != isSweep ? centre.plus(v) : centre.minus(v);
+        }
+        Point v1 = pp0.minus(centre);
+        Point v2 = pp1.minus(centre);
+        double[] arc = {v1.x(), v1.y(), -v1.y(), v1.x(), 0, 0};
+        arc[4] += centre.x();
+        arc[5] += centre.y();
+        postScale(arc, rx, ry);
+        arc = multiply(arc, new double[] {rotationCos, rotationSin, -rotationSin, rotationCos, 0, 0});
+        rotationSin = v1.cross(v2);
+        rotationCos = v1.dot(v2);
+        double sweepAngle = StrictMath.atan2(rotationSin, rotationCos);
+        if (isSweep) {
+            if (sweepAngle < 0) {
+                sweepAngle += PI_MUL_2;
+            }
+            v2 = new Point(rotationCos, rotationSin);
+        } else {
+            if (sweepAngle > 0) {
+                sweepAngle -= PI_MUL_2;
+            }
+            arc[2] = -arc[2];
+            arc[3] = -arc[3];
+            v2 = new Point(rotationCos, -rotationSin);
+            sweepAngle = Math.abs(sweepAngle);
+        }
+        v1 = new Point(1, 0);
+        v = new Point(1, 1);
+        int quarters = 3;
+        if (sweepAngle < QUARTER_TURNS[2] + ANGLE_EPSILON) {
+            quarters = 2;
+        }
+        if (sweepAngle < QUARTER_TURNS[1] + ANGLE_EPSILON) {
+            quarters = 1;
+        }
+        if (sweepAngle < QUARTER_TURNS[0] + ANGLE_EPSILON) {
+            quarters = 0;
+        }
+        while (quarters != 0) {
+            v1 = v1.normal();
+            arcQuadrantTo(map(arc, v), map(arc, v1));
+            v = v.normal();
+            quarters--;
+        }
+        v = v1.plus(v2);
+        v = new Point(2.0 * v.x(), 2.0 * v.y()).dividedBy(v.dot(v));
+        Point control = map(arc, v);
+        double w = Math.sqrt(0.5 * (1.0 + v1.dot(v2)));
+        addConicAsCubic(control.x(), control.y(), p1.x(), p1.y(), w);
+    }
+
+    private static Point map(double[] matrix, Point point) {
+        return new Point(point.x() * matrix[0] + point.y() * matrix[2] + matrix[4],
+                point.x() * matrix[1] + point.y() * matrix[3] + matrix[5]);
+    }
+
+    private static void postScale(double[] matrix, double x, double y) {
+        matrix[0] *= x;
+        matrix[1] *= y;
+        matrix[2] *= x;
+        matrix[3] *= y;
+        matrix[4] *= x;
+        matrix[5] *= y;
+    }
+
+    private static double[] multiply(double[] a, double[] b) {
+        return new double[] {
+            a[0] * b[0] + a[1] * b[2],
+            a[0] * b[1] + a[1] * b[3],
+            a[2] * b[0] + a[3] * b[2],
+            a[2] * b[1] + a[3] * b[3],
+            a[4] * b[0] + a[5] * b[2] + b[4],
+            a[4] * b[1] + a[5] * b[3] + b[5]};
     }
 
     void arcQuadrantTo(Point corner, Point end) {

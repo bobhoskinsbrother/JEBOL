@@ -47,7 +47,7 @@ above, with every thirteenth transparent black.
 
 ## blend2d-draw.tsv
 
-1,095 rows of what the extension's own `draw` does, made by running the
+1,187 rows of what the extension's own `draw` does, made by running the
 extension's C unchanged -- `blend2d-command-*.c` at tag `53f6ffe9` -- against
 `probe/stub.c`, a stand-in for R3's `RL_` table that reads a small subset of
 REBOL, linked to the same Blend2D. Each row is `image` (`noise WxH seed`, the
@@ -98,7 +98,14 @@ of glibc's `pow`, which it expects drawn without error
   bent line, turns from 20 to 40 degrees under the three miter joins either
   side of the miter limit, outlines over fills, strokes rotated, scaled
   unevenly, clipped and translated, `pen off`, `line-width 0`, caps past 5,
-  and one line under thirteen operators.
+  and one line under thirteen operators;
+- the path dialect: 29 `shape` blocks, each filled, stroked, and filled and
+  stroked -- every command, smooth curves after and not after their own kind,
+  `arc` with each of its flags, rotated and degenerate, `hline` and `vline`
+  after `close` and on an empty path, words that are not commands, a value
+  before the first command, a second figure and an empty block -- and `shape`
+  rotated, under alpha and an operator, stroked with caps, and given a number
+  or an unknown word.
 
 A block that opens with something that is not a command reads `cmd_pos`
 before the C has set it, so what happens is the compiler's: this probe, built

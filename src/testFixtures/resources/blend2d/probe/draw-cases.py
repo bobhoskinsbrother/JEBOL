@@ -322,6 +322,48 @@ add("noise 300x200 481", "pen 90.10.250.200 line-width 12 line-join round line-c
 add("noise 300x200 482", "pen 90.10.250 line-width 7 circle 150x100 90")
 add("noise 9x150 483", "pen 90.10.250 line-width 3 line 4x2 4x148")
 
+shapes = [
+    "[move 3x3 line 37x3 37x27 3x27 close]",
+    "[move 3x3 line 37x3 line 20x27 close move 10x10 line 30x10 20x20 close]",
+    "[move 5x15 curve 10x-5 30x35 35x15]",
+    "[move 5x15 curve 10x0 20x0 20x15 curv 30x30 35x15]",
+    "[move 5x15 curv 20x0 35x15]",
+    "[move 5x25 qcurve 20x-5 35x25]",
+    "[move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]",
+    "[move 3x25 qcurv 20x5]",
+    "[move 5x5 hline 35 vline 25 hline 5 close]",
+    "[hline 20 vline 20 line 30x5]",
+    "[move 5x15 arc 35x15 15 10 0]",
+    "[move 5x15 arc 35x15 15 10 0 sweep]",
+    "[move 5x15 arc 35x15 15 10 0 large]",
+    "[move 5x15 arc 35x15 15 10 0 sweep large]",
+    "[move 5x15 arc 35x15 18 9 30 sweep]",
+    "[move 5x15 arc 35x15 3 3 0]",
+    "[move 5x15 arc 35x15 0 10 0]",
+    "[move 5x15 arc 5x15 10 10 0]",
+    "[move 10x8 arc 30x22 12 8 45 large]",
+    "[move 10x8 arc 30x22 12 8 -70 sweep large close]",
+    "[move 5x5 line 35x5 bogus 20x25 close]",
+    "[move 5x5 line 35x5 fill 20x25 line 20x25 close]",
+    "[3x3 move 5x5 line 35x5 20x25 close]",
+    "[move 5x5 line 35x5 20x25 close close move 8x8 line 12x8 10x12]",
+    "[line 35x5 20x25 close]",
+    "[move 5x5 line 35x5 20x25 close hline 30 vline 28]",
+    "[move 5x5 curve 35x5 35x25]",
+    "[move -10x-10 curve 60x0 -20x40 50x45 close]",
+    "[]",
+]
+n = 0
+for shape in shapes:
+    for draw in ["fill 200.60.10.140 ", "pen 30.40.200 line-width 2 ", "fill 30.200.90 pen 0.0.0 line-join round "]:
+        n += 1
+        add("noise 40x30 %d" % (500 + n % 40), "%sshape %s" % (draw, shape))
+add("noise 40x30 590", "fill 200.60.10 rotate 25 20x15 shape [move 5x15 arc 35x15 15 10 0 sweep close]")
+add("noise 40x30 591", "fill 200.60.10 alpha 0.5 blend multiply shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5 close]")
+add("noise 40x30 592", "pen 200.60.10 line-width 5 line-cap 2 shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]")
+add("noise 40x30 593", "fill 200.60.10 shape 12")
+add("noise 40x30 594", "fill 200.60.10 shape bogus fill-all")
+
 add("pair 8x6", "fill 255.0.0 box 2x1 6x4")
 add("pair 5x3", "fill 0.0.255.128 fill-all")
 add("pair 4.6x2.4", "fill 0.255.0 box 1x0 1x1")

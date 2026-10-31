@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
+import org.jebol.domain.eval.blend2d.Blend2DPathBuilder;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.CompositingOperator;
 import org.jebol.domain.value.AnyBlockValue;
@@ -56,6 +57,8 @@ final class Blend2DDrawing {
     private static final int ARGUMENT_BEVEL = 43;
     private static final int ARGUMENT_PIE = 45;
     private static final int ARGUMENT_CHORD = 47;
+    private static final int ARGUMENT_SWEEP = 48;
+    private static final int ARGUMENT_LARGE = 49;
 
     private static final int EXTEND_MODE_LARGEST = 8;
     private static final int GRADIENT_TYPE_LARGEST = 2;
@@ -97,6 +100,152 @@ final class Blend2DDrawing {
 
     static void draw(Command call, Blend2DCanvas canvas, AnyBlockValue commands) {
         new Blend2DDrawing(call, canvas, commands).walk();
+    }
+
+    static Blend2DShape buildPath(Command call, AnyBlockValue commands) {
+        Blend2DDrawing dialect = new Blend2DDrawing(call, null, commands);
+        dialect.commandPosition = 0;
+        dialect.walkPath();
+        return dialect.pathBuilder.build();
+    }
+
+    private final Blend2DPathBuilder pathBuilder = new Blend2DPathBuilder();
+
+    private void walkPath() {
+        while (index < series.size()) {
+            boolean isRead = fetchWord(index++, COMMAND_WORDS) && runPathCommand();
+            while (!isRead) {
+                index = commandPosition;
+                boolean isFound = false;
+                while (index < series.size() && !isFound) {
+                    isFound = fetchWord(index++, COMMAND_WORDS);
+                }
+                if (!isFound) {
+                    return;
+                }
+                isRead = runPathCommand();
+            }
+        }
+    }
+
+    private boolean runPathCommand() {
+        commandPosition = index;
+        return switch (COMMAND_WORDS.get(command - 1)) {
+            case "move" -> {
+                double[] to = resolvePair();
+                if (to != null) {
+                    pathBuilder.moveTo(to[0], to[1]);
+                }
+                yield to != null;
+            }
+            case "line" -> {
+                double[] to = resolvePair();
+                if (to == null) {
+                    yield false;
+                }
+                pathBuilder.lineTo(to[0], to[1]);
+                while (readRaw(index).kind() == Kind.PAIR) {
+                    double[] next = readPair(readRaw(index++));
+                    pathBuilder.lineTo(next[0], next[1]);
+                }
+                yield true;
+            }
+            case "arc" -> addEllipticArc();
+            case "curve" -> {
+                while (arePairsAhead(3)) {
+                    double[] first = readPair(readRaw(index));
+                    double[] second = readPair(readRaw(index + 1));
+                    double[] end = readPair(readRaw(index + 2));
+                    index += 3;
+                    pathBuilder.cubicTo(first[0], first[1], second[0], second[1], end[0], end[1]);
+                }
+                yield true;
+            }
+            case "curv" -> {
+                while (arePairsAhead(2)) {
+                    double[] second = readPair(readRaw(index));
+                    double[] end = readPair(readRaw(index + 1));
+                    index += 2;
+                    pathBuilder.smoothCubicTo(second[0], second[1], end[0], end[1]);
+                }
+                yield true;
+            }
+            case "qcurve" -> {
+                while (arePairsAhead(2)) {
+                    double[] control = readPair(readRaw(index));
+                    double[] end = readPair(readRaw(index + 1));
+                    index += 2;
+                    pathBuilder.quadTo(control[0], control[1], end[0], end[1]);
+                }
+                yield true;
+            }
+            case "qcurv" -> {
+                while (arePairsAhead(1)) {
+                    double[] end = readPair(readRaw(index++));
+                    pathBuilder.smoothQuadTo(end[0], end[1]);
+                }
+                yield true;
+            }
+            case "hline" -> {
+                Double x = readNumber();
+                if (x != null) {
+                    pathBuilder.lineTo(x, pathBuilder.lastY());
+                }
+                yield x != null;
+            }
+            case "vline" -> {
+                Double y = readNumber();
+                if (y != null) {
+                    pathBuilder.lineTo(pathBuilder.lastX(), y);
+                }
+                yield y != null;
+            }
+            case "close" -> {
+                pathBuilder.close();
+                yield true;
+            }
+            default -> false;
+        };
+    }
+
+    private boolean arePairsAhead(int count) {
+        for (int at = 0; at < count; at++) {
+            if (readRaw(index + at).kind() != Kind.PAIR) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean addEllipticArc() {
+        double[] end = resolvePair();
+        if (end == null) {
+            return false;
+        }
+        Double radiusX = readNumber();
+        if (radiusX == null) {
+            return false;
+        }
+        Double radiusY = readNumber();
+        if (radiusY == null) {
+            return false;
+        }
+        Double rotation = readNumber();
+        if (rotation == null) {
+            return false;
+        }
+        boolean isSweep = takeArgumentWord(ARGUMENT_SWEEP);
+        boolean isLarge = takeArgumentWord(ARGUMENT_LARGE);
+        pathBuilder.ellipticArcTo(radiusX, radiusY, rotation * DEGREES_TO_RADIANS, isLarge, isSweep, end[0], end[1]);
+        return true;
+    }
+
+    private boolean takeArgumentWord(int wanted) {
+        if (fetchWord(index, ARGUMENT_WORDS) && command == wanted) {
+            index++;
+            return true;
+        }
+        return false;
     }
 
     private void walk() {
@@ -913,9 +1062,9 @@ final class Blend2DDrawing {
             if (!Blend2DExtension.isPathHandle(read.value())) {
                 return false;
             }
-            refuseIfDrawn("a shape");
+            fillAndStroke(call.unwrap(read.value(), Blend2DExtension.PathHandle.class).shape());
         } else if (read.kind() == Kind.BLOCK) {
-            refuseIfDrawn("a shape");
+            fillAndStroke(buildPath(call, (AnyBlockValue) read.value()));
         }
         return true;
     }

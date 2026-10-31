@@ -12,8 +12,9 @@ rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 `arc` with `pie` and `chord`, rounded boxes, `cubic`, and any of them under a
 rotation -- each filled byte for byte against the release's C, and the
 stroker, which draws `line` and every one of those outlines under `pen`,
-`line-width`, `line-join` and `line-cap`. Not yet: `shape` and the rest goals
-1a lists, each of which raises an error naming what it cannot draw.
+`line-width`, `line-join` and `line-cap`, and `shape` and `path` with their
+dialect. Not yet: the rest goals 1a lists, each of which raises an error
+naming what it cannot draw.
 
 ---
 
@@ -140,6 +141,42 @@ both in the stroke of one closed cubic whose quad steps come from `pow`, and
 the table keeps both rows, checked to draw without error but not pixel for
 pixel. R3 itself differs this way between platforms: on Windows it calls
 Microsoft's library.
+
+## Shape and path
+
+`shape` takes a block of the path dialect, or a handle `path` made from one;
+`b2d_init_path_from_block` reads both, and `Blend2DDrawing.buildPath` is it.
+The dialect shares `draw`'s command words and its recovery -- a word that is
+not a command, or a command whose arguments do not fit, sends the walk back to
+just after the last command and on to the next command word -- but its
+remembered position starts at 0 where `draw`'s is undefined. Its commands
+call Blend2D's path functions, ported in `Blend2DPath`:
+
+- `move`, `line` (one resolved pair, then raw pairs), `curve` (cubics in
+  threes), `qcurve` (quads in twos), and `close`.
+- `curv` and `qcurv` are `smoothCubicTo` and `smoothQuadTo`: they reflect the
+  previous control point only when the command before the last point was a
+  cubic or a quad, and do nothing on an empty path or after `close`.
+- `hline` and `vline` read the last vertex as `getLastVertex` does: after
+  `close` they walk back to the figure's `move`, and on an empty path they read
+  0x0, which the C then uses although the call failed.
+- `arc` is `ellipticArcTo`, SVG's arc: its end point, two radii and a rotation
+  in degrees, then `sweep` and `large` in that order. Radii too small for the
+  chord are scaled up, radii at or below 1e-14 make a line, an arc ending where
+  it starts draws nothing, and the arc is quarter-turn cubics and a last conic
+  written as a cubic. It calls `atan2` as well as `sin` and `cos`, with the
+  last-bit caveat above.
+- A `line` to a path with no `move` appends a bare point, as Blend2D does;
+  filling skips it, and stroking a figure that does not begin with a move
+  draws nothing.
+
+92 rows cover the dialect, each shape filled, stroked, and filled and
+stroked: every command, smooth curves after and not after their own kind, both
+arc flags and their combinations, rotated and degenerate arcs, `hline` and
+`vline` after `close` and on an empty path, words that are not commands, a
+second figure, an empty block, and `shape` given a number or an unknown word.
+Swapping `sweep` and `large` fails 13 rows; nudging the smooth quad's
+reflection by a hundredth fails 3.
 
 269 rows cover strokes: 35 shapes at four widths, each under a join and a cap
 taken in turn, every join on four angles, every cap on an open and a bent

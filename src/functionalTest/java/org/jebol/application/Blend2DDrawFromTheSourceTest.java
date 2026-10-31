@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class Blend2DDrawFromTheSourceTest {
 
-    private static final int ROWS = 1095;
+    private static final int ROWS = 1187;
 
     private record Row(String image, String block, String size, long crc) {
     }
@@ -122,7 +122,7 @@ class Blend2DDrawFromTheSourceTest {
             byte[] table = readTable();
             assertThat(rowsOf(table)).hasSize(ROWS);
             assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(table)))
-                    .isEqualTo("509ab2e92c3a6fae79a10a83599dd42b89670ba42c1f066a9a592e2cb731f066");
+                    .isEqualTo("2b1dfae1e1d654d0a3dd1a4cb1aa53d12e9a40faf12c297eadb0c1af49413941");
         }
 
         @Test
@@ -302,10 +302,35 @@ class Blend2DDrawFromTheSourceTest {
         @DisplayName("what is not ported yet is refused by name, not drawn wrongly")
         void refusesWhatItCannotDrawYet() {
             assertThat(answerTo("""
-                    e: try [b2d/draw 4x4 [fill 255.0.0 shape [move 1x1 line 3x3 line 1x3]]]
+                    e: try [b2d/draw 4x4 [fill 255.0.0 point 2x2]]
                     reduce [e/id e/arg1]"""))
                     .isEqualTo("""
-                            [command-fail {blend2d cannot yet draw a shape in JEBOL: that part of Blend2D is not ported}]""");
+                            [command-fail {blend2d cannot yet draw a point in JEBOL: that part of Blend2D is not ported}]""");
+        }
+
+        @Test
+        @DisplayName("a path made once draws what the same commands given to shape draw, and can be drawn again and again")
+        void drawsAPathHandleAsItsBlock() {
+            assertThat(answerTo("""
+                    commands: [move 3x10 qcurve 8x2 13x10 qcurv 23x10 arc 3x10 10 6 0 sweep close]
+                    handle: b2d/path commands
+                    from-block: b2d/draw 26x14 [fill 200.0.0 pen 0.0.0 shape commands]
+                    from-handle: b2d/draw 26x14 [fill 200.0.0 pen 0.0.0 shape handle]
+                    twice: b2d/draw 26x14 [fill 200.0.0 pen 0.0.0 shape handle]
+                    reduce [type? handle  equal? from-block from-handle  equal? from-handle twice
+                        equal? from-block make image! [26x14 255.255.255]]"""))
+                    .isEqualTo("[#(handle!) #(true) #(true) #(false)]");
+        }
+
+        @Test
+        @DisplayName("a path handle is a BLPath, and shape refuses a handle of any other kind as the C does")
+        void refusesAHandleThatIsNotAPath() {
+            assertThat(answerTo("""
+                    img: b2d/image make image! [2x2]
+                    drawn: b2d/draw 6x6 [fill 200.0.0 shape img fill-all]
+                    reduce [drawn/(1x1)  (form b2d/path [move 1x1])]"""))
+                    .isEqualTo("""
+                            [200.0.0.255 "#(handle! BLPath)"]""");
         }
 
         @Test

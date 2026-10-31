@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
 import org.jebol.domain.eval.blend2d.Blend2DNotPortedYet;
+import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.Blend2DSurface;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.EvaluationFailure;
@@ -41,7 +42,7 @@ final class Blend2DExtension {
     record ImageHandle(ImageValue image) {
     }
 
-    record PathHandle() {
+    record PathHandle(Blend2DShape shape) {
     }
 
     record FontHandle() {
@@ -57,9 +58,8 @@ final class Blend2DExtension {
                 new ExtensionCommand("draw", "{Draws scalable vector graphics to an image} "
                         + "image [image! pair!] commands [block!]", Blend2DExtension::draw),
                 new ExtensionCommand("path", "{Prepares path object} commands [block!]",
-                        call -> {
-                            throw new IllegalStateException(new Blend2DNotPortedYet("a path").getMessage());
-                        }),
+                        call -> call.makeHandle(PATH_HANDLE, new PathHandle(
+                                Blend2DDrawing.buildPath(call, (AnyBlockValue) call.arguments().getFirst())))),
                 new ExtensionCommand("font", "{Prepares font handle} file [file! string!] "
                         + "{Font location or name}",
                         call -> {

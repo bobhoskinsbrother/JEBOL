@@ -1091,6 +1091,98 @@ noise 40x30 480	pen 0.0.200 line-width 3 line-cap 2 9 line 2x2 38x28	40x30	2dfaa
 noise 300x200 481	pen 90.10.250.200 line-width 12 line-join round line-cap 2 line 10x190 150x10 290x190 20x100	300x200	2f61f0c5
 noise 300x200 482	pen 90.10.250 line-width 7 circle 150x100 90	300x200	7e8a068f
 noise 9x150 483	pen 90.10.250 line-width 3 line 4x2 4x148	9x150	6057762f
+noise 40x30 501	fill 200.60.10.140 shape [move 3x3 line 37x3 37x27 3x27 close]	40x30	d9c03c69
+noise 40x30 502	pen 30.40.200 line-width 2 shape [move 3x3 line 37x3 37x27 3x27 close]	40x30	1cfdf438
+noise 40x30 503	fill 30.200.90 pen 0.0.0 line-join round shape [move 3x3 line 37x3 37x27 3x27 close]	40x30	f538e472
+noise 40x30 504	fill 200.60.10.140 shape [move 3x3 line 37x3 line 20x27 close move 10x10 line 30x10 20x20 close]	40x30	6afff1f2
+noise 40x30 505	pen 30.40.200 line-width 2 shape [move 3x3 line 37x3 line 20x27 close move 10x10 line 30x10 20x20 close]	40x30	1750c1a7
+noise 40x30 506	fill 30.200.90 pen 0.0.0 line-join round shape [move 3x3 line 37x3 line 20x27 close move 10x10 line 30x10 20x20 close]	40x30	8801bfc6
+noise 40x30 507	fill 200.60.10.140 shape [move 5x15 curve 10x-5 30x35 35x15]	40x30	308f491f
+noise 40x30 508	pen 30.40.200 line-width 2 shape [move 5x15 curve 10x-5 30x35 35x15]	40x30	594b40dd
+noise 40x30 509	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 curve 10x-5 30x35 35x15]	40x30	610f08fe
+noise 40x30 510	fill 200.60.10.140 shape [move 5x15 curve 10x0 20x0 20x15 curv 30x30 35x15]	40x30	d319b970
+noise 40x30 511	pen 30.40.200 line-width 2 shape [move 5x15 curve 10x0 20x0 20x15 curv 30x30 35x15]	40x30	7d7c152e
+noise 40x30 512	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 curve 10x0 20x0 20x15 curv 30x30 35x15]	40x30	cb06a555
+noise 40x30 513	fill 200.60.10.140 shape [move 5x15 curv 20x0 35x15]	40x30	e8a7055b
+noise 40x30 514	pen 30.40.200 line-width 2 shape [move 5x15 curv 20x0 35x15]	40x30	0ca9570f
+noise 40x30 515	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 curv 20x0 35x15]	40x30	35fb063a
+noise 40x30 516	fill 200.60.10.140 shape [move 5x25 qcurve 20x-5 35x25]	40x30	836a0426
+noise 40x30 517	pen 30.40.200 line-width 2 shape [move 5x25 qcurve 20x-5 35x25]	40x30	9ed8c78a
+noise 40x30 518	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x25 qcurve 20x-5 35x25]	40x30	b51d8547
+noise 40x30 519	fill 200.60.10.140 shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]	40x30	7c53f410
+noise 40x30 520	pen 30.40.200 line-width 2 shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]	40x30	624b9f0f
+noise 40x30 521	fill 30.200.90 pen 0.0.0 line-join round shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]	40x30	b80afc4d
+noise 40x30 522	fill 200.60.10.140 shape [move 3x25 qcurv 20x5]	40x30	2b03143e
+noise 40x30 523	pen 30.40.200 line-width 2 shape [move 3x25 qcurv 20x5]	40x30	11d24b94
+noise 40x30 524	fill 30.200.90 pen 0.0.0 line-join round shape [move 3x25 qcurv 20x5]	40x30	ad59dc44
+noise 40x30 525	fill 200.60.10.140 shape [move 5x5 hline 35 vline 25 hline 5 close]	40x30	69554aa9
+noise 40x30 526	pen 30.40.200 line-width 2 shape [move 5x5 hline 35 vline 25 hline 5 close]	40x30	92428c21
+noise 40x30 527	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 hline 35 vline 25 hline 5 close]	40x30	4d9c2987
+noise 40x30 528	fill 200.60.10.140 shape [hline 20 vline 20 line 30x5]	40x30	d89ec9c8
+noise 40x30 529	pen 30.40.200 line-width 2 shape [hline 20 vline 20 line 30x5]	40x30	b26f1753
+noise 40x30 530	fill 30.200.90 pen 0.0.0 line-join round shape [hline 20 vline 20 line 30x5]	40x30	cf719bfc
+noise 40x30 531	fill 200.60.10.140 shape [move 5x15 arc 35x15 15 10 0]	40x30	8faeb85f
+noise 40x30 532	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 15 10 0]	40x30	fa5c21a1
+noise 40x30 533	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 15 10 0]	40x30	8179ac1c
+noise 40x30 534	fill 200.60.10.140 shape [move 5x15 arc 35x15 15 10 0 sweep]	40x30	618fd290
+noise 40x30 535	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 15 10 0 sweep]	40x30	bffb1c5e
+noise 40x30 536	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 15 10 0 sweep]	40x30	6e033597
+noise 40x30 537	fill 200.60.10.140 shape [move 5x15 arc 35x15 15 10 0 large]	40x30	be576704
+noise 40x30 538	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 15 10 0 large]	40x30	75413482
+noise 40x30 539	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 15 10 0 large]	40x30	a24f789e
+noise 40x30 500	fill 200.60.10.140 shape [move 5x15 arc 35x15 15 10 0 sweep large]	40x30	cfd00a4b
+noise 40x30 501	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 15 10 0 sweep large]	40x30	8ae53633
+noise 40x30 502	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 15 10 0 sweep large]	40x30	c8206c17
+noise 40x30 503	fill 200.60.10.140 shape [move 5x15 arc 35x15 18 9 30 sweep]	40x30	e975d968
+noise 40x30 504	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 18 9 30 sweep]	40x30	860cedbf
+noise 40x30 505	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 18 9 30 sweep]	40x30	1e52940d
+noise 40x30 506	fill 200.60.10.140 shape [move 5x15 arc 35x15 3 3 0]	40x30	c0ee2f66
+noise 40x30 507	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 3 3 0]	40x30	f97a19f8
+noise 40x30 508	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 3 3 0]	40x30	f63f81fa
+noise 40x30 509	fill 200.60.10.140 shape [move 5x15 arc 35x15 0 10 0]	40x30	51a1a7b4
+noise 40x30 510	pen 30.40.200 line-width 2 shape [move 5x15 arc 35x15 0 10 0]	40x30	c516f301
+noise 40x30 511	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 35x15 0 10 0]	40x30	e10d69d7
+noise 40x30 512	fill 200.60.10.140 shape [move 5x15 arc 5x15 10 10 0]	40x30	152928bd
+noise 40x30 513	pen 30.40.200 line-width 2 shape [move 5x15 arc 5x15 10 10 0]	40x30	176139a0
+noise 40x30 514	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x15 arc 5x15 10 10 0]	40x30	bbd0e5cf
+noise 40x30 515	fill 200.60.10.140 shape [move 10x8 arc 30x22 12 8 45 large]	40x30	2e0d0f10
+noise 40x30 516	pen 30.40.200 line-width 2 shape [move 10x8 arc 30x22 12 8 45 large]	40x30	5a5b32d7
+noise 40x30 517	fill 30.200.90 pen 0.0.0 line-join round shape [move 10x8 arc 30x22 12 8 45 large]	40x30	4aeae21b
+noise 40x30 518	fill 200.60.10.140 shape [move 10x8 arc 30x22 12 8 -70 sweep large close]	40x30	7a216e35
+noise 40x30 519	pen 30.40.200 line-width 2 shape [move 10x8 arc 30x22 12 8 -70 sweep large close]	40x30	34e0fad8
+noise 40x30 520	fill 30.200.90 pen 0.0.0 line-join round shape [move 10x8 arc 30x22 12 8 -70 sweep large close]	40x30	8d03e637
+noise 40x30 521	fill 200.60.10.140 shape [move 5x5 line 35x5 bogus 20x25 close]	40x30	c0be87a4
+noise 40x30 522	pen 30.40.200 line-width 2 shape [move 5x5 line 35x5 bogus 20x25 close]	40x30	1ce23db4
+noise 40x30 523	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 line 35x5 bogus 20x25 close]	40x30	1a7e1186
+noise 40x30 524	fill 200.60.10.140 shape [move 5x5 line 35x5 fill 20x25 line 20x25 close]	40x30	f985f602
+noise 40x30 525	pen 30.40.200 line-width 2 shape [move 5x5 line 35x5 fill 20x25 line 20x25 close]	40x30	1883f15e
+noise 40x30 526	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 line 35x5 fill 20x25 line 20x25 close]	40x30	f6f6cb01
+noise 40x30 527	fill 200.60.10.140 shape [3x3 move 5x5 line 35x5 20x25 close]	40x30	8013e4f8
+noise 40x30 528	pen 30.40.200 line-width 2 shape [3x3 move 5x5 line 35x5 20x25 close]	40x30	0f428ad0
+noise 40x30 529	fill 30.200.90 pen 0.0.0 line-join round shape [3x3 move 5x5 line 35x5 20x25 close]	40x30	1e687872
+noise 40x30 530	fill 200.60.10.140 shape [move 5x5 line 35x5 20x25 close close move 8x8 line 12x8 10x12]	40x30	44369f47
+noise 40x30 531	pen 30.40.200 line-width 2 shape [move 5x5 line 35x5 20x25 close close move 8x8 line 12x8 10x12]	40x30	3a4692c9
+noise 40x30 532	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 line 35x5 20x25 close close move 8x8 line 12x8 10x12]	40x30	3e96fe9a
+noise 40x30 533	fill 200.60.10.140 shape [line 35x5 20x25 close]	40x30	c9a1f0bb
+noise 40x30 534	pen 30.40.200 line-width 2 shape [line 35x5 20x25 close]	40x30	38410e23
+noise 40x30 535	fill 30.200.90 pen 0.0.0 line-join round shape [line 35x5 20x25 close]	40x30	1d77acf6
+noise 40x30 536	fill 200.60.10.140 shape [move 5x5 line 35x5 20x25 close hline 30 vline 28]	40x30	56c4a686
+noise 40x30 537	pen 30.40.200 line-width 2 shape [move 5x5 line 35x5 20x25 close hline 30 vline 28]	40x30	00685ddf
+noise 40x30 538	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 line 35x5 20x25 close hline 30 vline 28]	40x30	490e8e89
+noise 40x30 539	fill 200.60.10.140 shape [move 5x5 curve 35x5 35x25]	40x30	c5f84ecc
+noise 40x30 500	pen 30.40.200 line-width 2 shape [move 5x5 curve 35x5 35x25]	40x30	52c5f60c
+noise 40x30 501	fill 30.200.90 pen 0.0.0 line-join round shape [move 5x5 curve 35x5 35x25]	40x30	1e148b18
+noise 40x30 502	fill 200.60.10.140 shape [move -10x-10 curve 60x0 -20x40 50x45 close]	40x30	2e703cdc
+noise 40x30 503	pen 30.40.200 line-width 2 shape [move -10x-10 curve 60x0 -20x40 50x45 close]	40x30	89c3cc0f
+noise 40x30 504	fill 30.200.90 pen 0.0.0 line-join round shape [move -10x-10 curve 60x0 -20x40 50x45 close]	40x30	b1b6b8dd
+noise 40x30 505	fill 200.60.10.140 shape []	40x30	896ca355
+noise 40x30 506	pen 30.40.200 line-width 2 shape []	40x30	5a4f7e16
+noise 40x30 507	fill 30.200.90 pen 0.0.0 line-join round shape []	40x30	9a253ad1
+noise 40x30 590	fill 200.60.10 rotate 25 20x15 shape [move 5x15 arc 35x15 15 10 0 sweep close]	40x30	9bd79ebb
+noise 40x30 591	fill 200.60.10 alpha 0.5 blend multiply shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5 close]	40x30	1ff37e99
+noise 40x30 592	pen 200.60.10 line-width 5 line-cap 2 shape [move 3x25 qcurve 10x5 17x25 qcurv 31x25 37x5]	40x30	9d21af86
+noise 40x30 593	fill 200.60.10 shape 12	40x30	3a3ac6b4
+noise 40x30 594	fill 200.60.10 shape bogus fill-all	40x30	929cf055
 pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
 pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
 pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4
