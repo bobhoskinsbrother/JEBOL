@@ -10,8 +10,8 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count row on 2026-10-30 and the timing rows on
-2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
+Measured on 2026-10-12, the test count, jar and web build rows on 2026-10-31,
+and the timing rows on 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
 an Intel one read about 122ms median and 187ms p95, so compare a change against
 a baseline from the same machine rather than against the row.
 
@@ -22,11 +22,11 @@ a baseline from the same machine rather than against the row.
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `./gradlew allTests`          | 29,838 tests on 2026-10-30: `unitTests` 3,207, `functionalTests` 24,560, `endToEndTests` 2,070                                                                                                                    |
+| `./gradlew allTests`          | 29,957 tests on 2026-10-31: `unitTests` 3,235, `functionalTests` 24,632, `heapExhaustionTests` 1, `endToEndTests` 2,089                                                                                           |
 | `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 3,291 KB on 2026-10-22, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                    |
-| the web build                 | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped                                                                          |
+| the shipped jar               | 3,488 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
+| the web build                 | 16.3 MB of WebAssembly (4.9 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 16.9 MB, 5.2 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
 
@@ -47,6 +47,9 @@ Read `CLAUDE.md` first.
 - **`org.jebol.adapter.cli.Repl`** reads a script from standard input, one
   expression per line, so the same cases can be put to both interpreters and
   diffed.
+- **`scripts/serve-example.sh <app directory> [port]`** builds the web module,
+  assembles an app such as `examples/blend2d` as a site, and serves it to the
+  network, printing the addresses to open.
 - To learn whether a line of C can be reached, copy `rebol3-source/` to the
   scratchpad, add a print, build with `scripts/build-r3.sh` and watch. Never
   instrument `rebol3-source/` itself.
@@ -123,19 +126,9 @@ Brotli is 1b and webp is goal 10.
 Six are to be served in Java, so that `import 'easing` answers a module as it
 does on a real 3.22.5 that can fetch it. easing, blurhash, deflate and zlib-ng
 are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
-`docs/zlib-ng-port.md`). The rest, in the order to build them, smallest first:
+`docs/zlib-ng-port.md`). The rest, in the order to build them:
 
-1. **zstd** 0.1.0. The same seven commands as brotli's and the same
-   `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
-   all, so this is a port of the size of Brotli's, decoder first, and every
-   rule in `CLAUDE.md` for a codec applies. Zstandard's own test corpus is
-   the corpus.
-2. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
-   `eval expression variables`, a vector of doubles. MathPresso compiles to
-   machine code with asmjit; JEBOL evaluates the same grammar and must give
-   the same double for every operator and function it accepts, and refuse
-   what it refuses.
-3. **blend2d** 0.12.0, served in part (`docs/blend2d-port.md`, decision 59).
+1. **blend2d** 0.12.0, served in part (`docs/blend2d-port.md`, decision 59).
    `import 'blend2d` answers the release's module, and `draw` walks every
    command as the extension's C does. What needs no rasteriser draws
    byte for byte as the release does: Blend2D's compositing, all 29
@@ -148,6 +141,19 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    and `line`; gradients and image patterns; image blits, and images read
    from files; `path`; then fonts and `text`. Until then each of those
    raises an error naming what it cannot draw rather than drawing it wrongly.
+   `examples/blend2d` shows the 29 operators on the desktop and on a page;
+   each piece that lands gets a tile there, and a row in
+   `blend2d-draw.tsv` from the probe in `src/testFixtures/resources/blend2d/probe/`.
+2. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
+   `eval expression variables`, a vector of doubles. MathPresso compiles to
+   machine code with asmjit; JEBOL evaluates the same grammar and must give
+   the same double for every operator and function it accepts, and refuse
+   what it refuses.
+3. **zstd** 0.1.0. The same seven commands as brotli's and the same
+   `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
+   all, so this is a port of the size of Brotli's, decoder first, and every
+   rule in `CLAUDE.md` for a codec applies. Zstandard's own test corpus is
+   the corpus.
 
 **Done when** each of the sixteen has a decision written down, and each of
 the six imports as a module that works fully: every word it exports answers
