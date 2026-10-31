@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class Blend2DDrawFromTheSourceTest {
 
-    private static final int ROWS = 649;
+    private static final int ROWS = 826;
 
     private record Row(String image, String block, String size, long crc) {
     }
@@ -122,18 +122,15 @@ class Blend2DDrawFromTheSourceTest {
             byte[] table = readTable();
             assertThat(rowsOf(table)).hasSize(ROWS);
             assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(table)))
-                    .isEqualTo("0a1784cc61d022d64236af7f61692b9b1e35a8c138b2134ffdcc09c0338fcd24");
+                    .isEqualTo("e4b5d849ec95bb808dc7e19ab498596de12badecd0bde04e5f6e9664ea5083fa");
         }
 
         @Test
-        @DisplayName("draws every row the extension's own C drew, pixel for pixel, but the one that needs curves")
+        @DisplayName("draws every row the extension's own C drew, pixel for pixel")
         void drawsEveryRow() throws IOException {
             Interpreter interpreter = interpreterWithBlend2D();
             List<String> differing = new ArrayList<>();
             for (Row row : rowsOf(readTable())) {
-                if (NEEDS_CURVES.contains(row.block())) {
-                    continue;
-                }
                 Value drawn;
                 try {
                     drawn = runCase(interpreter, row);
@@ -152,25 +149,7 @@ class Blend2DDrawFromTheSourceTest {
             }
             assertThat(differing).isEmpty();
         }
-
-        @Test
-        @DisplayName("refuses by name the row that needs curves, rather than drawing it wrongly")
-        void refusesTheRowThatNeedsCurves() throws IOException {
-            Interpreter interpreter = interpreterWithBlend2D();
-            List<String> answered = new ArrayList<>();
-            for (Row row : rowsOf(readTable())) {
-                if (NEEDS_CURVES.contains(row.block())) {
-                    String source = "b2d/draw " + imageSource(row.image()) + " [" + row.block() + "]";
-                    interpreter.defineNewWordsIn(source);
-                    answered.add(interpreter.display(interpreter.run(source)));
-                }
-            }
-            assertThat(answered).singleElement().asString().contains("cannot yet draw a rounded box");
-        }
     }
-
-    private static final List<String> NEEDS_CURVES = List.of(
-            "fill 0.0.255 box 1x1 3x3 2 fill 255.0.0 box 5x5 2x2");
 
     @Nested
     @DisplayName("the module")
@@ -284,17 +263,27 @@ class Blend2DDrawFromTheSourceTest {
                     e: try [b2d/draw img [fill 0.0.255 pen 255.0.0 polygon 1x1 5x1 5x5 1x5]]
                     reduce [img/(3x3) e/arg1]"""))
                     .isEqualTo("""
-                            [0.0.255.255 {blend2d cannot yet draw the outline of a polygon in JEBOL: its rasteriser is not ported}]""");
+                            [0.0.255.255 {blend2d cannot yet draw the outline of a polygon in JEBOL: that part of Blend2D is not ported}]""");
         }
 
         @Test
-        @DisplayName("a shape the rasteriser would draw is refused by name, not drawn wrongly")
+        @DisplayName("what is not ported yet is refused by name, not drawn wrongly")
         void refusesWhatItCannotDrawYet() {
             assertThat(answerTo("""
-                    e: try [b2d/draw 4x4 [fill 255.0.0 circle 2x2 1]]
+                    e: try [b2d/draw 4x4 [fill 255.0.0 shape [move 1x1 line 3x3 line 1x3]]]
                     reduce [e/id e/arg1]"""))
                     .isEqualTo("""
-                            [command-fail {blend2d cannot yet draw a circle in JEBOL: its rasteriser is not ported}]""");
+                            [command-fail {blend2d cannot yet draw a shape in JEBOL: that part of Blend2D is not ported}]""");
+        }
+
+        @Test
+        @DisplayName("a circle given a second radius is an ellipse, as the C draws an ellipse when the optional radius is there")
+        void drawsACircleWithTwoRadiiAsAnEllipse() {
+            assertThat(answerTo("""
+                    circle: b2d/draw 20x14 [fill 200.0.0 circle 10x7 8 5]
+                    ellipse: b2d/draw 20x14 [fill 200.0.0 ellipse 2x2 16x10]
+                    reduce [equal? circle ellipse  circle/(10x7)  circle/(10x1)]"""))
+                    .isEqualTo("[#(true) 200.0.0.255 255.255.255.255]");
         }
     }
 }

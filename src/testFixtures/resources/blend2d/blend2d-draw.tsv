@@ -645,6 +645,183 @@ noise 300x200 137	fill 90.10.250 blend multiply polygon 10x10 290x30 150x195	300
 noise 300x200 138	fill 90.10.250 rotate 7 box 20x15 260x170	300x200	a0b150e3
 noise 1100x70 139	fill 90.10.250 polygon 5x5 1095x30 550x69	1100x70	53b6c40c
 noise 9x150 140	fill 90.10.250 polygon 1x1 8x149 1x149	9x150	1f6d9eca
+noise 40x30 201	fill 200.60.10.140 circle 20x15 11.3	40x30	fdae5fc3
+noise 40x30 202	fill 30.200.90 alpha 0.6 circle 20x15 11.3	40x30	840e0995
+noise 40x30 203	fill 10.20.250.255 blend multiply circle 20x15 11.3	40x30	2ab755be
+noise 40x30 204	fill 200.60.10.140 circle 20x15 0.4	40x30	552fe558
+noise 40x30 205	fill 30.200.90 alpha 0.6 circle 20x15 0.4	40x30	ab251867
+noise 40x30 206	fill 10.20.250.255 blend multiply circle 20x15 0.4	40x30	15da6e8f
+noise 40x30 207	fill 200.60.10.140 circle 20x15 1	40x30	89d678d9
+noise 40x30 208	fill 30.200.90 alpha 0.6 circle 20x15 1	40x30	6271e950
+noise 40x30 209	fill 10.20.250.255 blend multiply circle 20x15 1	40x30	f6f9ebed
+noise 40x30 210	fill 200.60.10.140 circle 20.5x15.5 7.75	40x30	951b9847
+noise 40x30 211	fill 30.200.90 alpha 0.6 circle 20.5x15.5 7.75	40x30	b53296af
+noise 40x30 212	fill 10.20.250.255 blend multiply circle 20.5x15.5 7.75	40x30	9d4314af
+noise 40x30 213	fill 200.60.10.140 circle 0x0 12	40x30	44c7b930
+noise 40x30 214	fill 30.200.90 alpha 0.6 circle 0x0 12	40x30	e9ae069e
+noise 40x30 215	fill 10.20.250.255 blend multiply circle 0x0 12	40x30	1f39faad
+noise 40x30 216	fill 200.60.10.140 circle 40x30 18	40x30	668d7a1f
+noise 40x30 217	fill 30.200.90 alpha 0.6 circle 40x30 18	40x30	fefb7d64
+noise 40x30 218	fill 10.20.250.255 blend multiply circle 40x30 18	40x30	6c115a9a
+noise 40x30 219	fill 200.60.10.140 circle 20x15 40	40x30	27c3c237
+noise 40x30 220	fill 30.200.90 alpha 0.6 circle 20x15 40	40x30	40844295
+noise 40x30 221	fill 10.20.250.255 blend multiply circle 20x15 40	40x30	117e9688
+noise 40x30 222	fill 200.60.10.140 circle -30x15 8	40x30	e6aae31e
+noise 40x30 223	fill 30.200.90 alpha 0.6 circle -30x15 8	40x30	15e5d4bc
+noise 40x30 224	fill 10.20.250.255 blend multiply circle -30x15 8	40x30	04962571
+noise 40x30 225	fill 200.60.10.140 circle 20x15 -6	40x30	3d13ed59
+noise 40x30 226	fill 30.200.90 alpha 0.6 circle 20x15 -6	40x30	4e770c62
+noise 40x30 227	fill 10.20.250.255 blend multiply circle 20x15 -6	40x30	9a0c6f85
+noise 40x30 228	fill 200.60.10.140 circle 20x15 0	40x30	7f87aa50
+noise 40x30 229	fill 30.200.90 alpha 0.6 circle 20x15 0	40x30	e1fe1ff5
+noise 40x30 230	fill 10.20.250.255 blend multiply circle 20x15 0	40x30	3ef00108
+noise 40x30 231	fill 200.60.10.140 circle 20x15 14 6	40x30	055aa3df
+noise 40x30 232	fill 30.200.90 alpha 0.6 circle 20x15 14 6	40x30	eb7ce437
+noise 40x30 233	fill 10.20.250.255 blend multiply circle 20x15 14 6	40x30	1da32e13
+noise 40x30 234	fill 200.60.10.140 circle 20x15 3 13.5	40x30	2eff6fb4
+noise 40x30 235	fill 30.200.90 alpha 0.6 circle 20x15 3 13.5	40x30	c63c0fbb
+noise 40x30 236	fill 10.20.250.255 blend multiply circle 20x15 3 13.5	40x30	5e568a0b
+noise 40x30 237	fill 200.60.10.140 circle 20x15 10 -4	40x30	ce06c5c7
+noise 40x30 238	fill 30.200.90 alpha 0.6 circle 20x15 10 -4	40x30	7b8a6ed0
+noise 40x30 239	fill 10.20.250.255 blend multiply circle 20x15 10 -4	40x30	7f83ea25
+noise 40x30 240	fill 200.60.10.140 ellipse 2x3 36x24	40x30	189c3590
+noise 40x30 241	fill 30.200.90 alpha 0.6 ellipse 2x3 36x24	40x30	8573daca
+noise 40x30 242	fill 10.20.250.255 blend multiply ellipse 2x3 36x24	40x30	4ea078db
+noise 40x30 243	fill 200.60.10.140 ellipse 2.25x3.75 35.5x22.125	40x30	ad406581
+noise 40x30 244	fill 30.200.90 alpha 0.6 ellipse 2.25x3.75 35.5x22.125	40x30	e92c4999
+noise 40x30 245	fill 10.20.250.255 blend multiply ellipse 2.25x3.75 35.5x22.125	40x30	f1d1dc2a
+noise 40x30 246	fill 200.60.10.140 ellipse -10x-10 30x20	40x30	3006de88
+noise 40x30 247	fill 30.200.90 alpha 0.6 ellipse -10x-10 30x20	40x30	5f05fecc
+noise 40x30 248	fill 10.20.250.255 blend multiply ellipse -10x-10 30x20	40x30	299ee7db
+noise 40x30 249	fill 200.60.10.140 ellipse 30x20 30x20	40x30	0dbca9c4
+noise 40x30 250	fill 30.200.90 alpha 0.6 ellipse 30x20 30x20	40x30	0ce12f92
+noise 40x30 251	fill 10.20.250.255 blend multiply ellipse 30x20 30x20	40x30	de0b6513
+noise 40x30 252	fill 200.60.10.140 ellipse 5x5 0x10	40x30	146438ef
+noise 40x30 253	fill 30.200.90 alpha 0.6 ellipse 5x5 0x10	40x30	684758eb
+noise 40x30 254	fill 10.20.250.255 blend multiply ellipse 5x5 0x10	40x30	896b58a2
+noise 40x30 255	fill 200.60.10.140 box 3x3 34x24 6	40x30	1510d2a9
+noise 40x30 256	fill 30.200.90 alpha 0.6 box 3x3 34x24 6	40x30	bf528bd8
+noise 40x30 257	fill 10.20.250.255 blend multiply box 3x3 34x24 6	40x30	5f17fbec
+noise 40x30 258	fill 200.60.10.140 box 3.5x2.25 33x25.5 6 3	40x30	3142c3d4
+noise 40x30 259	fill 30.200.90 alpha 0.6 box 3.5x2.25 33x25.5 6 3	40x30	99b82c88
+noise 40x30 260	fill 10.20.250.255 blend multiply box 3.5x2.25 33x25.5 6 3	40x30	fcb89932
+noise 40x30 261	fill 200.60.10.140 box 3x3 34x24 30	40x30	77557ca4
+noise 40x30 262	fill 30.200.90 alpha 0.6 box 3x3 34x24 30	40x30	66f89b77
+noise 40x30 263	fill 10.20.250.255 blend multiply box 3x3 34x24 30	40x30	09429ec9
+noise 40x30 264	fill 200.60.10.140 box 3x3 34x24 0.5	40x30	90635973
+noise 40x30 265	fill 30.200.90 alpha 0.6 box 3x3 34x24 0.5	40x30	92bb0cd3
+noise 40x30 266	fill 10.20.250.255 blend multiply box 3x3 34x24 0.5	40x30	c1deb26a
+noise 40x30 267	fill 200.60.10.140 box 3x3 34x24 0	40x30	36e22976
+noise 40x30 268	fill 30.200.90 alpha 0.6 box 3x3 34x24 0	40x30	dbdfdec9
+noise 40x30 269	fill 10.20.250.255 blend multiply box 3x3 34x24 0	40x30	78a20da7
+noise 40x30 270	fill 200.60.10.140 box -5x-5 50x40 12	40x30	6da17bab
+noise 40x30 271	fill 30.200.90 alpha 0.6 box -5x-5 50x40 12	40x30	e42d53d9
+noise 40x30 272	fill 10.20.250.255 blend multiply box -5x-5 50x40 12	40x30	a10fe5a0
+noise 40x30 273	fill 200.60.10.140 box 3x3 34x24 -5 4	40x30	81b63502
+noise 40x30 274	fill 30.200.90 alpha 0.6 box 3x3 34x24 -5 4	40x30	f41f3730
+noise 40x30 275	fill 10.20.250.255 blend multiply box 3x3 34x24 -5 4	40x30	1624db2f
+noise 40x30 276	fill 200.60.10.140 arc 20x15 12x9 0 90	40x30	53339184
+noise 40x30 277	fill 30.200.90 alpha 0.6 arc 20x15 12x9 0 90	40x30	b6c6a38f
+noise 40x30 278	fill 10.20.250.255 blend multiply arc 20x15 12x9 0 90	40x30	1ede4f45
+noise 40x30 279	fill 200.60.10.140 arc 20x15 12x9 30 120 pie	40x30	f2a4dd22
+noise 40x30 280	fill 30.200.90 alpha 0.6 arc 20x15 12x9 30 120 pie	40x30	d6bb2e13
+noise 40x30 281	fill 10.20.250.255 blend multiply arc 20x15 12x9 30 120 pie	40x30	66915067
+noise 40x30 282	fill 200.60.10.140 arc 20x15 12x9 30 120 chord	40x30	89f561f9
+noise 40x30 283	fill 30.200.90 alpha 0.6 arc 20x15 12x9 30 120 chord	40x30	dc730ee0
+noise 40x30 284	fill 10.20.250.255 blend multiply arc 20x15 12x9 30 120 chord	40x30	83b336b1
+noise 40x30 285	fill 200.60.10.140 arc 20x15 12x9 -45 270 pie	40x30	c8e8fe84
+noise 40x30 286	fill 30.200.90 alpha 0.6 arc 20x15 12x9 -45 270 pie	40x30	eae511ff
+noise 40x30 287	fill 10.20.250.255 blend multiply arc 20x15 12x9 -45 270 pie	40x30	999c66e6
+noise 40x30 288	fill 200.60.10.140 arc 20x15 12x9 0 360	40x30	252a4553
+noise 40x30 289	fill 30.200.90 alpha 0.6 arc 20x15 12x9 0 360	40x30	b7122030
+noise 40x30 290	fill 10.20.250.255 blend multiply arc 20x15 12x9 0 360	40x30	918029d6
+noise 40x30 291	fill 200.60.10.140 arc 20x15 12x9 10 359.99 pie	40x30	4820b516
+noise 40x30 292	fill 30.200.90 alpha 0.6 arc 20x15 12x9 10 359.99 pie	40x30	8625585e
+noise 40x30 293	fill 10.20.250.255 blend multiply arc 20x15 12x9 10 359.99 pie	40x30	b399228e
+noise 40x30 294	fill 200.60.10.140 arc 20x15 12x9 90 -135 pie	40x30	e4a36e56
+noise 40x30 295	fill 30.200.90 alpha 0.6 arc 20x15 12x9 90 -135 pie	40x30	b734cb1c
+noise 40x30 296	fill 10.20.250.255 blend multiply arc 20x15 12x9 90 -135 pie	40x30	0d46d381
+noise 40x30 297	fill 200.60.10.140 arc 20x15 12x12 0 180 chord	40x30	82f288fd
+noise 40x30 298	fill 30.200.90 alpha 0.6 arc 20x15 12x12 0 180 chord	40x30	22657dd9
+noise 40x30 299	fill 10.20.250.255 blend multiply arc 20x15 12x12 0 180 chord	40x30	3d593be5
+noise 40x30 300	fill 200.60.10.140 arc 20x15 12x9 0 1 pie	40x30	d4e23733
+noise 40x30 301	fill 30.200.90 alpha 0.6 arc 20x15 12x9 0 1 pie	40x30	914abdf4
+noise 40x30 302	fill 10.20.250.255 blend multiply arc 20x15 12x9 0 1 pie	40x30	33f56a80
+noise 40x30 303	fill 200.60.10.140 arc 20x15 12x9 200 45	40x30	b54109c2
+noise 40x30 304	fill 30.200.90 alpha 0.6 arc 20x15 12x9 200 45	40x30	cc30149a
+noise 40x30 305	fill 10.20.250.255 blend multiply arc 20x15 12x9 200 45	40x30	e0336012
+noise 40x30 306	fill 200.60.10.140 arc 20x15 12x9 0 720 pie	40x30	ddd756f8
+noise 40x30 307	fill 30.200.90 alpha 0.6 arc 20x15 12x9 0 720 pie	40x30	ff614d7a
+noise 40x30 308	fill 10.20.250.255 blend multiply arc 20x15 12x9 0 720 pie	40x30	ee4a9a18
+noise 40x30 309	fill 200.60.10.140 arc 0x0 30x25 0 90 pie	40x30	b0813a1e
+noise 40x30 310	fill 30.200.90 alpha 0.6 arc 0x0 30x25 0 90 pie	40x30	1f9377d8
+noise 40x30 311	fill 10.20.250.255 blend multiply arc 0x0 30x25 0 90 pie	40x30	83fc061b
+noise 40x30 312	fill 200.60.10.140 cubic 2x28 10x-10 30x40 38x2	40x30	9750668c
+noise 40x30 313	fill 30.200.90 alpha 0.6 cubic 2x28 10x-10 30x40 38x2	40x30	62b3b15c
+noise 40x30 314	fill 10.20.250.255 blend multiply cubic 2x28 10x-10 30x40 38x2	40x30	b97c4f39
+noise 40x30 315	fill 200.60.10.140 cubic 2x2 38x2 2x28 38x28	40x30	598427c0
+noise 40x30 316	fill 30.200.90 alpha 0.6 cubic 2x2 38x2 2x28 38x28	40x30	cc7bc89d
+noise 40x30 317	fill 10.20.250.255 blend multiply cubic 2x2 38x2 2x28 38x28	40x30	3bdc9286
+noise 40x30 318	fill 200.60.10.140 cubic 5x25 15x0 25x30 35x5 38x28 10x29 5x25	40x30	2f4ba7fb
+noise 40x30 319	fill 30.200.90 alpha 0.6 cubic 5x25 15x0 25x30 35x5 38x28 10x29 5x25	40x30	3dc583f5
+noise 40x30 320	fill 10.20.250.255 blend multiply cubic 5x25 15x0 25x30 35x5 38x28 10x29 5x25	40x30	75ad193c
+noise 40x30 321	fill 200.60.10.140 cubic 20x2 50x15 -10x15 20x28	40x30	52be3908
+noise 40x30 322	fill 30.200.90 alpha 0.6 cubic 20x2 50x15 -10x15 20x28	40x30	f600235e
+noise 40x30 323	fill 10.20.250.255 blend multiply cubic 20x2 50x15 -10x15 20x28	40x30	70bf1e35
+noise 40x30 324	fill 200.60.10.140 cubic 2x15 15x2 15x28 2x15	40x30	16b83793
+noise 40x30 325	fill 30.200.90 alpha 0.6 cubic 2x15 15x2 15x28 2x15	40x30	bdd20ff2
+noise 40x30 326	fill 10.20.250.255 blend multiply cubic 2x15 15x2 15x28 2x15	40x30	7a2895f1
+noise 40x30 327	fill 200.60.10.140 cubic 20x2 20x2 20x28 20x28	40x30	49b3685e
+noise 40x30 328	fill 30.200.90 alpha 0.6 cubic 20x2 20x2 20x28 20x28	40x30	b4b89306
+noise 40x30 329	fill 10.20.250.255 blend multiply cubic 20x2 20x2 20x28 20x28	40x30	4938aa21
+noise 40x30 330	fill 200.60.10.140 cubic -20x-20 60x10 -20x40 60x50	40x30	df98d560
+noise 40x30 331	fill 30.200.90 alpha 0.6 cubic -20x-20 60x10 -20x40 60x50	40x30	b830d71f
+noise 40x30 332	fill 10.20.250.255 blend multiply cubic -20x-20 60x10 -20x40 60x50	40x30	96893e1e
+noise 40x30 333	fill 200.60.10.140 cubic 2x2 38x28	40x30	738db48b
+noise 40x30 334	fill 30.200.90 alpha 0.6 cubic 2x2 38x28	40x30	cfd33a74
+noise 40x30 335	fill 10.20.250.255 blend multiply cubic 2x2 38x28	40x30	de4af9e7
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend source-over circle 20x15 11.3	40x30	863ca833
+noise 40x30 302	fill 30.200.90 blend source-over arc 20x15 14x11 20 250 pie	40x30	83e6ac90
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend source-copy circle 20x15 11.3	40x30	2ab902fa
+noise 40x30 302	fill 30.200.90 blend source-copy arc 20x15 14x11 20 250 pie	40x30	83e6ac90
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend destination-in circle 20x15 11.3	40x30	65d8788a
+noise 40x30 302	fill 30.200.90 blend destination-in arc 20x15 14x11 20 250 pie	40x30	7fe3b7df
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend xor circle 20x15 11.3	40x30	647838bb
+noise 40x30 302	fill 30.200.90 blend xor arc 20x15 14x11 20 250 pie	40x30	b1d02470
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend clear circle 20x15 11.3	40x30	8d694c5f
+noise 40x30 302	fill 30.200.90 blend clear arc 20x15 14x11 20 250 pie	40x30	f20d35d0
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend plus circle 20x15 11.3	40x30	1c4f72ff
+noise 40x30 302	fill 30.200.90 blend plus arc 20x15 14x11 20 250 pie	40x30	07692f75
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend multiply circle 20x15 11.3	40x30	535eb6fc
+noise 40x30 302	fill 30.200.90 blend multiply arc 20x15 14x11 20 250 pie	40x30	c6f7bc62
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend screen circle 20x15 11.3	40x30	8c197b65
+noise 40x30 302	fill 30.200.90 blend screen arc 20x15 14x11 20 250 pie	40x30	9a08c12e
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend overlay circle 20x15 11.3	40x30	74b795c3
+noise 40x30 302	fill 30.200.90 blend overlay arc 20x15 14x11 20 250 pie	40x30	ae6c8345
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend color-dodge circle 20x15 11.3	40x30	f6ec43b8
+noise 40x30 302	fill 30.200.90 blend color-dodge arc 20x15 14x11 20 250 pie	40x30	6604afe6
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend color-burn circle 20x15 11.3	40x30	fa4bdb65
+noise 40x30 302	fill 30.200.90 blend color-burn arc 20x15 14x11 20 250 pie	40x30	bcddb53f
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend soft-light circle 20x15 11.3	40x30	24c660fc
+noise 40x30 302	fill 30.200.90 blend soft-light arc 20x15 14x11 20 250 pie	40x30	0ab2376a
+noise 40x30 301	fill 200.100.50.180 alpha 0.75 blend difference circle 20x15 11.3	40x30	238b14b8
+noise 40x30 302	fill 30.200.90 blend difference arc 20x15 14x11 20 250 pie	40x30	0e399379
+noise 40x30 310	fill 250.20.20.200 rotate 17 20x15 ellipse 6x8 28x14	40x30	b2cc1625
+noise 40x30 311	fill 20.250.20 rotate 17 20x15 box 6x6 28x18 5 3	40x30	2cd4bb3d
+noise 40x30 310	fill 250.20.20.200 rotate 45 20x15 ellipse 6x8 28x14	40x30	90f94ee7
+noise 40x30 311	fill 20.250.20 rotate 45 20x15 box 6x6 28x18 5 3	40x30	a127d5b9
+noise 40x30 310	fill 250.20.20.200 rotate 90 20x15 ellipse 6x8 28x14	40x30	4282b130
+noise 40x30 311	fill 20.250.20 rotate 90 20x15 box 6x6 28x18 5 3	40x30	7463fdf1
+noise 40x30 310	fill 250.20.20.200 rotate 123.456 20x15 ellipse 6x8 28x14	40x30	c388762d
+noise 40x30 311	fill 20.250.20 rotate 123.456 20x15 box 6x6 28x18 5 3	40x30	34920481
+noise 40x30 312	fill 250.20.20 scale 2x0.5 circle 10x30 9	40x30	751df5a9
+noise 40x30 313	fill 250.20.20 clip 8.5x5.25 31.75x24.5 circle 20x15 13	40x30	d6398cf1
+noise 40x30 314	fill 250.20.20 clip 20x0 40x30 arc 20x15 15x12 0 360 pie	40x30	d1b0c6f1
+noise 40x30 315	fill 250.20.20 translate 0.3x0.7 circle 20x15 9.9	40x30	ab88f3c2
+noise 300x200 316	fill 90.10.250.200 circle 150x100 97	300x200	623093f3
+noise 300x200 317	fill 90.10.250 blend screen ellipse 5x5 290x190	300x200	9ac1b97b
+noise 300x200 318	fill 90.10.250 box 10x10 280x180 60	300x200	8b37ce61
+noise 9x150 319	fill 90.10.250 ellipse 1x1 7x148	9x150	3becd060
 pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
 pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
 pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4

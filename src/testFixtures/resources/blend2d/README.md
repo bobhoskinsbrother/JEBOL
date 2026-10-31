@@ -47,15 +47,14 @@ above, with every thirteenth transparent black.
 
 ## blend2d-draw.tsv
 
-649 rows of what the extension's own `draw` does, made by running the
+826 rows of what the extension's own `draw` does, made by running the
 extension's C unchanged -- `blend2d-command-*.c` at tag `53f6ffe9` -- against
 `probe/stub.c`, a stand-in for R3's `RL_` table that reads a small subset of
 REBOL, linked to the same Blend2D. Each row is `image` (`noise WxH seed`, the
 generator above in R3's own memory order, or `pair WxH` for a new image),
 `block`, the `size` drawn, and the `pixel crc32` of the image afterwards.
 `Blend2DDrawFromTheSourceTest` draws every row in JEBOL and expects the same
-pixels, except one row with a rounded box, which needs curves and which it
-expects refused by name.
+pixels.
 
 `probe/draw-cases.py` writes the cases. They cover, in order:
 
@@ -83,7 +82,15 @@ expects refused by name.
   points -- two polygons under thirteen operators, boxes rotated through eight
   angles about the origin and about a point, polygons under clips, scales and
   an invalid transform, `triangle` with whole and partial triples, and images
-  wide and tall enough to cross Blend2D's band height.
+  wide and tall enough to cross Blend2D's band height;
+- curves: 45 shapes, each under three fills -- circles from a radius of 0 to
+  past the image and negative, circles with two radii, ellipses, rounded boxes
+  with radii capped, zero, negative and past the sides, arcs open, `pie` and
+  `chord` through every quadrant and past a full turn, cubics with loops,
+  cusps and inflections, clipped on each side -- two curves under thirteen
+  operators, ellipses and rounded boxes rotated through four angles, curves
+  under a scale, a clip and a translation, and images wide and tall enough to
+  cross the band height.
 
 A block that opens with something that is not a command reads `cmd_pos`
 before the C has set it, so what happens is the compiler's: this probe, built

@@ -134,13 +134,13 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    byte for byte as the release does: Blend2D's compositing, all 29
    operators, global alpha, `fill-all`, `clear-all`, `clear`, boxes and clips
    under any transform, and Blend2D's edge builder, analytic rasteriser and
-   fill loop for straight edges: `polygon`, `triangle` and a box under a
-   rotation. `info`, `image` from an image and `set-threads` answer as the
-   release does. Left, in the order to build it: curve flattening in the edge
-   builder, with the paths Blend2D makes for circles, ellipses, arcs and
-   rounded boxes, and `cubic` and `shape`; the stroker, for `pen` and
-   `line`; gradients and image patterns; image blits, and images read from
-   files; `path`; then fonts and `text`. Until then each of those raises an
+   fill loop with its curve flattening: `polygon`, `triangle`, `circle`,
+   `ellipse`, `arc` with `pie` and `chord`, rounded boxes and `cubic` all fill
+   under any transform. `info`, `image` from an image and `set-threads`
+   answer as the release does. Left, in the order to build it: the stroker,
+   for `pen`, `line` and every outline; `shape` and `path`, with the quads
+   they can make; gradients and image patterns; image blits, and images read
+   from files; then fonts and `text`. Until then each of those raises an
    error naming what it cannot draw rather than drawing it wrongly.
    `examples/blend2d` shows the 29 operators on the desktop and on a page;
    each piece that lands gets a tile there, and a row in

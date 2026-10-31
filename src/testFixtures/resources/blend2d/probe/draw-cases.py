@@ -174,6 +174,73 @@ add("noise 300x200 138", "fill 90.10.250 rotate 7 box 20x15 260x170")
 add("noise 1100x70 139", "fill 90.10.250 polygon 5x5 1095x30 550x69")
 add("noise 9x150 140", "fill 90.10.250 polygon 1x1 8x149 1x149")
 
+curves = [
+    "circle 20x15 11.3",
+    "circle 20x15 0.4",
+    "circle 20x15 1",
+    "circle 20.5x15.5 7.75",
+    "circle 0x0 12",
+    "circle 40x30 18",
+    "circle 20x15 40",
+    "circle -30x15 8",
+    "circle 20x15 -6",
+    "circle 20x15 0",
+    "circle 20x15 14 6",
+    "circle 20x15 3 13.5",
+    "circle 20x15 10 -4",
+    "ellipse 2x3 36x24",
+    "ellipse 2.25x3.75 35.5x22.125",
+    "ellipse -10x-10 30x20",
+    "ellipse 30x20 30x20",
+    "ellipse 5x5 0x10",
+    "box 3x3 34x24 6",
+    "box 3.5x2.25 33x25.5 6 3",
+    "box 3x3 34x24 30",
+    "box 3x3 34x24 0.5",
+    "box 3x3 34x24 0",
+    "box -5x-5 50x40 12",
+    "box 3x3 34x24 -5 4",
+    "arc 20x15 12x9 0 90",
+    "arc 20x15 12x9 30 120 pie",
+    "arc 20x15 12x9 30 120 chord",
+    "arc 20x15 12x9 -45 270 pie",
+    "arc 20x15 12x9 0 360",
+    "arc 20x15 12x9 10 359.99 pie",
+    "arc 20x15 12x9 90 -135 pie",
+    "arc 20x15 12x12 0 180 chord",
+    "arc 20x15 12x9 0 1 pie",
+    "arc 20x15 12x9 200 45",
+    "arc 20x15 12x9 0 720 pie",
+    "arc 0x0 30x25 0 90 pie",
+    "cubic 2x28 10x-10 30x40 38x2",
+    "cubic 2x2 38x2 2x28 38x28",
+    "cubic 5x25 15x0 25x30 35x5 38x28 10x29 5x25",
+    "cubic 20x2 50x15 -10x15 20x28",
+    "cubic 2x15 15x2 15x28 2x15",
+    "cubic 20x2 20x2 20x28 20x28",
+    "cubic -20x-20 60x10 -20x40 60x50",
+    "cubic 2x2 38x28",
+]
+n = 0
+for curve in curves:
+    for colour, extra in [("200.60.10.140", ""), ("30.200.90", "alpha 0.6 "), ("10.20.250.255", "blend multiply ")]:
+        n += 1
+        add("noise 40x30 %d" % (200 + n), "fill %s %s%s" % (colour, extra, curve))
+for op in shape_ops:
+    add("noise 40x30 301", "fill 200.100.50.180 alpha 0.75 blend %s circle 20x15 11.3" % op)
+    add("noise 40x30 302", "fill 30.200.90 blend %s arc 20x15 14x11 20 250 pie" % op)
+for angle in ["17", "45", "90", "123.456"]:
+    add("noise 40x30 310", "fill 250.20.20.200 rotate %s 20x15 ellipse 6x8 28x14" % angle)
+    add("noise 40x30 311", "fill 20.250.20 rotate %s 20x15 box 6x6 28x18 5 3" % angle)
+add("noise 40x30 312", "fill 250.20.20 scale 2x0.5 circle 10x30 9")
+add("noise 40x30 313", "fill 250.20.20 clip 8.5x5.25 31.75x24.5 circle 20x15 13")
+add("noise 40x30 314", "fill 250.20.20 clip 20x0 40x30 arc 20x15 15x12 0 360 pie")
+add("noise 40x30 315", "fill 250.20.20 translate 0.3x0.7 circle 20x15 9.9")
+add("noise 300x200 316", "fill 90.10.250.200 circle 150x100 97")
+add("noise 300x200 317", "fill 90.10.250 blend screen ellipse 5x5 290x190")
+add("noise 300x200 318", "fill 90.10.250 box 10x10 280x180 60")
+add("noise 9x150 319", "fill 90.10.250 ellipse 1x1 7x148")
+
 add("pair 8x6", "fill 255.0.0 box 2x1 6x4")
 add("pair 5x3", "fill 0.0.255.128 fill-all")
 add("pair 4.6x2.4", "fill 0.255.0 box 1x0 1x1")

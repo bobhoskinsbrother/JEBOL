@@ -8,10 +8,11 @@ and the platform.
 
 Work in progress. Served: the module, the whole `draw` walk, the compositing,
 `fill-all`, `clear-all`, `clear`, boxes and clips under any transform, and the
-rasteriser for straight edges -- `polygon`, `triangle` and a box under a
-rotation -- each byte for byte against the release's C. Not yet: curves,
-outlines and the rest goals 1a lists, each of which raises an error naming
-what it cannot draw.
+rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
+`arc` with `pie` and `chord`, rounded boxes, `cubic`, and any of them under a
+rotation -- each filled byte for byte against the release's C. Not yet:
+outlines, `shape` and the rest goals 1a lists, each of which raises an error
+naming what it cannot draw.
 
 ---
 
@@ -64,6 +65,44 @@ each side and wholly outside, self-crossing ones, rows past the 64-row band
 height, and rotations through 90 degrees, under alpha and thirteen operators.
 Changing one rasteriser error term by one fails rows; skipping the constant-mask
 gaps fails 106.
+
+## Curves
+
+Every curve the extension's `draw` makes is a cubic. `Blend2DPath` builds the
+path Blend2D's `PathAppender` does: a circle or an ellipse is four cubics from
+its rightmost point with `kKAPPA` = 0.55228474983, a rounded box is lines and
+four cubics with the radii capped at half the sides (a box when either radius
+is not above 1e-14), and an arc is `arcToCubicSpline`'s quarter-turn cubics
+and a last conic. That conic reaches the path as a cubic, because the release's
+`PathAppender::conicTo` turns a conic into one with `k = 4w / (3(1 + w))`; its
+conic form is commented out. So the edge builder needs only its cubic half:
+
+- **Fast rejection.** A run of cubics wholly above, below, or to one side of
+  the clip is skipped; to a side it still adds a border edge for the rows it
+  spans.
+- **`CubicSpline`** is `splitCubicToSpline`: it cuts a cubic at its cusp, its
+  inflections and its extrema in x and y -- roots from `quadRoots` between
+  1e-40 and 0.999999999999999889, insertion-sorted -- into pieces monotonic in
+  both directions, ending exactly on the cubic's end.
+- **`MonoCubic`** is `FlattenMonoCubic`: subdivision in halves on a stack 32
+  deep until the larger of the two control points' squared distances from
+  the chord is within the tolerance -- 0.2 pixel, 51.2 in fixed point,
+  squared -- times the chord's squared length.
+- **Clipped flattening** is `flattenUnsafeMonoCurve`, which subdivides only to
+  find where a piece enters and leaves the clip and adds border edges for the
+  rows it spends outside. Its `goto`s between its three loops -- above the
+  clip, before its near side, and visible -- are returns naming which loop to
+  enter and where.
+
+The arcs call glibc's `sin` and `cos`, and the port calls `StrictMath`'s; the
+two agree on every angle in the table. 177 rows cover circles from a radius of
+0 to one far past the image, negative radii, ellipses from a corner and as a
+circle with two radii, rounded boxes whose radii are capped, zero, negative or
+past the sides, arcs open, pie and chord through every quadrant and past a
+full turn, cubics with loops, cusps and inflections, curves clipped on each
+side and under rotations, and two curves under thirteen operators. A
+tolerance of 0.21 in place of 0.2 fails 13 rows; dropping the border edges a
+clipped curve adds fails 17.
 
 ---
 

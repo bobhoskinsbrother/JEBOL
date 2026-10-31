@@ -135,30 +135,93 @@ public final class Blend2DCanvas {
     }
 
     public void fillPolygon(double[] points) {
-        resolveSolidFill().ifPresent(fill -> paintPolygon(fill, globalAlpha, points, AnalyticFill.FillRule.NON_ZERO));
+        if (points.length == 0) {
+            return;
+        }
+        fillPath(buildPolygonPath(points));
+    }
+
+    private static Blend2DPath buildPolygonPath(double[] points) {
+        Blend2DPath path = new Blend2DPath();
+        path.moveTo(points[0], points[1]);
+        for (int at = 2; at < points.length; at += 2) {
+            path.lineTo(points[at], points[at + 1]);
+        }
+        path.close();
+        return path;
+    }
+
+    public void fillEllipse(double cx, double cy, double rx, double ry) {
+        Blend2DPath path = new Blend2DPath();
+        path.addEllipse(cx, cy, rx, ry);
+        fillPath(path);
+    }
+
+    public void fillRoundedBox(double x, double y, double wide, double high, double radiusX, double radiusY) {
+        Blend2DPath path = new Blend2DPath();
+        path.addRoundedBox(x, y, wide, high, radiusX, radiusY);
+        fillPath(path);
+    }
+
+    public void fillArc(double cx, double cy, double rx, double ry, double start, double sweep, ArcClosing closing) {
+        Blend2DPath path = new Blend2DPath();
+        if (closing == ArcClosing.PIE) {
+            path.moveTo(cx, cy);
+        }
+        path.addArc(cx, cy, rx, ry, start, sweep, closing != ArcClosing.PIE);
+        if (closing != ArcClosing.OPEN) {
+            path.close();
+        }
+        fillPath(path);
+    }
+
+    public void fillCubics(double[] points) {
+        Blend2DPath path = new Blend2DPath();
+        path.moveTo(points[0], points[1]);
+        for (int at = 2; at + 5 < points.length; at += 6) {
+            path.cubicTo(points[at], points[at + 1], points[at + 2], points[at + 3], points[at + 4], points[at + 5]);
+        }
+        fillPath(path);
+    }
+
+    public enum ArcClosing {
+        OPEN,
+        PIE,
+        CHORD
+    }
+
+    private void fillPath(Blend2DPath path) {
+        resolveSolidFill().ifPresent(fill -> paintPath(fill, globalAlpha, path, AnalyticFill.FillRule.NON_ZERO));
     }
 
     private void paintPolygon(SolidFill fill, int alpha, double[] points, AnalyticFill.FillRule rule) {
+        paintPath(fill, alpha, buildPolygonPath(points), rule);
+    }
+
+    private void paintPath(SolidFill fill, int alpha, Blend2DPath path, AnalyticFill.FillRule rule) {
         Blend2DMatrix.Kind kind = transform.kind();
-        if (kind == Blend2DMatrix.Kind.INVALID) {
+        if (kind == Blend2DMatrix.Kind.INVALID || path.isEmpty()) {
             return;
         }
         Blend2DMatrix fixed = transform.toFixedPoint();
         boolean isScaledOnly = fixed.kind().compareTo(Blend2DMatrix.Kind.SCALE) <= 0;
-        double[] mapped = new double[points.length];
-        for (int at = 0; at < points.length; at += 2) {
-            double x = points[at];
-            double y = points[at + 1];
+        Blend2DPath mapped = new Blend2DPath();
+        for (int at = 0; at < path.size(); at++) {
+            double x = path.xAt(at);
+            double y = path.yAt(at);
+            double mappedX;
+            double mappedY;
             if (isScaledOnly) {
-                mapped[at] = x * fixed.m00() + fixed.m20();
-                mapped[at + 1] = y * fixed.m11() + fixed.m21();
+                mappedX = x * fixed.m00() + fixed.m20();
+                mappedY = y * fixed.m11() + fixed.m21();
             } else {
-                mapped[at] = x * fixed.m00() + y * fixed.m10() + fixed.m20();
-                mapped[at + 1] = x * fixed.m01() + y * fixed.m11() + fixed.m21();
+                mappedX = x * fixed.m00() + y * fixed.m10() + fixed.m20();
+                mappedY = x * fixed.m01() + y * fixed.m11() + fixed.m21();
             }
+            mapped.addRaw(path.commandAt(at), mappedX, mappedY);
         }
         EdgeBuilder builder = new EdgeBuilder(clipFixed);
-        if (!builder.addClosedFigure(mapped)) {
+        if (!builder.addFilledPath(mapped)) {
             return;
         }
         builder.finish();

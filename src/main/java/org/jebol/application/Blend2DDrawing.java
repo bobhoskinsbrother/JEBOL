@@ -277,9 +277,15 @@ final class Blend2DDrawing {
     }
 
     private void skipOptionalNumber() {
-        if (readNumber() == null) {
+        readOptionalNumber();
+    }
+
+    private Double readOptionalNumber() {
+        Double number = readNumber();
+        if (number == null) {
             index--;
         }
+        return number;
     }
 
     private static int toColour(TupleValue tuple) {
@@ -460,14 +466,25 @@ final class Blend2DDrawing {
     }
 
     private boolean drawCubic() {
-        if (readRaw(index++).kind() != Kind.PAIR) {
+        Read start = readRaw(index++);
+        if (start.kind() != Kind.PAIR) {
             return false;
         }
+        List<double[]> points = new ArrayList<>();
+        points.add(readPair(start));
         while (readRaw(index).kind() == Kind.PAIR && readRaw(index + 1).kind() == Kind.PAIR
                 && readRaw(index + 2).kind() == Kind.PAIR) {
+            for (int at = 0; at < 3; at++) {
+                points.add(readPair(readRaw(index + at)));
+            }
             index += 3;
         }
-        refuseIfDrawn("a cubic curve");
+        if (hasFill) {
+            canvas.fillCubics(flatten(points));
+        }
+        if (hasStroke) {
+            canvas.refuse("the outline of a cubic curve");
+        }
         return true;
     }
 
@@ -513,18 +530,22 @@ final class Blend2DDrawing {
         if (size == null) {
             return false;
         }
-        boolean isRounded = false;
         Read radius = resolveAt(index);
         if (radius.kind() == Kind.DECIMAL || radius.kind() == Kind.INTEGER) {
             index++;
-            isRounded = true;
+            double radiusX = toNumber(radius);
+            double radiusY = radiusX;
             Read second = resolveAt(index);
             if (second.kind() == Kind.DECIMAL || second.kind() == Kind.INTEGER) {
                 index++;
+                radiusY = toNumber(second);
             }
-        }
-        if (isRounded) {
-            refuseIfDrawn("a rounded box");
+            if (hasFill) {
+                canvas.fillRoundedBox(corner[0], corner[1], size[0], size[1], radiusX, radiusY);
+            }
+            if (hasStroke) {
+                canvas.refuse("the outline of a rounded box");
+            }
             return true;
         }
         if (hasFill) {
@@ -537,19 +558,41 @@ final class Blend2DDrawing {
     }
 
     private boolean drawCircle() {
-        if (resolvePair() == null || readNumber() == null) {
+        double[] centre = resolvePair();
+        if (centre == null) {
             return false;
         }
-        skipOptionalNumber();
-        refuseIfDrawn("a circle");
+        Double radius = readNumber();
+        if (radius == null) {
+            return false;
+        }
+        Double radiusY = readOptionalNumber();
+        if (hasFill) {
+            canvas.fillEllipse(centre[0], centre[1], radius, radiusY == null ? Math.abs(radius) : radiusY);
+        }
+        if (hasStroke) {
+            canvas.refuse(radiusY == null ? "the outline of a circle" : "the outline of an ellipse");
+        }
         return true;
     }
 
     private boolean drawEllipse() {
-        if (resolvePair() == null || resolvePair() == null) {
+        double[] corner = resolvePair();
+        if (corner == null) {
             return false;
         }
-        refuseIfDrawn("an ellipse");
+        double[] size = resolvePair();
+        if (size == null) {
+            return false;
+        }
+        double radiusX = size[0] * 0.5;
+        double radiusY = size[1] * 0.5;
+        if (hasFill) {
+            canvas.fillEllipse(corner[0] + radiusX, corner[1] + radiusY, radiusX, radiusY);
+        }
+        if (hasStroke) {
+            canvas.refuse("the outline of an ellipse");
+        }
         return true;
     }
 
@@ -621,13 +664,34 @@ final class Blend2DDrawing {
     }
 
     private boolean drawArc() {
-        if (resolvePair() == null || resolvePair() == null || readNumber() == null || readNumber() == null) {
+        double[] centre = resolvePair();
+        if (centre == null) {
             return false;
         }
+        double[] radius = resolvePair();
+        if (radius == null) {
+            return false;
+        }
+        Double begin = readNumber();
+        if (begin == null) {
+            return false;
+        }
+        Double sweep = readNumber();
+        if (sweep == null) {
+            return false;
+        }
+        Blend2DCanvas.ArcClosing closing = Blend2DCanvas.ArcClosing.OPEN;
         if (fetchWord(index, ARGUMENT_WORDS) && command >= ARGUMENT_PIE && command <= ARGUMENT_CHORD) {
             index++;
+            closing = command == ARGUMENT_CHORD ? Blend2DCanvas.ArcClosing.CHORD : Blend2DCanvas.ArcClosing.PIE;
         }
-        refuseIfDrawn("an arc");
+        if (hasFill) {
+            canvas.fillArc(centre[0], centre[1], radius[0], radius[1],
+                    begin * DEGREES_TO_RADIANS, sweep * DEGREES_TO_RADIANS, closing);
+        }
+        if (hasStroke) {
+            canvas.refuse("the outline of an arc");
+        }
         return true;
     }
 

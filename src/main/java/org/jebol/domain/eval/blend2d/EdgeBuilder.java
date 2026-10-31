@@ -22,6 +22,12 @@ final class EdgeBuilder {
 
     private static final int CLIP_X1_Y1 = CLIP_X1 | CLIP_Y1;
 
+    private static final double FLATTEN_TOLERANCE = 0.2 * 256.0;
+
+    private static final double FLATTEN_TOLERANCE_SQUARED = FLATTEN_TOLERANCE * FLATTEN_TOLERANCE;
+
+    private static final double ONE_FIXED_POINT_STEP = 0.00390625;
+
     private enum Step {
         TOP,
         UNCLIPPED,
@@ -74,9 +80,13 @@ final class EdgeBuilder {
 
     private boolean isBuildingAscending;
 
-    private double[] figure;
+    private Blend2DPath path;
 
-    private int figureNext;
+    private int cursor;
+
+    private double flatteningStart;
+
+    private int flatteningOut;
 
     private double ax;
 
@@ -131,28 +141,32 @@ final class EdgeBuilder {
         return edges.isEmpty() || boundTop >= boundBottom;
     }
 
-    boolean addClosedFigure(double[] points) {
-        if (points.length < 2) {
-            return true;
-        }
-        figure = points;
-        figureNext = 2;
-        double startX = points[0];
-        double startY = points[1];
-        ax = startX;
-        ay = startY;
-        aFlags = calculateFlags(ax, ay);
-        while (figureNext < figure.length) {
-            bx = figure[figureNext];
-            by = figure[figureNext + 1];
-            figureNext += 2;
-            if (!lineTo()) {
-                return false;
+    boolean addFilledPath(Blend2DPath mapped) {
+        path = mapped;
+        cursor = 0;
+        while (beginFigure()) {
+            double startX = ax;
+            double startY = ay;
+            aFlags = calculateFlags(ax, ay);
+            while (true) {
+                if (isLineNext()) {
+                    takeNextIntoB();
+                    if (!lineTo()) {
+                        return false;
+                    }
+                } else if (isCubicNext()) {
+                    cubicTo();
+                } else {
+                    bx = startX;
+                    by = startY;
+                    if (!lineTo()) {
+                        return false;
+                    }
+                    break;
+                }
             }
         }
-        bx = startX;
-        by = startY;
-        return lineTo();
+        return true;
     }
 
     void finish() {
@@ -160,24 +174,407 @@ final class EdgeBuilder {
         emitRightBorder();
     }
 
+    private boolean beginFigure() {
+        while (cursor < path.size()) {
+            byte command = path.commandAt(cursor);
+            cursor++;
+            if (command == Blend2DPath.MOVE) {
+                ax = path.xAt(cursor - 1);
+                ay = path.yAt(cursor - 1);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isLineNext() {
+        return cursor < path.size() && path.commandAt(cursor) == Blend2DPath.LINE;
+    }
+
+    private boolean isCubicNext() {
+        return cursor < path.size() - 2 && path.commandAt(cursor) == Blend2DPath.CUBIC;
+    }
+
     private boolean takeNextIntoA() {
-        if (figureNext >= figure.length) {
+        if (!isLineNext()) {
             return false;
         }
-        ax = figure[figureNext];
-        ay = figure[figureNext + 1];
-        figureNext += 2;
+        ax = path.xAt(cursor);
+        ay = path.yAt(cursor);
+        cursor++;
         return true;
     }
 
     private boolean takeNextIntoB() {
-        if (figureNext >= figure.length) {
+        if (!isLineNext()) {
             return false;
         }
-        bx = figure[figureNext];
-        by = figure[figureNext + 1];
-        figureNext += 2;
+        bx = path.xAt(cursor);
+        by = path.yAt(cursor);
+        cursor++;
         return true;
+    }
+
+    private void takeNextCubic(double[] controls) {
+        for (int at = 0; at < 3; at++) {
+            controls[2 * at] = path.xAt(cursor + at);
+            controls[2 * at + 1] = path.yAt(cursor + at);
+        }
+        cursor += 3;
+    }
+
+    private void cubicTo() {
+        double[] controls = new double[6];
+        takeNextCubic(controls);
+        while (true) {
+            int p1Flags = calculateFlags(controls[0], controls[1]);
+            int p2Flags = calculateFlags(controls[2], controls[3]);
+            int p3Flags = calculateFlags(controls[4], controls[5]);
+            int common = aFlags & p1Flags & p2Flags & p3Flags;
+            if (common != 0) {
+                boolean isEnd = rejectCubicsOutside(common, controls);
+                aFlags = calculateFlags(ax, ay);
+                if (isEnd) {
+                    return;
+                }
+                continue;
+            }
+            double[] spline = CubicSpline.split(ax, ay, controls);
+            boolean isClipped = (aFlags | p1Flags | p2Flags | p3Flags) != 0;
+            for (int at = 0; at + 6 < spline.length; at += 6) {
+                int signBit = spline[at + 1] > spline[at + 7] ? 1 : 0;
+                MonoCubic curve = new MonoCubic(spline, at, signBit, FLATTEN_TOLERANCE_SQUARED);
+                if (isClipped) {
+                    flattenClippedCurve(curve, signBit);
+                } else {
+                    flattenCurve(curve, signBit);
+                }
+            }
+            ax = spline[spline.length - 2];
+            ay = spline[spline.length - 1];
+            if (isClipped) {
+                aFlags = p3Flags;
+            }
+            if (!isCubicNext()) {
+                return;
+            }
+            takeNextCubic(controls);
+        }
+    }
+
+    private boolean rejectCubicsOutside(int common, double[] controls) {
+        if ((common & CLIP_Y0) != 0) {
+            while (true) {
+                ax = controls[4];
+                ay = controls[5];
+                if (!isCubicNext()) {
+                    return true;
+                }
+                takeNextCubic(controls);
+                if (!(controls[1] <= clipY0 & controls[3] <= clipY0 & controls[5] <= clipY0)) {
+                    return false;
+                }
+            }
+        }
+        if ((common & CLIP_Y1) != 0) {
+            while (true) {
+                ax = controls[4];
+                ay = controls[5];
+                if (!isCubicNext()) {
+                    return true;
+                }
+                takeNextCubic(controls);
+                if (!(controls[1] >= clipY1 & controls[3] >= clipY1 & controls[5] >= clipY1)) {
+                    return false;
+                }
+            }
+        }
+        boolean isLeft = (common & CLIP_X0) != 0;
+        double from = clampToClipRows(ay);
+        boolean isEnd;
+        while (true) {
+            ax = controls[4];
+            ay = controls[5];
+            if (!isCubicNext()) {
+                isEnd = true;
+                break;
+            }
+            takeNextCubic(controls);
+            boolean isStillOutside = isLeft
+                    ? controls[0] <= clipX0 & controls[2] <= clipX0 & controls[4] <= clipX0
+                    : controls[0] >= clipX1 & controls[2] >= clipX1 & controls[4] >= clipX1;
+            if (!isStillOutside) {
+                isEnd = false;
+                break;
+            }
+        }
+        accumulateBorder(isLeft, from, clampToClipRows(ay));
+        return isEnd;
+    }
+
+    private void openAppender(double x, double y) {
+        openDescending();
+        building.add(truncate(x), truncate(y));
+    }
+
+    private void appendLine(double x, double y) {
+        building.add(truncate(x), truncate(y));
+    }
+
+    private void closeAppender(int signBit) {
+        int[] points = building.toArray();
+        building = null;
+        int top = points[1];
+        int bottom = points[points.length - 1];
+        if (top == bottom) {
+            return;
+        }
+        boundTop = Math.min(boundTop, top);
+        boundBottom = Math.max(boundBottom, bottom);
+        edges.add(new EdgeVector(points, signBit));
+    }
+
+    private void flattenCurve(MonoCurve curve, int signBit) {
+        if (curve.isLeftToRight()) {
+            curve.boundLeftToRight();
+        } else {
+            curve.boundRightToLeft();
+        }
+        openAppender(curve.firstX(), curve.firstY());
+        while (true) {
+            if (!curve.isFlat() && curve.canPush()) {
+                curve.split();
+                curve.push();
+                continue;
+            }
+            appendLine(curve.lastX(), curve.lastY());
+            if (!curve.canPop()) {
+                break;
+            }
+            curve.pop();
+        }
+        closeAppender(signBit);
+    }
+
+    private enum Region {
+        ABOVE,
+        BEFORE,
+        BEFORE_AT_CLIP,
+        BEFORE_AT_POP,
+        VISIBLE,
+        VISIBLE_AT_ADD_LINE,
+        FINISHED
+    }
+
+    private void flattenClippedCurve(MonoCurve curve, int signBit) {
+        flatteningStart = curve.firstY();
+        double yEnd = minimum(curve.lastY(), clipY1);
+        if (flatteningStart >= yEnd | yEnd <= clipY0) {
+            return;
+        }
+        double xDelta = Math.abs(curve.firstX() - curve.lastX());
+        flatteningOut = 0;
+        if (xDelta <= ONE_FIXED_POINT_STEP) {
+            flattenStraightCurve(curve, yEnd, signBit);
+            return;
+        }
+        boolean isLeftToRight = curve.isLeftToRight();
+        if (isLeftToRight) {
+            curve.boundLeftToRight();
+        } else {
+            curve.boundRightToLeft();
+        }
+        Region region;
+        if (flatteningStart < clipY0) {
+            flatteningStart = clipY0;
+            region = Region.ABOVE;
+        } else if (flatteningStart < clipY1) {
+            boolean isBefore = isLeftToRight ? curve.firstX() < clipX0 : curve.firstX() > clipX1;
+            boolean isVisible = isLeftToRight ? curve.firstX() < clipX1 : curve.firstX() > clipX0;
+            if (isBefore) {
+                region = Region.BEFORE;
+            } else if (isVisible) {
+                openAppender(curve.firstX(), curve.firstY());
+                region = Region.VISIBLE;
+            } else {
+                flatteningOut = isLeftToRight ? CLIP_X1 : CLIP_X0;
+                region = Region.FINISHED;
+            }
+        } else {
+            return;
+        }
+        while (region != Region.FINISHED) {
+            region = switch (region) {
+                case ABOVE -> flattenAbove(curve, isLeftToRight);
+                case BEFORE, BEFORE_AT_CLIP, BEFORE_AT_POP -> flattenBefore(curve, isLeftToRight, region, yEnd, signBit);
+                case VISIBLE, VISIBLE_AT_ADD_LINE -> flattenVisible(curve, isLeftToRight, region, yEnd, signBit);
+                case FINISHED -> Region.FINISHED;
+            };
+        }
+        if (flatteningOut != 0 && flatteningStart < yEnd) {
+            accumulateBorder((flatteningOut & CLIP_X0) != 0, flatteningStart, yEnd, signBit);
+        }
+    }
+
+    private void flattenStraightCurve(MonoCurve curve, double yEnd, int signBit) {
+        double yStart = maximum(flatteningStart, clipY0);
+        double xMin = minimum(curve.firstX(), curve.lastX());
+        double xMax = maximum(curve.firstX(), curve.lastX());
+        if (xMax <= clipX0) {
+            accumulateBorder(true, yStart, yEnd, signBit);
+        } else if (xMin >= clipX1) {
+            accumulateBorder(false, yStart, yEnd, signBit);
+        } else {
+            openAppender(curve.firstX(), yStart);
+            appendLine(curve.lastX(), yEnd);
+            closeAppender(signBit);
+        }
+    }
+
+    private Region flattenAbove(MonoCurve curve, boolean isLeftToRight) {
+        int nearSide = isLeftToRight ? CLIP_X1 : CLIP_X0;
+        int farSide = isLeftToRight ? CLIP_X0 : CLIP_X1;
+        while (true) {
+            boolean isPastFarEdge = isLeftToRight ? curve.firstX() >= clipX1 : curve.firstX() <= clipX0;
+            if (isPastFarEdge) {
+                flatteningOut = nearSide;
+                return Region.FINISHED;
+            }
+            if (!curve.isFlat()) {
+                curve.split();
+                if (curve.midY() <= clipY0) {
+                    curve.discardAndAdvance();
+                    continue;
+                }
+                if (curve.canPush()) {
+                    curve.push();
+                    continue;
+                }
+            }
+            if (curve.lastY() > clipY0) {
+                boolean isBeforeNearEdge = isLeftToRight ? curve.lastX() < clipX0 : curve.lastX() > clipX1;
+                if (isBeforeNearEdge) {
+                    flatteningOut = farSide;
+                    return Region.BEFORE_AT_POP;
+                }
+                double xClipped = curve.firstX() + (clipY0 - curve.firstY()) * ((curve.lastX() - curve.firstX())
+                        / (curve.lastY() - curve.firstY()));
+                boolean isClippedBefore = isLeftToRight ? xClipped <= clipX0 : xClipped >= clipX1;
+                if (isClippedBefore) {
+                    return Region.BEFORE_AT_CLIP;
+                }
+                boolean isClippedPast = isLeftToRight ? xClipped >= clipX1 : xClipped <= clipX0;
+                if (isClippedPast) {
+                    flatteningOut = nearSide;
+                    return Region.FINISHED;
+                }
+                openAppender(xClipped, clipY0);
+                return Region.VISIBLE_AT_ADD_LINE;
+            }
+            if (!curve.canPop()) {
+                flatteningOut = 0;
+                return Region.FINISHED;
+            }
+            curve.pop();
+        }
+    }
+
+    private Region flattenBefore(MonoCurve curve, boolean isLeftToRight, Region entry, double yEnd, int signBit) {
+        int side = isLeftToRight ? CLIP_X0 : CLIP_X1;
+        double edge = isLeftToRight ? clipX0 : clipX1;
+        Region at = entry;
+        while (true) {
+            if (at == Region.BEFORE) {
+                if (curve.firstY() >= clipY1) {
+                    flatteningOut = side;
+                    return Region.FINISHED;
+                }
+                if (!curve.isFlat()) {
+                    curve.split();
+                    boolean isMidBefore = isLeftToRight ? curve.midX() <= clipX0 : curve.midX() >= clipX1;
+                    if (isMidBefore) {
+                        curve.discardAndAdvance();
+                        continue;
+                    }
+                    if (curve.canPush()) {
+                        curve.push();
+                        continue;
+                    }
+                }
+                boolean isLastInside = isLeftToRight ? curve.lastX() > clipX0 : curve.lastX() < clipX1;
+                at = isLastInside ? Region.BEFORE_AT_CLIP : Region.BEFORE_AT_POP;
+                if (!isLastInside) {
+                    if (curve.lastY() >= yEnd) {
+                        flatteningOut = side;
+                        return Region.FINISHED;
+                    }
+                    flatteningOut = 0;
+                }
+            }
+            if (at == Region.BEFORE_AT_CLIP) {
+                double yClipped = curve.firstY() + (edge - curve.firstX()) * ((curve.lastY() - curve.firstY())
+                        / (curve.lastX() - curve.firstX()));
+                if (yClipped >= yEnd) {
+                    flatteningOut = side;
+                    return Region.FINISHED;
+                }
+                if (flatteningStart < yClipped) {
+                    accumulateBorder(isLeftToRight, flatteningStart, yClipped, signBit);
+                }
+                openAppender(edge, yClipped);
+                return Region.VISIBLE_AT_ADD_LINE;
+            }
+            if (!curve.canPop()) {
+                flatteningOut = flatteningOut != 0 ? side : 0;
+                return Region.FINISHED;
+            }
+            curve.pop();
+            at = Region.BEFORE;
+        }
+    }
+
+    private Region flattenVisible(MonoCurve curve, boolean isLeftToRight, Region entry, double yEnd, int signBit) {
+        int side = isLeftToRight ? CLIP_X1 : CLIP_X0;
+        double edge = isLeftToRight ? clipX1 : clipX0;
+        boolean isAtAddLine = entry == Region.VISIBLE_AT_ADD_LINE;
+        int out;
+        while (true) {
+            if (!isAtAddLine && !curve.isFlat()) {
+                curve.split();
+                if (curve.canPush()) {
+                    curve.push();
+                    continue;
+                }
+            }
+            isAtAddLine = false;
+            boolean isPast = isLeftToRight ? curve.lastX() > clipX1 : curve.lastX() < clipX0;
+            out = isPast ? 1 : 0;
+            if (isPast) {
+                double yClipped = curve.firstY() + (edge - curve.firstX()) * ((curve.lastY() - curve.firstY())
+                        / (curve.lastX() - curve.firstX()));
+                if (yClipped <= yEnd) {
+                    flatteningStart = yClipped;
+                    appendLine(edge, yClipped);
+                    break;
+                }
+            }
+            out = curve.lastY() >= clipY1 ? 1 : 0;
+            if (out != 0) {
+                double xAtBottom = curve.firstX() + (clipY1 - curve.firstY()) * ((curve.lastX() - curve.firstX())
+                        / (curve.lastY() - curve.firstY()));
+                appendLine(isLeftToRight ? minimum(xAtBottom, clipX1) : maximum(xAtBottom, clipX0), clipY1);
+                out = 0;
+                break;
+            }
+            appendLine(curve.lastX(), curve.lastY());
+            if (!curve.canPop()) {
+                break;
+            }
+            curve.pop();
+        }
+        closeAppender(signBit);
+        flatteningOut = out != 0 ? side : 0;
+        return Region.FINISHED;
     }
 
     private void swapPoints() {
@@ -639,6 +1036,14 @@ final class EdgeBuilder {
             points[low + 1] = points[high + 1];
             points[high] = x;
             points[high + 1] = y;
+        }
+    }
+
+    private void accumulateBorder(boolean isLeft, double from, double to, int signBit) {
+        if (signBit != 0) {
+            accumulateBorder(isLeft, to, from);
+        } else {
+            accumulateBorder(isLeft, from, to);
         }
     }
 
