@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
+import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.CompositingOperator;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyWordValue;
@@ -60,6 +61,9 @@ final class Blend2DDrawing {
     private static final int GRADIENT_TYPE_LARGEST = 2;
     private static final int COMPOSITING_OPERATOR_LARGEST = 28;
     private static final int STROKE_JOIN_WORD_LARGEST = 3;
+    private static final int JOIN_MITER_CLIP = 0;
+    private static final int JOIN_BEVEL = 3;
+    private static final int JOIN_ROUND = 4;
     private static final int STROKE_JOIN_MITER_WORD_LARGEST = 2;
     private static final long STROKE_CAP_LARGEST = 5;
 
@@ -371,6 +375,7 @@ final class Blend2DDrawing {
         Read read = resolveNext();
         switch (read.kind()) {
             case TUPLE -> {
+                canvas.setStrokeColour(toColour((TupleValue) read.value()));
                 hasStroke = true;
                 return true;
             }
@@ -402,33 +407,91 @@ final class Blend2DDrawing {
             return true;
         }
         Read read = resolveNext();
+        List<double[]> figures = new ArrayList<>();
         switch (read.kind()) {
             case PAIR -> {
+                List<double[]> points = new ArrayList<>();
+                points.add(readPair(read));
                 while (readRaw(index).kind() == Kind.PAIR) {
+                    points.add(readPair(readRaw(index)));
                     index++;
                 }
+                figures.add(flatten(points));
             }
             case BLOCK -> {
-                AnyBlockValue block = (AnyBlockValue) read.value();
-                if (block.remaining().isEmpty() || classify(block.remaining().getFirst()) != Kind.PAIR) {
+                List<Value> inside = ((AnyBlockValue) read.value()).remaining();
+                if (inside.isEmpty() || classify(inside.getFirst()) != Kind.PAIR) {
                     return false;
                 }
+                List<double[]> points = new ArrayList<>();
+                for (Value value : inside) {
+                    if (classify(value) != Kind.PAIR) {
+                        break;
+                    }
+                    points.add(readPair(new Read(Kind.PAIR, value)));
+                }
+                figures.add(flatten(points));
             }
             case VECTOR -> {
-                if (((VectorValue) read.value()).kind() != VectorKind.FLOAT64) {
+                VectorValue points = (VectorValue) read.value();
+                if (points.kind() != VectorKind.FLOAT64) {
                     return false;
                 }
                 Read edges = resolveNext();
                 if (edges.kind() != Kind.VECTOR || ((VectorValue) edges.value()).kind() != VectorKind.INT32) {
                     return false;
                 }
+                figures.addAll(joinEdges(points, (VectorValue) edges.value()));
             }
             default -> {
                 return false;
             }
         }
-        canvas.refuse("a line");
+        canvas.stroke(Blend2DShape.polylines(figures));
         return true;
+    }
+
+    private static List<double[]> joinEdges(VectorValue points, VectorValue edges) {
+        long pointCount = points.storageLength() - 1L;
+        List<double[]> figures = new ArrayList<>();
+        List<Double> figure = new ArrayList<>();
+        long previous = 0;
+        for (int at = 0; at < edges.storageLength() - 1; at += 2) {
+            long from = Integer.toUnsignedLong((int) edges.storage().at(at + 1) << 1);
+            long to = Integer.toUnsignedLong((int) edges.storage().at(at + 2) << 1);
+            if (from >= pointCount || to >= pointCount) {
+                continue;
+            }
+            if (at == 0 || previous != from) {
+                if (!figure.isEmpty()) {
+                    figures.add(unbox(figure));
+                }
+                figure = new ArrayList<>();
+            } else if (figure.isEmpty()) {
+                previous = to;
+                continue;
+            }
+            addVectorPoint(figure, points, from);
+            addVectorPoint(figure, points, to);
+            previous = to;
+        }
+        if (!figure.isEmpty()) {
+            figures.add(unbox(figure));
+        }
+        return figures;
+    }
+
+    private static void addVectorPoint(List<Double> figure, VectorValue points, long at) {
+        figure.add(Double.longBitsToDouble(points.storage().at((int) at + 1)));
+        figure.add(Double.longBitsToDouble(points.storage().at((int) at + 2)));
+    }
+
+    private static double[] unbox(List<Double> figure) {
+        double[] points = new double[figure.size()];
+        for (int at = 0; at < points.length; at++) {
+            points[at] = figure.get(at);
+        }
+        return points;
     }
 
     private boolean setLineWidth() {
@@ -437,6 +500,9 @@ final class Blend2DDrawing {
             return false;
         }
         hasStroke = width != 0;
+        if (hasStroke) {
+            canvas.setStrokeWidth(width);
+        }
         return true;
     }
 
@@ -446,9 +512,19 @@ final class Blend2DDrawing {
             return false;
         }
         index++;
-        if (mode == 0 && fetchMode(index, ARGUMENT_BEVEL, STROKE_JOIN_MITER_WORD_LARGEST) >= 0) {
-            index++;
+        int join;
+        if (mode == 0) {
+            long variant = fetchMode(index, ARGUMENT_BEVEL, STROKE_JOIN_MITER_WORD_LARGEST);
+            if (variant >= 0) {
+                index++;
+                join = (int) variant + 1;
+            } else {
+                join = JOIN_MITER_CLIP;
+            }
+        } else {
+            join = mode == 1 ? JOIN_BEVEL : JOIN_ROUND;
         }
+        canvas.setStrokeJoin(join);
         return true;
     }
 
@@ -457,12 +533,19 @@ final class Blend2DDrawing {
         if (start.kind() != Kind.INTEGER || Long.compareUnsigned(((IntegerValue) start.value()).magnitude(), STROKE_CAP_LARGEST) > 0) {
             return false;
         }
+        int startCap = (int) ((IntegerValue) start.value()).magnitude();
         Read end = resolveNext();
         if (end.kind() != Kind.INTEGER) {
             index--;
+            canvas.setStrokeCaps(startCap, startCap);
             return true;
         }
-        return Long.compareUnsigned(((IntegerValue) end.value()).magnitude(), STROKE_CAP_LARGEST) <= 0;
+        canvas.setStrokeStartCap(startCap);
+        if (Long.compareUnsigned(((IntegerValue) end.value()).magnitude(), STROKE_CAP_LARGEST) > 0) {
+            return false;
+        }
+        canvas.setStrokeEndCap((int) ((IntegerValue) end.value()).magnitude());
+        return true;
     }
 
     private boolean drawCubic() {
@@ -479,13 +562,17 @@ final class Blend2DDrawing {
             }
             index += 3;
         }
+        fillAndStroke(Blend2DShape.cubics(flatten(points)));
+        return true;
+    }
+
+    private void fillAndStroke(Blend2DShape shape) {
         if (hasFill) {
-            canvas.fillCubics(flatten(points));
+            canvas.fill(shape);
         }
         if (hasStroke) {
-            canvas.refuse("the outline of a cubic curve");
+            canvas.stroke(shape);
         }
-        return true;
     }
 
     private boolean drawPolygon() {
@@ -499,17 +586,8 @@ final class Blend2DDrawing {
             corners.add(readPair(readRaw(index)));
             index++;
         }
-        fillAndOutline(flatten(corners), "the outline of a polygon");
+        fillAndStroke(Blend2DShape.polygon(flatten(corners)));
         return true;
-    }
-
-    private void fillAndOutline(double[] points, String outline) {
-        if (hasFill) {
-            canvas.fillPolygon(points);
-        }
-        if (hasStroke) {
-            canvas.refuse(outline);
-        }
     }
 
     private static double[] flatten(List<double[]> corners) {
@@ -540,19 +618,14 @@ final class Blend2DDrawing {
                 index++;
                 radiusY = toNumber(second);
             }
-            if (hasFill) {
-                canvas.fillRoundedBox(corner[0], corner[1], size[0], size[1], radiusX, radiusY);
-            }
-            if (hasStroke) {
-                canvas.refuse("the outline of a rounded box");
-            }
+            fillAndStroke(Blend2DShape.roundedBox(corner[0], corner[1], size[0], size[1], radiusX, radiusY));
             return true;
         }
         if (hasFill) {
             canvas.fillRect(corner[0], corner[1], size[0], size[1]);
         }
         if (hasStroke) {
-            canvas.refuse("the outline of a box");
+            canvas.stroke(Blend2DShape.box(corner[0], corner[1], size[0], size[1]));
         }
         return true;
     }
@@ -567,12 +640,7 @@ final class Blend2DDrawing {
             return false;
         }
         Double radiusY = readOptionalNumber();
-        if (hasFill) {
-            canvas.fillEllipse(centre[0], centre[1], radius, radiusY == null ? Math.abs(radius) : radiusY);
-        }
-        if (hasStroke) {
-            canvas.refuse(radiusY == null ? "the outline of a circle" : "the outline of an ellipse");
-        }
+        fillAndStroke(Blend2DShape.ellipse(centre[0], centre[1], radius, radiusY == null ? Math.abs(radius) : radiusY));
         return true;
     }
 
@@ -587,12 +655,7 @@ final class Blend2DDrawing {
         }
         double radiusX = size[0] * 0.5;
         double radiusY = size[1] * 0.5;
-        if (hasFill) {
-            canvas.fillEllipse(corner[0] + radiusX, corner[1] + radiusY, radiusX, radiusY);
-        }
-        if (hasStroke) {
-            canvas.refuse("the outline of an ellipse");
-        }
+        fillAndStroke(Blend2DShape.ellipse(corner[0] + radiusX, corner[1] + radiusY, radiusX, radiusY));
         return true;
     }
 
@@ -633,8 +696,8 @@ final class Blend2DDrawing {
             index--;
             while (readRaw(index).kind() == Kind.PAIR && readRaw(index + 1).kind() == Kind.PAIR
                     && readRaw(index + 2).kind() == Kind.PAIR) {
-                fillAndOutline(flatten(List.of(readPair(readRaw(index)), readPair(readRaw(index + 1)),
-                        readPair(readRaw(index + 2)))), "the outline of a triangle");
+                fillAndStroke(Blend2DShape.polygon(flatten(List.of(readPair(readRaw(index)),
+                        readPair(readRaw(index + 1)), readPair(readRaw(index + 2))))));
                 index += 3;
             }
             return true;
@@ -659,7 +722,7 @@ final class Blend2DDrawing {
             for (int at = 0; at < 6; at++) {
                 points[at] = Double.longBitsToDouble(vector.storage().at(vector.index() + triangle * 6 + at));
             }
-            fillAndOutline(points, "the outline of a triangle");
+            fillAndStroke(Blend2DShape.polygon(points));
         }
     }
 
@@ -680,18 +743,13 @@ final class Blend2DDrawing {
         if (sweep == null) {
             return false;
         }
-        Blend2DCanvas.ArcClosing closing = Blend2DCanvas.ArcClosing.OPEN;
+        Blend2DShape.ArcClosing closing = Blend2DShape.ArcClosing.OPEN;
         if (fetchWord(index, ARGUMENT_WORDS) && command >= ARGUMENT_PIE && command <= ARGUMENT_CHORD) {
             index++;
-            closing = command == ARGUMENT_CHORD ? Blend2DCanvas.ArcClosing.CHORD : Blend2DCanvas.ArcClosing.PIE;
+            closing = command == ARGUMENT_CHORD ? Blend2DShape.ArcClosing.CHORD : Blend2DShape.ArcClosing.PIE;
         }
-        if (hasFill) {
-            canvas.fillArc(centre[0], centre[1], radius[0], radius[1],
-                    begin * DEGREES_TO_RADIANS, sweep * DEGREES_TO_RADIANS, closing);
-        }
-        if (hasStroke) {
-            canvas.refuse("the outline of an arc");
-        }
+        fillAndStroke(Blend2DShape.arc(centre[0], centre[1], radius[0], radius[1],
+                begin * DEGREES_TO_RADIANS, sweep * DEGREES_TO_RADIANS, closing));
         return true;
     }
 

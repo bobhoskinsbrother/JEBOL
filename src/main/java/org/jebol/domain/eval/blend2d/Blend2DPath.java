@@ -8,6 +8,8 @@ final class Blend2DPath {
 
     static final byte LINE = 1;
 
+    static final byte QUAD = 2;
+
     static final byte CUBIC = 4;
 
     static final byte CLOSE = 5;
@@ -49,6 +51,57 @@ final class Blend2DPath {
 
     void addRaw(byte command, double x, double y) {
         add(command, x, y);
+    }
+
+    Point pointAt(int at) {
+        return new Point(xAt(at), yAt(at));
+    }
+
+    void setPointAt(int at, Point point) {
+        vertices[2 * at] = point.x();
+        vertices[2 * at + 1] = point.y();
+    }
+
+    byte commandFromEnd(int back) {
+        return commands[size - back];
+    }
+
+    Point pointFromEnd(int back) {
+        return pointAt(size - back);
+    }
+
+    void setPointFromEnd(int back, Point point) {
+        setPointAt(size - back, point);
+    }
+
+    void dropLast(int count) {
+        size -= count;
+    }
+
+    void clear() {
+        size = 0;
+    }
+
+    void moveTo(Point point) {
+        moveTo(point.x(), point.y());
+    }
+
+    void lineTo(Point point) {
+        lineTo(point.x(), point.y());
+    }
+
+    void quadTo(Point control, Point end) {
+        add(QUAD, control.x(), control.y());
+        add(LINE, end.x(), end.y());
+    }
+
+    void cubicTo(Point first, Point second, Point end) {
+        cubicTo(first.x(), first.y(), second.x(), second.y(), end.x(), end.y());
+    }
+
+    void arcQuadrantTo(Point corner, Point end) {
+        Point start = pointFromEnd(1);
+        cubicTo(start.plus(corner.minus(start).times(KAPPA)), end.plus(corner.minus(end).times(KAPPA)), end);
     }
 
     private void add(byte command, double x, double y) {

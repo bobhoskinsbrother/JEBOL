@@ -14,6 +14,8 @@ public final class Blend2DCanvas {
 
     private static final int FULL_ALPHA = 255;
 
+    private static final double STROKE_MITER_LIMIT = 4.0;
+
     private final Blend2DSurface surface;
 
     private CompositingOperator operator = CompositingOperator.SOURCE_OVER;
@@ -23,6 +25,16 @@ public final class Blend2DCanvas {
     private int fillColour = OPAQUE_BLACK;
 
     private Optional<String> fillThatIsNotSolid = Optional.empty();
+
+    private int strokeColour = OPAQUE_BLACK;
+
+    private double strokeWidth = 1.0;
+
+    private int strokeJoin = PathStroker.JOIN_MITER_CLIP;
+
+    private int strokeStartCap = PathStroker.CAP_BUTT;
+
+    private int strokeEndCap = PathStroker.CAP_BUTT;
 
     private Blend2DMatrix transform = Blend2DMatrix.IDENTITY;
 
@@ -134,76 +146,47 @@ public final class Blend2DCanvas {
         resolveClearing().ifPresent(fill -> paintBox(fill, FULL_ALPHA, Blend2DBox.fromRect(x, y, wide, high)));
     }
 
-    public void fillPolygon(double[] points) {
-        if (points.length == 0) {
+    public void fill(Blend2DShape shape) {
+        resolveSolidFill().ifPresent(fill -> paintPath(fill, globalAlpha, shape.path(), AnalyticFill.FillRule.NON_ZERO));
+    }
+
+    public void stroke(Blend2DShape shape) {
+        if (hasNoClipArea) {
             return;
         }
-        fillPath(buildPolygonPath(points));
+        SolidFill.resolve(operator, strokeColour, globalAlpha).ifPresent(fill -> paintStroke(fill, shape.path()));
     }
 
-    private static Blend2DPath buildPolygonPath(double[] points) {
-        Blend2DPath path = new Blend2DPath();
-        path.moveTo(points[0], points[1]);
-        for (int at = 2; at < points.length; at += 2) {
-            path.lineTo(points[at], points[at + 1]);
-        }
-        path.close();
-        return path;
+    public void setStrokeColour(int argb) {
+        strokeColour = argb;
     }
 
-    public void fillEllipse(double cx, double cy, double rx, double ry) {
-        Blend2DPath path = new Blend2DPath();
-        path.addEllipse(cx, cy, rx, ry);
-        fillPath(path);
+    public void setStrokeWidth(double width) {
+        strokeWidth = width;
     }
 
-    public void fillRoundedBox(double x, double y, double wide, double high, double radiusX, double radiusY) {
-        Blend2DPath path = new Blend2DPath();
-        path.addRoundedBox(x, y, wide, high, radiusX, radiusY);
-        fillPath(path);
+    public void setStrokeJoin(int join) {
+        strokeJoin = join;
     }
 
-    public void fillArc(double cx, double cy, double rx, double ry, double start, double sweep, ArcClosing closing) {
-        Blend2DPath path = new Blend2DPath();
-        if (closing == ArcClosing.PIE) {
-            path.moveTo(cx, cy);
-        }
-        path.addArc(cx, cy, rx, ry, start, sweep, closing != ArcClosing.PIE);
-        if (closing != ArcClosing.OPEN) {
-            path.close();
-        }
-        fillPath(path);
+    public void setStrokeCaps(int start, int end) {
+        strokeStartCap = start;
+        strokeEndCap = end;
     }
 
-    public void fillCubics(double[] points) {
-        Blend2DPath path = new Blend2DPath();
-        path.moveTo(points[0], points[1]);
-        for (int at = 2; at + 5 < points.length; at += 6) {
-            path.cubicTo(points[at], points[at + 1], points[at + 2], points[at + 3], points[at + 4], points[at + 5]);
-        }
-        fillPath(path);
+    public void setStrokeStartCap(int cap) {
+        strokeStartCap = cap;
     }
 
-    public enum ArcClosing {
-        OPEN,
-        PIE,
-        CHORD
-    }
-
-    private void fillPath(Blend2DPath path) {
-        resolveSolidFill().ifPresent(fill -> paintPath(fill, globalAlpha, path, AnalyticFill.FillRule.NON_ZERO));
+    public void setStrokeEndCap(int cap) {
+        strokeEndCap = cap;
     }
 
     private void paintPolygon(SolidFill fill, int alpha, double[] points, AnalyticFill.FillRule rule) {
-        paintPath(fill, alpha, buildPolygonPath(points), rule);
+        paintPath(fill, alpha, Blend2DShape.polygon(points).path(), rule);
     }
 
-    private void paintPath(SolidFill fill, int alpha, Blend2DPath path, AnalyticFill.FillRule rule) {
-        Blend2DMatrix.Kind kind = transform.kind();
-        if (kind == Blend2DMatrix.Kind.INVALID || path.isEmpty()) {
-            return;
-        }
-        Blend2DMatrix fixed = transform.toFixedPoint();
+    private Blend2DPath mapToFixedPoint(Blend2DPath path, Blend2DMatrix fixed) {
         boolean isScaledOnly = fixed.kind().compareTo(Blend2DMatrix.Kind.SCALE) <= 0;
         Blend2DPath mapped = new Blend2DPath();
         for (int at = 0; at < path.size(); at++) {
@@ -220,10 +203,43 @@ public final class Blend2DCanvas {
             }
             mapped.addRaw(path.commandAt(at), mappedX, mappedY);
         }
-        EdgeBuilder builder = new EdgeBuilder(clipFixed);
-        if (!builder.addFilledPath(mapped)) {
+        return mapped;
+    }
+
+    private void paintPath(SolidFill fill, int alpha, Blend2DPath path, AnalyticFill.FillRule rule) {
+        if (transform.kind() == Blend2DMatrix.Kind.INVALID || path.isEmpty()) {
             return;
         }
+        EdgeBuilder builder = new EdgeBuilder(clipFixed);
+        if (!builder.addFilledPath(mapToFixedPoint(path, transform.toFixedPoint()))) {
+            return;
+        }
+        paintEdges(builder, fill, alpha, rule);
+    }
+
+    private void paintStroke(SolidFill fill, Blend2DPath path) {
+        if (transform.kind() == Blend2DMatrix.Kind.INVALID || path.isEmpty()) {
+            return;
+        }
+        Blend2DMatrix fixed = transform.toFixedPoint();
+        EdgeBuilder builder = new EdgeBuilder(clipFixed);
+        PathStroker.Options options = new PathStroker.Options(strokeWidth, strokeJoin, STROKE_MITER_LIMIT,
+                strokeStartCap, strokeEndCap);
+        boolean[] isValid = {true};
+        boolean isStroked = new PathStroker(path, options).stroke((outer, inner, startCap) -> {
+            isValid[0] &= builder.addPath(mapToFixedPoint(outer, fixed), false);
+            isValid[0] &= builder.addReversedPath(mapToFixedPoint(inner, fixed));
+            if (!startCap.isEmpty()) {
+                isValid[0] &= builder.addPath(mapToFixedPoint(startCap, fixed), false);
+            }
+        });
+        if (!isStroked || !isValid[0]) {
+            return;
+        }
+        paintEdges(builder, fill, globalAlpha, AnalyticFill.FillRule.NON_ZERO);
+    }
+
+    private void paintEdges(EdgeBuilder builder, SolidFill fill, int alpha, AnalyticFill.FillRule rule) {
         builder.finish();
         if (builder.isEmpty()) {
             return;

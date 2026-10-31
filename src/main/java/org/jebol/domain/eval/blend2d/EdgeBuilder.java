@@ -142,6 +142,10 @@ final class EdgeBuilder {
     }
 
     boolean addFilledPath(Blend2DPath mapped) {
+        return addPath(mapped, true);
+    }
+
+    boolean addPath(Blend2DPath mapped, boolean isClosed) {
         path = mapped;
         cursor = 0;
         while (beginFigure()) {
@@ -154,19 +158,158 @@ final class EdgeBuilder {
                     if (!lineTo()) {
                         return false;
                     }
+                } else if (isQuadNext()) {
+                    quadTo();
                 } else if (isCubicNext()) {
                     cubicTo();
                 } else {
-                    bx = startX;
-                    by = startY;
-                    if (!lineTo()) {
-                        return false;
+                    if (isClosed || isCloseNext()) {
+                        bx = startX;
+                        by = startY;
+                        if (!lineTo()) {
+                            return false;
+                        }
                     }
                     break;
                 }
             }
         }
         return true;
+    }
+
+    boolean addReversedPath(Blend2DPath mapped) {
+        int size = mapped.size();
+        boolean mustClose = size > 0 && mapped.commandAt(size - 1) == Blend2DPath.CLOSE;
+        int end = size - (mustClose ? 1 : 0);
+        if (end == 0 || mapped.commandAt(end - 1) != Blend2DPath.LINE) {
+            return true;
+        }
+        Blend2DPath forward = new Blend2DPath();
+        forward.addRaw(Blend2DPath.MOVE, mapped.xAt(end - 1), mapped.yAt(end - 1));
+        int at = end - 1;
+        while (at > 0) {
+            byte command = mapped.commandAt(at - 1);
+            if (command <= Blend2DPath.LINE) {
+                forward.addRaw(Blend2DPath.LINE, mapped.xAt(at - 1), mapped.yAt(at - 1));
+                at--;
+            } else if (command == Blend2DPath.QUAD) {
+                forward.addRaw(Blend2DPath.QUAD, mapped.xAt(at - 1), mapped.yAt(at - 1));
+                forward.addRaw(Blend2DPath.LINE, mapped.xAt(at - 2), mapped.yAt(at - 2));
+                at -= 2;
+            } else if (command == Blend2DPath.CUBIC) {
+                forward.addRaw(Blend2DPath.CUBIC, mapped.xAt(at - 1), mapped.yAt(at - 1));
+                forward.addRaw(Blend2DPath.CUBIC, mapped.xAt(at - 2), mapped.yAt(at - 2));
+                forward.addRaw(Blend2DPath.LINE, mapped.xAt(at - 3), mapped.yAt(at - 3));
+                at -= 3;
+            } else {
+                break;
+            }
+        }
+        return addPath(forward, mustClose);
+    }
+
+    private boolean isCloseNext() {
+        return cursor < path.size() && path.commandAt(cursor) == Blend2DPath.CLOSE;
+    }
+
+    private boolean isQuadNext() {
+        return cursor <= path.size() - 2 && path.commandAt(cursor) == Blend2DPath.QUAD;
+    }
+
+    private void takeNextQuad(double[] controls) {
+        for (int at = 0; at < 2; at++) {
+            controls[2 * at] = path.xAt(cursor + at);
+            controls[2 * at + 1] = path.yAt(cursor + at);
+        }
+        cursor += 2;
+    }
+
+    private void quadTo() {
+        double[] controls = new double[4];
+        takeNextQuad(controls);
+        while (true) {
+            int p1Flags = calculateFlags(controls[0], controls[1]);
+            int p2Flags = calculateFlags(controls[2], controls[3]);
+            int common = aFlags & p1Flags & p2Flags;
+            if (common != 0) {
+                boolean isEnd = rejectQuadsOutside(common, controls);
+                aFlags = calculateFlags(ax, ay);
+                if (isEnd) {
+                    return;
+                }
+                continue;
+            }
+            double[] spline = QuadSpline.split(ax, ay, controls);
+            boolean isClipped = (aFlags | p1Flags | p2Flags) != 0;
+            for (int at = 0; at + 4 < spline.length; at += 4) {
+                int signBit = spline[at + 1] > spline[at + 5] ? 1 : 0;
+                MonoQuad curve = new MonoQuad(spline, at, signBit, FLATTEN_TOLERANCE_SQUARED);
+                if (isClipped) {
+                    flattenClippedCurve(curve, signBit);
+                } else {
+                    flattenCurve(curve, signBit);
+                }
+            }
+            ax = spline[spline.length - 2];
+            ay = spline[spline.length - 1];
+            if (isClipped) {
+                aFlags = p2Flags;
+            }
+            if (!isQuadNext()) {
+                return;
+            }
+            takeNextQuad(controls);
+        }
+    }
+
+    private boolean rejectQuadsOutside(int common, double[] controls) {
+        if ((common & CLIP_Y0) != 0) {
+            while (true) {
+                ax = controls[2];
+                ay = controls[3];
+                if (!isQuadNext()) {
+                    return true;
+                }
+                takeNextQuad(controls);
+                if (!(controls[1] <= clipY0 & controls[3] <= clipY0)) {
+                    return false;
+                }
+            }
+        }
+        if ((common & CLIP_Y1) != 0) {
+            while (true) {
+                ax = controls[2];
+                ay = controls[3];
+                if (!isQuadNext()) {
+                    return true;
+                }
+                takeNextQuad(controls);
+                if (!(controls[1] >= clipY1 & controls[3] >= clipY1)) {
+                    return false;
+                }
+            }
+        }
+        boolean isLeft = (common & CLIP_X0) != 0;
+        double from = clampToClipRows(ay);
+        boolean isEnd;
+        while (true) {
+            ax = controls[2];
+            ay = controls[3];
+            if (!isQuadNext()) {
+                isEnd = true;
+                break;
+            }
+            takeNextQuad(controls);
+            boolean isStillOutside = isLeft
+                    ? controls[0] <= clipX0 & controls[2] <= clipX0
+                    : controls[0] >= clipX1 & controls[2] >= clipX1;
+            if (!isStillOutside) {
+                isEnd = false;
+                break;
+            }
+        }
+        accumulateBorder(isLeft, from, clampToClipRows(ay));
+        return isEnd;
     }
 
     void finish() {

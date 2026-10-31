@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,8 +55,10 @@ class TheLoadingScreenEndToEndTest {
     }
 
     private static Optional<String> readWhatTheLoadingScreenSays(AnOperatorAtThePage operator) {
-        List<WebElement> loading = operator.browser().findElements(By.id("loading"));
-        return loading.isEmpty() ? Optional.empty() : Optional.of(loading.getFirst().getText());
+        Object says = ((JavascriptExecutor) operator.browser()).executeScript("""
+                const loading = document.getElementById('loading');
+                return loading ? loading.innerText : null;""");
+        return Optional.ofNullable((String) says);
     }
 
     @Test

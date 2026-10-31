@@ -822,6 +822,275 @@ noise 300x200 316	fill 90.10.250.200 circle 150x100 97	300x200	623093f3
 noise 300x200 317	fill 90.10.250 blend screen ellipse 5x5 290x190	300x200	9ac1b97b
 noise 300x200 318	fill 90.10.250 box 10x10 280x180 60	300x200	8b37ce61
 noise 9x150 319	fill 90.10.250 ellipse 1x1 7x148	9x150	3becd060
+noise 40x30 401	pen 200.30.40.220 line-join miter line-cap 1 line 2x2 38x28	40x30	729e9b6f
+noise 40x30 402	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 line 2x2 38x28	40x30	d04a3c18
+noise 40x30 403	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 line 2x2 38x28	40x30	639f5d2b
+noise 40x30 404	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 line 2x2 38x28	40x30	12d0c356
+noise 40x30 405	pen 200.30.40.220 line-join round line-cap 5 line 2.5x15.5 37.5x15.5	40x30	d4f56cec
+noise 40x30 406	pen 200.30.40.220 line-width 0.5 line-cap 2 4 line 2.5x15.5 37.5x15.5	40x30	6cbe99a0
+noise 40x30 407	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 line 2.5x15.5 37.5x15.5	40x30	46df8ad3
+noise 40x30 408	pen 200.30.40.220 line-width 9.5 line-join miter bevel line 2.5x15.5 37.5x15.5	40x30	00e6e2ee
+noise 40x30 409	pen 200.30.40.220 line-join miter round line-cap 1 line 20x2 20x28	40x30	9bfb7b3e
+noise 40x30 410	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 line 20x2 20x28	40x30	60ed641c
+noise 40x30 411	pen 200.30.40.220 line-width 4 line-join round line-cap 3 line 20x2 20x28	40x30	b1a4d443
+noise 40x30 412	pen 200.30.40.220 line-width 9.5 line-cap 4 line 20x2 20x28	40x30	ad06fc91
+noise 40x30 413	pen 200.30.40.220 line-join miter line-cap 5 line 2x28 20x2 38x28	40x30	dc949778
+noise 40x30 414	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 line 2x28 20x2 38x28	40x30	370a13c8
+noise 40x30 415	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 line 2x28 20x2 38x28	40x30	759d4541
+noise 40x30 416	pen 200.30.40.220 line-width 9.5 line-join bevel line 2x28 20x2 38x28	40x30	1fc0bd78
+noise 40x30 417	pen 200.30.40.220 line-join round line-cap 1 line 2x15 38x15 2x16	40x30	d1fab175
+noise 40x30 418	pen 200.30.40.220 line-width 0.5 line-cap 2 line 2x15 38x15 2x16	40x30	135841b3
+noise 40x30 419	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 line 2x15 38x15 2x16	40x30	fe564923
+noise 40x30 420	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 line 2x15 38x15 2x16	40x30	60d8ba8b
+noise 40x30 421	pen 200.30.40.220 line-join miter round line-cap 5 line 2x2 38x2 38x28 2x28 2x2	40x30	d4842f86
+noise 40x30 422	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 4 line 2x2 38x2 38x28 2x28 2x2	40x30	1f3587f6
+noise 40x30 423	pen 200.30.40.220 line-width 4 line-join round line-cap 5 1 line 2x2 38x2 38x28 2x28 2x2	40x30	ef1d1b2e
+noise 40x30 424	pen 200.30.40.220 line-width 9.5 line 2x2 38x2 38x28 2x28 2x2	40x30	f1f0a036
+noise 40x30 425	pen 200.30.40.220 line-join miter line-cap 1 line 5x5 35x5 35x25 5x25 5x5.0000001	40x30	c740826e
+noise 40x30 426	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 line 5x5 35x5 35x25 5x25 5x5.0000001	40x30	485b40b7
+noise 40x30 427	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 line 5x5 35x5 35x25 5x25 5x5.0000001	40x30	33b3243a
+noise 40x30 428	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 line 5x5 35x5 35x25 5x25 5x5.0000001	40x30	50864688
+noise 40x30 429	pen 200.30.40.220 line-join round line-cap 5 line 2x15 20x15 38x15	40x30	b6fcc6a9
+noise 40x30 430	pen 200.30.40.220 line-width 0.5 line-cap 2 4 line 2x15 20x15 38x15	40x30	3f000bd7
+noise 40x30 431	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 line 2x15 20x15 38x15	40x30	996c1fbe
+noise 40x30 432	pen 200.30.40.220 line-width 9.5 line-join miter bevel line 2x15 20x15 38x15	40x30	e1ffb3c3
+noise 40x30 433	pen 200.30.40.220 line-join miter round line-cap 1 line 2x15 20x15.00000000001 38x15	40x30	dc52878b
+noise 40x30 434	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 line 2x15 20x15.00000000001 38x15	40x30	b4ec7b64
+noise 40x30 435	pen 200.30.40.220 line-width 4 line-join round line-cap 3 line 2x15 20x15.00000000001 38x15	40x30	2965f40c
+noise 40x30 436	pen 200.30.40.220 line-width 9.5 line-cap 4 line 2x15 20x15.00000000001 38x15	40x30	3b5b1973
+noise 40x30 437	pen 200.30.40.220 line-join miter line-cap 5 line 10x10 10x10 30x20	40x30	793bb6c6
+noise 40x30 438	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 line 10x10 10x10 30x20	40x30	a841f40d
+noise 40x30 439	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 line 10x10 10x10 30x20	40x30	c900cbf9
+noise 40x30 440	pen 200.30.40.220 line-width 9.5 line-join bevel line 10x10 10x10 30x20	40x30	b6423431
+noise 40x30 441	pen 200.30.40.220 line-join round line-cap 1 line 3x27 20x3 37x27 3x27	40x30	f3e1bcea
+noise 40x30 442	pen 200.30.40.220 line-width 0.5 line-cap 2 line 3x27 20x3 37x27 3x27	40x30	af0b70c0
+noise 40x30 443	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 line 3x27 20x3 37x27 3x27	40x30	8c0e789d
+noise 40x30 444	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 line 3x27 20x3 37x27 3x27	40x30	8f57bc20
+noise 40x30 445	pen 200.30.40.220 line-join miter round line-cap 5 line [5x5 35x8 10x25 30x28]	40x30	ff5f81bd
+noise 40x30 446	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 4 line [5x5 35x8 10x25 30x28]	40x30	bfbecd02
+noise 40x30 447	pen 200.30.40.220 line-width 4 line-join round line-cap 5 1 line [5x5 35x8 10x25 30x28]	40x30	77fc7cc3
+noise 40x30 448	pen 200.30.40.220 line-width 9.5 line [5x5 35x8 10x25 30x28]	40x30	39265744
+noise 40x30 449	pen 200.30.40.220 line-join miter line-cap 1 line 0x0 40x30 0x30 40x0	40x30	e4a98314
+noise 40x30 400	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 line 0x0 40x30 0x30 40x0	40x30	9d3bed69
+noise 40x30 401	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 line 0x0 40x30 0x30 40x0	40x30	97054d74
+noise 40x30 402	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 line 0x0 40x30 0x30 40x0	40x30	12ff744b
+noise 40x30 403	pen 200.30.40.220 line-join round line-cap 5 line -10x15 50x15	40x30	bed7a42f
+noise 40x30 404	pen 200.30.40.220 line-width 0.5 line-cap 2 4 line -10x15 50x15	40x30	124296d3
+noise 40x30 405	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 line -10x15 50x15	40x30	7cb96e40
+noise 40x30 406	pen 200.30.40.220 line-width 9.5 line-join miter bevel line -10x15 50x15	40x30	b5cbf49a
+noise 40x30 407	pen 200.30.40.220 line-join miter round line-cap 1 line 20x-10 20x40	40x30	91eefb88
+noise 40x30 408	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 line 20x-10 20x40	40x30	3dd2588f
+noise 40x30 409	pen 200.30.40.220 line-width 4 line-join round line-cap 3 line 20x-10 20x40	40x30	cccb410e
+noise 40x30 410	pen 200.30.40.220 line-width 9.5 line-cap 4 line 20x-10 20x40	40x30	6b0a78e9
+noise 40x30 411	pen 200.30.40.220 line-join miter line-cap 5 line 5x15 6x15.5 7x15 8x15.5	40x30	2f667c3d
+noise 40x30 412	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 line 5x15 6x15.5 7x15 8x15.5	40x30	7513d2a7
+noise 40x30 413	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 line 5x15 6x15.5 7x15 8x15.5	40x30	839cc005
+noise 40x30 414	pen 200.30.40.220 line-width 9.5 line-join bevel line 5x15 6x15.5 7x15 8x15.5	40x30	2d121e87
+noise 40x30 415	pen 200.30.40.220 line-join round line-cap 1 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	f65eb8b0
+noise 40x30 416	pen 200.30.40.220 line-width 0.5 line-cap 2 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	31ae5c38
+noise 40x30 417	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	aa728175
+noise 40x30 418	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	79400d72
+noise 40x30 419	pen 200.30.40.220 line-join miter round line-cap 5 polygon 20x1 26x28 4x10 36x10 14x28	40x30	1486d80b
+noise 40x30 420	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 4 polygon 20x1 26x28 4x10 36x10 14x28	40x30	a52f1a58
+noise 40x30 421	pen 200.30.40.220 line-width 4 line-join round line-cap 5 1 polygon 20x1 26x28 4x10 36x10 14x28	40x30	866cdad5
+noise 40x30 422	pen 200.30.40.220 line-width 9.5 polygon 20x1 26x28 4x10 36x10 14x28	40x30	fca5f800
+noise 40x30 423	pen 200.30.40.220 line-join miter line-cap 1 triangle 3x27 20x3 37x27	40x30	3202cea1
+noise 40x30 424	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 triangle 3x27 20x3 37x27	40x30	54c0274f
+noise 40x30 425	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 triangle 3x27 20x3 37x27	40x30	ca544013
+noise 40x30 426	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 triangle 3x27 20x3 37x27	40x30	1889a107
+noise 40x30 427	pen 200.30.40.220 line-join round line-cap 5 box 5x5 30x20	40x30	78e70a62
+noise 40x30 428	pen 200.30.40.220 line-width 0.5 line-cap 2 4 box 5x5 30x20	40x30	1713bfe2
+noise 40x30 429	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 box 5x5 30x20	40x30	2dcda42e
+noise 40x30 430	pen 200.30.40.220 line-width 9.5 line-join miter bevel box 5x5 30x20	40x30	1f2ff316
+noise 40x30 431	pen 200.30.40.220 line-join miter round line-cap 1 box 5.5x5.5 29x19	40x30	88d0a7d0
+noise 40x30 432	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 box 5.5x5.5 29x19	40x30	f73a84ba
+noise 40x30 433	pen 200.30.40.220 line-width 4 line-join round line-cap 3 box 5.5x5.5 29x19	40x30	47992608
+noise 40x30 434	pen 200.30.40.220 line-width 9.5 line-cap 4 box 5.5x5.5 29x19	40x30	ce2a4875
+noise 40x30 435	pen 200.30.40.220 line-join miter line-cap 5 box 5x5 30x20 6	40x30	b670fb61
+noise 40x30 436	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 box 5x5 30x20 6	40x30	af1d7413
+noise 40x30 437	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 box 5x5 30x20 6	40x30	cf292b91
+noise 40x30 438	pen 200.30.40.220 line-width 9.5 line-join bevel box 5x5 30x20 6	40x30	ec5e3cc4
+noise 40x30 439	pen 200.30.40.220 line-join round line-cap 1 circle 20x15 10	40x30	cd75e6cc
+noise 40x30 440	pen 200.30.40.220 line-width 0.5 line-cap 2 circle 20x15 10	40x30	4519964a
+noise 40x30 441	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 circle 20x15 10	40x30	87eb88b5
+noise 40x30 442	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 circle 20x15 10	40x30	838ef902
+noise 40x30 443	pen 200.30.40.220 line-join miter round line-cap 5 circle 20x15 10 5	40x30	6656f48e
+noise 40x30 444	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 4 circle 20x15 10 5	40x30	c997db6a
+noise 40x30 445	pen 200.30.40.220 line-width 4 line-join round line-cap 5 1 circle 20x15 10 5	40x30	dc1e668a
+noise 40x30 446	pen 200.30.40.220 line-width 9.5 circle 20x15 10 5	40x30	f9a643d7
+noise 40x30 447	pen 200.30.40.220 line-join miter line-cap 1 ellipse 4x4 32x22	40x30	d3a672dd
+noise 40x30 448	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 ellipse 4x4 32x22	40x30	312477fb
+noise 40x30 449	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 ellipse 4x4 32x22	40x30	9a969b98
+noise 40x30 400	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 ellipse 4x4 32x22	40x30	32064dd2
+noise 40x30 401	pen 200.30.40.220 line-join round line-cap 5 arc 20x15 12x9 30 120	40x30	7ee860ca
+noise 40x30 402	pen 200.30.40.220 line-width 0.5 line-cap 2 4 arc 20x15 12x9 30 120	40x30	d10a5496
+noise 40x30 403	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 arc 20x15 12x9 30 120	40x30	e12f1ca4
+noise 40x30 404	pen 200.30.40.220 line-width 9.5 line-join miter bevel arc 20x15 12x9 30 120	40x30	ecb8cb36
+noise 40x30 405	pen 200.30.40.220 line-join miter round line-cap 1 arc 20x15 12x9 30 120 pie	40x30	ee2487cf
+noise 40x30 406	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 arc 20x15 12x9 30 120 pie	40x30	e263716e
+noise 40x30 407	pen 200.30.40.220 line-width 4 line-join round line-cap 3 arc 20x15 12x9 30 120 pie	40x30	91be4636
+noise 40x30 408	pen 200.30.40.220 line-width 9.5 line-cap 4 arc 20x15 12x9 30 120 pie	40x30	c220808c
+noise 40x30 409	pen 200.30.40.220 line-join miter line-cap 5 arc 20x15 12x9 30 250 chord	40x30	d83e40d2
+noise 40x30 410	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 arc 20x15 12x9 30 250 chord	40x30	1ede9a0c
+noise 40x30 411	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 arc 20x15 12x9 30 250 chord	40x30	5b2c5142
+noise 40x30 412	pen 200.30.40.220 line-width 9.5 line-join bevel arc 20x15 12x9 30 250 chord	40x30	f3a69e55
+noise 40x30 413	pen 200.30.40.220 line-join round line-cap 1 cubic 2x28 10x-10 30x40 38x2	40x30	cf97937e
+noise 40x30 414	pen 200.30.40.220 line-width 0.5 line-cap 2 cubic 2x28 10x-10 30x40 38x2	40x30	7e0dd12b
+noise 40x30 415	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 cubic 2x28 10x-10 30x40 38x2	40x30	9a7cbe20
+noise 40x30 416	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 cubic 2x28 10x-10 30x40 38x2	40x30	caae08c8
+noise 40x30 417	pen 200.30.40.220 line-join miter round line-cap 5 cubic 2x15 15x2 15x28 2x15	40x30	c7d2a9fb
+noise 40x30 418	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 4 cubic 2x15 15x2 15x28 2x15	40x30	ce11e82f
+noise 40x30 419	pen 200.30.40.220 line-width 4 line-join round line-cap 5 1 cubic 2x15 15x2 15x28 2x15	40x30	18093307
+noise 40x30 420	pen 200.30.40.220 line-width 9.5 cubic 2x15 15x2 15x28 2x15	40x30	ce128cfa
+noise 40x30 421	pen 200.30.40.220 line-join miter line-cap 1 cubic 5x25 15x0 25x30 35x5	40x30	6064db86
+noise 40x30 422	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 cubic 5x25 15x0 25x30 35x5	40x30	d855b778
+noise 40x30 423	pen 200.30.40.220 line-width 4 line-join miter round line-cap 3 cubic 5x25 15x0 25x30 35x5	40x30	678c6c51
+noise 40x30 424	pen 200.30.40.220 line-width 9.5 line-join bevel line-cap 4 cubic 5x25 15x0 25x30 35x5	40x30	ef2dd8c6
+noise 40x30 425	pen 200.30.40.220 line-join round line-cap 5 cubic 2x2 38x28 2x28 38x2	40x30	18ae6c72
+noise 40x30 426	pen 200.30.40.220 line-width 0.5 line-cap 2 4 cubic 2x2 38x28 2x28 38x2	40x30	03c5e91e
+noise 40x30 427	pen 200.30.40.220 line-width 4 line-join miter line-cap 5 1 cubic 2x2 38x28 2x28 38x2	40x30	346f6e11
+noise 40x30 428	pen 200.30.40.220 line-width 9.5 line-join miter bevel cubic 2x2 38x28 2x28 38x2	40x30	7f985b57
+noise 40x30 429	pen 200.30.40.220 line-join miter round line-cap 1 cubic 20x2 20x2 20x28 20x28	40x30	61941818
+noise 40x30 430	pen 200.30.40.220 line-width 0.5 line-join bevel line-cap 2 cubic 20x2 20x2 20x28 20x28	40x30	bef484db
+noise 40x30 431	pen 200.30.40.220 line-width 4 line-join round line-cap 3 cubic 20x2 20x2 20x28 20x28	40x30	60b266f6
+noise 40x30 432	pen 200.30.40.220 line-width 9.5 line-cap 4 cubic 20x2 20x2 20x28 20x28	40x30	837a55c5
+noise 40x30 433	pen 200.30.40.220 line-join miter line-cap 5 cubic 5x15 20x15 25x15 35x15	40x30	8ea9935e
+noise 40x30 434	pen 200.30.40.220 line-width 0.5 line-join miter bevel line-cap 2 4 cubic 5x15 20x15 25x15 35x15	40x30	2d871a97
+noise 40x30 435	pen 200.30.40.220 line-width 4 line-join miter round line-cap 5 1 cubic 5x15 20x15 25x15 35x15	40x30	36edc351
+noise 40x30 436	pen 200.30.40.220 line-width 9.5 line-join bevel cubic 5x15 20x15 25x15 35x15	40x30	e0737e40
+noise 40x30 437	pen 200.30.40.220 line-join round line-cap 1 cubic 5x15 30x15 10x15 35x15	40x30	05c05a3b
+noise 40x30 438	pen 200.30.40.220 line-width 0.5 line-cap 2 cubic 5x15 30x15 10x15 35x15	40x30	c18cfccf
+noise 40x30 439	pen 200.30.40.220 line-width 4 line-join miter line-cap 3 cubic 5x15 30x15 10x15 35x15	40x30	a1969273
+noise 40x30 440	pen 200.30.40.220 line-width 9.5 line-join miter bevel line-cap 4 cubic 5x15 30x15 10x15 35x15	40x30	91526dff
+noise 40x30 460	pen 30.40.200 line-width 6 line 4x26 20x4 36x26	40x30	34e95c7e
+noise 40x30 460	pen 30.40.200 line-width 6 line 4x10 36x15 4x20	40x30	5472282d
+noise 40x30 460	pen 30.40.200 line-width 6 line 4x4 36x15 4x26 36x26	40x30	7678e828
+noise 40x30 460	pen 30.40.200 line-width 6 line 4x15 36x15 4x15.5	40x30	ef548e52
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter line 4x26 20x4 36x26	40x30	34e95c7e
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter line 4x10 36x15 4x20	40x30	5472282d
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter line 4x4 36x15 4x26 36x26	40x30	7678e828
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter line 4x15 36x15 4x15.5	40x30	ef548e52
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter bevel line 4x26 20x4 36x26	40x30	34e95c7e
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter bevel line 4x10 36x15 4x20	40x30	a24b7fd3
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter bevel line 4x4 36x15 4x26 36x26	40x30	b37b9e22
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter bevel line 4x15 36x15 4x15.5	40x30	26c3a7af
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter round line 4x26 20x4 36x26	40x30	34e95c7e
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter round line 4x10 36x15 4x20	40x30	b34219c8
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter round line 4x4 36x15 4x26 36x26	40x30	53484599
+noise 40x30 460	pen 30.40.200 line-width 6 line-join miter round line 4x15 36x15 4x15.5	40x30	459025ba
+noise 40x30 460	pen 30.40.200 line-width 6 line-join bevel line 4x26 20x4 36x26	40x30	aaa975fe
+noise 40x30 460	pen 30.40.200 line-width 6 line-join bevel line 4x10 36x15 4x20	40x30	a24b7fd3
+noise 40x30 460	pen 30.40.200 line-width 6 line-join bevel line 4x4 36x15 4x26 36x26	40x30	e64cc4a0
+noise 40x30 460	pen 30.40.200 line-width 6 line-join bevel line 4x15 36x15 4x15.5	40x30	26c3a7af
+noise 40x30 460	pen 30.40.200 line-width 6 line-join round line 4x26 20x4 36x26	40x30	abb2c095
+noise 40x30 460	pen 30.40.200 line-width 6 line-join round line 4x10 36x15 4x20	40x30	b34219c8
+noise 40x30 460	pen 30.40.200 line-width 6 line-join round line 4x4 36x15 4x26 36x26	40x30	85b8aa48
+noise 40x30 460	pen 30.40.200 line-width 6 line-join round line 4x15 36x15 4x15.5	40x30	459025ba
+noise 40x30 461	pen 30.200.40 line-width 8 line 8x15 32x15	40x30	0d9a491c
+noise 40x30 462	pen 30.200.40 line-width 8 line 8x8 32x22 14x24	40x30	6094f16b
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 1 line 8x15 32x15	40x30	89baa393
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 1 line 8x8 32x22 14x24	40x30	e0f261ed
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 2 line 8x15 32x15	40x30	4cb2db4a
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 2 line 8x8 32x22 14x24	40x30	d7204f42
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 3 line 8x15 32x15	40x30	2302dbee
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 3 line 8x8 32x22 14x24	40x30	cd5600ec
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 4 line 8x15 32x15	40x30	950c43b6
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 4 line 8x8 32x22 14x24	40x30	7f84fbae
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 5 line 8x15 32x15	40x30	2d6022d3
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 5 line 8x8 32x22 14x24	40x30	777191ac
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 2 4 line 8x15 32x15	40x30	23a61878
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 2 4 line 8x8 32x22 14x24	40x30	4d8bece2
+noise 40x30 461	pen 30.200.40 line-width 8 line-cap 5 1 line 8x15 32x15	40x30	153d146d
+noise 40x30 462	pen 30.200.40 line-width 8 line-cap 5 1 line 8x8 32x22 14x24	40x30	973a7e9a
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend source-over line 3x27 20x3 37x27	40x30	21b8454b
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend source-copy line 3x27 20x3 37x27	40x30	64b4d1f5
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend destination-in line 3x27 20x3 37x27	40x30	43afef12
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend xor line 3x27 20x3 37x27	40x30	9be40480
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend clear line 3x27 20x3 37x27	40x30	ba6bdc9f
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend plus line 3x27 20x3 37x27	40x30	4074c592
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend multiply line 3x27 20x3 37x27	40x30	cf918c32
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend screen line 3x27 20x3 37x27	40x30	ee812752
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend overlay line 3x27 20x3 37x27	40x30	0b5b3fc6
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend color-dodge line 3x27 20x3 37x27	40x30	97f868b1
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend color-burn line 3x27 20x3 37x27	40x30	e8526518
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend soft-light line 3x27 20x3 37x27	40x30	0334803b
+noise 40x30 470	pen 200.100.50.180 line-width 3 alpha 0.75 blend difference line 3x27 20x3 37x27	40x30	f9ba43a2
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 7.4474x23.2085	40x30	aef248ef
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 7.4474x23.2085	40x30	0e926920
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 7.4474x23.2085	40x30	104fb780
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 7.5941x23.6008	40x30	22a9e423
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 7.5941x23.6008	40x30	a224ab02
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 7.5941x23.6008	40x30	8e3add9e
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 7.7476x23.9906	40x30	4ddc5f3d
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 7.7476x23.9906	40x30	8fe1fb64
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 7.7476x23.9906	40x30	7b3c3f1d
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 7.9079x24.3775	40x30	1fea3741
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 7.9079x24.3775	40x30	cbace3cb
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 7.9079x24.3775	40x30	06b08e12
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 8.0749x24.7617	40x30	58dd3cc1
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 8.0749x24.7617	40x30	cc2c4e8b
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 8.0749x24.7617	40x30	3f46b89a
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 8.2486x25.1428	40x30	be5a1676
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 8.2486x25.1428	40x30	09422cf0
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 8.2486x25.1428	40x30	f341eb7c
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 8.4289x25.5209	40x30	7546ffe8
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 8.4289x25.5209	40x30	68186412
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 8.4289x25.5209	40x30	fc41abb0
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 8.6158x25.8958	40x30	13fdc80b
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 8.6158x25.8958	40x30	a5e28221
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 8.6158x25.8958	40x30	3e8ba8c0
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 8.8093x26.2673	40x30	fde65ef1
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 8.8093x26.2673	40x30	f81a8616
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 8.8093x26.2673	40x30	dc239b0a
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 9.0091x26.6354	40x30	dfe183c8
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 9.0091x26.6354	40x30	dfe183c8
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 9.0091x26.6354	40x30	dfe183c8
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 9.2154x27.0000	40x30	5f7463a5
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 9.2154x27.0000	40x30	5f7463a5
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 9.2154x27.0000	40x30	5f7463a5
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 9.4280x27.3609	40x30	44d48962
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 9.4280x27.3609	40x30	44d48962
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 9.4280x27.3609	40x30	44d48962
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 9.6468x27.7181	40x30	8f41a4fa
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 9.6468x27.7181	40x30	8f41a4fa
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 9.6468x27.7181	40x30	8f41a4fa
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 9.8719x28.0713	40x30	8e9a6f25
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 9.8719x28.0713	40x30	8e9a6f25
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 9.8719x28.0713	40x30	8e9a6f25
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 10.1031x28.4206	40x30	64a0bc92
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 10.1031x28.4206	40x30	64a0bc92
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 10.1031x28.4206	40x30	64a0bc92
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 10.3404x28.7658	40x30	6e5c874b
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 10.3404x28.7658	40x30	6e5c874b
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 10.3404x28.7658	40x30	6e5c874b
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 10.5836x29.1068	40x30	5e559d50
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 10.5836x29.1068	40x30	5e559d50
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 10.5836x29.1068	40x30	5e559d50
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 10.8327x29.4436	40x30	05f77786
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 10.8327x29.4436	40x30	05f77786
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 10.8327x29.4436	40x30	05f77786
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 11.0877x29.7759	40x30	112e73ae
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 11.0877x29.7759	40x30	112e73ae
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 11.0877x29.7759	40x30	112e73ae
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 11.3485x30.1037	40x30	a5658bee
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 11.3485x30.1037	40x30	a5658bee
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 11.3485x30.1037	40x30	a5658bee
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter line 6x15 30.0000x15.0000 11.6149x30.4269	40x30	964cd318
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter bevel line 6x15 30.0000x15.0000 11.6149x30.4269	40x30	964cd318
+noise 40x30 465	pen 30.40.200 line-width 3 line-join miter round line 6x15 30.0000x15.0000 11.6149x30.4269	40x30	964cd318
+noise 40x30 471	fill 30.200.90 pen 0.0.0 line-width 2 circle 20x15 11	40x30	6e740eed
+noise 40x30 472	fill 30.200.90 pen 200.0.0 line-width 3 polygon 3x3 37x3 20x27	40x30	e2447aea
+noise 40x30 473	pen 200.0.0 line-width 3 rotate 30 20x15 box 8x8 24x14	40x30	e66e6759
+noise 40x30 474	pen 200.0.0 line-width 2 scale 2x0.5 circle 10x30 8	40x30	51dc6d9a
+noise 40x30 475	pen 200.0.0 line-width 5 clip 6.5x5.25 33.75x24.5 polygon 2x2 38x5 20x28	40x30	88c2ae17
+noise 40x30 476	pen 200.0.0 line-width 4 translate 0.3x0.7 line-join round line 3x27 20x3 37x27	40x30	a968ef09
+noise 40x30 477	pen off line-width 3 line 2x2 38x28 pen 0.0.200 line 2x28 38x2	40x30	b9c890c7
+noise 40x30 478	pen 0.0.200 line-width 0 line 2x2 38x28 line-width 2 line 2x28 38x2	40x30	8de2fe28
+noise 40x30 479	pen 0.0.200 line-width 3 line-cap 9 line 2x2 38x28	40x30	3a63b85b
+noise 40x30 480	pen 0.0.200 line-width 3 line-cap 2 9 line 2x2 38x28	40x30	2dfaab92
+noise 300x200 481	pen 90.10.250.200 line-width 12 line-join round line-cap 2 line 10x190 150x10 290x190 20x100	300x200	2f61f0c5
+noise 300x200 482	pen 90.10.250 line-width 7 circle 150x100 90	300x200	7e8a068f
+noise 9x150 483	pen 90.10.250 line-width 3 line 4x2 4x148	9x150	6057762f
 pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
 pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
 pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4

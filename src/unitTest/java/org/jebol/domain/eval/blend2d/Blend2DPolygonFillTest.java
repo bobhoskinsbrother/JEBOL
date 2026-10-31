@@ -29,7 +29,7 @@ class Blend2DPolygonFillTest {
     @DisplayName("a polygon on whole pixels fills exactly its pixels, with no coverage spilling past its edges")
     void fillsWholePixelsExactly() {
         Blend2DSurface surface = whiteSurface(6, 5);
-        redCanvasOn(surface).fillPolygon(new double[] {1, 1, 4, 1, 4, 3, 1, 3});
+        redCanvasOn(surface).fill(Blend2DShape.polygon(new double[] {1, 1, 4, 1, 4, 3, 1, 3}));
         for (int down = 0; down < 5; down++) {
             for (int across = 0; across < 6; across++) {
                 boolean isInside = across >= 1 && across < 4 && down >= 1 && down < 3;
@@ -42,7 +42,7 @@ class Blend2DPolygonFillTest {
     @DisplayName("a pixel square on half pixels covers four pixels a quarter each, so all four get the same partial red")
     void splitsAPixelIntoQuarters() {
         Blend2DSurface surface = whiteSurface(4, 4);
-        redCanvasOn(surface).fillPolygon(new double[] {0.5, 0.5, 1.5, 0.5, 1.5, 1.5, 0.5, 1.5});
+        redCanvasOn(surface).fill(Blend2DShape.polygon(new double[] {0.5, 0.5, 1.5, 0.5, 1.5, 1.5, 0.5, 1.5}));
         int quarter = surface.pixelAt(0, 0);
         assertThat(quarter).isNotIn(WHITE, RED);
         assertThat(new int[] {surface.pixelAt(1, 0), surface.pixelAt(0, 1), surface.pixelAt(1, 1)})
@@ -74,7 +74,7 @@ class Blend2DPolygonFillTest {
     @DisplayName("the middle of a pentagram is wound twice, and non-zero fills it solid")
     void fillsAPentagramsMiddle() {
         Blend2DSurface surface = whiteSurface(40, 40);
-        redCanvasOn(surface).fillPolygon(new double[] {20, 1, 31.8, 37.2, 1, 14.8, 39, 14.8, 8.2, 37.2});
+        redCanvasOn(surface).fill(Blend2DShape.polygon(new double[] {20, 1, 31.8, 37.2, 1, 14.8, 39, 14.8, 8.2, 37.2}));
         assertThat(surface.pixelAt(20, 22)).isEqualTo(RED);
         assertThat(surface.pixelAt(2, 2)).isEqualTo(WHITE);
     }
@@ -83,7 +83,7 @@ class Blend2DPolygonFillTest {
     @DisplayName("a polygon past the image's left and top edges still fills the pixels at x 0 and y 0, through the clip's borders")
     void fillsUpToClippedBorders() {
         Blend2DSurface surface = whiteSurface(5, 5);
-        redCanvasOn(surface).fillPolygon(new double[] {-10, -10, 3, -10, 3, 3, -10, 3});
+        redCanvasOn(surface).fill(Blend2DShape.polygon(new double[] {-10, -10, 3, -10, 3, 3, -10, 3}));
         assertThat(surface.pixelAt(0, 0)).isEqualTo(RED);
         assertThat(surface.pixelAt(2, 2)).isEqualTo(RED);
         assertThat(surface.pixelAt(3, 3)).isEqualTo(WHITE);
@@ -94,9 +94,9 @@ class Blend2DPolygonFillTest {
     void leavesTheImageAloneWhenNothingIsInside() {
         Blend2DSurface surface = whiteSurface(5, 5);
         Blend2DCanvas canvas = redCanvasOn(surface);
-        canvas.fillPolygon(new double[] {10, 10, 20, 10, 15, 20});
-        canvas.fillPolygon(new double[] {1, 1, 4, 4});
-        canvas.fillPolygon(new double[] {2, 2});
+        canvas.fill(Blend2DShape.polygon(new double[] {10, 10, 20, 10, 15, 20}));
+        canvas.fill(Blend2DShape.polygon(new double[] {1, 1, 4, 4}));
+        canvas.fill(Blend2DShape.polygon(new double[] {2, 2}));
         assertThat(surface.pixels()).containsOnly(WHITE);
     }
 

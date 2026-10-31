@@ -1,4 +1,4 @@
-Rebol [Title: "Blend2D's blend modes, on a rounded box, a pie, a star, a triangle and a turned box"]
+Rebol [Title: "Blend2D's blend modes, on a rounded box, a pie, a star, a triangle, a turned box and a line"]
 
 b2d: import 'blend2d
 
@@ -30,6 +30,10 @@ paint-tile: func [operator] [
         fill 90.200.120 polygon 84x4 91.6x26.5 70.5x12.6 97.5x12.6 76.4x26.5
         fill 250.240.90.220 triangle 34x66 52x46 60x68
         fill 160.90.230 rotate 30 96x50 box 82x42 28x16
+        reset-matrix
+        fill off
+        pen 255.255.255.220 line-width 3 line-cap 2 line-join round
+        line 36x8 46x16 56x8 66x16
     ]
 ]
 

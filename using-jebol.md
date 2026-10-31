@@ -185,9 +185,10 @@ The third draws a gallery of what DRAW draws: shapes, curves, joins, dashes and 
 The fourth shows Blend2D's 29 blend modes, one tile each, drawn by the `blend2d`
 module's own `draw` -- `b2d: import 'blend2d` -- whose pixels are the release's
 byte for byte. That module fills boxes, rounded boxes, polygons, triangles,
-circles, ellipses, arcs and cubics, under any transform, clip, alpha and blend
-mode today; an outline, a `shape`, a gradient or text, which are not ported
-yet, raises an error naming it.
+circles, ellipses, arcs and cubics, and strokes lines and every outline with
+its widths, joins and caps, under any transform, clip, alpha and blend mode
+today; a `shape`, a gradient or text, which are not ported yet, raises an
+error naming it.
 
 ```
 ./build/install/jebol/bin/jebol --screen=window examples/blend2d/

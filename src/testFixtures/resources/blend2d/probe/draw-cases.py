@@ -1,3 +1,4 @@
+import math
 import sys
 
 ops = ["source-over", "source-copy", "source-in", "source-out", "source-atop", "destination-over",
@@ -240,6 +241,86 @@ add("noise 300x200 316", "fill 90.10.250.200 circle 150x100 97")
 add("noise 300x200 317", "fill 90.10.250 blend screen ellipse 5x5 290x190")
 add("noise 300x200 318", "fill 90.10.250 box 10x10 280x180 60")
 add("noise 9x150 319", "fill 90.10.250 ellipse 1x1 7x148")
+
+strokes = [
+    "line 2x2 38x28",
+    "line 2.5x15.5 37.5x15.5",
+    "line 20x2 20x28",
+    "line 2x28 20x2 38x28",
+    "line 2x15 38x15 2x16",
+    "line 2x2 38x2 38x28 2x28 2x2",
+    "line 5x5 35x5 35x25 5x25 5x5.0000001",
+    "line 2x15 20x15 38x15",
+    "line 2x15 20x15.00000000001 38x15",
+    "line 10x10 10x10 30x20",
+    "line 3x27 20x3 37x27 3x27",
+    "line [5x5 35x8 10x25 30x28]",
+    "line 0x0 40x30 0x30 40x0",
+    "line -10x15 50x15",
+    "line 20x-10 20x40",
+    "line 5x15 6x15.5 7x15 8x15.5",
+    "polygon 3.3x2.1 35.7x6.4 20.2x27.9",
+    "polygon 20x1 26x28 4x10 36x10 14x28",
+    "triangle 3x27 20x3 37x27",
+    "box 5x5 30x20",
+    "box 5.5x5.5 29x19",
+    "box 5x5 30x20 6",
+    "circle 20x15 10",
+    "circle 20x15 10 5",
+    "ellipse 4x4 32x22",
+    "arc 20x15 12x9 30 120",
+    "arc 20x15 12x9 30 120 pie",
+    "arc 20x15 12x9 30 250 chord",
+    "cubic 2x28 10x-10 30x40 38x2",
+    "cubic 2x15 15x2 15x28 2x15",
+    "cubic 5x25 15x0 25x30 35x5",
+    "cubic 2x2 38x28 2x28 38x2",
+    "cubic 20x2 20x2 20x28 20x28",
+    "cubic 5x15 20x15 25x15 35x15",
+    "cubic 5x15 30x15 10x15 35x15",
+]
+widths = ["", "line-width 0.5 ", "line-width 4 ", "line-width 9.5 "]
+joins = ["", "line-join miter ", "line-join miter bevel ", "line-join miter round ", "line-join bevel ",
+         "line-join round "]
+caps = ["", "line-cap 1 ", "line-cap 2 ", "line-cap 3 ", "line-cap 4 ", "line-cap 5 ", "line-cap 2 4 ",
+        "line-cap 5 1 "]
+n = 0
+for stroke in strokes:
+    for width in widths:
+        n += 1
+        join = joins[n % len(joins)]
+        cap = caps[n % len(caps)]
+        add("noise 40x30 %d" % (400 + n % 50), "pen 200.30.40.220 %s%s%s%s" % (width, join, cap, stroke))
+for join in joins:
+    for angle_line in ["line 4x26 20x4 36x26", "line 4x10 36x15 4x20", "line 4x4 36x15 4x26 36x26",
+                       "line 4x15 36x15 4x15.5"]:
+        add("noise 40x30 460", "pen 30.40.200 line-width 6 %s%s" % (join, angle_line))
+for cap in caps:
+    add("noise 40x30 461", "pen 30.200.40 line-width 8 %sline 8x15 32x15" % cap)
+    add("noise 40x30 462", "pen 30.200.40 line-width 8 %sline 8x8 32x22 14x24" % cap)
+for op in shape_ops:
+    add("noise 40x30 470", "pen 200.100.50.180 line-width 3 alpha 0.75 blend %s line 3x27 20x3 37x27" % op)
+for degrees in range(20, 41):
+    turn = math.radians(degrees)
+    tip_x, tip_y = 30.0, 15.0
+    end_x = tip_x - 24.0 * math.cos(turn)
+    end_y = tip_y + 24.0 * math.sin(turn)
+    for join in ["line-join miter ", "line-join miter bevel ", "line-join miter round "]:
+        add("noise 40x30 465", "pen 30.40.200 line-width 3 %sline 6x15 %.4fx%.4f %.4fx%.4f"
+            % (join, tip_x, tip_y, end_x, end_y))
+add("noise 40x30 471", "fill 30.200.90 pen 0.0.0 line-width 2 circle 20x15 11")
+add("noise 40x30 472", "fill 30.200.90 pen 200.0.0 line-width 3 polygon 3x3 37x3 20x27")
+add("noise 40x30 473", "pen 200.0.0 line-width 3 rotate 30 20x15 box 8x8 24x14")
+add("noise 40x30 474", "pen 200.0.0 line-width 2 scale 2x0.5 circle 10x30 8")
+add("noise 40x30 475", "pen 200.0.0 line-width 5 clip 6.5x5.25 33.75x24.5 polygon 2x2 38x5 20x28")
+add("noise 40x30 476", "pen 200.0.0 line-width 4 translate 0.3x0.7 line-join round line 3x27 20x3 37x27")
+add("noise 40x30 477", "pen off line-width 3 line 2x2 38x28 pen 0.0.200 line 2x28 38x2")
+add("noise 40x30 478", "pen 0.0.200 line-width 0 line 2x2 38x28 line-width 2 line 2x28 38x2")
+add("noise 40x30 479", "pen 0.0.200 line-width 3 line-cap 9 line 2x2 38x28")
+add("noise 40x30 480", "pen 0.0.200 line-width 3 line-cap 2 9 line 2x2 38x28")
+add("noise 300x200 481", "pen 90.10.250.200 line-width 12 line-join round line-cap 2 line 10x190 150x10 290x190 20x100")
+add("noise 300x200 482", "pen 90.10.250 line-width 7 circle 150x100 90")
+add("noise 9x150 483", "pen 90.10.250 line-width 3 line 4x2 4x148")
 
 add("pair 8x6", "fill 255.0.0 box 2x1 6x4")
 add("pair 5x3", "fill 0.0.255.128 fill-all")

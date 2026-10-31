@@ -47,14 +47,16 @@ above, with every thirteenth transparent black.
 
 ## blend2d-draw.tsv
 
-826 rows of what the extension's own `draw` does, made by running the
+1,095 rows of what the extension's own `draw` does, made by running the
 extension's C unchanged -- `blend2d-command-*.c` at tag `53f6ffe9` -- against
 `probe/stub.c`, a stand-in for R3's `RL_` table that reads a small subset of
 REBOL, linked to the same Blend2D. Each row is `image` (`noise WxH seed`, the
 generator above in R3's own memory order, or `pair WxH` for a new image),
 `block`, the `size` drawn, and the `pixel crc32` of the image afterwards.
 `Blend2DDrawFromTheSourceTest` draws every row in JEBOL and expects the same
-pixels.
+pixels, except two strokes of one closed cubic whose edges hang on the last bit
+of glibc's `pow`, which it expects drawn without error
+(`docs/blend2d-port.md` says why).
 
 `probe/draw-cases.py` writes the cases. They cover, in order:
 
@@ -90,7 +92,13 @@ pixels.
   cusps and inflections, clipped on each side -- two curves under thirteen
   operators, ellipses and rounded boxes rotated through four angles, curves
   under a scale, a clip and a translation, and images wide and tall enough to
-  cross the band height.
+  cross the band height;
+- strokes: 35 lines and outlines at four widths, each under one join and one
+  cap taken in turn, every join on four angles, every cap on an open and a
+  bent line, turns from 20 to 40 degrees under the three miter joins either
+  side of the miter limit, outlines over fills, strokes rotated, scaled
+  unevenly, clipped and translated, `pen off`, `line-width 0`, caps past 5,
+  and one line under thirteen operators.
 
 A block that opens with something that is not a command reads `cmd_pos`
 before the C has set it, so what happens is the compiler's: this probe, built

@@ -10,9 +10,10 @@ Work in progress. Served: the module, the whole `draw` walk, the compositing,
 `fill-all`, `clear-all`, `clear`, boxes and clips under any transform, and the
 rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 `arc` with `pie` and `chord`, rounded boxes, `cubic`, and any of them under a
-rotation -- each filled byte for byte against the release's C. Not yet:
-outlines, `shape` and the rest goals 1a lists, each of which raises an error
-naming what it cannot draw.
+rotation -- each filled byte for byte against the release's C, and the
+stroker, which draws `line` and every one of those outlines under `pen`,
+`line-width`, `line-join` and `line-cap`. Not yet: `shape` and the rest goals
+1a lists, each of which raises an error naming what it cannot draw.
 
 ---
 
@@ -103,6 +104,50 @@ full turn, cubics with loops, cusps and inflections, curves clipped on each
 side and under rotations, and two curves under thirteen operators. A
 tolerance of 0.21 in place of 0.2 fails 13 rows; dropping the border edges a
 clipped curve adds fails 17.
+
+## The stroker
+
+`PathStroker` is `pathstroke.cpp`. It strokes in user space -- the release
+leaves `transformOrder` at `AFTER` -- and hands each figure to the sink as three
+paths: A, the outer offset with its end cap; B, the inner offset; C, the start
+cap. The edge builder adds A and C as open paths and B reversed, as the
+release's `strokeGeometrySink` does, so the three close into one outline.
+`EdgeBuilder.addReversedPath` rebuilds the path `EdgeSourceReversePathFromStrokeSink`
+would read backwards as a forward one, so there is one edge source.
+
+The context's defaults are the stroke's: width 1, miter limit 4, join
+miter-clip, butt caps, simplify tolerance 0.05, offset parameter 0.414213562.
+Curves are offset as Blend2D offsets them: a cubic is approximated by pairs of
+quads in steps from `pow(...)`, each quad is cut at its offset cusps (from
+`cbrt`) and by angle, and each piece is offset as one quad. So the edge builder
+now flattens quads too (`MonoQuad`, `QuadSpline`).
+
+Two lerps are in the C and both are kept: `(a - t*a) + t*b` for a general `t`
+and `0.5*a + 0.5*b` for a midpoint. The extension's own quirks carry over:
+`pen` given an image sets the fill style, not the stroke's; `line-width 0`
+turns stroking off without changing the width; an end cap past 5 sets the
+start cap and then fails the command.
+
+**The C library's last bits.** Blend2D calls the platform's `sin`, `cos`,
+`pow` and `cbrt`; JEBOL calls Java's `StrictMath`, which gives the same bits
+on the JVM and in the web build. On this machine `StrictMath` disagrees with
+glibc 2.43 in the last bit for 3.4% of `sin` and `cos` inputs, 10% of `pow`
+and 54% of `cbrt`, and glibc's `cbrt` is not correctly rounded, so no
+correctly rounded routine would match it either; glibc's code is LGPL, which
+JEBOL does not take. A last-bit difference changes a pixel only where it moves
+a coordinate across a 1/256-pixel boundary. In 1,095 rows that happens twice,
+both in the stroke of one closed cubic whose quad steps come from `pow`, and
+the table keeps both rows, checked to draw without error but not pixel for
+pixel. R3 itself differs this way between platforms: on Windows it calls
+Microsoft's library.
+
+269 rows cover strokes: 35 shapes at four widths, each under a join and a cap
+taken in turn, every join on four angles, every cap on an open and a bent
+line, turns from 20 to 40 degrees either side of the miter limit under the
+three miter joins, outlines over fills, under rotations, a non-uniform scale,
+a clip and a translation, `pen off` and `line-width 0`, invalid caps, and
+thirteen operators. A miter limit of 3.9 in place of 4 fails 13 rows; a cap
+half a hundredth too wide fails 74.
 
 ---
 
