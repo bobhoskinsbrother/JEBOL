@@ -12,12 +12,17 @@ public final class SeriesRoom {
     private static final int SMALL_POOL_STEP = 4 * VALUE_SIZE;
     private static final int LAST_SMALL_POOL = 30 * VALUE_SIZE;
     private static final int KILOBYTE = 1024;
+    private static final int LAST_POOL = 4 * KILOBYTE;
 
     private SeriesRoom() {
     }
 
     public static long makeBinaryOf(long length) {
-        long wanted = length + 1;
+        return makeSeriesOf(length + 1, false);
+    }
+
+    /** The room {@code Make_Series} gives so many octets, rounding past the pools to a power of two if asked. */
+    public static long makeSeriesOf(long wanted, boolean isRoundedToPowerOfTwo) {
         if (wanted > LARGEST_SERIES) {
             throw Raised.of(EvaluationFailure.NO_MEMORY);
         }
@@ -30,7 +35,10 @@ public final class SeriesRoom {
         if (wanted <= LAST_SMALL_POOL) {
             return Math.min(roundUp(wanted, SMALL_POOL_STEP), LAST_SMALL_POOL);
         }
-        return roundUp(wanted, KILOBYTE);
+        if (wanted <= LAST_POOL || !isRoundedToPowerOfTwo) {
+            return roundUp(wanted, KILOBYTE);
+        }
+        return Long.highestOneBit(wanted - 1) << 1;
     }
 
     private static long roundUp(long length, int step) {

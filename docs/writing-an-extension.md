@@ -93,13 +93,16 @@ The `Command` holds:
 
 | Call                                       | Gives you                                                           |
 |--------------------------------------------|---------------------------------------------------------------------|
-| `call.arguments()`                         | The arguments, in the order of the spec, as REBOL values            |
+| `call.arguments()`                         | The arguments, in the order of the spec, as REBOL values; a refinement's arguments are there only if the script used it |
 | `call.refinements()`                       | The refinements the script used, without their slashes              |
-| `call.evaluated(block)`                    | A block the script gave you, evaluated in the script's interpreter  |
-| `call.handleOf(kind, object)`              | A handle carrying a Java object, to give to the script (section 5)  |
-| `call.heldBy(handle, Class)`               | The Java object a handle carries (section 5)                        |
+| `call.evaluate(block)`                     | A block the script gave you, evaluated in the script's interpreter  |
+| `call.makeHandle(kind, object)`            | A handle carrying a Java object, to give to the script (section 5)  |
+| `call.unwrap(handle, Class)`               | The Java object a handle carries (section 5)                        |
 | `call.failure(category, id, arguments...)` | An error to throw (section 4)                                       |
 | `call.postbox()`                           | The interpreter's postbox, for work that finishes later (section 6) |
+| `call.registerCompression(name, method)`   | COMPRESS and DECOMPRESS use your method under that name, as `RL_REGISTER_COMPRESS_METHOD` makes them |
+| `call.restoreBuiltInCompression(name)`     | COMPRESS and DECOMPRESS go back to the built-in method of that name |
+| `call.readSystemField(field, deeper...)`   | What `system/field/...` holds in this interpreter                   |
 
 **Arguments arrive as REBOL values, not Java ones.** A `file!` arrives as a
 `FileValue` and a `string!` as a `StringValue`, so you can tell `%a.txt` from
@@ -170,18 +173,18 @@ look inside.
 First declare the kind of handle, naming the class it carries:
 
 ```java
-.withHandleKind(new HandleKind("timer", Timer.class))
+.withHandleType(new HandleType("timer", Timer.class))
 ```
 
 Then make one in a command, and read it back in another:
 
 ```java
 new ExtensionCommand("timer-start", "{Starts a timer and answers it.}",
-        call -> call.handleOf("timer", new Timer(System.nanoTime()))),
+        call -> call.makeHandle("timer", new Timer(System.nanoTime()))),
 
 new ExtensionCommand("timer-elapsed", "{Milliseconds since the timer started.} timer [handle!]",
         call -> {
-            Timer timer = call.heldBy(call.arguments().getFirst(), Timer.class);
+            Timer timer = call.unwrap(call.arguments().getFirst(), Timer.class);
             return IntegerValue.of((System.nanoTime() - timer.startedAt()) / 1_000_000);
         })
 ```
@@ -195,7 +198,7 @@ new ExtensionCommand("timer-elapsed", "{Milliseconds since the timer started.} t
 == #(true)
 ```
 
-If a script passes a handle of another kind, `heldBy` refuses it for you:
+If a script passes a handle of another kind, `unwrap` refuses it for you:
 
 ```
 >> e: try [timer-elapsed rc4/key #{00}] e/id
@@ -217,7 +220,7 @@ Keep the postbox when the extension starts, and use it later:
 private final AtomicReference<Postbox> postbox = new AtomicReference<>();
 
 // in the extension:
-.startingWith(postbox::set)
+.startWith(postbox::set)
 ```
 
 There are two things you can post.
@@ -349,7 +352,7 @@ Use it to check that what the extension needs is there, and to keep the
 postbox. If it throws, the extension is not installed:
 
 ```java
-.startingWith(postbox -> {
+.startWith(postbox -> {
     if (!aCameraIsAttached()) {
         throw new IllegalStateException("no camera on this machine");
     }
@@ -487,11 +490,11 @@ public class Timers {
         return new Extension("timers", "1.0.0", List.of(
                 new ExtensionCommand("timer-start",
                         "{Starts a timer and answers it.}",
-                        call -> call.handleOf("timer", new Timer(System.nanoTime()))),
+                        call -> call.makeHandle("timer", new Timer(System.nanoTime()))),
                 new ExtensionCommand("timer-elapsed",
                         "{Milliseconds since the timer started.} timer [handle!]",
                         call -> {
-                            Timer timer = call.heldBy(call.arguments().getFirst(), Timer.class);
+                            Timer timer = call.unwrap(call.arguments().getFirst(), Timer.class);
                             return IntegerValue.of((System.nanoTime() - timer.startedAt()) / 1_000_000);
                         }),
                 new ExtensionCommand("timer-alarm",
@@ -512,14 +515,14 @@ public class Timers {
                             });
                             return port;
                         })))
-                .withHandleKind(new HandleKind("timer", Timer.class))
+                .withHandleType(new HandleType("timer", Timer.class))
                 .withScript("""
                         sys/make-scheme [
                             name: 'alarm
                             title: "Alarms"
                             awake: func [event] [true]
                         ]""")
-                .startingWith(postbox::set);
+                .startWith(postbox::set);
     }
 }
 ```
@@ -549,7 +552,7 @@ And a session using it:
 | `Extension(name, version, commands)`      | An extension. `withScript`, `withHandleType` and `startWith` add the rest. |
 | `ExtensionCommand(name, spec, behaviour)` | One word: its name, its spec without brackets, and the Java behind it.     |
 | `Command`                             | What a command's Java receives (section 3).                                |
-| `HandleKind(name, class)`                 | A kind of handle and the class it carries.                                 |
+| `HandleType(name, class)`                 | A kind of handle and the class it carries.                                 |
 | `Postbox`                                 | Where to post events and callbacks from any thread (section 6).            |
 | `Bounds.add(extension)`                   | Adds it to every interpreter built with these bounds.                      |
 | `Interpreter.extensions()`                | Whether each one was installed, and why not.                               |

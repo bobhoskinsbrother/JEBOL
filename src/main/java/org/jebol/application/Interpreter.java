@@ -88,6 +88,8 @@ public final class Interpreter {
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
         installation.installDelayed(EasingExtension.create());
         installation.installDelayed(BlurHashExtension.create());
+        installation.installDelayed(DeflateExtension.create());
+        installation.installDelayed(ZlibNgExtension.create());
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
         handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();

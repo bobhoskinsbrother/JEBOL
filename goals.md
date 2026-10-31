@@ -132,20 +132,13 @@ first:
 2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). Done on 2026-10-30
    (`docs/blurhash-port.md`): every hash and every pixel agrees with the C
    byte for byte, red and blue swapped as R3's memory swaps them.
-3. **deflate** 0.1.0 (libdeflate) and **zlib-ng** 2.3.2, one piece because
-   both are DEFLATE. `version`, `compress` and `decompress` with `/part`,
-   `/level`, `/size`, `/zlib` and `/gzip`; zlib-ng adds `make-encoder`
-   (`/level`, `/window`, `/strategy`), the zlib and gzip encoder and decoder
-   makers, `make-decoder`, and `write` (`/flush`, `/finish`) and `read`.
-   Importing deflate appends `,deflate` to the http scheme's
-   `Accept-Encoding` unless it is there already, which on both it always is.
-   Importing zlib-ng changes nothing there: its edit is commented out at
-   2.3.2.
-   Decompressing is JEBOL's inflate as it stands. Compressing is not: neither
-   library writes zlib's bytes, so each encoder is a port of its own, done to
-   the rules in `CLAUDE.md` -- the probe, the boundary list, the corpus.
-   Settle before the spec whether the encoders are ported or whether the
-   module compresses validly with JEBOL's encoder and says so under Standing.
+3. **deflate** 0.1.0 (libdeflate) and **zlib-ng** 2.3.2. Done on 2026-10-31
+   (`docs/zlib-ng-port.md`). deflate builds libdeflate 1.25, which
+   `DeflateCompressor` already ports byte for byte. zlib-ng's deflate and
+   inflate are ported, and agree with its C byte for byte and code for code
+   over 17,952 compressions and 183,120 decodes. Importing either re-registers
+   COMPRESS's `deflate`, `zlib` and `gzip`, the last import winning, and
+   zlib-ng adds `deflate-ng`, `zlib-ng` and `gzip-ng`.
 4. **zstd** 0.1.0. The same seven commands as brotli's and the same
    `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
    all, so this is a port of the size of Brotli's, decoder first, and every

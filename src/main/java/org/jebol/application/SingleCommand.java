@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.Postbox;
 import org.jebol.domain.value.AnyBlockValue;
@@ -11,6 +12,7 @@ import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.JavaObjectValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -103,5 +105,28 @@ final class SingleCommand implements Command {
     @Override
     public Postbox postbox() {
         return evaluator.postbox();
+    }
+
+    @Override
+    public void registerCompression(String name, CompressionMethod method) {
+        if (!evaluator.compressionMethods().isKnown(name)
+                && evaluator.systemContext().readValueAt("system", "catalog", "compressions")
+                instanceof AnyBlockValue catalogued) {
+            catalogued.storage().appendBeneathAnyProtection(WordValue.of(name));
+        }
+        evaluator.compressionMethods().register(name, method);
+    }
+
+    @Override
+    public void restoreBuiltInCompression(String name) {
+        evaluator.compressionMethods().restoreBuiltIn(name);
+    }
+
+    @Override
+    public Value readSystemField(String field, String... deeper) {
+        String[] fields = new String[deeper.length + 1];
+        fields[0] = field;
+        System.arraycopy(deeper, 0, fields, 1, deeper.length);
+        return evaluator.systemContext().readValueAt("system", fields);
     }
 }

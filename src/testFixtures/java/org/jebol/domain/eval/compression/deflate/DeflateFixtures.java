@@ -2,7 +2,7 @@ package org.jebol.domain.eval.compression.deflate;
 
 import java.nio.charset.StandardCharsets;
 
-final class DeflateFixtures {
+public final class DeflateFixtures {
 
     private static final String[] VOCABULARY = {"the ", "quick ", "brown ", "fox ", "jumps ", "over ", "lazy ",
         "dog ", "REBOL ", "block! ", "[", "]\n", "compress ", "level ", "12 ", "binary ", "#{00} ", "series "};
@@ -15,7 +15,7 @@ final class DeflateFixtures {
 
     private int state;
 
-    byte[] of(String kind, int length) {
+    public byte[] of(String kind, int length) {
         return switch (kind) {
             case "words" -> makeWords(length, 1);
             case "noise" -> makeNoise(length, 2);

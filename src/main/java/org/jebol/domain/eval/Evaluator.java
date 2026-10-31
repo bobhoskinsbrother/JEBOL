@@ -280,6 +280,12 @@ public final class Evaluator {
         return ++lastCipherIdentity;
     }
 
+    private final CompressionMethods compressionMethods = new CompressionMethods();
+
+    public CompressionMethods compressionMethods() {
+        return compressionMethods;
+    }
+
     public Value askActor(ObjectValue actor, ActionSentToPort sent) {
         String named = sent.action().nativeName();
         Value function = actor.context().holds(named)

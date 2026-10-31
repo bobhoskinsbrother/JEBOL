@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.domain.eval.CompressionMethod;
+import org.jebol.domain.eval.CompressionRefused;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
@@ -12,6 +14,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class DecompressNative extends CompressionNative {
@@ -72,12 +75,21 @@ public class DecompressNative extends CompressionNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String method = readKnownCompression(arguments.get(1));
+            String method = readKnownCompression(arguments.get(1), evaluator);
             Value data = arguments.getFirst();
             int wanted = refinementArgument("size", 0, arguments, refinements)
                     .map(this::readSizeAboveNothing)
                     .orElse(AS_MUCH_AS_IT_HOLDS);
             byte[] compressed = readOctetsWithinAnyPart(data, arguments, refinements);
+            Optional<CompressionMethod> registered = evaluator.compressionMethods().find(method);
+            if (registered.isPresent()) {
+                long limit = wanted == AS_MUCH_AS_IT_HOLDS ? CompressionMethod.NOT_ASKED : wanted;
+                try {
+                    return BinaryValue.ofBytes(registered.get().decompress(compressed, limit));
+                } catch (CompressionRefused refused) {
+                    throw refuseAsBadPress(refused);
+                }
+            }
             if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
                 throw Raised.of(EvaluationFailure.BAD_PRESS, arguments.get(1));
             }

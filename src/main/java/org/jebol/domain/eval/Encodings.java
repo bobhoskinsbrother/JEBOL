@@ -727,7 +727,16 @@ public final class Encodings {
     private static final int GZIP_HEADER_LENGTH = 10;
     private static final int GZIP_TRAILER_LENGTH = 8;
 
-    private byte[] ungzip(byte[] octets) {
+    /** Decompresses deflate, zlib or gzip as COMPRESS's built-in method does, whatever an extension registered. */
+    public static byte[] inflateAsBuiltIn(byte[] octets, String method) {
+        return switch (method) {
+            case "gzip" -> ungzip(octets);
+            case "zlib" -> inflate(octets, false);
+            default -> inflate(octets, true);
+        };
+    }
+
+    private static byte[] ungzip(byte[] octets) {
         if (octets.length < GZIP_HEADER_LENGTH + GZIP_TRAILER_LENGTH
                 || (octets[0] & 0xFF) != GZIP_MAGIC_FIRST
                 || (octets[1] & 0xFF) != GZIP_MAGIC_SECOND) {
@@ -755,7 +764,7 @@ public final class Encodings {
         return inflate(Arrays.copyOfRange(octets, from, from + length), true);
     }
 
-    private int skipPastNextZero(byte[] octets, int from) {
+    private static int skipPastNextZero(byte[] octets, int from) {
         int at = from;
         while (at < octets.length && octets[at] != 0) {
             at++;
@@ -763,7 +772,7 @@ public final class Encodings {
         return at + 1;
     }
 
-    private byte[] inflate(byte[] octets, boolean raw) {
+    private static byte[] inflate(byte[] octets, boolean raw) {
         Inflater inflater = new Inflater(raw);
         try {
             inflater.setInput(octets);

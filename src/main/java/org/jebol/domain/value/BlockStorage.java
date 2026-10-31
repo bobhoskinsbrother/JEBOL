@@ -81,6 +81,11 @@ public final class BlockStorage extends ProtectableStorage {
         items.add(value);
     }
 
+    /** Appends as the runtime's own C does, which never asks whether a script protected the block. */
+    public void appendBeneathAnyProtection(Value value) {
+        items.add(value);
+    }
+
     public void insertAt(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.add(oneBasedIndex - 1, value);
