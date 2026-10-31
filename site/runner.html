@@ -9,178 +9,30 @@
   #out { white-space: pre-wrap; color: #d8dee9; font: 12px monospace; margin: 0;
          position: fixed; left: 0; right: 0; bottom: 0; max-height: 30vh; overflow-y: auto;
          padding: 6px 8px; background: rgba(16, 18, 22, 0.85); }
+  #loading { position: fixed; inset: 0; display: flex; flex-direction: column;
+             align-items: center; justify-content: center; gap: 18px;
+             color: #d8dee9; font: 14px sans-serif; pointer-events: none; }
+  .jebol-loading-spinner { width: 44px; height: 44px; border-radius: 50%;
+                           border: 4px solid rgba(216, 222, 233, 0.18); border-top-color: #3a8cd0;
+                           animation: jebol-turn 0.9s linear infinite; }
+  .jebol-loading-failed .jebol-loading-spinner { display: none; }
+  .jebol-loading-failed { color: #e85d4a; }
+  @keyframes jebol-turn { to { transform: rotate(360deg); } }
   @font-face { font-family: 'Jebol Carried'; src: url('NotoSans-Regular.ttf'); }
 </style>
 </head>
 <body>
 <canvas id="screen"></canvas>
+<div id="loading" role="status" aria-live="polite">
+  <div class="jebol-loading-spinner"></div>
+  <p class="jebol-loading-says">Loading JEBOL</p>
+</div>
 <script src="jebol-asks.js"></script>
 <script src="jebol-navigation.js"></script>
 <script src="jebol-paint.js"></script>
-<script>
-const canvas = document.getElementById('screen');
-const brush = canvas.getContext('2d');
-const painter = new JebolPainter(brush);
-const pageOpenedAt = performance.now();
-
-let lastPicture = null;
-
-function paint(picture) {
-  lastPicture = picture;
-  canvas.width = picture.wide;
-  canvas.height = picture.high;
-  brush.clearRect(0, 0, picture.wide, picture.high);
-  painter.paintCalls(picture.paint);
-}
-
-const printed = [];
-const output = document.createElement('pre');
-output.id = 'out';
-output.textContent = '';
-
-function print(text) {
-  printed.push(text);
-  output.textContent = printed.join('');
-  output.scrollTop = output.scrollHeight;
-}
-
-const appFiles = __APP_FILES__;
-
-function storeAppFiles() {
-  return Promise.all(appFiles.map(name =>
-      fetch(name).then(response => response.text()).then(text =>
-          worker.postMessage({ type: 'file', path: name, text: text }))));
-}
-
-function fetchEntryScript() {
-  return fetch('__APP_ENTRY__').then(response => response.text());
-}
-
-function hearWorker(message) {
-  const said = typeof message.data === 'string' ? JSON.parse(message.data) : message.data;
-  if (said.type === 'paint') {
-    paint(said.picture);
-  } else if (said.type === 'ask') {
-    asks.take(said);
-  } else if (said.type === 'typing') {
-    asks.holdTyping(said.held, said.heading);
-  } else if (said.type === 'navigate' || said.type === 'guard' || said.type === 'title') {
-    navigation.take(said);
-  } else if (said.type === 'printed') {
-    print(said.text);
-  } else if (said.type === 'booted') {
-    print('booted in ' + Math.round(performance.now() - pageOpenedAt) + ' ms\n');
-    storeAppFiles()
-        .then(() => fetchEntryScript())
-        .then(source => worker.postMessage({ run: source }));
-  } else if (said.type === 'loaded') {
-    print('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '
-        + said.mainMs + ' ms\n');
-  } else if (said.type === 'finished') {
-    print(said.text);
-  } else if (said.type === 'failed') {
-    print('failed ' + said.text);
-  }
-}
-
-const worker = new Worker('jebol-worker.js');
-worker.onmessage = hearWorker;
-worker.onerror = problem => print('worker error ' + problem.message);
-document.body.appendChild(output);
-
-function postToWorker(fields) {
-  worker.postMessage(fields);
-}
-
-const asks = new JebolAsks({ answer: postToWorker, tell: postToWorker, key: postToWorker });
-const navigation = new JebolNavigation({ tell: postToWorker, tellAsThePageGoes: postToWorker });
-navigation.arrive();
-
-function reportViewportSize() {
-  postToWorker({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
-}
-
-const namedKeys = {
-  PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',
-  ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down',
-  Insert: 'insert',
-  F1: 'f1', F2: 'f2', F3: 'f3', F4: 'f4', F5: 'f5', F6: 'f6',
-  F7: 'f7', F8: 'f8', F9: 'f9', F10: 'f10', F11: 'f11', F12: 'f12',
-  Shift: 'shift', Control: 'control', Alt: 'alt', Pause: 'pause', CapsLock: 'capital'
-};
-const controlCharacters = {
-  Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Delete: 127
-};
-
-function reportPointer(kind, pointer) {
-  postToWorker({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
-}
-
-const pixelsPerNotch = 100;
-const linesPerNotch = 3;
-const lineScroll = 30;
-const pageScroll = 10;
-
-let turned = 0;
-
-function countNotches(wheel) {
-  if (wheel.deltaMode === 1) {
-    return wheel.deltaY / linesPerNotch;
-  }
-  if (wheel.deltaMode === 2) {
-    return wheel.deltaY;
-  }
-  return wheel.deltaY / pixelsPerNotch;
-}
-
-function reportWheel(wheel) {
-  wheel.preventDefault();
-  turned += countNotches(wheel);
-  const whole = Math.trunc(turned);
-  if (whole === 0) {
-    return;
-  }
-  turned -= whole;
-  const wholePages = wheel.ctrlKey || wheel.deltaMode === 2;
-  postToWorker({
-    type: wholePages ? 'scroll-page' : 'scroll-line',
-    across: Math.round(wheel.offsetX),
-    down: Math.round(wheel.offsetY),
-    amount: -whole * (wholePages ? pageScroll : lineScroll)
-  });
-}
-
-function typedCodePoint(pressed) {
-  if (pressed.key in controlCharacters) {
-    return controlCharacters[pressed.key];
-  }
-  return [...pressed.key].length === 1 ? pressed.key.codePointAt(0) : null;
-}
-
-function reportKey(pressed, typing, naming) {
-  if (pressed.key in namedKeys) {
-    postToWorker({ type: naming, named: namedKeys[pressed.key] });
-    return;
-  }
-  const typed = typedCodePoint(pressed);
-  if (typed !== null) {
-    postToWorker({ type: typing, code: typed });
-  }
-}
-
-window.addEventListener('resize', reportViewportSize);
-canvas.addEventListener('mousedown', pointer => reportPointer('down', pointer));
-canvas.addEventListener('mouseup', pointer => reportPointer('up', pointer));
-canvas.addEventListener('mousemove', pointer => reportPointer('move', pointer));
-canvas.addEventListener('wheel', reportWheel, { passive: false });
-window.addEventListener('keydown', pressed => reportKey(pressed, 'key', 'control'));
-window.addEventListener('keyup', pressed => reportKey(pressed, 'key-up', 'control-up'));
-
-document.fonts.load('12px "Jebol Carried"').then(() => {
-  if (lastPicture) paint(lastPicture);
-});
-
-reportViewportSize();
-</script>
+<script src="jebol-screen.js"></script>
+<script src="jebol-input.js"></script>
+<script src="jebol-loading.js"></script>
+<script src="jebol-runner.js"></script>
 </body>
 </html>

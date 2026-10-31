@@ -24,9 +24,7 @@ final class ShippedRunner implements AutoCloseable {
     private volatile String entryScript = "";
 
     ShippedRunner() throws IOException {
-        runnerPage = Files.readString(Path.of("site/runner.html"))
-                .replace("__APP_FILES__", "[]")
-                .replace("__APP_ENTRY__", "main.reb");
+        runnerPage = Files.readString(Path.of("site/runner.html"));
         serving = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         serving.createContext("/", this::answer);
         serving.start();
@@ -73,6 +71,11 @@ final class ShippedRunner implements AutoCloseable {
         }
         if (asked.equals("/") || asked.equals("/index.html")) {
             respond(exchange, runnerPage.getBytes(StandardCharsets.UTF_8), "text/html; charset=utf-8", 200);
+            return;
+        }
+        if (asked.equals("/app.json")) {
+            respond(exchange, """
+                    {"files":[],"entry":"main.reb"}""".getBytes(StandardCharsets.UTF_8), "application/json", 200);
             return;
         }
         if (asked.equals("/main.reb")) {

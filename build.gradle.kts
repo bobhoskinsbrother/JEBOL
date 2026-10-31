@@ -83,7 +83,8 @@ val copyPageScripts = tasks.register<Copy>("copyPageScripts") {
     group = "build"
     description = "Put the page's scripts for the interpreter's asks and the history beside the WebAssembly module"
     from("src/main/resources/jebol-page/jebol-asks.js", "src/main/resources/jebol-page/jebol-navigation.js",
-        "src/main/resources/jebol-page/jebol-paint.js")
+        "src/main/resources/jebol-page/jebol-paint.js", "src/main/resources/jebol-page/jebol-screen.js",
+        "src/main/resources/jebol-page/jebol-input.js", "site/jebol-loading.js", "site/jebol-runner.js")
     into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
 }
 
@@ -110,16 +111,15 @@ val assembleSite = tasks.register<Sync>("assembleSite") {
     from(theApp)
     from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
         include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "jebol-asks.js",
-            "jebol-navigation.js", "jebol-paint.js", "NotoSans-Regular.ttf")
+            "jebol-navigation.js", "jebol-paint.js", "jebol-screen.js", "jebol-input.js", "jebol-loading.js",
+            "jebol-runner.js",
+            "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
     val siteDirectory = layout.buildDirectory.dir("site")
     val app = file(theApp)
     doLast {
         val site = siteDirectory.get().asFile
-        if (site.resolve("index.html").exists()) {
-            return@doLast
-        }
         val names = app.walkTopDown().filter { it.isFile }
             .map { it.relativeTo(app).invariantSeparatorsPath }
             .sorted()
@@ -127,10 +127,10 @@ val assembleSite = tasks.register<Sync>("assembleSite") {
         val filesJson = names.joinToString(",", "[", "]") { name ->
             "\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         }
-        site.resolve("index.html").writeText(
-            theRunner.asFile.readText()
-                .replace("__APP_FILES__", filesJson)
-                .replace("__APP_ENTRY__", "main.reb"))
+        site.resolve("app.json").writeText("{\"files\":$filesJson,\"entry\":\"main.reb\"}")
+        if (!site.resolve("index.html").exists()) {
+            theRunner.asFile.copyTo(site.resolve("index.html"))
+        }
     }
 }
 

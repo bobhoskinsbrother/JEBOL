@@ -218,7 +218,53 @@ async function jebolPaintOffscreen(pictureJson) {
 
 var jebolStartedLoadingAt = performance.now();
 
-TeaVM.wasmGC.load('jebol-web.wasm').then(function (teavm) {
+var jebolModule = 'jebol-web.wasm';
+
+var jebolBytesBetweenReports = 256 * 1024;
+
+function jebolReportDownload(received, total, done) {
+  self.postMessage({ type: 'downloading', received: received, total: total, done: done });
+}
+
+function jebolCountWhileDownloading(response) {
+  if (!response.body) {
+    return response;
+  }
+  var isCompressed = response.headers.get('Content-Encoding') !== null;
+  var total = isCompressed ? 0 : Number(response.headers.get('Content-Length')) || 0;
+  var received = 0;
+  var reportedAt = 0;
+  var reader = response.body.getReader();
+  jebolReportDownload(0, total, false);
+  var counted = new ReadableStream({
+    pull: function (controller) {
+      return reader.read().then(function (part) {
+        if (part.done) {
+          jebolReportDownload(received, total, true);
+          controller.close();
+          return;
+        }
+        received += part.value.length;
+        if (received - reportedAt >= jebolBytesBetweenReports) {
+          reportedAt = received;
+          jebolReportDownload(received, total, false);
+        }
+        controller.enqueue(part.value);
+      });
+    }
+  });
+  return new Response(counted, { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
+var jebolFetch = self.fetch;
+
+self.fetch = function (resource, init) {
+  var fetched = jebolFetch.call(self, resource, init);
+  return resource === jebolModule ? fetched.then(jebolCountWhileDownloading) : fetched;
+};
+
+TeaVM.wasmGC.load(jebolModule).then(function (teavm) {
+  self.fetch = jebolFetch;
   var loadedAt = performance.now();
   jebol = teavm.exports;
   try {
@@ -234,5 +280,6 @@ TeaVM.wasmGC.load('jebol-web.wasm').then(function (teavm) {
     mainMs: Math.round(performance.now() - loadedAt)
   });
 }, function (why) {
+  self.fetch = jebolFetch;
   self.postMessage({ type: 'failed', text: 'failed to load the interpreter: ' + why });
 });

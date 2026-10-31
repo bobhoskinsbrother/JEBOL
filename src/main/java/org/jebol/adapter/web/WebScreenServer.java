@@ -31,11 +31,11 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
 
     private static final AtomicInteger CONNECTIONS = new AtomicInteger();
 
-    private static final String ASKS_SCRIPT = "/jebol-page/jebol-asks.js";
+    private static final String CARRIED_SCRIPTS = "/jebol-page";
 
-    private static final String NAVIGATION_SCRIPT = "/jebol-page/jebol-navigation.js";
-
-    private static final String PAINT_SCRIPT = "/jebol-page/jebol-paint.js";
+    private static final List<String> PAGE_SCRIPTS = List.of(
+            "/jebol-asks.js", "/jebol-navigation.js", "/jebol-paint.js",
+            "/jebol-screen.js", "/jebol-input.js", "/jebol-served-page.js");
 
     private final HistoryMessage history = new HistoryMessage();
 
@@ -63,10 +63,10 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         listening.createContext("/paint", serving::openPaintStreamThatBrowserCloses);
         listening.createContext("/event", serving::receiveEvent);
         listening.createContext("/NotoSans-Regular.ttf", serving::serveFont);
-        listening.createContext("/jebol-asks.js", exchange -> serving.serveCarriedScript(exchange, ASKS_SCRIPT));
-        listening.createContext("/jebol-navigation.js",
-                exchange -> serving.serveCarriedScript(exchange, NAVIGATION_SCRIPT));
-        listening.createContext("/jebol-paint.js", exchange -> serving.serveCarriedScript(exchange, PAINT_SCRIPT));
+        for (String script : PAGE_SCRIPTS) {
+            listening.createContext(script,
+                    exchange -> serving.serveCarriedScript(exchange, CARRIED_SCRIPTS + script));
+        }
         listening.start();
         return serving;
     }

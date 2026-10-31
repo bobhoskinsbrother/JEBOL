@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.net.URI;
@@ -128,13 +129,31 @@ class WebScreenServerFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("holds a canvas and the script that paints on it")
+        @DisplayName("holds a canvas and the scripts that paint on it, and no script of its own")
         @Timeout(20)
         void holdsACanvasAndTheScript() throws Exception {
             String page = get("").body();
 
             assertThat(page).contains("<canvas");
-            assertThat(page).contains("EventSource('/paint')");
+            assertThat(page).contains("""
+                    <script src="/jebol-screen.js">""", """
+                    <script src="/jebol-input.js">""", """
+                    <script src="/jebol-served-page.js">""");
+            assertThat(page).doesNotContain("<script>");
+            assertThat(get("jebol-served-page.js").body()).contains("EventSource('/paint')");
+        }
+
+        @Test
+        @DisplayName("serves every script it names, as javascript")
+        @Timeout(20)
+        void servesEveryScriptItNames() throws Exception {
+            for (String script : List.of("jebol-asks.js", "jebol-navigation.js", "jebol-paint.js",
+                    "jebol-screen.js", "jebol-input.js", "jebol-served-page.js")) {
+                HttpResponse<String> served = get(script);
+                assertThat(served.statusCode()).as(script).isEqualTo(200);
+                assertThat(served.headers().firstValue("Content-Type").orElseThrow()).as(script)
+                        .contains("text/javascript");
+            }
         }
 
         @Test

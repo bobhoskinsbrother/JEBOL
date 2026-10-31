@@ -75,6 +75,9 @@ class TheDrawExampleEndToEndTest {
     }
 
     private static boolean drawsInside(Picture shown, int left, int top) {
+        if (left + TILE_WIDE > shown.wide() || top + TILE_HIGH > shown.high()) {
+            return false;
+        }
         for (int down = top + 2; down < top + TILE_HIGH - 2; down++) {
             for (int across = left + 2; across < left + TILE_WIDE - 2; across++) {
                 int colour = shown.at(across, down);
