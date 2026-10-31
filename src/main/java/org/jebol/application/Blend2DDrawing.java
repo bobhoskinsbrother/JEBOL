@@ -26,6 +26,7 @@ import org.jebol.domain.value.VectorKind;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -471,14 +472,36 @@ final class Blend2DDrawing {
     }
 
     private boolean drawPolygon() {
-        if (resolvePair() == null) {
+        double[] first = resolvePair();
+        if (first == null) {
             return false;
         }
+        List<double[]> corners = new ArrayList<>();
+        corners.add(first);
         while (readRaw(index).kind() == Kind.PAIR) {
+            corners.add(readPair(readRaw(index)));
             index++;
         }
-        refuseIfDrawn("a polygon");
+        fillAndOutline(flatten(corners), "the outline of a polygon");
         return true;
+    }
+
+    private void fillAndOutline(double[] points, String outline) {
+        if (hasFill) {
+            canvas.fillPolygon(points);
+        }
+        if (hasStroke) {
+            canvas.refuse(outline);
+        }
+    }
+
+    private static double[] flatten(List<double[]> corners) {
+        double[] points = new double[corners.size() * 2];
+        for (int at = 0; at < corners.size(); at++) {
+            points[2 * at] = corners.get(at)[0];
+            points[2 * at + 1] = corners.get(at)[1];
+        }
+        return points;
     }
 
     private boolean drawBox() {
@@ -567,19 +590,34 @@ final class Blend2DDrawing {
             index--;
             while (readRaw(index).kind() == Kind.PAIR && readRaw(index + 1).kind() == Kind.PAIR
                     && readRaw(index + 2).kind() == Kind.PAIR) {
-                refuseIfDrawn("a triangle");
+                fillAndOutline(flatten(List.of(readPair(readRaw(index)), readPair(readRaw(index + 1)),
+                        readPair(readRaw(index + 2)))), "the outline of a triangle");
                 index += 3;
             }
             return true;
         }
         if (read.kind() == Kind.VECTOR) {
-            VectorValue vector = (VectorValue) read.value();
-            if ((vector.storageLength() - (vector.index() - 1)) / 6 > 0) {
-                refuseIfDrawn("a triangle");
-            }
+            drawVectorTriangles((VectorValue) read.value());
             return true;
         }
         return false;
+    }
+
+    private void drawVectorTriangles(VectorValue vector) {
+        int count = (vector.storageLength() - (vector.index() - 1)) / 6;
+        if (count <= 0 || !(hasFill || hasStroke)) {
+            return;
+        }
+        if (vector.kind().bits() != 64) {
+            canvas.refuse("triangles read from a vector of " + vector.kind().spelling() + " numbers");
+        }
+        for (int triangle = 0; triangle < count; triangle++) {
+            double[] points = new double[6];
+            for (int at = 0; at < 6; at++) {
+                points[at] = Double.longBitsToDouble(vector.storage().at(vector.index() + triangle * 6 + at));
+            }
+            fillAndOutline(points, "the outline of a triangle");
+        }
     }
 
     private boolean drawArc() {

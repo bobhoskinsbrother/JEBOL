@@ -127,11 +127,50 @@ public final class Blend2DCanvas {
     }
 
     public void fillRect(double x, double y, double wide, double high) {
-        resolveSolidFill().ifPresent(fill -> paintBox(fill, globalAlpha, Blend2DBox.fromRect(x, y, wide, high), "a box"));
+        resolveSolidFill().ifPresent(fill -> paintBox(fill, globalAlpha, Blend2DBox.fromRect(x, y, wide, high)));
     }
 
     public void clearRect(double x, double y, double wide, double high) {
-        resolveClearing().ifPresent(fill -> paintBox(fill, FULL_ALPHA, Blend2DBox.fromRect(x, y, wide, high), "a clear"));
+        resolveClearing().ifPresent(fill -> paintBox(fill, FULL_ALPHA, Blend2DBox.fromRect(x, y, wide, high)));
+    }
+
+    public void fillPolygon(double[] points) {
+        resolveSolidFill().ifPresent(fill -> paintPolygon(fill, globalAlpha, points, AnalyticFill.FillRule.NON_ZERO));
+    }
+
+    private void paintPolygon(SolidFill fill, int alpha, double[] points, AnalyticFill.FillRule rule) {
+        Blend2DMatrix.Kind kind = transform.kind();
+        if (kind == Blend2DMatrix.Kind.INVALID) {
+            return;
+        }
+        Blend2DMatrix fixed = transform.toFixedPoint();
+        boolean isScaledOnly = fixed.kind().compareTo(Blend2DMatrix.Kind.SCALE) <= 0;
+        double[] mapped = new double[points.length];
+        for (int at = 0; at < points.length; at += 2) {
+            double x = points[at];
+            double y = points[at + 1];
+            if (isScaledOnly) {
+                mapped[at] = x * fixed.m00() + fixed.m20();
+                mapped[at + 1] = y * fixed.m11() + fixed.m21();
+            } else {
+                mapped[at] = x * fixed.m00() + y * fixed.m10() + fixed.m20();
+                mapped[at + 1] = x * fixed.m01() + y * fixed.m11() + fixed.m21();
+            }
+        }
+        EdgeBuilder builder = new EdgeBuilder(clipFixed);
+        if (!builder.addClosedFigure(mapped)) {
+            return;
+        }
+        builder.finish();
+        if (builder.isEmpty()) {
+            return;
+        }
+        AnalyticCells cells = new AnalyticCells(surface.wide(), surface.high());
+        AnalyticRasterizer rasterizer = new AnalyticRasterizer(cells);
+        for (EdgeBuilder.EdgeVector edge : builder.edges()) {
+            rasterizer.rasterize(edge);
+        }
+        AnalyticFill.fill(surface, cells, rule, alpha, fill);
     }
 
     private Optional<SolidFill> resolveSolidFill() {
@@ -160,13 +199,15 @@ public final class Blend2DCanvas {
         }
     }
 
-    private void paintBox(SolidFill fill, int alpha, Blend2DBox box, String what) {
+    private void paintBox(SolidFill fill, int alpha, Blend2DBox box) {
         Blend2DMatrix.Kind kind = transform.kind();
         if (kind == Blend2DMatrix.Kind.INVALID) {
             return;
         }
         if (kind == Blend2DMatrix.Kind.AFFINE) {
-            throw new Blend2DNotPortedYet(what + " under a rotation or a skew");
+            double[] corners = {box.x0(), box.y0(), box.x1(), box.y0(), box.x1(), box.y1(), box.x0(), box.y1()};
+            paintPolygon(fill, alpha, corners, AnalyticFill.FillRule.EVEN_ODD);
+            return;
         }
         Optional<Blend2DBox> clipped = transform.toFixedPoint().mapBoxScaledOrSwapped(box).intersectWith(clipFixed);
         if (clipped.isEmpty()) {

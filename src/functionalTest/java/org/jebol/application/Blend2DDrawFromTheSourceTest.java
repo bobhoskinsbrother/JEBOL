@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class Blend2DDrawFromTheSourceTest {
 
-    private static final int ROWS = 510;
+    private static final int ROWS = 649;
 
     private record Row(String image, String block, String size, long crc) {
     }
@@ -122,16 +122,16 @@ class Blend2DDrawFromTheSourceTest {
             byte[] table = readTable();
             assertThat(rowsOf(table)).hasSize(ROWS);
             assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(table)))
-                    .isEqualTo("2bb7d9d209e17358bb1851e2d42311076730963471b6f856a6262d66c532c489");
+                    .isEqualTo("0a1784cc61d022d64236af7f61692b9b1e35a8c138b2134ffdcc09c0338fcd24");
         }
 
         @Test
-        @DisplayName("draws every row the extension's own C drew, pixel for pixel, but the two that need the rasteriser")
+        @DisplayName("draws every row the extension's own C drew, pixel for pixel, but the one that needs curves")
         void drawsEveryRow() throws IOException {
             Interpreter interpreter = interpreterWithBlend2D();
             List<String> differing = new ArrayList<>();
             for (Row row : rowsOf(readTable())) {
-                if (NEEDS_THE_RASTERISER.contains(row.block())) {
+                if (NEEDS_CURVES.contains(row.block())) {
                     continue;
                 }
                 Value drawn;
@@ -154,25 +154,22 @@ class Blend2DDrawFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("refuses by name the two rows that need the rasteriser, rather than drawing them wrongly")
-        void refusesTheRowsThatNeedTheRasteriser() throws IOException {
+        @DisplayName("refuses by name the row that needs curves, rather than drawing it wrongly")
+        void refusesTheRowThatNeedsCurves() throws IOException {
             Interpreter interpreter = interpreterWithBlend2D();
             List<String> answered = new ArrayList<>();
             for (Row row : rowsOf(readTable())) {
-                if (NEEDS_THE_RASTERISER.contains(row.block())) {
+                if (NEEDS_CURVES.contains(row.block())) {
                     String source = "b2d/draw " + imageSource(row.image()) + " [" + row.block() + "]";
                     interpreter.defineNewWordsIn(source);
                     answered.add(interpreter.display(interpreter.run(source)));
                 }
             }
-            assertThat(answered).hasSize(2);
-            assertThat(answered.get(0)).contains("cannot yet draw a polygon");
-            assertThat(answered.get(1)).contains("cannot yet draw a rounded box");
+            assertThat(answered).singleElement().asString().contains("cannot yet draw a rounded box");
         }
     }
 
-    private static final List<String> NEEDS_THE_RASTERISER = List.of(
-            "fill 0.0.255 polygon 1x1 2x2 3x1 fill-all",
+    private static final List<String> NEEDS_CURVES = List.of(
             "fill 0.0.255 box 1x1 3x3 2 fill 255.0.0 box 5x5 2x2");
 
     @Nested
@@ -257,6 +254,37 @@ class Blend2DDrawFromTheSourceTest {
         void namesTheVersion() {
             assertThat(answerTo("reduce [copy/part b2d/info 25 'end]")).isEqualTo("""
                     ["Version:     0.12.0^/Build" end]""");
+        }
+
+        @Test
+        @DisplayName("triangles read from a vector of 64-bit decimals draw what the same corners given as pairs draw")
+        void drawsTrianglesFromAVector() {
+            assertThat(answerTo("""
+                    from-pairs: b2d/draw 12x10 [fill 200.0.0 triangle 1.5x1 11x2.5 4x9.5 9x9 2x6 10x5]
+                    corners: make vector! [decimal! 64 [1.5 1 11 2.5 4 9.5 9 9 2 6 10 5]]
+                    from-vector: b2d/draw 12x10 [fill 200.0.0 triangle corners]
+                    reduce [equal? from-pairs from-vector  equal? from-pairs make image! [12x10 255.255.255]]"""))
+                    .isEqualTo("[#(true) #(false)]");
+        }
+
+        @Test
+        @DisplayName("triangles read from a vector of narrower numbers are refused, as the C would read past them as doubles")
+        void refusesTrianglesFromANarrowVector() {
+            assertThat(answerTo("""
+                    corners: make vector! [integer! 32 [1 1 11 2 4 9]]
+                    e: try [b2d/draw 12x10 [fill 200.0.0 triangle corners]]
+                    e/id""")).isEqualTo("command-fail");
+        }
+
+        @Test
+        @DisplayName("a polygon with a pen is filled first, as the C fills before it strokes, and then its outline is refused")
+        void fillsAPolygonThenRefusesItsOutline() {
+            assertThat(answerTo("""
+                    img: make image! [6x6 255.255.255]
+                    e: try [b2d/draw img [fill 0.0.255 pen 255.0.0 polygon 1x1 5x1 5x5 1x5]]
+                    reduce [img/(3x3) e/arg1]"""))
+                    .isEqualTo("""
+                            [0.0.255.255 {blend2d cannot yet draw the outline of a polygon in JEBOL: its rasteriser is not ported}]""");
         }
 
         @Test

@@ -47,15 +47,15 @@ above, with every thirteenth transparent black.
 
 ## blend2d-draw.tsv
 
-510 rows of what the extension's own `draw` does, made by running the
+649 rows of what the extension's own `draw` does, made by running the
 extension's C unchanged -- `blend2d-command-*.c` at tag `53f6ffe9` -- against
 `probe/stub.c`, a stand-in for R3's `RL_` table that reads a small subset of
 REBOL, linked to the same Blend2D. Each row is `image` (`noise WxH seed`, the
 generator above in R3's own memory order, or `pair WxH` for a new image),
 `block`, the `size` drawn, and the `pixel crc32` of the image afterwards.
 `Blend2DDrawFromTheSourceTest` draws every row in JEBOL and expects the same
-pixels, except two rows that need the rasteriser, which it expects refused by
-name.
+pixels, except one row with a rounded box, which needs curves and which it
+expects refused by name.
 
 `probe/draw-cases.py` writes the cases. They cover, in order:
 
@@ -75,7 +75,15 @@ name.
   operator, an integer, a lit-word, `off`, `none` and nothing at all,
   `line-join` given a pair, `alpha` as a percent, above 1, below 0 and too
   small to count, shapes read but not drawn because there is no fill or pen,
-  and tuples of five and four parts.
+  and tuples of five and four parts;
+- the rasteriser for straight edges: 26 polygons, each under three fills --
+  lines steeper and shallower than 45 degrees in both directions, edges
+  crossing 4-pixel groups, points on pixel and sub-pixel boundaries, polygons
+  clipped on each side and wholly outside, self-crossing ones, one point, two
+  points -- two polygons under thirteen operators, boxes rotated through eight
+  angles about the origin and about a point, polygons under clips, scales and
+  an invalid transform, `triangle` with whole and partial triples, and images
+  wide and tall enough to cross Blend2D's band height.
 
 A block that opens with something that is not a command reads `cmd_pos`
 before the C has set it, so what happens is the compiler's: this probe, built
@@ -97,6 +105,12 @@ image it prints into a row:
         -DBL_STATIC -I<rebol-blend2d>/src -I<blend2d>/src probe/stub.c probe/nojit.c \
         <rebol-blend2d>/src/blend2d-*.c -Wl,--wrap=blContextInitAs -o probe libblend2d.a -lstdc++ -lpthread -lm
     python3 probe/draw-cases.py cases.r3 cases.tsv
+    split -l 200 -d cases.r3 chunk- && for f in chunk-*; do ./probe $f >> cases.out; done
+    python3 probe/draw-table.py cases.tsv cases.out blend2d-draw.tsv
+
+`B2D_THREADS=0` (or any count) and `B2D_NO_JIT=1` override what the extension
+asks Blend2D for, which is how the port's notes on bands, threads and the
+reference pipeline were checked.
 
 ## Licence
 

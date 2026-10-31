@@ -506,6 +506,145 @@ noise 12x8 50	pen off fill 0.0.255 box 1x1 3x3	12x8	45029b9b
 noise 12x8 50	fill 0.0.255	12x8	be58da74
 noise 12x8 50	fill 1.2.3.4.5 fill-all	12x8	21e84a77
 noise 12x8 50	fill 9.8.7.6 fill-all	12x8	44f2a035
+noise 40x30 61	fill 200.60.10.140 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	09131909
+noise 40x30 62	fill 30.200.90 alpha 0.6 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	9223282b
+noise 40x30 63	fill 10.20.250.255 blend multiply polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	8c71c0dd
+noise 40x30 64	fill 200.60.10.140 polygon 2x2 38x2 38x28 2x28	40x30	f3564ad7
+noise 40x30 65	fill 30.200.90 alpha 0.6 polygon 2x2 38x2 38x28 2x28	40x30	933ae271
+noise 40x30 66	fill 10.20.250.255 blend multiply polygon 2x2 38x2 38x28 2x28	40x30	30ab7e5e
+noise 40x30 67	fill 200.60.10.140 polygon 2.5x2.5 37.5x2.5 37.5x27.5 2.5x27.5	40x30	6ed26276
+noise 40x30 68	fill 30.200.90 alpha 0.6 polygon 2.5x2.5 37.5x2.5 37.5x27.5 2.5x27.5	40x30	1b6052fb
+noise 40x30 69	fill 10.20.250.255 blend multiply polygon 2.5x2.5 37.5x2.5 37.5x27.5 2.5x27.5	40x30	f5667a0c
+noise 40x30 70	fill 200.60.10.140 polygon 20x1 39x29 1x29	40x30	f8e9e861
+noise 40x30 71	fill 30.200.90 alpha 0.6 polygon 20x1 39x29 1x29	40x30	3f66d6c3
+noise 40x30 72	fill 10.20.250.255 blend multiply polygon 20x1 39x29 1x29	40x30	09b452ab
+noise 40x30 73	fill 200.60.10.140 polygon 1x15 39x14 39x16	40x30	89d6e6c0
+noise 40x30 74	fill 30.200.90 alpha 0.6 polygon 1x15 39x14 39x16	40x30	384b9160
+noise 40x30 75	fill 10.20.250.255 blend multiply polygon 1x15 39x14 39x16	40x30	4122f8d0
+noise 40x30 76	fill 200.60.10.140 polygon 19.9x0.5 20.1x0.5 20.3x29.5 19.7x29.5	40x30	1bb3567a
+noise 40x30 77	fill 30.200.90 alpha 0.6 polygon 19.9x0.5 20.1x0.5 20.3x29.5 19.7x29.5	40x30	f5a16b7e
+noise 40x30 78	fill 10.20.250.255 blend multiply polygon 19.9x0.5 20.1x0.5 20.3x29.5 19.7x29.5	40x30	5071bce3
+noise 40x30 79	fill 200.60.10.140 polygon 0.5x10.25 39.5x10.75 39.5x11 0.5x10.5	40x30	b8306719
+noise 40x30 80	fill 30.200.90 alpha 0.6 polygon 0.5x10.25 39.5x10.75 39.5x11 0.5x10.5	40x30	e4c90a32
+noise 40x30 81	fill 10.20.250.255 blend multiply polygon 0.5x10.25 39.5x10.75 39.5x11 0.5x10.5	40x30	5f2e33ee
+noise 40x30 82	fill 200.60.10.140 polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	04173881
+noise 40x30 83	fill 30.200.90 alpha 0.6 polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	92424532
+noise 40x30 84	fill 10.20.250.255 blend multiply polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	41ef0e6d
+noise 40x30 85	fill 200.60.10.140 polygon 5x5 35x25 35x5 5x25	40x30	3231408f
+noise 40x30 86	fill 30.200.90 alpha 0.6 polygon 5x5 35x25 35x5 5x25	40x30	a7e1e767
+noise 40x30 87	fill 10.20.250.255 blend multiply polygon 5x5 35x25 35x5 5x25	40x30	a0a18787
+noise 40x30 88	fill 200.60.10.140 polygon 20x1 26x28 4x10 36x10 14x28	40x30	6bc2116f
+noise 40x30 89	fill 30.200.90 alpha 0.6 polygon 20x1 26x28 4x10 36x10 14x28	40x30	0f9c2f9d
+noise 40x30 90	fill 10.20.250.255 blend multiply polygon 20x1 26x28 4x10 36x10 14x28	40x30	980e0c96
+noise 40x30 91	fill 200.60.10.140 polygon 4x4 36x4 36x26 4x26 4x8 30x8 30x22 10x22 10x8 4x8	40x30	78548130
+noise 40x30 92	fill 30.200.90 alpha 0.6 polygon 4x4 36x4 36x26 4x26 4x8 30x8 30x22 10x22 10x8 4x8	40x30	1d8ba080
+noise 40x30 93	fill 10.20.250.255 blend multiply polygon 4x4 36x4 36x26 4x26 4x8 30x8 30x22 10x22 10x8 4x8	40x30	e4af7b37
+noise 40x30 94	fill 200.60.10.140 polygon -10x-10 50x-5 45x40 -5x35	40x30	5d198e1f
+noise 40x30 95	fill 30.200.90 alpha 0.6 polygon -10x-10 50x-5 45x40 -5x35	40x30	db3cf779
+noise 40x30 96	fill 10.20.250.255 blend multiply polygon -10x-10 50x-5 45x40 -5x35	40x30	27241058
+noise 40x30 97	fill 200.60.10.140 polygon -20x5 10x2 12x28 -20x25	40x30	743fb48b
+noise 40x30 98	fill 30.200.90 alpha 0.6 polygon -20x5 10x2 12x28 -20x25	40x30	fff4e823
+noise 40x30 99	fill 10.20.250.255 blend multiply polygon -20x5 10x2 12x28 -20x25	40x30	26f6ba94
+noise 40x30 100	fill 200.60.10.140 polygon 30x5 60x2 62x28 30x25	40x30	a9b46b8a
+noise 40x30 101	fill 30.200.90 alpha 0.6 polygon 30x5 60x2 62x28 30x25	40x30	6fc64849
+noise 40x30 102	fill 10.20.250.255 blend multiply polygon 30x5 60x2 62x28 30x25	40x30	f75df5d5
+noise 40x30 103	fill 200.60.10.140 polygon 5x-20 35x-15 30x10 8x12	40x30	8fdce924
+noise 40x30 104	fill 30.200.90 alpha 0.6 polygon 5x-20 35x-15 30x10 8x12	40x30	939f8b45
+noise 40x30 105	fill 10.20.250.255 blend multiply polygon 5x-20 35x-15 30x10 8x12	40x30	8606909c
+noise 40x30 106	fill 200.60.10.140 polygon 5x20 35x18 30x45 8x50	40x30	657e6806
+noise 40x30 107	fill 30.200.90 alpha 0.6 polygon 5x20 35x18 30x45 8x50	40x30	226108d8
+noise 40x30 108	fill 10.20.250.255 blend multiply polygon 5x20 35x18 30x45 8x50	40x30	8b5d7be5
+noise 40x30 109	fill 200.60.10.140 polygon -5x-5 45x-5 45x35 -5x35	40x30	79e1b072
+noise 40x30 110	fill 30.200.90 alpha 0.6 polygon -5x-5 45x-5 45x35 -5x35	40x30	e8c173f6
+noise 40x30 111	fill 10.20.250.255 blend multiply polygon -5x-5 45x-5 45x35 -5x35	40x30	454ca098
+noise 40x30 112	fill 200.60.10.140 polygon 50x50 60x50 55x60	40x30	c629eec8
+noise 40x30 113	fill 30.200.90 alpha 0.6 polygon 50x50 60x50 55x60	40x30	2d2ab636
+noise 40x30 114	fill 10.20.250.255 blend multiply polygon 50x50 60x50 55x60	40x30	8a30e9c1
+noise 40x30 115	fill 200.60.10.140 polygon 1x1	40x30	d46b1055
+noise 40x30 116	fill 30.200.90 alpha 0.6 polygon 1x1	40x30	6ebdf8ef
+noise 40x30 117	fill 10.20.250.255 blend multiply polygon 1x1	40x30	228b4543
+noise 40x30 118	fill 200.60.10.140 polygon 1x1 30x20	40x30	cac2c887
+noise 40x30 119	fill 30.200.90 alpha 0.6 polygon 1x1 30x20	40x30	d7585d9c
+noise 40x30 120	fill 10.20.250.255 blend multiply polygon 1x1 30x20	40x30	9eeca9be
+noise 40x30 121	fill 200.60.10.140 polygon 0.001x0.001 39.999x0.001 39.999x29.999	40x30	e9123417
+noise 40x30 122	fill 30.200.90 alpha 0.6 polygon 0.001x0.001 39.999x0.001 39.999x29.999	40x30	2b426a4a
+noise 40x30 123	fill 10.20.250.255 blend multiply polygon 0.001x0.001 39.999x0.001 39.999x29.999	40x30	251f4e2b
+noise 40x30 124	fill 200.60.10.140 polygon 7.875x3.125 32.0625x3.9375 31.5x26.5 8.25x25.75	40x30	c92c907d
+noise 40x30 125	fill 30.200.90 alpha 0.6 polygon 7.875x3.125 32.0625x3.9375 31.5x26.5 8.25x25.75	40x30	4c3f503c
+noise 40x30 126	fill 10.20.250.255 blend multiply polygon 7.875x3.125 32.0625x3.9375 31.5x26.5 8.25x25.75	40x30	ccc91772
+noise 40x30 127	fill 200.60.10.140 polygon 3.999x4.001 4.001x25.999 36.5x14	40x30	ac6a67ef
+noise 40x30 128	fill 30.200.90 alpha 0.6 polygon 3.999x4.001 4.001x25.999 36.5x14	40x30	8cdc4688
+noise 40x30 129	fill 10.20.250.255 blend multiply polygon 3.999x4.001 4.001x25.999 36.5x14	40x30	3d3280e0
+noise 40x30 130	fill 200.60.10.140 polygon 0x0 40x30 0x30 40x0	40x30	3c27a378
+noise 40x30 131	fill 30.200.90 alpha 0.6 polygon 0x0 40x30 0x30 40x0	40x30	8dd7b7c2
+noise 40x30 132	fill 10.20.250.255 blend multiply polygon 0x0 40x30 0x30 40x0	40x30	69260277
+noise 40x30 133	fill 200.60.10.140 polygon 39x1 1x2 38x3 2x4 37x5 3x6 36x7 4x8	40x30	fa29f1a8
+noise 40x30 134	fill 30.200.90 alpha 0.6 polygon 39x1 1x2 38x3 2x4 37x5 3x6 36x7 4x8	40x30	05e93c3e
+noise 40x30 135	fill 10.20.250.255 blend multiply polygon 39x1 1x2 38x3 2x4 37x5 3x6 36x7 4x8	40x30	57ac346f
+noise 40x30 136	fill 200.60.10.140 polygon 10x2 11x28 12x2 13x28 14x2 15x28 16x2	40x30	f333a579
+noise 40x30 137	fill 30.200.90 alpha 0.6 polygon 10x2 11x28 12x2 13x28 14x2 15x28 16x2	40x30	d7c7116d
+noise 40x30 138	fill 10.20.250.255 blend multiply polygon 10x2 11x28 12x2 13x28 14x2 15x28 16x2	40x30	01d93231
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend source-over polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	0f60b186
+noise 40x30 102	fill 30.200.90 blend source-over polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	bf5d2163
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend source-copy polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	684a22b0
+noise 40x30 102	fill 30.200.90 blend source-copy polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	bf5d2163
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend destination-in polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	26f0aebf
+noise 40x30 102	fill 30.200.90 blend destination-in polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	d226bea4
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend xor polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	06c314ac
+noise 40x30 102	fill 30.200.90 blend xor polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	3799ad0b
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend clear polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	d9a33ee0
+noise 40x30 102	fill 30.200.90 blend clear polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	ebbc68ce
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend plus polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	59195146
+noise 40x30 102	fill 30.200.90 blend plus polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	ae5097a5
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend multiply polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	442794e4
+noise 40x30 102	fill 30.200.90 blend multiply polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	e6382b4b
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend screen polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	2f4bf16c
+noise 40x30 102	fill 30.200.90 blend screen polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	2473c8cd
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend overlay polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	19b29008
+noise 40x30 102	fill 30.200.90 blend overlay polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	c1e54f2d
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend color-dodge polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	af12403f
+noise 40x30 102	fill 30.200.90 blend color-dodge polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	605fee1e
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend color-burn polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	c628dda3
+noise 40x30 102	fill 30.200.90 blend color-burn polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	a9c997e5
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend soft-light polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	0ce96f9b
+noise 40x30 102	fill 30.200.90 blend soft-light polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	682abc67
+noise 40x30 101	fill 200.100.50.180 alpha 0.75 blend difference polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	7507b89a
+noise 40x30 102	fill 30.200.90 blend difference polygon 3x3 37x3 20x15 37x27 3x27 20x15	40x30	f7f1e55e
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 17 box -12x-7 24x14	40x30	0579a30a
+noise 40x30 121	fill 20.250.20 rotate 17 20x15 box 8x4 24x22	40x30	8284d291
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate -30 box -12x-7 24x14	40x30	e243ad9e
+noise 40x30 121	fill 20.250.20 rotate -30 20x15 box 8x4 24x22	40x30	09f72269
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 45 box -12x-7 24x14	40x30	d7dfd617
+noise 40x30 121	fill 20.250.20 rotate 45 20x15 box 8x4 24x22	40x30	5194b189
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 90 box -12x-7 24x14	40x30	9eeca9be
+noise 40x30 121	fill 20.250.20 rotate 90 20x15 box 8x4 24x22	40x30	9decab01
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 180 box -12x-7 24x14	40x30	9eeca9be
+noise 40x30 121	fill 20.250.20 rotate 180 20x15 box 8x4 24x22	40x30	36ebe972
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 0.5 box -12x-7 24x14	40x30	039d49b5
+noise 40x30 121	fill 20.250.20 rotate 0.5 20x15 box 8x4 24x22	40x30	4d7541cf
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 359.9 box -12x-7 24x14	40x30	3fec06b8
+noise 40x30 121	fill 20.250.20 rotate 359.9 20x15 box 8x4 24x22	40x30	7d42feae
+noise 40x30 120	fill 250.20.20.200 translate 20x15 rotate 123.456 box -12x-7 24x14	40x30	9eeca9be
+noise 40x30 121	fill 20.250.20 rotate 123.456 20x15 box 8x4 24x22	40x30	6fa462cd
+noise 40x30 122	fill 250.20.20 rotate 33 clear 10x2 25x20	40x30	c09b34b4
+noise 40x30 123	fill 250.20.20 alpha 0.4 rotate 10 box -5x-5 60x60	40x30	68c230e1
+noise 40x30 124	fill 250.20.20 scale 1.5x0.5 rotate 25 box 4x4 20x30	40x30	250d93f5
+noise 40x30 125	fill 250.20.20 rotate 15 clip 5x5 35x25 box 0x0 40x30	40x30	5acdffb3
+noise 40x30 126	fill 250.20.20 clip 5.5x5.25 34.75x24.5 polygon -5x-5 45x10 20x40	40x30	7042f75c
+noise 40x30 127	fill 250.20.20 clip 12x8 28x22 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	43dfaaa2
+noise 40x30 128	fill 250.20.20 translate 3.5x-2.25 scale 0.75 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	da3625c5
+noise 40x30 129	fill 250.20.20 scale -1x1 translate -40x0 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	292e7c5d
+noise 40x30 130	fill 250.20.20 scale 0 0 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	f741b937
+noise 40x30 131	fill 250.20.20 rotate 90 translate 0x-40 polygon 3.3x2.1 35.7x6.4 20.2x27.9	40x30	f1374047
+noise 40x30 132	fill 250.20.20 triangle 3.3x2.1 35.7x6.4 20.2x27.9	40x30	93d617cb
+noise 40x30 133	fill 250.20.20 alpha 0.5 triangle 1x1 39x1 20x29 2x28 38x28 20x2	40x30	d8fcf0b2
+noise 40x30 134	fill 250.20.20 triangle 1x1 39x1 20x29 2x28	40x30	723c9f79
+noise 40x30 135	triangle 1x1 39x1 20x29 fill 0.0.255 box 1x1 3x3	40x30	ec66fa6a
+noise 300x200 136	fill 90.10.250.200 polygon 0x0 300x10 5x199 290x190 150x-20	300x200	0c6daa71
+noise 300x200 137	fill 90.10.250 blend multiply polygon 10x10 290x30 150x195	300x200	a6b86cb4
+noise 300x200 138	fill 90.10.250 rotate 7 box 20x15 260x170	300x200	a0b150e3
+noise 1100x70 139	fill 90.10.250 polygon 5x5 1095x30 550x69	1100x70	53b6c40c
+noise 9x150 140	fill 90.10.250 polygon 1x1 8x149 1x149	9x150	1f6d9eca
 pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
 pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
 pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4

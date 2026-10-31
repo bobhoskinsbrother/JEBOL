@@ -7,10 +7,63 @@ builds, how the port is checked, and how the pixels are split between the domain
 and the platform.
 
 Work in progress. Served: the module, the whole `draw` walk, the compositing,
-and every fill that needs no rasteriser -- `fill-all`, `clear-all`, `clear`,
-boxes and clips under `translate` and `scale` -- each byte for byte against the
-release's C. Not yet: the rasteriser and what it brings (see goals 1a), each of
-which raises an error naming what it cannot draw.
+`fill-all`, `clear-all`, `clear`, boxes and clips under any transform, and the
+rasteriser for straight edges -- `polygon`, `triangle` and a box under a
+rotation -- each byte for byte against the release's C. Not yet: curves,
+outlines and the rest goals 1a lists, each of which raises an error naming
+what it cannot draw.
+
+---
+
+## The rasteriser
+
+Blend2D fills a shape in three steps, and JEBOL ports each:
+
+- **`EdgeBuilder`** (`raster/edgebuilder_p.h`) maps the points through the
+  fixed-point transform -- `x * sx + tx` when the transform only scales, the
+  full affine map otherwise -- clips each line to the clip box in doubles, and
+  truncates the ends to 24.8 fixed point. A line outside the clip on the left
+  or right is not dropped: its rows are gathered into a vertical edge along
+  that side, so the coverage it would have carried still reaches the pixels
+  inside. Its `goto`s are a state machine whose states are the C's labels.
+- **`AnalyticRasterizer`** (`raster/analyticrasterizer_p.h`) is AGG's cell
+  and area method with exact integer error stepping. It writes a cover and an
+  area into each cell an edge crosses and marks the 4-pixel group the cell is
+  in. JEBOL ports the paths the C takes without banding.
+- **`AnalyticFill`** is the JIT's `FillAnalyticPart`. Along each row it sums
+  the cells from the first marked group, turns the running sum into a mask,
+  and composites marked groups pixel by pixel with that mask through the
+  variable-mask path, and the gap between two marked runs at one constant mask
+  -- the mask of the gap's first pixel -- through the constant-mask path,
+  skipping it when the mask is 0. The mask is the JIT's: shift the sum by 8,
+  apply the fill rule, take `|m - 0x200|` capped at 0x200 by an unsigned
+  minimum, and multiply by the global alpha shifted left 7, keeping the high
+  16 bits. That is exactly twice the reference pipeline's mask over twice its
+  divisor, so the two agree byte for byte.
+
+Polygons, triangles and paths fill non-zero, as the extension never sets a
+fill rule; a box under a rotation becomes a four-point polygon filled even-odd,
+Blend2D's preferred rule, as `fillUnclippedBoxD` does.
+
+What the port leaves out, and why the pixels are still the same:
+
+- **Bands.** Blend2D rasterises one band of rows at a time, saving each edge's
+  state between bands. JEBOL rasterises the whole image at once. The probe
+  gives the same bytes with no worker threads, one, and four, which rasterise
+  with bands of different heights.
+- **Edge vectors split when an arena block fills.** Each segment is rasterised
+  on its own and cells are integer sums, so where a vector splits, and the
+  order edges arrive in, cannot change a cell.
+- **Asynchronous rendering.** The extension asks for one thread, which makes
+  Blend2D queue its commands; the probe draws the same bytes synchronously.
+
+`blend2d-draw.tsv` holds 139 rows for this, at the rasteriser's boundaries:
+lines steeper and shallower than 45 degrees in both directions, edges crossing
+4-pixel groups, points on pixel and sub-pixel boundaries, polygons clipped on
+each side and wholly outside, self-crossing ones, rows past the 64-row band
+height, and rotations through 90 degrees, under alpha and thirteen operators.
+Changing one rasteriser error term by one fails rows; skipping the constant-mask
+gaps fails 106.
 
 ---
 

@@ -202,9 +202,16 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         exchange.getResponseHeaders().add("Cache-Control", "no-cache");
         exchange.sendResponseHeaders(200, 0);
         OutputStream stream = exchange.getResponseBody();
-        stream.write(": listening\n\n".getBytes(StandardCharsets.UTF_8));
-        stream.flush();
         browserConnections.add(stream);
+        try {
+            synchronized (stream) {
+                stream.write(": listening\n\n".getBytes(StandardCharsets.UTF_8));
+                stream.flush();
+            }
+        } catch (IOException wentAway) {
+            browserConnections.remove(stream);
+            throw wentAway;
+        }
     }
 
     private void dispatchToRegisteredBrowsers(String event, String payload) {
@@ -212,8 +219,10 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
                 .getBytes(StandardCharsets.UTF_8);
         for (OutputStream stream : browserConnections) {
             try {
-                stream.write(message);
-                stream.flush();
+                synchronized (stream) {
+                    stream.write(message);
+                    stream.flush();
+                }
             } catch (IOException wentAway) {
                 browserConnections.remove(stream);
             }

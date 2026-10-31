@@ -132,15 +132,16 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    `import 'blend2d` answers the release's module, and `draw` walks every
    command as the extension's C does. What needs no rasteriser draws
    byte for byte as the release does: Blend2D's compositing, all 29
-   operators, global alpha, `fill-all`, `clear-all`, `clear`, boxes on whole
-   pixels or not under `translate` and `scale`, and clips. `info`, `image`
-   from an image and `set-threads` answer as the release does. Left, in the
-   order to build it: Blend2D's edge builder, analytic rasteriser and fill
-   loops, which bring polygons, triangles, circles, ellipses, arcs, rounded
-   boxes, cubics, `shape` and boxes under a rotation; the stroker, for `pen`
-   and `line`; gradients and image patterns; image blits, and images read
-   from files; `path`; then fonts and `text`. Until then each of those
-   raises an error naming what it cannot draw rather than drawing it wrongly.
+   operators, global alpha, `fill-all`, `clear-all`, `clear`, boxes and clips
+   under any transform, and Blend2D's edge builder, analytic rasteriser and
+   fill loop for straight edges: `polygon`, `triangle` and a box under a
+   rotation. `info`, `image` from an image and `set-threads` answer as the
+   release does. Left, in the order to build it: curve flattening in the edge
+   builder, with the paths Blend2D makes for circles, ellipses, arcs and
+   rounded boxes, and `cubic` and `shape`; the stroker, for `pen` and
+   `line`; gradients and image patterns; image blits, and images read from
+   files; `path`; then fonts and `text`. Until then each of those raises an
+   error naming what it cannot draw rather than drawing it wrongly.
    `examples/blend2d` shows the 29 operators on the desktop and on a page;
    each piece that lands gets a tile there, and a row in
    `blend2d-draw.tsv` from the probe in `src/testFixtures/resources/blend2d/probe/`.

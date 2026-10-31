@@ -184,9 +184,9 @@ The third draws a gallery of what DRAW draws: shapes, curves, joins, dashes and 
 
 The fourth shows Blend2D's 29 blend modes, one tile each, drawn by the `blend2d`
 module's own `draw` -- `b2d: import 'blend2d` -- whose pixels are the release's
-byte for byte. That module draws fills, boxes, clips, alpha and blending today;
-a shape that needs Blend2D's rasteriser, which is not ported yet, raises an
-error naming it.
+byte for byte. That module draws fills, boxes, polygons, triangles, rotation,
+clips, alpha and blending today; a curve, an outline, a gradient or text, which
+are not ported yet, raises an error naming it.
 
 ```
 ./build/install/jebol/bin/jebol --screen=window examples/blend2d/
