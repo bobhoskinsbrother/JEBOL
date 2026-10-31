@@ -1,0 +1,511 @@
+image	block	size	pixel crc32
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend source-over box 3.25x2.5 0.5x5	24x16	8f58e9e0
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend source-copy box 3.25x2.5 0.5x5	24x16	67985fb5
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend source-in box 3.25x2.5 0.5x5	24x16	a3a57f4a
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend source-out box 3.25x2.5 0.5x5	24x16	d88daf26
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend source-atop box 3.25x2.5 0.5x5	24x16	e1447c1e
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend destination-over box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend destination-copy box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend destination-in box 3.25x2.5 0.5x5	24x16	1a152371
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend destination-out box 3.25x2.5 0.5x5	24x16	ba0ddbfa
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend destination-atop box 3.25x2.5 0.5x5	24x16	67985fb5
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend xor box 3.25x2.5 0.5x5	24x16	08cef307
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend clear box 3.25x2.5 0.5x5	24x16	d1f55d88
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend plus box 3.25x2.5 0.5x5	24x16	c1c510ed
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend minus box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend modulate box 3.25x2.5 0.5x5	24x16	bf13cd79
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend multiply box 3.25x2.5 0.5x5	24x16	936f207a
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend screen box 3.25x2.5 0.5x5	24x16	6022430b
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend overlay box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend darken box 3.25x2.5 0.5x5	24x16	d0c9fa45
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend lighten box 3.25x2.5 0.5x5	24x16	0e0796ac
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend color-dodge box 3.25x2.5 0.5x5	24x16	34890142
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend color-burn box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend linear-burn box 3.25x2.5 0.5x5	24x16	5676db6f
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend linear-light box 3.25x2.5 0.5x5	24x16	7d840965
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend pin-light box 3.25x2.5 0.5x5	24x16	a391c2fe
+noise 24x16 11	fill 255.255.255.0 alpha 0.25 blend hard-light box 3.25x2.5 0.5x5	24x16	82ccf783
+noise 24x16 11	fill 10.20.30.255 alpha 0.999 blend soft-light box 3.25x2.5 0.5x5	24x16	7fee8533
+noise 24x16 11	fill 200.60.10.140 alpha 1 blend difference box 3.25x2.5 0.5x5	24x16	504976b6
+noise 24x16 11	fill 30.200.90 alpha 0.6 blend exclusion box 3.25x2.5 0.5x5	24x16	ec424143
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend source-over box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend source-copy box 2x1.5 10x7.25	24x16	600bb7c2
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend source-in box 2x1.5 10x7.25	24x16	5edafff4
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend source-out box 2x1.5 10x7.25	24x16	dd304214
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend source-atop box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend destination-over box 2x1.5 10x7.25	24x16	1c9aa15e
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend destination-copy box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend destination-in box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend destination-out box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend destination-atop box 2x1.5 10x7.25	24x16	1c9aa15e
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend xor box 2x1.5 10x7.25	24x16	d03b7703
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend clear box 2x1.5 10x7.25	24x16	d86b54a2
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend plus box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend minus box 2x1.5 10x7.25	24x16	7badd7bf
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend modulate box 2x1.5 10x7.25	24x16	e0f90a97
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend multiply box 2x1.5 10x7.25	24x16	b922865c
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend screen box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend overlay box 2x1.5 10x7.25	24x16	c78a5ef9
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend darken box 2x1.5 10x7.25	24x16	6834e472
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend lighten box 2x1.5 10x7.25	24x16	f024bcc3
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend color-dodge box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend color-burn box 2x1.5 10x7.25	24x16	010c82ae
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend linear-burn box 2x1.5 10x7.25	24x16	b17485d3
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend linear-light box 2x1.5 10x7.25	24x16	f64ed4a5
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend pin-light box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 12	fill 10.20.30.255 alpha 0.999 blend hard-light box 2x1.5 10x7.25	24x16	763de860
+noise 24x16 12	fill 200.60.10.140 alpha 1 blend soft-light box 2x1.5 10x7.25	24x16	df73a057
+noise 24x16 12	fill 30.200.90 alpha 0.6 blend difference box 2x1.5 10x7.25	24x16	da4ea4b5
+noise 24x16 12	fill 255.255.255.0 alpha 0.25 blend exclusion box 2x1.5 10x7.25	24x16	d072a498
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend source-over box 1.25x1.75 9.5x8.5	24x16	3d2238a0
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend source-copy box 1.25x1.75 9.5x8.5	24x16	c83b60e8
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend source-in box 1.25x1.75 9.5x8.5	24x16	925c13fe
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend source-out box 1.25x1.75 9.5x8.5	24x16	67f58463
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend source-atop box 1.25x1.75 9.5x8.5	24x16	483dc23e
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend destination-over box 1.25x1.75 9.5x8.5	24x16	74af5061
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend destination-copy box 1.25x1.75 9.5x8.5	24x16	e82dfc64
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend destination-in box 1.25x1.75 9.5x8.5	24x16	67f58463
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend destination-out box 1.25x1.75 9.5x8.5	24x16	8a2e1686
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend destination-atop box 1.25x1.75 9.5x8.5	24x16	480658c7
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend xor box 1.25x1.75 9.5x8.5	24x16	2a257e25
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend clear box 1.25x1.75 9.5x8.5	24x16	67f58463
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend plus box 1.25x1.75 9.5x8.5	24x16	c1db11b6
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend minus box 1.25x1.75 9.5x8.5	24x16	37beaef6
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend modulate box 1.25x1.75 9.5x8.5	24x16	4889265b
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend multiply box 1.25x1.75 9.5x8.5	24x16	e82dfc64
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend screen box 1.25x1.75 9.5x8.5	24x16	ae64d749
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend overlay box 1.25x1.75 9.5x8.5	24x16	09ca71c6
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend darken box 1.25x1.75 9.5x8.5	24x16	fdc50277
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend lighten box 1.25x1.75 9.5x8.5	24x16	e82dfc64
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend color-dodge box 1.25x1.75 9.5x8.5	24x16	aa5ed834
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend color-burn box 1.25x1.75 9.5x8.5	24x16	276c700a
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend linear-burn box 1.25x1.75 9.5x8.5	24x16	4ac3fb37
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend linear-light box 1.25x1.75 9.5x8.5	24x16	e82dfc64
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend pin-light box 1.25x1.75 9.5x8.5	24x16	abe9d8d4
+noise 24x16 13	fill 200.60.10.140 alpha 1 blend hard-light box 1.25x1.75 9.5x8.5	24x16	4a40100c
+noise 24x16 13	fill 30.200.90 alpha 0.6 blend soft-light box 1.25x1.75 9.5x8.5	24x16	9e1c9455
+noise 24x16 13	fill 255.255.255.0 alpha 0.25 blend difference box 1.25x1.75 9.5x8.5	24x16	e82dfc64
+noise 24x16 13	fill 10.20.30.255 alpha 0.999 blend exclusion box 1.25x1.75 9.5x8.5	24x16	e1117548
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend source-over box 0.75x0.25 30.5x6.5	40x10	9a3e183b
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend source-copy box 0.75x0.25 30.5x6.5	40x10	6a0a2126
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend source-in box 0.75x0.25 30.5x6.5	40x10	8c9ed67e
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend source-out box 0.75x0.25 30.5x6.5	40x10	6b238435
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend source-atop box 0.75x0.25 30.5x6.5	40x10	da627f3f
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend destination-over box 0.75x0.25 30.5x6.5	40x10	ad353d95
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend destination-copy box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend destination-in box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend destination-out box 0.75x0.25 30.5x6.5	40x10	37f6e47b
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend destination-atop box 0.75x0.25 30.5x6.5	40x10	ad353d95
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend xor box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend clear box 0.75x0.25 30.5x6.5	40x10	ea2e04eb
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend plus box 0.75x0.25 30.5x6.5	40x10	8d77133a
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend minus box 0.75x0.25 30.5x6.5	40x10	e9173e09
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend modulate box 0.75x0.25 30.5x6.5	40x10	8c9ed67e
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend multiply box 0.75x0.25 30.5x6.5	40x10	7df4f0a8
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend screen box 0.75x0.25 30.5x6.5	40x10	7dad1375
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend overlay box 0.75x0.25 30.5x6.5	40x10	11d401c3
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend darken box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend lighten box 0.75x0.25 30.5x6.5	40x10	42d470a1
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend color-dodge box 0.75x0.25 30.5x6.5	40x10	eb6b620a
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend color-burn box 0.75x0.25 30.5x6.5	40x10	06684098
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend linear-burn box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend linear-light box 0.75x0.25 30.5x6.5	40x10	00d5c241
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend pin-light box 0.75x0.25 30.5x6.5	40x10	ef7f2059
+noise 40x10 14	fill 30.200.90 alpha 0.6 blend hard-light box 0.75x0.25 30.5x6.5	40x10	3f7b5154
+noise 40x10 14	fill 255.255.255.0 alpha 0.25 blend soft-light box 0.75x0.25 30.5x6.5	40x10	f2a98789
+noise 40x10 14	fill 10.20.30.255 alpha 0.999 blend difference box 0.75x0.25 30.5x6.5	40x10	43999dc9
+noise 40x10 14	fill 200.60.10.140 alpha 1 blend exclusion box 0.75x0.25 30.5x6.5	40x10	6fe85cfa
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend source-over box 6.4x1.3 25.2x7.1	40x10	e603bfae
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend source-copy box 6.4x1.3 25.2x7.1	40x10	1acce4d2
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend source-in box 6.4x1.3 25.2x7.1	40x10	85cdad1b
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend source-out box 6.4x1.3 25.2x7.1	40x10	22205ee0
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend source-atop box 6.4x1.3 25.2x7.1	40x10	ad56ccb6
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend destination-over box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend destination-copy box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend destination-in box 6.4x1.3 25.2x7.1	40x10	a51d852b
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend destination-out box 6.4x1.3 25.2x7.1	40x10	0447ce13
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend destination-atop box 6.4x1.3 25.2x7.1	40x10	1acce4d2
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend xor box 6.4x1.3 25.2x7.1	40x10	dc055fea
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend clear box 6.4x1.3 25.2x7.1	40x10	a8c86d74
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend plus box 6.4x1.3 25.2x7.1	40x10	2093e618
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend minus box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend modulate box 6.4x1.3 25.2x7.1	40x10	12337734
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend multiply box 6.4x1.3 25.2x7.1	40x10	91400876
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend screen box 6.4x1.3 25.2x7.1	40x10	64095bb9
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend overlay box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend darken box 6.4x1.3 25.2x7.1	40x10	98deb07c
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend lighten box 6.4x1.3 25.2x7.1	40x10	98286256
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend color-dodge box 6.4x1.3 25.2x7.1	40x10	ed9c6d94
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend color-burn box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend linear-burn box 6.4x1.3 25.2x7.1	40x10	254902b9
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend linear-light box 6.4x1.3 25.2x7.1	40x10	77f0f93b
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend pin-light box 6.4x1.3 25.2x7.1	40x10	13cfedaf
+noise 40x10 15	fill 255.255.255.0 alpha 0.25 blend hard-light box 6.4x1.3 25.2x7.1	40x10	cef54f9e
+noise 40x10 15	fill 10.20.30.255 alpha 0.999 blend soft-light box 6.4x1.3 25.2x7.1	40x10	dcac9c99
+noise 40x10 15	fill 200.60.10.140 alpha 1 blend difference box 6.4x1.3 25.2x7.1	40x10	ac8d06de
+noise 40x10 15	fill 30.200.90 alpha 0.6 blend exclusion box 6.4x1.3 25.2x7.1	40x10	4facf6dd
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend source-over box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend source-copy box 2.25x3.25 6x0.5	24x16	4168d23c
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend source-in box 2.25x3.25 6x0.5	24x16	7925d1b1
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend source-out box 2.25x3.25 6x0.5	24x16	b3cf009e
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend source-atop box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend destination-over box 2.25x3.25 6x0.5	24x16	ec261f53
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend destination-copy box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend destination-in box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend destination-out box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend destination-atop box 2.25x3.25 6x0.5	24x16	ec261f53
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend xor box 2.25x3.25 6x0.5	24x16	15bd8502
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend clear box 2.25x3.25 6x0.5	24x16	aef126aa
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend plus box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend minus box 2.25x3.25 6x0.5	24x16	2cee4095
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend modulate box 2.25x3.25 6x0.5	24x16	2a202375
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend multiply box 2.25x3.25 6x0.5	24x16	a7ebf536
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend screen box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend overlay box 2.25x3.25 6x0.5	24x16	b2c9d58e
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend darken box 2.25x3.25 6x0.5	24x16	1379beab
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend lighten box 2.25x3.25 6x0.5	24x16	843aba8b
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend color-dodge box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend color-burn box 2.25x3.25 6x0.5	24x16	7d995f21
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend linear-burn box 2.25x3.25 6x0.5	24x16	4d27efc1
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend linear-light box 2.25x3.25 6x0.5	24x16	680b92a9
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend pin-light box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 16	fill 10.20.30.255 alpha 0.999 blend hard-light box 2.25x3.25 6x0.5	24x16	2959d2e7
+noise 24x16 16	fill 200.60.10.140 alpha 1 blend soft-light box 2.25x3.25 6x0.5	24x16	02a9d4b4
+noise 24x16 16	fill 30.200.90 alpha 0.6 blend difference box 2.25x3.25 6x0.5	24x16	f7084ce8
+noise 24x16 16	fill 255.255.255.0 alpha 0.25 blend exclusion box 2.25x3.25 6x0.5	24x16	eac36b6f
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend source-over box 2.1x3.6 7.3x1.2	24x16	dafc91a8
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend source-copy box 2.1x3.6 7.3x1.2	24x16	423bfa18
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend source-in box 2.1x3.6 7.3x1.2	24x16	4dcc2144
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend source-out box 2.1x3.6 7.3x1.2	24x16	32c7ec90
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend source-atop box 2.1x3.6 7.3x1.2	24x16	7d82dd0c
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend destination-over box 2.1x3.6 7.3x1.2	24x16	3d11f5b0
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend destination-copy box 2.1x3.6 7.3x1.2	24x16	08abf60c
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend destination-in box 2.1x3.6 7.3x1.2	24x16	32c7ec90
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend destination-out box 2.1x3.6 7.3x1.2	24x16	2239ee8d
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend destination-atop box 2.1x3.6 7.3x1.2	24x16	e352197f
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend xor box 2.1x3.6 7.3x1.2	24x16	3d48af4f
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend clear box 2.1x3.6 7.3x1.2	24x16	32c7ec90
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend plus box 2.1x3.6 7.3x1.2	24x16	c0b35d64
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend minus box 2.1x3.6 7.3x1.2	24x16	cd525d9a
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend modulate box 2.1x3.6 7.3x1.2	24x16	4ee67c0a
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend multiply box 2.1x3.6 7.3x1.2	24x16	08abf60c
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend screen box 2.1x3.6 7.3x1.2	24x16	19b02b44
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend overlay box 2.1x3.6 7.3x1.2	24x16	24b5f4c2
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend darken box 2.1x3.6 7.3x1.2	24x16	90d63092
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend lighten box 2.1x3.6 7.3x1.2	24x16	08abf60c
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend color-dodge box 2.1x3.6 7.3x1.2	24x16	98436bdb
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend color-burn box 2.1x3.6 7.3x1.2	24x16	d355bd24
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend linear-burn box 2.1x3.6 7.3x1.2	24x16	572bb6b2
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend linear-light box 2.1x3.6 7.3x1.2	24x16	08abf60c
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend pin-light box 2.1x3.6 7.3x1.2	24x16	ad1a6d17
+noise 24x16 17	fill 200.60.10.140 alpha 1 blend hard-light box 2.1x3.6 7.3x1.2	24x16	502440dc
+noise 24x16 17	fill 30.200.90 alpha 0.6 blend soft-light box 2.1x3.6 7.3x1.2	24x16	9fa3e671
+noise 24x16 17	fill 255.255.255.0 alpha 0.25 blend difference box 2.1x3.6 7.3x1.2	24x16	08abf60c
+noise 24x16 17	fill 10.20.30.255 alpha 0.999 blend exclusion box 2.1x3.6 7.3x1.2	24x16	d1df4eeb
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend source-over box 2.5x2.999 9x4.002	24x16	08180648
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend source-copy box 2.5x2.999 9x4.002	24x16	d9c1a22d
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend source-in box 2.5x2.999 9x4.002	24x16	f02bf707
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend source-out box 2.5x2.999 9x4.002	24x16	dc0c6b13
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend source-atop box 2.5x2.999 9x4.002	24x16	e8d7ac02
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend destination-over box 2.5x2.999 9x4.002	24x16	dea9fd28
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend destination-copy box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend destination-in box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend destination-out box 2.5x2.999 9x4.002	24x16	876bb05d
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend destination-atop box 2.5x2.999 9x4.002	24x16	dea9fd28
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend xor box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend clear box 2.5x2.999 9x4.002	24x16	4c918744
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend plus box 2.5x2.999 9x4.002	24x16	6d4d8b62
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend minus box 2.5x2.999 9x4.002	24x16	62b7b027
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend modulate box 2.5x2.999 9x4.002	24x16	f02bf707
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend multiply box 2.5x2.999 9x4.002	24x16	83630f7d
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend screen box 2.5x2.999 9x4.002	24x16	e6423435
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend overlay box 2.5x2.999 9x4.002	24x16	b5017672
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend darken box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend lighten box 2.5x2.999 9x4.002	24x16	1699d6df
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend color-dodge box 2.5x2.999 9x4.002	24x16	3e58e531
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend color-burn box 2.5x2.999 9x4.002	24x16	9138e8a2
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend linear-burn box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend linear-light box 2.5x2.999 9x4.002	24x16	4ce89eee
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend pin-light box 2.5x2.999 9x4.002	24x16	faaf994a
+noise 24x16 18	fill 30.200.90 alpha 0.6 blend hard-light box 2.5x2.999 9x4.002	24x16	924cc75d
+noise 24x16 18	fill 255.255.255.0 alpha 0.25 blend soft-light box 2.5x2.999 9x4.002	24x16	10575911
+noise 24x16 18	fill 10.20.30.255 alpha 0.999 blend difference box 2.5x2.999 9x4.002	24x16	396615c9
+noise 24x16 18	fill 200.60.10.140 alpha 1 blend exclusion box 2.5x2.999 9x4.002	24x16	f3e9cc82
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend source-over box 4x4 8x8	24x16	ddd67c19
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend source-copy box 4x4 8x8	24x16	effeb4f0
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend source-in box 4x4 8x8	24x16	99e7624e
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend source-out box 4x4 8x8	24x16	ef566e81
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend source-atop box 4x4 8x8	24x16	5cf99e9b
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend destination-over box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend destination-copy box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend destination-in box 4x4 8x8	24x16	3065d429
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend destination-out box 4x4 8x8	24x16	ccff26fd
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend destination-atop box 4x4 8x8	24x16	effeb4f0
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend xor box 4x4 8x8	24x16	b36ea0f6
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend clear box 4x4 8x8	24x16	6d7ac828
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend plus box 4x4 8x8	24x16	fefb8dc2
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend minus box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend modulate box 4x4 8x8	24x16	c54d73fe
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend multiply box 4x4 8x8	24x16	291fa1cb
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend screen box 4x4 8x8	24x16	fdcdde31
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend overlay box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend darken box 4x4 8x8	24x16	325a238c
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend lighten box 4x4 8x8	24x16	6d6da20e
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend color-dodge box 4x4 8x8	24x16	71ec568d
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend color-burn box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend linear-burn box 4x4 8x8	24x16	372e7dcd
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend linear-light box 4x4 8x8	24x16	b66b46b0
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend pin-light box 4x4 8x8	24x16	bbf37a24
+noise 24x16 19	fill 255.255.255.0 alpha 0.25 blend hard-light box 4x4 8x8	24x16	cd537689
+noise 24x16 19	fill 10.20.30.255 alpha 0.999 blend soft-light box 4x4 8x8	24x16	8d35cbbd
+noise 24x16 19	fill 200.60.10.140 alpha 1 blend difference box 4x4 8x8	24x16	7d58227b
+noise 24x16 19	fill 30.200.90 alpha 0.6 blend exclusion box 4x4 8x8	24x16	001d2d97
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend source-over box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend source-copy box 3.3x0.3 0.3x9.9	24x16	0222091b
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend source-in box 3.3x0.3 0.3x9.9	24x16	c1b5afc5
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend source-out box 3.3x0.3 0.3x9.9	24x16	2fc7aa4c
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend source-atop box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend destination-over box 3.3x0.3 0.3x9.9	24x16	8dbde4e4
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend destination-copy box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend destination-in box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend destination-out box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend destination-atop box 3.3x0.3 0.3x9.9	24x16	8dbde4e4
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend xor box 3.3x0.3 0.3x9.9	24x16	074ee781
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend clear box 3.3x0.3 0.3x9.9	24x16	03ef3515
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend plus box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend minus box 3.3x0.3 0.3x9.9	24x16	ba379fd7
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend modulate box 3.3x0.3 0.3x9.9	24x16	90d9cd42
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend multiply box 3.3x0.3 0.3x9.9	24x16	048658a5
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend screen box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend overlay box 3.3x0.3 0.3x9.9	24x16	847670a8
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend darken box 3.3x0.3 0.3x9.9	24x16	8600c37a
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend lighten box 3.3x0.3 0.3x9.9	24x16	cb146427
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend color-dodge box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend color-burn box 3.3x0.3 0.3x9.9	24x16	27bd7cc4
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend linear-burn box 3.3x0.3 0.3x9.9	24x16	305da94c
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend linear-light box 3.3x0.3 0.3x9.9	24x16	91746287
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend pin-light box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 24x16 20	fill 10.20.30.255 alpha 0.999 blend hard-light box 3.3x0.3 0.3x9.9	24x16	c52de6a2
+noise 24x16 20	fill 200.60.10.140 alpha 1 blend soft-light box 3.3x0.3 0.3x9.9	24x16	53b8efda
+noise 24x16 20	fill 30.200.90 alpha 0.6 blend difference box 3.3x0.3 0.3x9.9	24x16	14fe1591
+noise 24x16 20	fill 255.255.255.0 alpha 0.25 blend exclusion box 3.3x0.3 0.3x9.9	24x16	00a8431d
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend source-over box 1.5x1.5 44.25x5	48x8	dc3f08fb
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend source-copy box 1.5x1.5 44.25x5	48x8	8e11091d
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend source-in box 1.5x1.5 44.25x5	48x8	cf119b43
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend source-out box 1.5x1.5 44.25x5	48x8	3c5b094c
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend source-atop box 1.5x1.5 44.25x5	48x8	10fc6760
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend destination-over box 1.5x1.5 44.25x5	48x8	ec7c43a5
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend destination-copy box 1.5x1.5 44.25x5	48x8	3ff26220
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend destination-in box 1.5x1.5 44.25x5	48x8	3c5b094c
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend destination-out box 1.5x1.5 44.25x5	48x8	fb111e34
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend destination-atop box 1.5x1.5 44.25x5	48x8	52886ee2
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend xor box 1.5x1.5 44.25x5	48x8	20c1a5a2
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend clear box 1.5x1.5 44.25x5	48x8	3c5b094c
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend plus box 1.5x1.5 44.25x5	48x8	e0c28925
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend minus box 1.5x1.5 44.25x5	48x8	71d253ee
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend modulate box 1.5x1.5 44.25x5	48x8	a4349e46
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend multiply box 1.5x1.5 44.25x5	48x8	3ff26220
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend screen box 1.5x1.5 44.25x5	48x8	c9fb763d
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend overlay box 1.5x1.5 44.25x5	48x8	1c4ad744
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend darken box 1.5x1.5 44.25x5	48x8	77dab0e1
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend lighten box 1.5x1.5 44.25x5	48x8	3ff26220
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend color-dodge box 1.5x1.5 44.25x5	48x8	fe54ff53
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend color-burn box 1.5x1.5 44.25x5	48x8	9bda1961
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend linear-burn box 1.5x1.5 44.25x5	48x8	b9ffdce8
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend linear-light box 1.5x1.5 44.25x5	48x8	3ff26220
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend pin-light box 1.5x1.5 44.25x5	48x8	91bd7820
+noise 48x8 21	fill 200.60.10.140 alpha 1 blend hard-light box 1.5x1.5 44.25x5	48x8	b0ff17fa
+noise 48x8 21	fill 30.200.90 alpha 0.6 blend soft-light box 1.5x1.5 44.25x5	48x8	b79994b2
+noise 48x8 21	fill 255.255.255.0 alpha 0.25 blend difference box 1.5x1.5 44.25x5	48x8	3ff26220
+noise 48x8 21	fill 10.20.30.255 alpha 0.999 blend exclusion box 1.5x1.5 44.25x5	48x8	eeb8954a
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend source-over box 9.6x0.4 33.3x7.2	48x8	06131c43
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend source-copy box 9.6x0.4 33.3x7.2	48x8	bf1f3edb
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend source-in box 9.6x0.4 33.3x7.2	48x8	d1363a94
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend source-out box 9.6x0.4 33.3x7.2	48x8	0b12fdfe
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend source-atop box 9.6x0.4 33.3x7.2	48x8	bb849943
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend destination-over box 9.6x0.4 33.3x7.2	48x8	60834b4d
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend destination-copy box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend destination-in box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend destination-out box 9.6x0.4 33.3x7.2	48x8	4fd8df71
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend destination-atop box 9.6x0.4 33.3x7.2	48x8	60834b4d
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend xor box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend clear box 9.6x0.4 33.3x7.2	48x8	09230a3f
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend plus box 9.6x0.4 33.3x7.2	48x8	c5393ab7
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend minus box 9.6x0.4 33.3x7.2	48x8	d03e48eb
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend modulate box 9.6x0.4 33.3x7.2	48x8	d1363a94
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend multiply box 9.6x0.4 33.3x7.2	48x8	9c9dee34
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend screen box 9.6x0.4 33.3x7.2	48x8	b5017bcc
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend overlay box 9.6x0.4 33.3x7.2	48x8	4b28f83e
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend darken box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend lighten box 9.6x0.4 33.3x7.2	48x8	9dbf5a1f
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend color-dodge box 9.6x0.4 33.3x7.2	48x8	a421a279
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend color-burn box 9.6x0.4 33.3x7.2	48x8	a3004f3d
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend linear-burn box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend linear-light box 9.6x0.4 33.3x7.2	48x8	34a40191
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend pin-light box 9.6x0.4 33.3x7.2	48x8	ffb774b0
+noise 48x8 22	fill 30.200.90 alpha 0.6 blend hard-light box 9.6x0.4 33.3x7.2	48x8	132d6e1c
+noise 48x8 22	fill 255.255.255.0 alpha 0.25 blend soft-light box 9.6x0.4 33.3x7.2	48x8	fa4e1704
+noise 48x8 22	fill 10.20.30.255 alpha 0.999 blend difference box 9.6x0.4 33.3x7.2	48x8	a9cbed14
+noise 48x8 22	fill 200.60.10.140 alpha 1 blend exclusion box 9.6x0.4 33.3x7.2	48x8	b8a3c99b
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend source-over fill-all	16x8	c66a4889
+noise 16x8 31	fill 200.100.50.180 blend source-over clip 2.5x1.25 13.75x6.5 fill-all	16x8	f878dfc0
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend source-over clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	7fcce0c8
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend source-copy fill-all	16x8	19020252
+noise 16x8 31	fill 200.100.50.180 blend source-copy clip 2.5x1.25 13.75x6.5 fill-all	16x8	5978a644
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend source-copy clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	7fcce0c8
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend source-in fill-all	16x8	985410f2
+noise 16x8 31	fill 200.100.50.180 blend source-in clip 2.5x1.25 13.75x6.5 fill-all	16x8	9458f729
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend source-in clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	6fb8ca0f
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend source-out fill-all	16x8	8ed1c4ef
+noise 16x8 31	fill 200.100.50.180 blend source-out clip 2.5x1.25 13.75x6.5 fill-all	16x8	dbd27603
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend source-out clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	f760bf76
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend source-atop fill-all	16x8	498559de
+noise 16x8 31	fill 200.100.50.180 blend source-atop clip 2.5x1.25 13.75x6.5 fill-all	16x8	4f650eeb
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend source-atop clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	6fb8ca0f
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend destination-over fill-all	16x8	82411170
+noise 16x8 31	fill 200.100.50.180 blend destination-over clip 2.5x1.25 13.75x6.5 fill-all	16x8	209c8d90
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend destination-over clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	e0aae8f2
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend destination-copy fill-all	16x8	2e0ed564
+noise 16x8 31	fill 200.100.50.180 blend destination-copy clip 2.5x1.25 13.75x6.5 fill-all	16x8	d3ad64e5
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend destination-copy clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	65db9da9
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend destination-in fill-all	16x8	53b86419
+noise 16x8 31	fill 200.100.50.180 blend destination-in clip 2.5x1.25 13.75x6.5 fill-all	16x8	cff92790
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend destination-in clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	65db9da9
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend destination-out fill-all	16x8	c36dbce2
+noise 16x8 31	fill 200.100.50.180 blend destination-out clip 2.5x1.25 13.75x6.5 fill-all	16x8	1e441bc6
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend destination-out clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	a84b2a24
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend destination-atop fill-all	16x8	ceb4a132
+noise 16x8 31	fill 200.100.50.180 blend destination-atop clip 2.5x1.25 13.75x6.5 fill-all	16x8	f11a338c
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend destination-atop clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	e0aae8f2
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend xor fill-all	16x8	94d82301
+noise 16x8 31	fill 200.100.50.180 blend xor clip 2.5x1.25 13.75x6.5 fill-all	16x8	ca831f64
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend xor clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	f760bf76
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend clear fill-all	16x8	de0d5797
+noise 16x8 31	fill 200.100.50.180 blend clear clip 2.5x1.25 13.75x6.5 fill-all	16x8	c009916c
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend clear clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	a84b2a24
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend plus fill-all	16x8	5e9b5dc6
+noise 16x8 31	fill 200.100.50.180 blend plus clip 2.5x1.25 13.75x6.5 fill-all	16x8	e96b479d
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend plus clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	e8dec96e
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend minus fill-all	16x8	577caa52
+noise 16x8 31	fill 200.100.50.180 blend minus clip 2.5x1.25 13.75x6.5 fill-all	16x8	ad3b9813
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend minus clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	8a3395fa
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend modulate fill-all	16x8	12c2423a
+noise 16x8 31	fill 200.100.50.180 blend modulate clip 2.5x1.25 13.75x6.5 fill-all	16x8	e5fb0e13
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend modulate clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	2753fb58
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend multiply fill-all	16x8	9ec6ae17
+noise 16x8 31	fill 200.100.50.180 blend multiply clip 2.5x1.25 13.75x6.5 fill-all	16x8	10dfd652
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend multiply clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	a2c0f4a7
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend screen fill-all	16x8	ca8603f4
+noise 16x8 31	fill 200.100.50.180 blend screen clip 2.5x1.25 13.75x6.5 fill-all	16x8	4e6df991
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend screen clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	f41e3499
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend overlay fill-all	16x8	cd56dae2
+noise 16x8 31	fill 200.100.50.180 blend overlay clip 2.5x1.25 13.75x6.5 fill-all	16x8	b64f8696
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend overlay clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	befb165c
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend darken fill-all	16x8	306b4f0d
+noise 16x8 31	fill 200.100.50.180 blend darken clip 2.5x1.25 13.75x6.5 fill-all	16x8	ba030b34
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend darken clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	cc4394dc
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend lighten fill-all	16x8	0a90bfe7
+noise 16x8 31	fill 200.100.50.180 blend lighten clip 2.5x1.25 13.75x6.5 fill-all	16x8	cadbb6e9
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend lighten clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	f7267567
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend color-dodge fill-all	16x8	0ff09950
+noise 16x8 31	fill 200.100.50.180 blend color-dodge clip 2.5x1.25 13.75x6.5 fill-all	16x8	99ef31c3
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend color-dodge clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	4d1c24c9
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend color-burn fill-all	16x8	e30e7f16
+noise 16x8 31	fill 200.100.50.180 blend color-burn clip 2.5x1.25 13.75x6.5 fill-all	16x8	8af4cc54
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend color-burn clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	2dc0ba94
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend linear-burn fill-all	16x8	f258a0db
+noise 16x8 31	fill 200.100.50.180 blend linear-burn clip 2.5x1.25 13.75x6.5 fill-all	16x8	7bb12b8f
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend linear-burn clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	68a80df7
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend linear-light fill-all	16x8	a4f1c4c3
+noise 16x8 31	fill 200.100.50.180 blend linear-light clip 2.5x1.25 13.75x6.5 fill-all	16x8	efcc9ff0
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend linear-light clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	93c0e987
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend pin-light fill-all	16x8	70bea353
+noise 16x8 31	fill 200.100.50.180 blend pin-light clip 2.5x1.25 13.75x6.5 fill-all	16x8	8e994ef8
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend pin-light clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	d8d9015e
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend hard-light fill-all	16x8	7bc0afb8
+noise 16x8 31	fill 200.100.50.180 blend hard-light clip 2.5x1.25 13.75x6.5 fill-all	16x8	79b4e8a5
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend hard-light clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	320eea49
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend soft-light fill-all	16x8	3981bf51
+noise 16x8 31	fill 200.100.50.180 blend soft-light clip 2.5x1.25 13.75x6.5 fill-all	16x8	b3a47549
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend soft-light clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	cc1b3fcb
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend difference fill-all	16x8	82007b36
+noise 16x8 31	fill 200.100.50.180 blend difference clip 2.5x1.25 13.75x6.5 fill-all	16x8	63b7b353
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend difference clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	5cde5718
+noise 16x8 30	fill 200.100.50.180 alpha 0.5 blend exclusion fill-all	16x8	ab559940
+noise 16x8 31	fill 200.100.50.180 blend exclusion clip 2.5x1.25 13.75x6.5 fill-all	16x8	d82182a5
+noise 16x8 32	fill 90.10.250 alpha 0.7 blend exclusion clip 2x1 14x7 fill-all clip off box 0.5x0.5 3x3	16x8	2e20005a
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale 2 box -3.3x-2.2 5.5x3.75	24x16	94fe766a
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale 0.5 box -3.3x-2.2 5.5x3.75	24x16	565c293d
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale 1.5x0.75 box -3.3x-2.2 5.5x3.75	24x16	92b06573
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale -1x1 box -3.3x-2.2 5.5x3.75	24x16	4a73b122
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale 1x-1 box -3.3x-2.2 5.5x3.75	24x16	4a73b122
+noise 24x16 40	fill 10.200.100.200 translate 12x8 scale -2x-0.5 box -3.3x-2.2 5.5x3.75	24x16	4a73b122
+noise 24x16 41	fill 250.0.0.120 translate 0.5x0.25 box 2x2 10x6 translate 0.5x0.25 box 1x1 4x4	24x16	87ef3924
+noise 24x16 41	fill 250.0.0.120 translate -0.75x0.5 box 2x2 10x6 translate -0.75x0.5 box 1x1 4x4	24x16	42a58cc7
+noise 24x16 41	fill 250.0.0.120 translate 3x2 box 2x2 10x6 translate 3x2 box 1x1 4x4	24x16	860c7586
+noise 24x16 41	fill 250.0.0.120 translate 0.001x0.999 box 2x2 10x6 translate 0.001x0.999 box 1x1 4x4	24x16	eeabe237
+noise 24x16 42	fill 250.0.0.120 scale 0 0 box 0x0 20x10	24x16	840efe9f
+noise 24x16 43	fill 250.0.0.120 scale 2 reset-matrix box 1x1 4x4	24x16	1c43ffb8
+noise 24x16 44	fill 0.0.250 clip 3.5x2.5 18.25x11.75 clear-all	24x16	9b0ed300
+noise 24x16 45	fill 0.0.250 alpha 0.3 clear 2.5x2.5 9.25x7 clear 12x3 20x9	24x16	d78a8e22
+noise 24x16 46	clip 2x2 10x10 clip 6x6 20x14 fill 255.255.0 fill-all clip none fill 0.0.255.100 box 0x0 4x4	24x16	73bd00c1
+noise 24x16 47	scale 2 clip 1.25x1.25 5x4 fill 255.0.255.200 fill-all	24x16	b0261005
+noise 24x16 48	clip 30x30 40x40 fill 255.0.0 fill-all box 0x0 5x5 clip off fill-all	24x16	074a3d4b
+noise 12x8 50	10 fill 0.255.0 fill-all	12x8	1d4433f8
+noise 12x8 50	10 20 fill 0.255.0 fill-all	12x8	1d4433f8
+noise 12x8 50	10 alpha 0.5 fill 0.255.0 fill-all	12x8	301d9725
+noise 12x8 50	fill 0.255.0 10 fill 0.0.255 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.255.0 bogus 1 2 fill-all	12x8	301d9725
+noise 12x8 50	fill 1x1 fill-all	12x8	1d4433f8
+noise 12x8 50	fill 0.0.255 fill off fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 fill on fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 blend miter fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255.100 blend 15 fill-all	12x8	bc0d37ad
+noise 12x8 50	fill 0.0.255.100 blend 'multiply fill-all	12x8	bc0d37ad
+noise 12x8 50	fill 0.0.255.100 blend multiply blend off fill-all	12x8	c6b02b7c
+noise 12x8 50	fill 0.0.255.100 blend multiply blend none fill-all	12x8	c6b02b7c
+noise 12x8 50	fill 0.0.255.100 blend 99 fill-all	12x8	c6b02b7c
+noise 12x8 50	fill 0.0.255.100 composite xor fill-all	12x8	09aa3000
+noise 12x8 50	fill 0.0.255.100 alpha 50% fill-all	12x8	6de3c015
+noise 12x8 50	fill 0.0.255.100 alpha 3 fill-all	12x8	c6b02b7c
+noise 12x8 50	fill 0.0.255.100 alpha -1 fill-all	12x8	be58da74
+noise 12x8 50	fill 0.0.255.100 alpha 0.001 fill-all	12x8	be58da74
+noise 12x8 50	fill 0.0.255.100 alpha 1x1 fill-all	12x8	c6b02b7c
+noise 12x8 50	fill 0.0.255 line 1x1 2x2 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 line-width 0 line 1x1 2x2 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 line-join 5x5 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 line-join miter bevel fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 line-cap 9 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 line-cap 1 2 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 polygon 1x1 2x2 3x1 fill-all	12x8	e50bc435
+noise 12x8 50	polygon 1x1 2x2 3x1 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	circle 5x5 3 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	circle 5x5 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	ellipse 1x1 4x4 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	arc 5x5 3x3 0 90 pie fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	triangle 1x1 3x1 2x3 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	point 1x1 2x2 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	point-size 3 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	cubic 1x1 2x2 3x3 4x4 fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	text 1x1 {hello} fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	text 1x1 12 {hello} fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	shape [move 1x1 line 3x3] fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	fill 0.0.255 box 1x1	12x8	be58da74
+noise 12x8 50	fill 0.0.255 box 1x1 3x3 2 fill 255.0.0 box 5x5 2x2	12x8	d0f008bd
+noise 12x8 50	fill 0.0.255 rotate 0 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	fill 0.0.255 rotate 0 4x4 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	fill 0.0.255 scale 2x1 box 1x1 3x3	12x8	5ef330f8
+noise 12x8 50	fill 0.0.255 translate 1 box 1x1 3x3 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 clip 1x1 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 clip on fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 move 1x1 fill-all	12x8	e50bc435
+noise 12x8 50	fill 0.0.255 close fill-all	12x8	e50bc435
+noise 12x8 50	fill 10.20.30 blend	12x8	be58da74
+noise 12x8 50	fill-all blend multiply	12x8	1d4433f8
+noise 12x8 50	pen off fill 0.0.255 box 1x1 3x3	12x8	45029b9b
+noise 12x8 50	fill 0.0.255	12x8	be58da74
+noise 12x8 50	fill 1.2.3.4.5 fill-all	12x8	21e84a77
+noise 12x8 50	fill 9.8.7.6 fill-all	12x8	44f2a035
+pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
+pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
+pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4

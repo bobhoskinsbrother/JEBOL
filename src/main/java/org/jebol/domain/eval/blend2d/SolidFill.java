@@ -54,6 +54,20 @@ public final class SolidFill {
         return ConstantMaskCompositor.composite(operator, destination, premultiplied, alpha);
     }
 
+    int compositeUnderConstantMask(int destination, int mask) {
+        return ConstantMaskCompositor.composite(operator, destination, premultiplied, mask);
+    }
+
+    int compositeUnderVariableMask(int destination, int mask) {
+        if (mask == 0) {
+            return destination;
+        }
+        if (mask == OPAQUE) {
+            return ConstantMaskCompositor.composite(operator, destination, premultiplied, OPAQUE);
+        }
+        return VariableMaskCompositor.composite(operator, destination, premultiplied, mask, true, hasSourceAlpha);
+    }
+
     public int composite(int destination, int coverage) {
         if (coverage == 0) {
             return destination;

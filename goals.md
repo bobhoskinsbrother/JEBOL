@@ -135,15 +135,19 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    machine code with asmjit; JEBOL evaluates the same grammar and must give
    the same double for every operator and function it accepts, and refuse
    what it refuses.
-3. **blend2d** 0.12.0. Exports `draw image commands`, which paints a block of
-   its command words (`move`, `line`, `curve`, `box`, `circle`, `text`,
-   `fill`, `pen`, `line-width`, `blend`, `rotate`, `clip`, `font` and the
-   rest) onto an image or a new one of a size, and the module also holds
-   `path`, `font`, `image`, `info` and `set-threads`. JEBOL's own DRAW
-   dialect renders through `PaintList` and goes most of the way. Blend2D's
-   anti-aliasing cannot be matched pixel for pixel short of porting it, so
-   the spec says which commands are served and what a test may compare --
-   geometry and colour, not the edge pixels.
+3. **blend2d** 0.12.0, served in part (`docs/blend2d-port.md`, decision 59).
+   `import 'blend2d` answers the release's module, and `draw` walks every
+   command as the extension's C does. What needs no rasteriser draws
+   byte for byte as the release does: Blend2D's compositing, all 29
+   operators, global alpha, `fill-all`, `clear-all`, `clear`, boxes on whole
+   pixels or not under `translate` and `scale`, and clips. `info`, `image`
+   from an image and `set-threads` answer as the release does. Left, in the
+   order to build it: Blend2D's edge builder, analytic rasteriser and fill
+   loops, which bring polygons, triangles, circles, ellipses, arcs, rounded
+   boxes, cubics, `shape` and boxes under a rotation; the stroker, for `pen`
+   and `line`; gradients and image patterns; image blits, and images read
+   from files; `path`; then fonts and `text`. Until then each of those
+   raises an error naming what it cannot draw rather than drawing it wrongly.
 
 **Done when** each of the sixteen has a decision written down, and each of
 the six imports as a module that works fully: every word it exports answers

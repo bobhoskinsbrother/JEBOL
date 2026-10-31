@@ -83,13 +83,17 @@ class WhereAModuleComesFromFromTheSourceTest {
                 .isEqualTo("bundled://thru-cache.reb");
         assertThat(answerTo(root, "select system/modules 'httpd"))
                 .isEqualTo("bundled://httpd.reb");
+        assertThat(answerTo(root, "type? first select system/modules 'blend2d"))
+                .as("a served extension is offered before it is imported, as its spec and its body")
+                .isEqualTo("#(object!)");
     }
 
     @Test
     @DisplayName("but nothing this build cannot serve is offered")
     void offersNothingThisBuildCannotServe(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'sqlite")).isEqualTo("_");
-        assertThat(answerTo(root, "select system/modules 'blend2d")).isEqualTo("_");
+        assertThat(answerTo(root, "select system/modules 'mathpresso")).isEqualTo("_");
+        assertThat(answerTo(root, "select system/modules 'zstd")).isEqualTo("_");
         assertThat(answerTo(root, "error? try [import 'brotli]")).isEqualTo("#(true)");
         assertThat(answerTo(root, "type? select system/modules 'json"))
                 .as("already vendored and loaded, so it is a module and not an address")

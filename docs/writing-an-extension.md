@@ -122,7 +122,7 @@ boolean loud = call.refinements().contains("loud");
 | A string              | `StringValue.of("text")`                                            |
 | A file                | `FileValue.of("made.txt")`                                          |
 | A url                 | `UrlValue.of("http://example.com")`                                 |
-| A block               | `BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)))` |
+| A block               | `BlockValue.of(IntegerValue.of(1), IntegerValue.of(2))`             |
 | none                  | `NoneValue.none()`                                                  |
 | Nothing at all        | `UnsetValue.unset()`                                                |
 | One of your arguments | `call.arguments().getFirst()`                                       |

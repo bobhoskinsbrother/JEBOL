@@ -182,6 +182,16 @@ The third draws a gallery of what DRAW draws: shapes, curves, joins, dashes and 
 ./gradlew assembleSite -PsiteDir=examples/draw && cd build/site && python3 -m http.server 8000
 ```
 
+The fourth shows Blend2D's 29 blend modes, one tile each, drawn by the `blend2d`
+module's own `draw` -- `b2d: import 'blend2d` -- whose pixels are the release's
+byte for byte. That module draws fills, boxes, clips, alpha and blending today;
+a shape that needs Blend2D's rasteriser, which is not ported yet, raises an
+error naming it.
+
+```
+./build/install/jebol/bin/jebol --screen=window examples/blend2d/
+```
+
 `to image! gob` paints a gob and its pane into an image of the gob's size, over white, as R3 does on Windows. It needs a screen: on the JVM Java2D paints it, with or without a display, and on a page the worker paints it into an OffscreenCanvas. Without a screen it is the refusal R3 gives on a host that cannot compose, `cannot MAKE image! from: gob`.
 
 ### **Places, Back and Forward**

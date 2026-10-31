@@ -6,8 +6,71 @@ note carries what the code cannot: what the extension does, which Blend2D it
 builds, how the port is checked, and how the pixels are split between the domain
 and the platform.
 
-Work in progress: the compositing is ported and checked; the rasteriser, the
-gradients, the patterns, the text and the extension's commands are not yet.
+Work in progress. Served: the module, the whole `draw` walk, the compositing,
+and every fill that needs no rasteriser -- `fill-all`, `clear-all`, `clear`,
+boxes and clips under `translate` and `scale` -- each byte for byte against the
+release's C. Not yet: the rasteriser and what it brings (see goals 1a), each of
+which raises an error naming what it cannot draw.
+
+---
+
+## The walk
+
+`Blend2DDrawing` is `cmd_draw` line for line. Every command reads its
+arguments as the C does, so a block flows the same way through what JEBOL
+cannot draw yet: a shape read with neither a fill nor a pen consumes its
+arguments and draws nothing, as in the C, and only a shape that would put down
+pixels raises.
+
+Things the C does that the walk keeps:
+
+- **A failure goes back, not forward.** A command whose arguments do not fit
+  sets the position back to just after the last command word read (`cmd_pos`)
+  and scans forward from there for the next command word. A block that opens
+  with something that is not a command word reads `cmd_pos` before the C sets
+  it; GCC 15.2 at `-O2` makes it 3, and JEBOL takes 3.
+- **`fetch_mode` says yes to anything that is not a word or an integer**, and
+  past the tail, answering the largest mode. So `line-join 5x5` takes the pair
+  and joins round, and `blend` as the last word of a block sets `exclusion`.
+- **A word is looked up through its binding and a path is evaluated**
+  (`RL_GET_VALUE_RESOLVED`), so `fill red` works and `fill linear` reaches the
+  gradient only because `linear` is unset.
+- **`pen` given an image sets the fill**, not the stroke, and `image` given
+  `x` or a pair makes Blend2D refuse the image, which ends the whole `draw`
+  quietly (`goto end_ctx`).
+- **`image` the command, given a pair, always fails**: the C reads the pair's
+  two floats as the integers `width` and `height`, and Blend2D refuses the
+  size. `image 3x2` is `Blend2D failed to make an image handle!` on a real
+  3.22.5 too.
+
+## Boxes, clips and the whole image
+
+Blend2D maps a box through the transform in 24.8 fixed point, clips it, and
+truncates it (`fillUnclippedBoxD`). A box on whole pixels is `BoxA`, the
+constant-mask path at the global alpha. Any other goes through
+`initBoxU8bpc24x8` (`UnalignedBoxFill`), which folds the global alpha into
+its masks and lays a scanline out as constant spans and runs of per-pixel
+masks: one constant span when the box is a pixel wide or its sides are on
+whole pixels; otherwise all per-pixel masks when the row, padded left to a
+multiple of four, is at most 20 wide, and four per-pixel masks, a constant
+middle and a per-pixel tail when it is wider. Which pixel takes which path
+matters, because under a global alpha the two paths disagree for the
+operators that do not scale the source by the mask. A row whose mask rounds to
+0 is skipped; a box one row high whose bottom mask rounds to 0 draws nothing.
+
+A transform that rotates or skews makes a box a polygon, for the rasteriser. An
+invalid one (`scale 0 0`) draws nothing.
+
+`clip` maps its rectangle through the whole transform (`mapBox`), narrows the
+clip, and is aligned when every coordinate is a whole pixel; `fill-all` then
+paints the clip as `BoxA` or as an unaligned box. `clip off` restores the whole
+image but not the alignment, which Blend2D forgets to reset; the two paint the
+same. `clear` and `clear-all` are source-copy of transparent black at full
+alpha, whatever the global alpha.
+
+Every rectangle the extension builds is `x`, `y`, `x2 - x`, `y2 - y` from the
+pairs' 32-bit floats, and Blend2D adds `x + w` back: the round trip can move
+the last bit, and JEBOL does it the same way.
 
 ---
 
@@ -97,7 +160,9 @@ constant one. The mask is `div255(coverage * alpha)`.
 **The float operators are the JIT's float code.** Colour-dodge, colour-burn and
 soft-light compute in single precision with the JIT's order of operations, its
 `max(x, 0.001)`, and soft-light's fused multiply-add, which the JIT emits on a
-CPU with FMA. A float past the range of an int converts to `0x80000000`, which
+CPU with FMA. TeaVM has no float `Math.fma`, so `FusedMultiplyAdd` is musl's
+`fmaf`: the exact product in double, then one correction for a sum that lands
+exactly halfway between two floats; it agrees with the JVM's `fma` bit for bit. A float past the range of an int converts to `0x80000000`, which
 the following unsigned pack makes 0; colour-burn reaches it whenever a
 destination colour is above its alpha and the source channel is 0.
 

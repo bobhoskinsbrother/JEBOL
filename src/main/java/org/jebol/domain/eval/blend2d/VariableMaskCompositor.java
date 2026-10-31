@@ -346,7 +346,7 @@ final class VariableMaskCompositor {
             float lift = (sf[index] + sf[index] - sa) * divisor;
             float fourDc = dc * 4.0f;
             float root = (float) Math.sqrt(dc);
-            float cubic = (Math.fma(fourDc, dc, dc) - fourDc + 1.0f) * fourDc;
+            float cubic = (FusedMultiplyAdd.multiplyThenAdd(fourDc, dc, dc) - fourDc + 1.0f) * fourDc;
             float curve = fourDc <= 1.0f ? cubic : root;
             float term = 0.0f < lift ? curve - dc : (1.0f - dc) * dc;
             if (index == ALPHA) {
