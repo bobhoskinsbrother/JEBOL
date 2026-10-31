@@ -54,7 +54,20 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         if (!(given instanceof PairValue(double x, double y))) {
             return RebolSeries.super.findPositionNamedBy(given, countingFromOne);
         }
-        return ((long) y - (countingFromOne ? 1 : 0)) * storage.wide() + (long) x;
+        return (roundHalfUp(y) - (countingFromOne ? 1 : 0)) * storage.wide() + roundHalfUp(x);
+    }
+
+    private static long roundHalfUp(double coordinate) {
+        return (long) Math.floor(coordinate + 0.5);
+    }
+
+    @Override
+    public Value pickBy(Value selector) {
+        return switch (selector) {
+            case PairValue pair -> pick((int) findPositionNamedBy(pair, true));
+            case PercentValue ignored -> throw Raised.cannotUseAction(this, "pick");
+            default -> RebolSeries.super.pickBy(selector);
+        };
     }
 
     @Override
@@ -151,6 +164,9 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         public Value convert(Value value, Maker maker) {
             if (value instanceof ImageValue already) {
                 return new ImageValue(already.storage().copy(), 1);
+            }
+            if (value instanceof GobValue gob) {
+                return maker.paintGob(gob).orElseThrow(() -> refuse(value));
             }
             if (!(value instanceof BinaryValue bytes)) {
                 throw Raised.of(EvaluationFailure.INVALID_TYPE, value.datatype());

@@ -30,4 +30,8 @@ public interface Maker {
     Optional<List<Value>> readValuesFrom(String source);
 
     AnyBlockValue readSource(String source);
+
+    default Optional<ImageValue> paintGob(GobValue gob) {
+        return Optional.empty();
+    }
 }

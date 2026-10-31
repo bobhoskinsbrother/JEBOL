@@ -1,4 +1,4 @@
-importScripts('jebol-web-runtime.js');
+importScripts('jebol-web-runtime.js', 'jebol-paint.js');
 
 var inbox = [];
 var jebol = null;
@@ -186,6 +186,33 @@ async function jebolEncodeImage(rgba, wide, high, mediaType) {
     return { failed: null, octets: new Int8Array(await written.arrayBuffer()) };
   } catch (problem) {
     return { failed: String(problem && problem.message || problem), octets: new Int8Array() };
+  }
+}
+
+var jebolCarriedFont = null;
+
+function jebolLoadCarriedFont() {
+  if (jebolCarriedFont === null) {
+    var face = new FontFace('Jebol Carried', 'url(NotoSans-Regular.ttf)');
+    self.fonts.add(face);
+    jebolCarriedFont = face.load();
+  }
+  return jebolCarriedFont;
+}
+
+async function jebolPaintOffscreen(pictureJson) {
+  try {
+    await jebolLoadCarriedFont();
+    var picture = JSON.parse(pictureJson);
+    var canvas = new OffscreenCanvas(picture.wide, picture.high);
+    var brush = canvas.getContext('2d', { colorSpace: 'srgb' });
+    brush.fillStyle = '#ffffff';
+    brush.fillRect(0, 0, picture.wide, picture.high);
+    new JebolPainter(brush).paintCalls(picture.paint);
+    var pixels = brush.getImageData(0, 0, picture.wide, picture.high).data;
+    return { failed: null, rgba: new Int8Array(pixels.buffer, pixels.byteOffset, pixels.length) };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), rgba: new Int8Array() };
   }
 }
 

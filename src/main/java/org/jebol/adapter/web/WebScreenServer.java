@@ -2,11 +2,14 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.render.DrawingCommand;
 
+import java.awt.Font;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +35,8 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
 
     private static final String NAVIGATION_SCRIPT = "/jebol-page/jebol-navigation.js";
 
+    private static final String PAINT_SCRIPT = "/jebol-page/jebol-paint.js";
+
     private final HistoryMessage history = new HistoryMessage();
 
     private final HttpServer server;
@@ -39,6 +45,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
     private final AtomicInteger asksMade = new AtomicInteger();
     private final Map<Integer, CompletableFuture<PageAnswer>> waitingForAnswers = new ConcurrentHashMap<>();
     private BrowserScreen screen;
+    private volatile Font face;
     private volatile int width;
     private volatile int height;
 
@@ -59,6 +66,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         listening.createContext("/jebol-asks.js", exchange -> serving.serveCarriedScript(exchange, ASKS_SCRIPT));
         listening.createContext("/jebol-navigation.js",
                 exchange -> serving.serveCarriedScript(exchange, NAVIGATION_SCRIPT));
+        listening.createContext("/jebol-paint.js", exchange -> serving.serveCarriedScript(exchange, PAINT_SCRIPT));
         listening.start();
         return serving;
     }
@@ -93,6 +101,20 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
     @Override
     public void paint(List<DrawingCommand> painting) {
         dispatchToRegisteredBrowsers("paint", JsonConverter.write(painting, width, height));
+    }
+
+    @Override
+    public Optional<ImagePort.Pixels> paintOffscreen(List<DrawingCommand> painting, int wide, int high) {
+        return Optional.of(Java2DSurface.paintOnWhite(painting, wide, high, face()));
+    }
+
+    private Font face() {
+        Font loaded = face;
+        if (loaded == null) {
+            loaded = Java2DSurface.faceFrom(font.readFontBytes());
+            face = loaded;
+        }
+        return loaded;
     }
 
     @Override

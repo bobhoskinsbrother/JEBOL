@@ -106,7 +106,18 @@ public sealed interface Value permits
         if (selector instanceof IntegerValue(long magnitude)) {
             return pick((int) magnitude);
         }
+        if (selector instanceof AnyDecimalValue fraction) {
+            return pick(truncateToPosition(fraction));
+        }
         throw Raised.cannotUseAction(this, "pick");
+    }
+
+    static int truncateToPosition(AnyDecimalValue fraction) {
+        double quantity = fraction.quantity();
+        if (quantity > Integer.MAX_VALUE || quantity < Integer.MIN_VALUE || Double.isNaN(quantity)) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, fraction);
+        }
+        return (int) quantity;
     }
 
     default Value reflect(AnyWordValue field) {

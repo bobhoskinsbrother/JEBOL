@@ -5,6 +5,7 @@ import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostPorts;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.render.DrawingCommand;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.core.JSPromise;
@@ -74,6 +75,11 @@ final class WorkerSession implements BrowserScreen.Viewer {
                         (int) Math.round(screen.viewport().x()),
                         (int) Math.round(screen.viewport().y()))
                 + "}");
+    }
+
+    @Override
+    public Optional<ImagePort.Pixels> paintOffscreen(List<DrawingCommand> painting, int wide, int high) {
+        return BrowserPainting.paintOnWhite(painting, wide, high);
     }
 
     @Override

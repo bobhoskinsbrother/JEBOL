@@ -217,10 +217,31 @@ public final class DrawDialect {
         }
 
         private Placement clipToShapeItFills(List<PathStep> path) {
-            ClipRectangle area = measureAreaCovered(path);
+            ClipRectangle area = measureAreaCoveredOnSurface(path);
             return new Placement(where.across(), where.down(),
                     where.wide(), where.high(), clip.overlapWith(area),
                     where.opacity()).fitInsideShape(path);
+        }
+
+        private ClipRectangle measureAreaCoveredOnSurface(List<PathStep> path) {
+            Transform onSurface = findTransformOnSurface();
+            double left = Double.MAX_VALUE;
+            double top = Double.MAX_VALUE;
+            double right = -Double.MAX_VALUE;
+            double bottom = -Double.MAX_VALUE;
+            for (double[] corner : findCornersIn(path)) {
+                double[] placed = onSurface.mapPoint(corner[0], corner[1]);
+                left = Math.min(left, placed[0]);
+                top = Math.min(top, placed[1]);
+                right = Math.max(right, placed[0]);
+                bottom = Math.max(bottom, placed[1]);
+            }
+            if (left > right) {
+                return clip;
+            }
+            return new ClipRectangle(
+                    (int) Math.floor(left), (int) Math.floor(top),
+                    (int) Math.ceil(right - left) + 1, (int) Math.ceil(bottom - top) + 1);
         }
 
         private ClipRectangle measureAreaCovered(List<PathStep> path) {
@@ -252,31 +273,32 @@ public final class DrawDialect {
                             new double[] {to.across(), to.down()});
                     case PathStep.LineTo to -> corners.add(
                             new double[] {to.across(), to.down()});
-                    case PathStep.QuadraticTo to -> corners.add(
-                            new double[] {to.across(), to.down()});
-                    case PathStep.CubicTo to -> corners.add(
-                            new double[] {to.across(), to.down()});
-                    case PathStep.EllipseAt round -> {
-                        corners.add(new double[] {
-                                round.centreAcross() - round.radiusAcross(),
-                                round.centreDown() - round.radiusDown()});
-                        corners.add(new double[] {
-                                round.centreAcross() + round.radiusAcross(),
-                                round.centreDown() + round.radiusDown()});
+                    case PathStep.QuadraticTo to -> {
+                        corners.add(new double[] {to.controlAcross(), to.controlDown()});
+                        corners.add(new double[] {to.across(), to.down()});
                     }
-                    case PathStep.ArcTo arc -> {
-                        corners.add(new double[] {
-                                arc.centreAcross() - arc.radiusAcross(),
-                                arc.centreDown() - arc.radiusDown()});
-                        corners.add(new double[] {
-                                arc.centreAcross() + arc.radiusAcross(),
-                                arc.centreDown() + arc.radiusDown()});
+                    case PathStep.CubicTo to -> {
+                        corners.add(new double[] {to.firstControlAcross(), to.firstControlDown()});
+                        corners.add(new double[] {to.secondControlAcross(), to.secondControlDown()});
+                        corners.add(new double[] {to.across(), to.down()});
                     }
+                    case PathStep.EllipseAt round -> addBoxCorners(corners, round.centreAcross(),
+                            round.centreDown(), round.radiusAcross(), round.radiusDown());
+                    case PathStep.ArcTo arc -> addBoxCorners(corners, arc.centreAcross(),
+                            arc.centreDown(), arc.radiusAcross(), arc.radiusDown());
                     default -> {
                     }
                 }
             }
             return corners;
+        }
+
+        private static void addBoxCorners(List<double[]> corners, double centreAcross, double centreDown,
+                                          double radiusAcross, double radiusDown) {
+            corners.add(new double[] {centreAcross - radiusAcross, centreDown - radiusDown});
+            corners.add(new double[] {centreAcross + radiusAcross, centreDown - radiusDown});
+            corners.add(new double[] {centreAcross - radiusAcross, centreDown + radiusDown});
+            corners.add(new double[] {centreAcross + radiusAcross, centreDown + radiusDown});
         }
 
         private void paintGapsBetweenDashes(List<PathStep> path) {
@@ -431,11 +453,11 @@ public final class DrawDialect {
                     resampling.resize(pixels, wideOnSurface, highOnSurface);
             painted.add(new PaintInstruction.Picture(
                     new Placement(
-                            where.across() + (int) Math.round(at),
-                            where.down() + (int) Math.round(down),
+                            (int) Math.round(at),
+                            (int) Math.round(down),
                             wideOnSurface, highOnSurface,
                             clip, where.opacity()),
-                    atThatSize, sizeAcross, sizeDown, transform));
+                    atThatSize, sizeAcross, sizeDown, findTransformOnSurface()));
         }
 
         private static final int TEXT_OFFSET = 1;
@@ -455,13 +477,26 @@ public final class DrawDialect {
             if (line.runs().isEmpty()) {
                 return;
             }
+            boolean vectorial = isVectorial(arguments);
+            double[] origin = vectorial ? new double[] {at.x(), at.y()} : transform.mapPoint(at.x(), at.y());
             painted.add(new PaintInstruction.Writing(
                     new Placement(
-                            where.across() + (int) Math.round(at.x()),
-                            where.down() + (int) Math.round(at.y()),
+                            where.across() + (int) Math.round(origin[0]),
+                            where.down() + (int) Math.round(origin[1]),
                             (int) Math.round(size.x()), (int) Math.round(size.y()),
                             clip, where.opacity()),
-                    line.runs(), line.layout(), line.caret()));
+                    line.runs(), line.layout(), line.caret(),
+                    vectorial ? transformAboutGobCorner() : Transform.NONE));
+        }
+
+        private static boolean isVectorial(List<Value> arguments) {
+            return arguments.getFirst() instanceof AnyWordValue mode && mode.spelling().equalsIgnoreCase("vectorial");
+        }
+
+        private Transform transformAboutGobCorner() {
+            return Transform.moveBy(where.across(), where.down())
+                    .combineWith(transform)
+                    .combineWith(Transform.moveBy(-where.across(), -where.down()));
         }
 
         private void clipTo(List<Value> arguments) {
@@ -475,10 +510,12 @@ public final class DrawDialect {
         }
 
         private ClipRectangle makeBoxBetween(PairValue origin, PairValue corner) {
-            int left = (int) Math.round(Math.min(origin.x(), corner.x()));
-            int top = (int) Math.round(Math.min(origin.y(), corner.y()));
-            int right = (int) Math.round(Math.max(origin.x(), corner.x()));
-            int bottom = (int) Math.round(Math.max(origin.y(), corner.y()));
+            double[] first = transform.mapPoint(origin.x(), origin.y());
+            double[] second = transform.mapPoint(corner.x(), corner.y());
+            int left = (int) Math.floor(Math.min(first[0], second[0]) + 0.5);
+            int top = (int) Math.floor(Math.min(first[1], second[1]) + 0.5);
+            int right = (int) Math.floor(Math.max(first[0], second[0]) + 0.5);
+            int bottom = (int) Math.floor(Math.max(first[1], second[1]) + 0.5);
             return new ClipRectangle(
                     where.across() + left, where.down() + top,
                     right - left, bottom - top);

@@ -1,5 +1,6 @@
 package org.jebol.domain.host;
 
+import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
@@ -45,6 +46,17 @@ public abstract class GobScreen implements ScreenPort {
     @Override
     public void acceptRootGob(GobValue given) {
         this.root = given;
+    }
+
+    @Override
+    public Optional<ImagePort.Pixels> paintGob(GobValue gob) {
+        int wide = (int) Math.round(gob.storage().size().x());
+        int high = (int) Math.round(gob.storage().size().y());
+        return paintOffscreen(PaintList.of(gob, drawDialect), Math.max(0, wide), Math.max(0, high));
+    }
+
+    protected Optional<ImagePort.Pixels> paintOffscreen(PaintList painting, int wide, int high) {
+        return Optional.empty();
     }
 
     /**

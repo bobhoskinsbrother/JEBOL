@@ -1,0 +1,49 @@
+package org.jebol.domain.eval.blend2d;
+
+public enum CompositingOperator {
+    SOURCE_OVER(Kind.SCALES_SOURCE),
+    SOURCE_COPY(Kind.BLENDS_WITH_DESTINATION),
+    SOURCE_IN(Kind.BLENDS_WITH_DESTINATION),
+    SOURCE_OUT(Kind.BLENDS_WITH_DESTINATION),
+    SOURCE_ATOP(Kind.SCALES_SOURCE),
+    DESTINATION_OVER(Kind.SCALES_SOURCE),
+    DESTINATION_COPY(Kind.NEITHER),
+    DESTINATION_IN(Kind.BLENDS_WITH_DESTINATION),
+    DESTINATION_OUT(Kind.SCALES_SOURCE),
+    DESTINATION_ATOP(Kind.BLENDS_WITH_DESTINATION),
+    XOR(Kind.SCALES_SOURCE),
+    CLEAR(Kind.NEITHER),
+    PLUS(Kind.SCALES_SOURCE),
+    MINUS(Kind.NEITHER),
+    MODULATE(Kind.BLENDS_WITH_DESTINATION),
+    MULTIPLY(Kind.SCALES_SOURCE),
+    SCREEN(Kind.SCALES_SOURCE),
+    OVERLAY(Kind.SCALES_SOURCE),
+    DARKEN(Kind.SCALES_SOURCE),
+    LIGHTEN(Kind.SCALES_SOURCE),
+    COLOR_DODGE(Kind.SCALES_SOURCE),
+    COLOR_BURN(Kind.SCALES_SOURCE),
+    LINEAR_BURN(Kind.SCALES_SOURCE),
+    LINEAR_LIGHT(Kind.SCALES_SOURCE),
+    PIN_LIGHT(Kind.NEITHER),
+    HARD_LIGHT(Kind.SCALES_SOURCE),
+    SOFT_LIGHT(Kind.SCALES_SOURCE),
+    DIFFERENCE(Kind.SCALES_SOURCE),
+    EXCLUSION(Kind.SCALES_SOURCE);
+
+    private final Kind kind;
+
+    CompositingOperator(Kind kind) {
+        this.kind = kind;
+    }
+
+    boolean scalesSourceByMask() {
+        return kind == Kind.SCALES_SOURCE;
+    }
+
+    private enum Kind {
+        SCALES_SOURCE,
+        BLENDS_WITH_DESTINATION,
+        NEITHER
+    }
+}

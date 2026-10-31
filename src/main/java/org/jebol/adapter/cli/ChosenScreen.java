@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 final class ChosenScreen {
@@ -24,6 +25,10 @@ final class ChosenScreen {
 
     private static final String HEADLESS_PROPERTY = "java.awt.headless";
 
+    private static final String X_DISPLAY = "DISPLAY";
+
+    private static final String WAYLAND_DISPLAY = "WAYLAND_DISPLAY";
+
     private static final long BROWSER_POLLING_WAIT_MILLISECONDS = 50;
 
     private static final String PICK_FOLDER = "picked/";
@@ -35,7 +40,21 @@ final class ChosenScreen {
     }
 
     void chooseHeadlessMode() {
-        System.setProperty(HEADLESS_PROPERTY, Boolean.toString(!isWindow()));
+        chooseHeadlessMode(System.getProperty("os.name", ""), System.getenv());
+    }
+
+    void chooseHeadlessMode(String operatingSystem, Map<String, String> environment) {
+        boolean canShowWindow = isWindow() && canReachDisplay(operatingSystem, environment);
+        System.setProperty(HEADLESS_PROPERTY, Boolean.toString(!canShowWindow));
+    }
+
+    static boolean canReachDisplay(String operatingSystem, Map<String, String> environment) {
+        String named = operatingSystem.toLowerCase(Locale.ROOT);
+        if (named.startsWith("windows") || named.startsWith("mac")) {
+            return true;
+        }
+        return !environment.getOrDefault(X_DISPLAY, "").isBlank()
+                || !environment.getOrDefault(WAYLAND_DISPLAY, "").isBlank();
     }
 
     boolean isAskedFor() {

@@ -82,7 +82,8 @@ val copyWorkerScript = tasks.register<Copy>("copyWorkerScript") {
 val copyPageScripts = tasks.register<Copy>("copyPageScripts") {
     group = "build"
     description = "Put the page's scripts for the interpreter's asks and the history beside the WebAssembly module"
-    from("src/main/resources/jebol-page/jebol-asks.js", "src/main/resources/jebol-page/jebol-navigation.js")
+    from("src/main/resources/jebol-page/jebol-asks.js", "src/main/resources/jebol-page/jebol-navigation.js",
+        "src/main/resources/jebol-page/jebol-paint.js")
     into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
 }
 
@@ -109,7 +110,7 @@ val assembleSite = tasks.register<Sync>("assembleSite") {
     from(theApp)
     from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
         include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "jebol-asks.js",
-            "jebol-navigation.js", "NotoSans-Regular.ttf")
+            "jebol-navigation.js", "jebol-paint.js", "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
     val siteDirectory = layout.buildDirectory.dir("site")

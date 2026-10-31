@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -151,6 +152,11 @@ public final class BrowserScreen extends GobScreen {
     }
 
     @Override
+    protected Optional<ImagePort.Pixels> paintOffscreen(PaintList painting, int wide, int high) {
+        return viewer.paintOffscreen(painting.calls(font.measurement()), wide, high);
+    }
+
+    @Override
     protected Denied refuseWithNoService() {
         return new Denied("no-service", "no browser is attached to this screen");
     }
@@ -234,6 +240,9 @@ public final class BrowserScreen extends GobScreen {
         default void guardLeaving(boolean unsavedWork) {
         }
         default void showTitle(String title) {
+        }
+        default Optional<ImagePort.Pixels> paintOffscreen(List<DrawingCommand> painting, int wide, int high) {
+            return Optional.empty();
         }
     }
 

@@ -65,6 +65,7 @@ final class JsonConverter {
             case DrawingCommand.Text text -> writeObject(
                     writeTextField("type", "text"),
                     writePlacement(text.where()),
+                    writeNestedField("transform", asSixNumbers(text.transform())),
                     writeTextField("selection-colour",
                             PlacedText.COLOUR_SELECTION_IS_MARKED_IN.asCss()),
                     writeNestedField("lines", asLines(text.text().lines())),

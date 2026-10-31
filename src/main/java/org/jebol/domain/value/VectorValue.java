@@ -107,6 +107,14 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
+    public Value pickBy(Value selector) {
+        if (selector instanceof PercentValue) {
+            throw Raised.cannotUseAction(this, "pick");
+        }
+        return RebolSeries.super.pickBy(selector);
+    }
+
+    @Override
     public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyFirst(howMany);
     }

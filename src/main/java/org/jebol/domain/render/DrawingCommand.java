@@ -34,6 +34,6 @@ public sealed interface DrawingCommand {
             implements DrawingCommand {
     }
 
-    record Text(Placement where, PlacedText text) implements DrawingCommand {
+    record Text(Placement where, PlacedText text, Transform transform) implements DrawingCommand {
     }
 }

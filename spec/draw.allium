@@ -453,6 +453,12 @@ rule PushRestoresBothTheStateAndTheTransform {
 -- never widened, because a draw block may not paint outside its gob however
 -- it is written -- `clip 0x0 9999x9999` gets the gob, not the screen.
 --
+-- The two corners go through the transform standing when CLIP is read, and the
+-- box is the one between where they land, each rounded half up: AGG's render
+-- loop does `attr.post_mtx.transform(&attr.clip_x1, &attr.clip_y1)` and the same
+-- for the second corner, then `ROUND_TO_INT` on each, before `clip_box`. So
+-- `scale 0.5 0.5 clip 60x60 240x140` clips to 30x30 120x70 of the gob.
+--
 -- `clip` with anything that is not two pairs puts it back to the whole gob,
 -- which is the C's own arm: `if (!IS_PAIR(arg) || !IS_PAIR(arg+1))
 -- agg_clip(graphics, &zero_pair, &size_pair);`. So a block can narrow for a
@@ -774,6 +780,12 @@ rule ThreeOrFourCornersPullThePictureOntoThem {
 -- its size, colour and style, as it does for a gob's text (see
 -- AGobsRichTextWritesOnlyItsStrings in screen.allium); `para` and
 -- `anti-alias` are read past and nothing they hold is written.
+--
+-- The mode decides what the transform does to it, as `agg_text` does. VECTORIAL
+-- text is drawn under the whole transform, so `scale 0.5 0.5` halves its glyphs
+-- too. Any other mode is raster text: only its offset goes through the
+-- transform (`attr.post_mtx.transform(&attr.coord_x2, &attr.coord_y2)` in the
+-- render loop's RT_TEXT arm), and its glyphs stay the size the block asks for.
 --
 -- **The words, the place, the size, the line breaks and the colour are the
 -- domain's**: one carried font supplies the metrics, so the layout is the

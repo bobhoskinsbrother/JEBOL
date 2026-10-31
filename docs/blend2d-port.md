@@ -6,8 +6,8 @@ note carries what the code cannot: what the extension does, which Blend2D it
 builds, how the port is checked, and how the pixels are split between the domain
 and the platform.
 
-Work in progress: the reference is built and the extension's C read; the port is
-not started.
+Work in progress: the compositing is ported and checked; the rasteriser, the
+gradients, the patterns, the text and the extension's commands are not yet.
 
 ---
 
@@ -63,11 +63,57 @@ count, and answers the count. **`info/of` on an image prints `heigth:`.**
 
 ## How the pixels are split
 
-Decision 35 keeps rasterising out of the domain. So the platform answers one
-question -- how much of each pixel a shape or a run of glyphs covers -- and the
-domain does the rest as arithmetic ported from Blend2D: the compositing
-operators, global alpha, solid colours, gradients and patterns. Interior pixels
-then match Blend2D exactly and only the anti-aliased edges are the platform's.
+They are not split: the domain does all of it, as decision 59 says. The first
+plan let the platform answer coverage, and it could not have matched even
+interiors, because which path a covered pixel takes is the rasteriser's.
+
+---
+
+## Compositing
+
+**The pipeline works on four 16-bit lanes a pixel**, blue, green, red, alpha,
+and the port keeps them in a `long` (`Lanes`) with the x86 instructions'
+behaviour exactly: products keep their low 16 bits, sums wrap, `div255` is
+`((x + 128) * 257) >> 16` on the wrapped sum, `inv255` is `x ^ 255`, a pack is
+signed saturation to a byte, and darken's and lighten's minimum and maximum are
+taken byte by byte across the lane. R3's pixels are not premultiplied, so a
+colour above its alpha is ordinary input and every one of those rules is
+reached.
+
+**There are two paths and they round differently.** A constant mask --
+`fill-all`, a box, the inside of a shape away from its edges -- takes
+`cMaskInitRGBA32` and `cMaskProcRGBA32Vec`, which precompute from the solid
+colour (`ConstantMaskCompositor`). A mask that varies from pixel to pixel takes
+`vMaskProcRGBA32Vec` (`VariableMaskCompositor`). Source-over, for one, is
+`(d * (255 - Sa) + 255 * S + 128) * 257 >> 16` on the first and
+`div255(d * (255 - Sa)) + S` on the second. Operators the constant path has no
+case for scale the source by the mask and go through the variable path without
+one, as the JIT's `_solidPre` does.
+
+**Through a mask, a fully covered pixel under a global alpha takes the variable
+path** with the alpha as its mask; only full coverage at full alpha takes the
+constant one. The mask is `div255(coverage * alpha)`.
+
+**The float operators are the JIT's float code.** Colour-dodge, colour-burn and
+soft-light compute in single precision with the JIT's order of operations, its
+`max(x, 0.001)`, and soft-light's fused multiply-add, which the JIT emits on a
+CPU with FMA. A float past the range of an int converts to `0x80000000`, which
+the following unsigned pack makes 0; colour-burn reaches it whenever a
+destination colour is above its alpha and the source channel is 0.
+
+**The operator is simplified first**, as `compopsimplifyimpl_p.h` does for a
+PRGB32 target (`SimplifiedOperator`): a solid colour is ZERO32 when it is
+`0x00000000`, FRGB32 when its alpha is 255 and PRGB32 otherwise, so source-over
+of an opaque colour is source-copy, clear is source-copy of transparent black,
+and source-over of transparent black draws nothing. A colour of alpha 0 that is
+not 0 is PRGB32 and is drawn, as 0. A global alpha that scales to 0 draws
+nothing; it scales by `alpha * 255` rounded half up (`roundToInt`).
+
+**What this is checked against.** `table.c` under
+`src/testFixtures/resources/blend2d/` fills noise through the release's JIT,
+and its README lists the boundaries. Before the tables were cut to 64x64, the
+same generator at 256x256 agreed on all 6,264 fills and 1,160 masked fills,
+every pixel.
 
 ---
 

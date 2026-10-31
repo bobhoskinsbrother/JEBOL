@@ -2544,3 +2544,28 @@ and 53.7 ms with it.
 object and ignored a field of a module, so a module made by IMPORT kept
 `lib-boot` among its words where R3's hides it. A path now hides a field of any
 value that carries a context: an object, a module, a port or a task.
+
+## 59. The blend2d extension rasterises in the domain, as Blend2D does
+
+**Decision 35 keeps rasterising out of the domain, and the blend2d extension is
+the exception.** Its DRAW answers an image whose bytes a script can read, hash
+and compare, and a real 3.22.5 answers Blend2D's bytes. Decision 35's bound --
+interiors exact, edges within 24 of 255 -- was the plan for it too: the platform
+would answer coverage and the domain would composite.
+
+**The plan did not survive the reference.** Which pixels inside a shape Blend2D
+composites one way and which the other depends on its rasteriser's cells and
+bit-words, four pixels a bit, not on coverage: next to a shape's edge, three
+fully covered pixels go through the variable-mask path and the rest through
+the constant-mask path, and for source-in, source-out, minus and the other
+operators that do not scale the source by the mask, the two disagree by one
+under a global alpha. A coverage port cannot know that, so even interior
+pixels would have differed.
+
+**So Blend2D's edge builder, analytic rasteriser and fill loops are ported
+too**, under `org.jebol.domain.eval.blend2d`, with its compositing, and checked
+against the release's own pipeline as every codec here is. Nothing else draws
+through them: the paint list, the GUI and the page keep decision 35's one
+executor and the platform's toolkits. The cost decision 35 names is paid for one
+extension, once, and buys the extension's own bytes everywhere, the web
+included, with no platform port at all.

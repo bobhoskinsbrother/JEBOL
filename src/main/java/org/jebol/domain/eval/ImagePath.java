@@ -230,8 +230,7 @@ final class ImagePath {
 
     private static int findPixelNamedBy(ImageValue image, Value selector) {
         return switch (selector) {
-            case PairValue coordinate -> ((int) coordinate.y() - 1) * image.storage().wide()
-                    + ((int) coordinate.x() - 1) + 1;
+            case PairValue coordinate -> (int) image.findPositionNamedBy(coordinate, true);
             case IntegerValue number -> (int) number.magnitude();
             case AnyDecimalValue number -> (int) number.quantity();
             case LogicValue yesOrNo -> yesOrNo.isTruthy() ? 1 : 2;

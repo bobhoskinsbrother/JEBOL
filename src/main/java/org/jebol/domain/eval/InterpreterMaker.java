@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyFunctionValue;
 import org.jebol.domain.value.AnyWordValue;
@@ -13,7 +14,9 @@ import org.jebol.domain.value.DispatcherHandle;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FunctionValue;
+import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.HandleValue;
+import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PathTargetWithFields;
 import org.jebol.domain.value.Raised;
@@ -80,6 +83,22 @@ public final class InterpreterMaker implements Maker {
     @Override
     public AnyBlockValue readSource(String source) {
         return withoutEvaluating.readSource(source);
+    }
+
+    @Override
+    public Optional<ImageValue> paintGob(GobValue gob) {
+        return evaluator.ports().screen().paintGob(gob).map(InterpreterMaker::imageFromPixels);
+    }
+
+    private static ImageValue imageFromPixels(ImagePort.Pixels painted) {
+        ImageValue made = ImageValue.of(painted.wide(), painted.high());
+        byte[] rgba = painted.rgba();
+        for (int pixel = 0; pixel < painted.wide() * painted.high(); pixel++) {
+            int at = pixel * 4;
+            made.storage().setColourAt(pixel + 1, rgba[at] & 0xFF, rgba[at + 1] & 0xFF, rgba[at + 2] & 0xFF);
+            made.storage().setAlphaAt(pixel + 1, rgba[at + 3] & 0xFF);
+        }
+        return made;
     }
 
     @Override

@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -21,7 +22,10 @@ public final class ImageActions extends SeriesActions {
 
     @Override
     public Value poke(Value position, Value written) {
-        ImagePath.write(picture, (int) position.asPosition(), written);
+        int at = position instanceof PairValue
+                ? (int) picture.findPositionNamedBy(position, true)
+                : (int) position.asPosition();
+        ImagePath.write(picture, at, written);
         return written;
     }
 

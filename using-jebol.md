@@ -175,6 +175,15 @@ The shipped example uses the same GUI. The window opens with the sliders and sur
 ./build/install/jebol/bin/jebol --screen=window examples/choose-colour/
 ```
 
+The third draws a gallery of what DRAW draws: shapes, curves, joins, dashes and arrows, the four gradients, transparency, transforms, `push`, `clip`, images and text, each in a tile of its own, drawn at half scale so the window fits a browser. It is a web app as it stands:
+
+```
+./build/install/jebol/bin/jebol --screen=window examples/draw/
+./gradlew assembleSite -PsiteDir=examples/draw && cd build/site && python3 -m http.server 8000
+```
+
+`to image! gob` paints a gob and its pane into an image of the gob's size, over white, as R3 does on Windows. It needs a screen: on the JVM Java2D paints it, with or without a display, and on a page the worker paints it into an OffscreenCanvas. Without a screen it is the refusal R3 gives on a host that cannot compose, `cannot MAKE image! from: gob`.
+
 ### **Places, Back and Forward**
 
 An app on a screen has one history, and these words move through it. None of them is in a real Rebol; they are JEBOL's, and `spec/nav.allium` holds the rules.

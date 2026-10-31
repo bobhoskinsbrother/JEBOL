@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.render.*;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
@@ -42,6 +43,40 @@ public final class Java2DSurface implements Surface {
     public static void execute(
             Graphics2D onto, PaintList painting, TextMeasurement measure, Font face) {
         painting.executeOn(new Java2DSurface(onto, face), measure);
+    }
+
+    public static ImagePort.Pixels paintOnWhite(List<DrawingCommand> calls, int wide, int high, Font face) {
+        if (wide == 0 || high == 0) {
+            return new ImagePort.Pixels(wide, high, new byte[0]);
+        }
+        BufferedImage canvas = new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D onto = canvas.createGraphics();
+        try {
+            onto.setColor(Color.WHITE);
+            onto.fillRect(0, 0, wide, high);
+            Java2DSurface surface = new Java2DSurface(onto, face);
+            calls.forEach(surface::execute);
+        } finally {
+            onto.dispose();
+        }
+        return new ImagePort.Pixels(wide, high, readRgba(canvas));
+    }
+
+    private static byte[] readRgba(BufferedImage canvas) {
+        int wide = canvas.getWidth();
+        int high = canvas.getHeight();
+        byte[] rgba = new byte[wide * high * 4];
+        for (int down = 0; down < high; down++) {
+            for (int across = 0; across < wide; across++) {
+                int argb = canvas.getRGB(across, down);
+                int at = (down * wide + across) * 4;
+                rgba[at] = (byte) (argb >>> 16);
+                rgba[at + 1] = (byte) (argb >>> 8);
+                rgba[at + 2] = (byte) argb;
+                rgba[at + 3] = (byte) (argb >>> 24);
+            }
+        }
+        return rgba;
     }
 
     public static void paintContentsLeavingItsTitleToTitleBar(
@@ -109,7 +144,7 @@ public final class Java2DSurface implements Surface {
             case DrawingCommand.Fill fill -> fill.transform();
             case DrawingCommand.Stroke stroke -> stroke.transform();
             case DrawingCommand.Picture picture -> picture.transform();
-            case DrawingCommand.Text ignored -> Transform.NONE;
+            case DrawingCommand.Text text -> text.transform();
         };
     }
 
@@ -159,6 +194,7 @@ public final class Java2DSurface implements Surface {
     }
 
     private void write(Graphics2D onto, DrawingCommand.Text text) {
+        onto.transform(convertToAwtTransform(text.transform()));
         PlacedText placed = text.text();
         if (!placed.selection().isEmpty()) {
             onto.setColor(convertToAwtColour(PlacedText.COLOUR_SELECTION_IS_MARKED_IN));

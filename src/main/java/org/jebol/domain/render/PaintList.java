@@ -78,7 +78,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             switch (instruction) {
                 case PaintInstruction.Fill filled -> calls.add(asRectangleCall(filled));
                 case PaintInstruction.Writing written -> calls.add(
-                        new DrawingCommand.Text(written.where(), PlacedText.of(written, measure)));
+                        new DrawingCommand.Text(written.where(), PlacedText.of(written, measure), written.transform()));
                 case PaintInstruction.Picture shown -> calls.add(new DrawingCommand.Picture(
                         shown.where(), shown.pixels(), shown.wide(), shown.high(), shown.transform()));
                 case PaintInstruction.Drawn drawing -> addWhatIsDrawn(calls, drawing);

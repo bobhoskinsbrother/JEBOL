@@ -25,6 +25,12 @@ public record Transform(
         return equals(NONE);
     }
 
+    public double[] mapPoint(double across, double down) {
+        return new double[] {
+                acrossScale * across + acrossSkew * down + acrossMove,
+                downSkew * across + downScale * down + downMove};
+    }
+
     /** This transform followed by another, as one. */
     public Transform combineWith(Transform then) {
         return new Transform(

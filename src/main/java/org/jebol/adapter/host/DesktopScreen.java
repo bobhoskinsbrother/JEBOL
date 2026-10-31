@@ -6,7 +6,9 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
@@ -192,6 +194,11 @@ public final class DesktopScreen extends GobScreen {
             return ScreenPort.none().textMeasurement();
         }
         return font.measurement();
+    }
+
+    @Override
+    protected Optional<ImagePort.Pixels> paintOffscreen(PaintList painting, int wide, int high) {
+        return Optional.of(Java2DSurface.paintOnWhite(painting.calls(font.measurement()), wide, high, face));
     }
 
     @Override

@@ -156,6 +156,10 @@ public interface ScreenPort {
     default void useDrawDialect(Value dialect) {
     }
 
+    default Optional<ImagePort.Pixels> paintGob(GobValue gob) {
+        return Optional.empty();
+    }
+
     default Navigation navigation() {
         throw new Denied("no-service", "this interpreter was given no screen to keep a history on");
     }
