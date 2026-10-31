@@ -78,7 +78,17 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         return browser.findElement(By.id("screen"));
     }
 
+    private void waitUntilThePageHasPaintedTheScreen() {
+        new PageWait(browser, Duration.ofSeconds(20)).until(anything -> {
+            answerTo("wait [system/ports/event 0.05]");
+            return "true".equals(operator.runsInThePage("""
+                    const canvas = document.getElementById('screen');
+                    return String(canvas.width === window.innerWidth && canvas.height === window.innerHeight)"""));
+        });
+    }
+
     private Actions placeTheOperatorAt(int pageAcross, int pageDown) {
+        waitUntilThePageHasPaintedTheScreen();
         WebElement canvas = findTheCanvas();
         return new Actions(browser).moveToElement(canvas,
                 pageAcross - canvas.getRect().getWidth() / 2,

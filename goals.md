@@ -121,35 +121,21 @@ served in Java as a goal of its own, or left out on purpose under Standing.
 Brotli is 1b and webp is goal 10.
 
 Six are to be served in Java, so that `import 'easing` answers a module as it
-does on a real 3.22.5 that can fetch it. In the order to build them, smallest
-first:
+does on a real 3.22.5 that can fetch it. easing, blurhash, deflate and zlib-ng
+are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
+`docs/zlib-ng-port.md`). The rest, in the order to build them, smallest first:
 
-1. **easing** 1.0.0 (Siskin-framework/Rebol-Easing). Done on 2026-10-30:
-   `import 'easing` answers the module from inside the build (decision 58,
-   `docs/easing-port.md`). The eighteen arithmetic curves agree with the C to
-   the bit; the twelve that call `sin`, `cos` or `pow` agree to within the
-   last bit, because JEBOL takes no LGPL libm to close that.
-2. **blurhash** 1.0.0 (Siskin-framework/Rebol-BlurHash). Done on 2026-10-30
-   (`docs/blurhash-port.md`): every hash and every pixel agrees with the C
-   byte for byte, red and blue swapped as R3's memory swaps them.
-3. **deflate** 0.1.0 (libdeflate) and **zlib-ng** 2.3.2. Done on 2026-10-31
-   (`docs/zlib-ng-port.md`). deflate builds libdeflate 1.25, which
-   `DeflateCompressor` already ports byte for byte. zlib-ng's deflate and
-   inflate are ported, and agree with its C byte for byte and code for code
-   over 17,952 compressions and 183,120 decodes. Importing either re-registers
-   COMPRESS's `deflate`, `zlib` and `gzip`, the last import winning, and
-   zlib-ng adds `deflate-ng`, `zlib-ng` and `gzip-ng`.
-4. **zstd** 0.1.0. The same seven commands as brotli's and the same
+1. **zstd** 0.1.0. The same seven commands as brotli's and the same
    `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
    all, so this is a port of the size of Brotli's, decoder first, and every
    rule in `CLAUDE.md` for a codec applies. Zstandard's own test corpus is
    the corpus.
-5. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
+2. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
    `eval expression variables`, a vector of doubles. MathPresso compiles to
    machine code with asmjit; JEBOL evaluates the same grammar and must give
    the same double for every operator and function it accepts, and refuse
    what it refuses.
-6. **blend2d** 0.12.0. Exports `draw image commands`, which paints a block of
+3. **blend2d** 0.12.0. Exports `draw image commands`, which paints a block of
    its command words (`move`, `line`, `curve`, `box`, `circle`, `text`,
    `fill`, `pen`, `line-width`, `blend`, `rotate`, `clip`, `font` and the
    rest) onto an image or a new one of a size, and the module also holds

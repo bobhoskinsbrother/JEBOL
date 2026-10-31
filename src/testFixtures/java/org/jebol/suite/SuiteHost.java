@@ -5,6 +5,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
@@ -22,7 +25,28 @@ import org.jebol.domain.host.OutputPort;
 
 final class SuiteHost {
 
+    private static final Queue<Path> ROOTS_TO_REMOVE_AT_EXIT = new ConcurrentLinkedQueue<>();
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(SuiteHost::removeEveryRoot));
+    }
+
     private SuiteHost() {
+    }
+
+    private static void removeEveryRoot() {
+        ROOTS_TO_REMOVE_AT_EXIT.removeIf(SuiteHost::removeTree);
+    }
+
+    private static boolean removeTree(Path root) {
+        try (Stream<Path> everything = Files.walk(root)) {
+            for (Path one : everything.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(one);
+            }
+            return true;
+        } catch (IOException | UncheckedIOException leftForTheSystem) {
+            return false;
+        }
     }
 
     static Bounds grantEverything() {
@@ -41,6 +65,7 @@ final class SuiteHost {
         Path theRootOfThisRun;
         try {
             theRootOfThisRun = Files.createTempDirectory("jebol-suite");
+            ROOTS_TO_REMOVE_AT_EXIT.add(theRootOfThisRun);
             layOutTheFilesTheSuiteReads(theRootOfThisRun);
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);

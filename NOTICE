@@ -175,3 +175,127 @@ ship: they are inside the jar.
 
     3. This notice may not be removed or altered from any source
        distribution.
+
+------------------------------------------------------------------------
+
+This product includes a port of Brotli 1.2.0
+(https://github.com/google/brotli), Copyright (c) 2009, 2010, 2013-2016
+by the Brotli Authors, as Rebol 3 vendors it under
+rebol3-source/src/core/brotli/. It is licensed under the MIT License, the
+same text as above.
+
+The files under src/main/java/org/jebol/domain/eval/compression/brotli/
+are written from its encoder, its decoder and its static dictionary, which
+they carry. They remain under the MIT License; they are not relicensed
+under the Apache License. They ship: they are inside the jar.
+src/testFixtures/resources/brotli/ holds a slice of Brotli's own test
+corpus with its licence beside it; it does not ship.
+
+------------------------------------------------------------------------
+
+This product includes a port of LZ4 1.10 (https://github.com/lz4/lz4),
+Copyright (c) 2011-2020, Yann Collet, as Rebol 3 vendors it under
+rebol3-source/src/core/lz4/, licensed under the BSD 2-Clause License
+below.
+
+The files under src/main/java/org/jebol/domain/eval/compression/lz4/ are
+written from its lz4.c and lz4hc.c. They remain under the BSD 2-Clause
+License; they are not relicensed under the Apache License. They ship:
+they are inside the jar.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the
+      distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------
+
+This product includes a port of LZAV 5.5 (https://github.com/avaneev/lzav),
+Copyright (c) 2023-2025 Aleksey Vaneev, as Rebol 3 vendors it in
+rebol3-source/src/include/sys-lzav.h. It is licensed under the MIT
+License, the same text as above.
+
+The files under src/main/java/org/jebol/domain/eval/compression/lzav/ are
+written from it. They remain under the MIT License; they are not
+relicensed under the Apache License. They ship: they are inside the jar.
+
+------------------------------------------------------------------------
+
+This product includes a port of the LZMA SDK's LzmaDec.c, LzmaEnc.c and
+LzFind.c (https://www.7-zip.org/sdk.html), by Igor Pavlov, as Rebol 3
+vendors them in rebol3-source/src/core/u-lzma.c and
+rebol3-source/src/include/sys-lzma.h. Igor Pavlov placed them in the
+public domain.
+
+src/main/java/org/jebol/domain/eval/compression/Lzma.java,
+LzmaDecoder.java, LzmaEncoder.java and LzmaMatchFinder.java are written
+from them. They ship: they are inside the jar.
+
+------------------------------------------------------------------------
+
+This product includes a port of Crush (https://sourceforge.net/projects/crush),
+by Ilya Muravyov, who placed it in the public domain, as Oldes ported it
+to Rebol 3 in rebol3-source/src/core/u-crush.c under the Apache License,
+Version 2.0.
+
+src/main/java/org/jebol/domain/eval/compression/Crush.java is written
+from u-crush.c. It ships: it is inside the jar.
+
+------------------------------------------------------------------------
+
+This product includes a port of LZW-AB (https://github.com/dbry/lzw-ab),
+Copyright (c) 2016-2020 David Bryant, as Oldes ported it to Rebol 3 in
+rebol3-source/src/core/u-lzw.c. It is licensed under the BSD License
+below.
+
+src/main/java/org/jebol/domain/eval/compression/Lzw.java is written from
+u-lzw.c. It remains under the BSD License; it is not relicensed under the
+Apache License. It ships: it is inside the jar.
+
+    Copyright (c) David Bryant
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+        * Redistributions of source code must retain the above copyright
+          notice, this list of conditions and the following disclaimer.
+        * Redistributions in binary form must reproduce the above
+          copyright notice, this list of conditions and the following
+          disclaimer in the documentation and/or other materials provided
+          with the distribution.
+        * Neither the name of Conifer Software nor the names of its
+          contributors may be used to endorse or promote products derived
+          from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
