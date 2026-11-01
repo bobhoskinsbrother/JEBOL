@@ -81,6 +81,8 @@ final class Blend2DDrawing {
 
     private static final double DEGREES_TO_RADIANS = 3.14159265358979323846264338327950288 / 180.0;
 
+    private static final double DEFAULT_POINT_RADIUS = 1.0;
+
     private enum Kind {
         END, UNSET, NONE, HANDLE, LOGIC, INTEGER, DECIMAL, PERCENT, PAIR, TUPLE, WORD, LIT_WORD,
         STRING, FILE, BLOCK, VECTOR, IMAGE, OTHER
@@ -97,6 +99,7 @@ final class Blend2DDrawing {
     private int command;
     private boolean hasFill;
     private boolean hasStroke;
+    private double pointRadius = DEFAULT_POINT_RADIUS;
 
     private Blend2DDrawing(Command call, Blend2DCanvas canvas, AnyBlockValue commands) {
         this.call = call;
@@ -292,7 +295,7 @@ final class Blend2DDrawing {
             case "circle" -> drawCircle();
             case "ellipse" -> drawEllipse();
             case "point" -> drawPoints();
-            case "point-size" -> readNumber() != null;
+            case "point-size" -> setPointSize();
             case "triangle" -> drawTriangles();
             case "arc" -> drawArc();
             case "image" -> drawImage();
@@ -838,21 +841,31 @@ final class Blend2DDrawing {
         return true;
     }
 
+    private boolean setPointSize() {
+        Double size = readNumber();
+        if (size == null) {
+            return false;
+        }
+        pointRadius = size * 0.5;
+        return true;
+    }
+
+    private void drawPoint(double[] centre) {
+        fillAndStroke(Blend2DShape.ellipse(centre[0], centre[1], pointRadius, Math.abs(pointRadius)));
+    }
+
     private boolean drawPoints() {
         Read read = resolveNext();
         switch (read.kind()) {
             case PAIR -> {
                 do {
-                    refuseIfDrawn("a point");
-                } while (resolveNext().kind() == Kind.PAIR);
+                    drawPoint(readPair(read));
+                    read = resolveNext();
+                } while (read.kind() == Kind.PAIR);
                 return false;
             }
             case VECTOR -> {
-                VectorValue vector = (VectorValue) read.value();
-                int count = (vector.storageLength() - (vector.index() - 1)) >> 1;
-                if (count > 0) {
-                    refuseIfDrawn("a point");
-                }
+                drawVectorPoints((VectorValue) read.value());
                 return true;
             }
             case BLOCK -> {
@@ -860,12 +873,32 @@ final class Blend2DDrawing {
                 if (inside.isEmpty() || classify(inside.getFirst()) != Kind.PAIR) {
                     return false;
                 }
-                refuseIfDrawn("a point");
+                for (Value value : inside) {
+                    if (classify(value) != Kind.PAIR) {
+                        break;
+                    }
+                    drawPoint(readPair(new Read(Kind.PAIR, value)));
+                }
                 return true;
             }
             default -> {
                 return true;
             }
+        }
+    }
+
+    private void drawVectorPoints(VectorValue vector) {
+        int count = (vector.storageLength() - (vector.index() - 1)) >> 1;
+        if (count <= 0 || !(hasFill || hasStroke)) {
+            return;
+        }
+        if (vector.kind().bits() != 64) {
+            canvas.refuse("points read from a vector of " + vector.kind().spelling() + " numbers");
+        }
+        for (int point = 0; point < count; point++) {
+            int at = vector.index() + point * 2;
+            drawPoint(new double[] {Double.longBitsToDouble(vector.storage().at(at)),
+                Double.longBitsToDouble(vector.storage().at(at + 1))});
         }
     }
 
@@ -1101,11 +1134,5 @@ final class Blend2DDrawing {
             fillAndStroke(buildPath(call, (AnyBlockValue) read.value()));
         }
         return true;
-    }
-
-    private void refuseIfDrawn(String what) {
-        if (hasFill || hasStroke) {
-            canvas.refuse(what);
-        }
     }
 }

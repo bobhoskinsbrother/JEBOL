@@ -1186,3 +1186,29 @@ noise 40x30 594	fill 200.60.10 shape bogus fill-all	40x30	929cf055
 pair 8x6	fill 255.0.0 box 2x1 6x4	8x6	f2849e22
 pair 5x3	fill 0.0.255.128 fill-all	5x3	21cfd84a
 pair 4.6x2.4	fill 0.255.0 box 1x0 1x1	5x2	02754fc4
+noise 40x30 600	fill 200.60.10 point 5x5	40x30	15a84671
+noise 40x30 601	fill 200.60.10 point 5x5 12.5x7.25 30x20 0x0 40x30	40x30	496eb767
+noise 40x30 602	pen 30.40.200 point 10x10 20.5x10.5	40x30	274bf82d
+noise 40x30 603	fill 30.200.90 pen 0.0.0 point-size 6 point 10x10 25.5x15.5	40x30	0d4faf29
+noise 40x30 604	fill 200.60.10 point-size 0 point 10x10	40x30	0ed603b8
+noise 40x30 605	fill 200.60.10 point-size -4 point 10x10	40x30	e2a35fdb
+noise 40x30 606	fill 200.60.10 point-size 1 point 10x10 10.5x14.5	40x30	6db185f9
+noise 40x30 607	fill 200.60.10 point-size 9 point 0x0 40x30 -2x15 38x-1	40x30	cd7c7907
+noise 40x30 608	fill 200.60.10 point-size 30% point 10x10	40x30	e4f33caf
+noise 40x30 609	fill 200.60.10 point-size 4.5 point 10x10 fill 0.0.255 point 20x10	40x30	79e60f6d
+noise 40x30 610	fill 200.60.10 point-size bogus point 10x10	40x30	3007005f
+noise 40x30 611	fill 200.60.10 point-size point 10x10	40x30	b6bc3263
+noise 40x30 612	fill 200.60.10 point [5x5 10x10 15x15] fill 0.0.255 box 0x0 3x3	40x30	25c5e78b
+noise 40x30 613	fill 200.60.10 point [5x5 10x10 bogus 15x15]	40x30	c079c1d1
+noise 40x30 614	fill 200.60.10 point [] fill 0.0.255 box 0x0 3x3	40x30	fef28db2
+noise 40x30 615	fill 200.60.10 point [bogus 5x5] fill 0.0.255 box 0x0 3x3	40x30	ac91a5eb
+noise 40x30 616	fill 200.60.10 point 5x5 7 fill 0.0.255 box 0x0 3x3	40x30	4d2db183
+noise 40x30 617	fill 200.60.10 point 5x5 fill-all	40x30	929cf055
+noise 40x30 618	fill 200.60.10 point bogus fill 0.0.255 box 0x0 3x3	40x30	bd8b776e
+noise 40x30 619	fill 200.60.10 point 1.5 fill 0.0.255 box 0x0 3x3	40x30	d58fd744
+noise 40x30 620	point 5x5 fill 200.60.10 point 10x10	40x30	640a4e9a
+noise 40x30 621	fill 200.60.10 point-size 4 rotate 30 20x15 point 20x5 30x15	40x30	af69b20d
+noise 40x30 622	fill 200.60.10 scale 2 point 5x5 point-size 3 point 15x10	40x30	9ec9645e
+noise 40x30 623	fill 200.60.10.120 alpha 0.5 blend multiply point-size 8 point 10x10 15x12	40x30	57c65bd0
+noise 40x30 624	fill 200.60.10 clip 5x5 20x20 point-size 10 point 10x10	40x30	7296aed0
+noise 40x30 625	fill 200.60.10 pen 0.0.0 line-width 3 point-size 12 point 20x15	40x30	c4558f2d

@@ -13,7 +13,7 @@ rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 rotation -- each filled byte for byte against the release's C, and the
 stroker, which draws `line` and every one of those outlines under `pen`,
 `line-width`, `line-join` and `line-cap`, and `shape` and `path` with their
-dialect, and `image` blits at whole pixels, from R3 images and from PNG, BMP
+dialect, `point` at any `point-size`, and `image` blits at whole pixels, from R3 images and from PNG, BMP
 and QOI files. Gradients, image patterns, blits between pixels and JPEG files
 are drawn too, but not byte for byte: see below. Not yet: the rest goals 1a
 lists, each of which raises an error naming what it cannot draw.
@@ -258,6 +258,18 @@ Reading them this way found a fault in JEBOL's desktop codec: `getRGB` moves
 a greyscale image's levels through a gamma curve, so a grey PNG or JPEG read
 73 levels away from its bytes, and so did `image/load`. `JavaImage` now reads
 a grey image's samples as stored, the high byte of a 16-bit one.
+
+## Points
+
+`point` draws each pair as `BL_GEOMETRY_TYPE_CIRCLE`, the shape `circle`
+draws with one radius, at a radius the extension keeps in `point[2]`: 1 to
+begin with, so a point is two pixels across, and half of whatever
+`point-size` last gave it for the rest of the `draw`. After the last pair the
+C asks for one more with `RESOLVE_PAIR_ARG`, which takes the error path,
+so the walk goes on from the first command word after the pairs, skipping
+any value between. A block of pairs stops quietly at its first value that is
+not one; a vector is read as doubles, two a point, whatever its kind, and
+JEBOL refuses one narrower than 64 bits rather than read past it.
 
 ## Shape and path
 

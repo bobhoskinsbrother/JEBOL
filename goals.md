@@ -143,8 +143,8 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    byte for byte at whole pixels, from R3 images and from PNG, BMP and QOI
    files read through the host's codec. Gradients, image patterns, blits
    between pixels and JPEG files are drawn within 2 levels a channel of the
-   release, not byte for byte, by decision (`docs/blend2d-port.md`). Left, in
-   the order to build it: `point`; then fonts and `text`. Until then each
+   release, not byte for byte, by decision (`docs/blend2d-port.md`). `point`
+   draws byte for byte. Left: fonts and `text`. Until then each
    of those raises an error naming what it cannot draw rather than drawing it
    wrongly. Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
    JEBOL's are `StrictMath`'s, so an edge pixel can differ in their last bit

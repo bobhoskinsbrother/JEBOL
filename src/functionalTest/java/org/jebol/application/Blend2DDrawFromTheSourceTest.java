@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class Blend2DDrawFromTheSourceTest {
 
-    private static final int ROWS = 1187;
+    private static final int ROWS = 1213;
 
     private record Row(String image, String block, String size, long crc) {
     }
@@ -125,7 +125,7 @@ class Blend2DDrawFromTheSourceTest {
             byte[] table = readTable();
             assertThat(rowsOf(table)).hasSize(ROWS);
             assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(table)))
-                    .isEqualTo("2b1dfae1e1d654d0a3dd1a4cb1aa53d12e9a40faf12c297eadb0c1af49413941");
+                    .isEqualTo("c8f8c4103f098c569b9a944a895871e84b119af89629890cf0ed4a14f83e8f29");
         }
 
         @Test
@@ -305,10 +305,41 @@ class Blend2DDrawFromTheSourceTest {
         @DisplayName("what is not ported yet is refused by name, not drawn wrongly")
         void refusesWhatItCannotDrawYet() {
             assertThat(answerTo("""
-                    e: try [b2d/draw 4x4 [fill 255.0.0 point 2x2]]
+                    e: try [b2d/draw 4x4 [font %any.ttf text 1x1 "hi"]]
                     reduce [e/id e/arg1]"""))
                     .isEqualTo("""
-                            [command-fail {blend2d cannot yet draw a point in JEBOL: that part of Blend2D is not ported}]""");
+                            [command-fail {blend2d cannot yet draw text in JEBOL: that part of Blend2D is not ported}]""");
+        }
+
+        @Test
+        @DisplayName("points read from a vector of 64-bit decimals draw what the same centres given as pairs draw")
+        void drawsPointsFromAVector() {
+            assertThat(answerTo("""
+                    from-pairs: b2d/draw 20x12 [fill 200.0.0 point-size 5 point 3.5x3 10x6.25 17x9]
+                    centres: make vector! [decimal! 64 [3.5 3 10 6.25 17 9]]
+                    from-vector: b2d/draw 20x12 [fill 200.0.0 point-size 5 point centres]
+                    reduce [equal? from-pairs from-vector  from-pairs/(11x7)  from-pairs/(1x12)]"""))
+                    .isEqualTo("[#(true) 200.0.0.255 255.255.255.255]");
+        }
+
+        @Test
+        @DisplayName("points read from a vector of narrower numbers are refused, as the C would read past them as doubles")
+        void refusesPointsFromANarrowVector() {
+            assertThat(answerTo("""
+                    centres: make vector! [integer! 32 [3 3 10 6]]
+                    e: try [b2d/draw 20x12 [fill 200.0.0 point centres]]
+                    e/id"""))
+                    .isEqualTo("command-fail");
+        }
+
+        @Test
+        @DisplayName("a point is a circle of half the point size, two pixels across until point-size says otherwise")
+        void drawsAPointAsACircleOfHalfItsSize() {
+            assertThat(answerTo("""
+                    as-point: b2d/draw 20x12 [fill 200.0.0 point 4x4 point-size 7 point 12x6]
+                    as-circles: b2d/draw 20x12 [fill 200.0.0 circle 4x4 1 circle 12x6 3.5]
+                    equal? as-point as-circles"""))
+                    .isEqualTo("#(true)");
         }
 
         @Test

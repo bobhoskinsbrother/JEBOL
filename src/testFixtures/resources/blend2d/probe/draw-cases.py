@@ -368,6 +368,37 @@ add("pair 8x6", "fill 255.0.0 box 2x1 6x4")
 add("pair 5x3", "fill 0.0.255.128 fill-all")
 add("pair 4.6x2.4", "fill 0.255.0 box 1x0 1x1")
 
+points = [
+    "fill 200.60.10 point 5x5",
+    "fill 200.60.10 point 5x5 12.5x7.25 30x20 0x0 40x30",
+    "pen 30.40.200 point 10x10 20.5x10.5",
+    "fill 30.200.90 pen 0.0.0 point-size 6 point 10x10 25.5x15.5",
+    "fill 200.60.10 point-size 0 point 10x10",
+    "fill 200.60.10 point-size -4 point 10x10",
+    "fill 200.60.10 point-size 1 point 10x10 10.5x14.5",
+    "fill 200.60.10 point-size 9 point 0x0 40x30 -2x15 38x-1",
+    "fill 200.60.10 point-size 30% point 10x10",
+    "fill 200.60.10 point-size 4.5 point 10x10 fill 0.0.255 point 20x10",
+    "fill 200.60.10 point-size bogus point 10x10",
+    "fill 200.60.10 point-size point 10x10",
+    "fill 200.60.10 point [5x5 10x10 15x15] fill 0.0.255 box 0x0 3x3",
+    "fill 200.60.10 point [5x5 10x10 bogus 15x15]",
+    "fill 200.60.10 point [] fill 0.0.255 box 0x0 3x3",
+    "fill 200.60.10 point [bogus 5x5] fill 0.0.255 box 0x0 3x3",
+    "fill 200.60.10 point 5x5 7 fill 0.0.255 box 0x0 3x3",
+    "fill 200.60.10 point 5x5 fill-all",
+    "fill 200.60.10 point bogus fill 0.0.255 box 0x0 3x3",
+    "fill 200.60.10 point 1.5 fill 0.0.255 box 0x0 3x3",
+    "point 5x5 fill 200.60.10 point 10x10",
+    "fill 200.60.10 point-size 4 rotate 30 20x15 point 20x5 30x15",
+    "fill 200.60.10 scale 2 point 5x5 point-size 3 point 15x10",
+    "fill 200.60.10.120 alpha 0.5 blend multiply point-size 8 point 10x10 15x12",
+    "fill 200.60.10 clip 5x5 20x20 point-size 10 point 10x10",
+    "fill 200.60.10 pen 0.0.0 line-width 3 point-size 12 point 20x15",
+]
+for at, block in enumerate(points):
+    add("noise 40x30 %d" % (600 + at), block)
+
 with open(sys.argv[1], "w") as script, open(sys.argv[2], "w") as table:
     for at, (image, block) in enumerate(cases):
         kind, *rest = image.split()

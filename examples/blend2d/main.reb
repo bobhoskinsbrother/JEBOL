@@ -37,6 +37,7 @@ paint-tile: func [operator] [
         fill 160.90.230 rotate 30 96x50 box 82x42 28x16
         reset-matrix
         image badge 100x2 18x18
+        fill 255.255.255 point-size 3 point 103x27 109x27 115x27
         fill 120.220.255.210
         shape [move 4x27 qcurve 4x5 26x5 qcurve 26x27 4x27 close]
         fill off
