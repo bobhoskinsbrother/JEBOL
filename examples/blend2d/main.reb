@@ -1,4 +1,4 @@
-Rebol [Title: "Blend2D's blend modes, on a shaded box, a pie, a star, a triangle, a turned box, a leaf and a line"]
+Rebol [Title: "Blend2D's blend modes, on a shaded box, a pie, a star, a triangle, a turned box, an image, a leaf and a line"]
 
 b2d: import 'blend2d
 
@@ -17,6 +17,10 @@ columns: 6
 cell: tile-size + (as-pair gap gap) + (as-pair 0 caption-height)
 rows: to integer! ((length? operators) + columns - 1) / columns
 
+badge: b2d/draw 12x12 [
+    fill radial 255.250.220 0 200.60.40 0.7 40.20.60 1 4x4 5x5 7 fill-all
+]
+
 paint-tile: func [operator] [
     b2d/draw tile-size compose [
         fill 30.110.200 box 0x0 120x36
@@ -32,6 +36,7 @@ paint-tile: func [operator] [
         fill 250.240.90.220 triangle 34x66 52x46 60x68
         fill 160.90.230 rotate 30 96x50 box 82x42 28x16
         reset-matrix
+        image badge 100x2 18x18
         fill 120.220.255.210
         shape [move 4x27 qcurve 4x5 26x5 qcurve 26x27 4x27 close]
         fill off

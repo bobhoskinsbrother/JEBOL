@@ -22,6 +22,8 @@ public final class Blend2DGradient implements Blend2DPaint {
 
     private static final double TURN = 2 * Math.PI;
 
+    private static final int OPAQUE_ALPHA = 0xFF;
+
     private final Kind kind;
 
     private final double[] values;
@@ -74,6 +76,16 @@ public final class Blend2DGradient implements Blend2DPaint {
     @Override
     public int premultipliedAt(double x, double y) {
         return SolidFill.premultiply(colourAt(x, y));
+    }
+
+    @Override
+    public boolean isOpaque() {
+        return !stops.isEmpty() && stops.stream().allMatch(stop -> stop.argb() >>> 24 == OPAQUE_ALPHA);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return stops.isEmpty();
     }
 
     int colourAt(double x, double y) {

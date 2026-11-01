@@ -21,6 +21,20 @@ record Blend2DMatrix(double m00, double m01, double m10, double m11, double m20,
         return new Blend2DMatrix(m00, m01, m10, m11, m20 + x, m21 + y);
     }
 
+    Blend2DMatrix translate(double x, double y) {
+        return new Blend2DMatrix(m00, m01, m10, m11, m20 + x * m00 + y * m10, m21 + x * m01 + y * m11);
+    }
+
+    Blend2DMatrix multiply(Blend2DMatrix after) {
+        return new Blend2DMatrix(
+                m00 * after.m00 + m01 * after.m10,
+                m00 * after.m01 + m01 * after.m11,
+                m10 * after.m00 + m11 * after.m10,
+                m10 * after.m01 + m11 * after.m11,
+                m20 * after.m00 + m21 * after.m10 + after.m20,
+                m20 * after.m01 + m21 * after.m11 + after.m21);
+    }
+
     Blend2DMatrix postScale(double x, double y) {
         return new Blend2DMatrix(m00 * x, m01 * y, m10 * x, m11 * y, m20 * x, m21 * y);
     }

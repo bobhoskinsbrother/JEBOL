@@ -22,13 +22,26 @@ public final class Blend2DPattern implements Blend2DPaint {
 
     private final int extendY;
 
-    public Blend2DPattern(int[] premultipliedPixels, int wide, int high, int extendMode) {
-        this.premultiplied = premultipliedPixels.clone();
-        this.wide = wide;
-        this.high = high;
+    private final boolean isOpaqueFormat;
+
+    public Blend2DPattern(Blend2DImage image, int extendMode) {
+        this.premultiplied = image.pixels().clone();
+        this.wide = image.wide();
+        this.high = image.high();
         int[] perAxis = EXTEND_PER_AXIS[Math.clamp(extendMode, 0, EXTEND_PER_AXIS.length - 1)];
         extendX = perAxis[0];
         extendY = perAxis[1];
+        this.isOpaqueFormat = image.isOpaqueFormat();
+    }
+
+    @Override
+    public boolean isOpaque() {
+        return isOpaqueFormat;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return false;
     }
 
     @Override

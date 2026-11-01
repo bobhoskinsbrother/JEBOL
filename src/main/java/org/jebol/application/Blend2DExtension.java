@@ -1,11 +1,13 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
+import org.jebol.domain.eval.blend2d.Blend2DImage;
 import org.jebol.domain.eval.blend2d.Blend2DNotPortedYet;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.Blend2DSurface;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
@@ -18,6 +20,7 @@ import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 final class Blend2DExtension {
 
@@ -36,10 +39,11 @@ final class Blend2DExtension {
     private static final String NO_IMAGE = "Blend2D's blImageCreateFromData failed!";
 
     private static final int FORMAT_PREMULTIPLIED = 1;
+    private static final int FORMAT_OPAQUE = 2;
     private static final int BYTES_PIXEL = 4;
     private static final int LONGEST_SIDE = 0xFFFF;
 
-    record ImageHandle(ImageValue image) {
+    record ImageHandle(ImageValue image, boolean isOpaqueFormat) {
     }
 
     record PathHandle(Blend2DShape shape) {
@@ -126,7 +130,10 @@ final class Blend2DExtension {
     }
 
     private static void writePixels(Blend2DSurface surface, ImageStorage storage) {
-        int[] pixels = surface.pixels();
+        writeWords(surface.pixels(), storage);
+    }
+
+    private static void writeWords(int[] pixels, ImageStorage storage) {
         for (int pixel = 0; pixel < pixels.length; pixel++) {
             int argb = pixels[pixel];
             storage.setColourAt(pixel + 1, (argb >>> 16) & 0xFF, (argb >>> 8) & 0xFF, argb & 0xFF);
@@ -140,12 +147,34 @@ final class Blend2DExtension {
             if (image.storage().wide() == 0 || image.storage().high() == 0) {
                 throw new IllegalStateException(NO_IMAGE_HANDLE);
             }
-            return call.makeHandle(IMAGE_HANDLE, new ImageHandle(image.head()));
+            return call.makeHandle(IMAGE_HANDLE, new ImageHandle(image.head(), false));
         }
-        if (from instanceof PairValue) {
-            throw new IllegalStateException(NO_IMAGE_HANDLE);
+        if (from instanceof FileValue file) {
+            return readImageFile(call, file).map(read -> call.makeHandle(IMAGE_HANDLE, asImageHandle(read)))
+                    .orElseThrow(() -> new IllegalStateException(NO_IMAGE_HANDLE));
         }
-        throw new IllegalStateException(new Blend2DNotPortedYet("an image read from a file").getMessage());
+        throw new IllegalStateException(NO_IMAGE_HANDLE);
+    }
+
+    static Optional<Blend2DImage> readImageFile(Command call, FileValue file) {
+        return call.readFile(file.text()).flatMap(encoded -> Blend2DImage.decode(encoded, call.imageCodec()));
+    }
+
+    static Blend2DImage readImage(ImageValue image) {
+        ImageStorage storage = image.head().storage();
+        return new Blend2DImage(storage.wide(), storage.high(),
+                readPixels(storage, storage.wide() * storage.high()), false);
+    }
+
+    static Blend2DImage readImage(ImageHandle handle) {
+        Blend2DImage read = readImage(handle.image());
+        return new Blend2DImage(read.wide(), read.high(), read.pixels(), handle.isOpaqueFormat());
+    }
+
+    private static ImageHandle asImageHandle(Blend2DImage read) {
+        ImageValue image = ImageValue.of(read.wide(), read.high());
+        writeWords(read.pixels(), image.storage());
+        return new ImageHandle(image, read.isOpaqueFormat());
     }
 
     private static Value info(Command call) {
@@ -154,11 +183,12 @@ final class Blend2DExtension {
         }
         Value handle = call.arguments().getFirst();
         if (isImageHandle(handle)) {
-            ImageStorage storage = call.unwrap(handle, ImageHandle.class).image().storage();
+            ImageHandle image = call.unwrap(handle, ImageHandle.class);
+            ImageStorage storage = image.image().storage();
             return StringValue.of("width:  " + storage.wide() + "\n"
                     + "heigth: " + storage.high() + "\n"
                     + "stride: " + storage.wide() * BYTES_PIXEL + "\n"
-                    + "format: " + FORMAT_PREMULTIPLIED + "\n"
+                    + "format: " + (image.isOpaqueFormat() ? FORMAT_OPAQUE : FORMAT_PREMULTIPLIED) + "\n"
                     + "flags:  0\n");
         }
         return StringValue.of("");

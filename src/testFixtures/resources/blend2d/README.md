@@ -131,6 +131,38 @@ under a scale and an operator, and an opaque pattern under all nine extend
 words, whole and translated, translated by a fraction, scaled, rotated, under
 an operator, and given to `pen`.
 
+## blend2d-image.tsv
+
+154 blits drawn by the same probe, run in `images/` so the files are found,
+and kept whole. Each row is `image`, `source` (empty, or `opaque WxH seed`,
+`premul WxH seed` -- the noise generator with every channel scaled by its
+alpha and truncated, so no channel exceeds its alpha -- or `noise WxH seed`),
+`setup` (a statement run first, binding a handle `H` or a path `P`), `block`
+(with `SOURCE` bound to the source), `kept` (`exact` or `close`), the `size`,
+and every pixel as an ARGB word. `Blend2DImageFromTheSourceTest` expects the
+121 exact rows byte for byte and the 33 close ones within 2 levels a channel.
+
+`probe/image-files.py` writes the files in `images/` from seeded noise with
+Pillow: PNGs of colour types 6, 2, 0, 4 and 3 with a transparent palette
+entry, a 24-bit BMP, a V4 BMP with an alpha mask and premultiplied bytes,
+colour and grey JPEGs, QOIs of four and three channels, and four that
+Blend2D refuses -- a GIF, a text file, the same alpha BMP with a V5 header,
+and (by its absence) `missing.png`. `probe/image-cases.py` writes the cases:
+
+- whole-pixel blits of an opaque and a premultiplied image at eight corners,
+  inside, across each edge and wholly outside;
+- each of the 29 operators with a premultiplied image, and with an opaque one
+  under `alpha 0.6`;
+- fractional corners, a translation by whole and half pixels, scales, a
+  mirror, rotations about the origin and a point, and `scale 0 0`;
+- scaled blits larger, smaller, the image's own size, at a fractional corner,
+  with negative and zero sizes, past the edges, rotated and under a scale;
+- clips aligned, unaligned and outside, `alpha 0.5` and `alpha 0`;
+- the walk: the value after a size skipped, `none`, no corner, a pair where
+  the image goes, handles drawn plain and scaled, and a path handle refused;
+- every file blitted with `source-copy` and `source-over`, and used as a
+  `fill` pattern through a handle, and the four refused files ending the walk.
+
 ## Making them again
 
 Blend2D and asmjit are not checked in. Clone them at the commits above, read
@@ -151,6 +183,9 @@ image it prints into a row:
     python3 probe/draw-table.py cases.tsv cases.out blend2d-draw.tsv
     python3 probe/paint-cases.py paint.r3 paint.tsv && ./probe paint.r3 > paint.out
     python3 probe/paint-table.py paint.tsv paint.out blend2d-paint.tsv
+    python3 probe/image-files.py images && python3 probe/image-cases.py image.r3 image.tsv
+    (cd images && ../probe ../image.r3) > image.out
+    python3 probe/image-table.py image.tsv image.out blend2d-image.tsv
 
 `B2D_THREADS=0` (or any count) and `B2D_NO_JIT=1` override what the extension
 asks Blend2D for, which is how the port's notes on bands, threads and the

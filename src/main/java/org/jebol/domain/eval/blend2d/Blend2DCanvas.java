@@ -16,6 +16,8 @@ public final class Blend2DCanvas {
 
     private static final double STROKE_MITER_LIMIT = 4.0;
 
+    private static final int BLIT_EXTEND = 0;
+
     private final Blend2DSurface surface;
 
     private CompositingOperator operator = CompositingOperator.SOURCE_OVER;
@@ -297,7 +299,10 @@ public final class Blend2DCanvas {
         if (clipped.isEmpty()) {
             return;
         }
-        int[] whole = clipped.get().truncate();
+        paintFixedBox(fill, alpha, clipped.get().truncate());
+    }
+
+    private void paintFixedBox(PixelSource fill, int alpha, int[] whole) {
         if (whole[0] >= whole[2] || whole[1] >= whole[3]) {
             return;
         }
@@ -306,6 +311,57 @@ public final class Blend2DCanvas {
         } else {
             UnalignedBoxFill.fill(surface, whole[0], whole[1], whole[2], whole[3], alpha, fill);
         }
+    }
+
+    public void blitImage(Blend2DImage source, double x, double y) {
+        int wide = source.wide();
+        int high = source.high();
+        if (hasNoClipArea || wide <= 0 || high <= 0) {
+            return;
+        }
+        Blend2DPattern image = new Blend2DPattern(source, BLIT_EXTEND);
+        if (transform.kind().compareTo(Blend2DMatrix.Kind.TRANSLATE) <= 0) {
+            blitTranslated(image, wide, high, x, y);
+            return;
+        }
+        paintImage(image, transform.translate(x, y), Blend2DBox.fromRect(x, y, wide, high));
+    }
+
+    public void blitScaledImage(Blend2DImage source, double x, double y, double toWide, double toHigh) {
+        int wide = source.wide();
+        int high = source.high();
+        if (toWide == wide && toHigh == high) {
+            blitImage(source, x, y);
+            return;
+        }
+        if (hasNoClipArea || wide <= 0 || high <= 0) {
+            return;
+        }
+        Blend2DMatrix placed = new Blend2DMatrix(toWide / wide, 0, 0, toHigh / high, x, y).multiply(transform);
+        paintImage(new Blend2DPattern(source, BLIT_EXTEND), placed, Blend2DBox.fromRect(x, y, toWide, toHigh));
+    }
+
+    private void blitTranslated(Blend2DPattern image, int wide, int high, double x, double y) {
+        Blend2DMatrix fixed = transform.toFixedPoint();
+        double startX = x * fixed.m00() + fixed.m20();
+        double startY = y * fixed.m11() + fixed.m21();
+        double x0 = Math.max(startX, clipFixed.x0());
+        double y0 = Math.max(startY, clipFixed.y0());
+        double x1 = Math.min(startX + wide * fixed.m00(), clipFixed.x1());
+        double y1 = Math.min(startY + high * fixed.m11(), clipFixed.y1());
+        if (!(x0 < x1 && y0 < y1)) {
+            return;
+        }
+        double offsetX = Math.floor(startX) / FIXED_POINT_SCALE;
+        double offsetY = Math.floor(startY) / FIXED_POINT_SCALE;
+        PaintedFill fill = new PaintedFill(image, operator, globalAlpha, new double[] {1, 0, 0, 1, -offsetX, -offsetY});
+        paintFixedBox(fill, globalAlpha, new int[] {(int) x0, (int) y0, (int) x1, (int) y1});
+    }
+
+    private void paintImage(Blend2DPattern image, Blend2DMatrix imageToDevice, Blend2DBox box) {
+        imageToDevice.invert().ifPresent(deviceToImage -> paintBox(new PaintedFill(image, operator, globalAlpha,
+                new double[] {deviceToImage.m00(), deviceToImage.m01(), deviceToImage.m10(), deviceToImage.m11(),
+                    deviceToImage.m20(), deviceToImage.m21()}), globalAlpha, box));
     }
 
     private void paintAlignedBox(PixelSource fill, int left, int top, int right, int bottom) {

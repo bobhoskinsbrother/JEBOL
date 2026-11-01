@@ -4,8 +4,11 @@ import org.jebol.domain.host.ImagePort;
 
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
+import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,6 +40,8 @@ public final class JavaImage implements ImagePort {
             "tiff", "tiff");
 
     private static final int CHANNELS_PIXEL = 4;
+
+    private static final int OPAQUE_ALPHA = 0xFF;
 
     private static final Set<String> HAVE_NO_ALPHA = Set.of("jpeg");
 
@@ -148,6 +153,9 @@ public final class JavaImage implements ImagePort {
     }
 
     private Pixels readPixels(BufferedImage read) {
+        if (read.getColorModel().getColorSpace().getType() == ColorSpace.TYPE_GRAY) {
+            return readGreyPixels(read);
+        }
         int wide = read.getWidth();
         int high = read.getHeight();
         byte[] rgba = new byte[wide * high * CHANNELS_PIXEL];
@@ -162,6 +170,35 @@ public final class JavaImage implements ImagePort {
             }
         }
         return new Pixels(wide, high, rgba);
+    }
+
+    private Pixels readGreyPixels(BufferedImage read) {
+        int wide = read.getWidth();
+        int high = read.getHeight();
+        Raster raster = read.getRaster();
+        ColorModel model = read.getColorModel();
+        boolean hasAlpha = raster.getNumBands() > 1;
+        byte[] rgba = new byte[wide * high * CHANNELS_PIXEL];
+        int at = 0;
+        for (int down = 0; down < high; down++) {
+            for (int across = 0; across < wide; across++) {
+                byte grey = (byte) toEightBits(raster.getSample(across, down, 0), model.getComponentSize(0));
+                rgba[at++] = grey;
+                rgba[at++] = grey;
+                rgba[at++] = grey;
+                rgba[at++] = hasAlpha
+                        ? (byte) toEightBits(raster.getSample(across, down, 1), model.getComponentSize(1))
+                        : (byte) OPAQUE_ALPHA;
+            }
+        }
+        return new Pixels(wide, high, rgba);
+    }
+
+    private static int toEightBits(int sample, int bits) {
+        if (bits >= Byte.SIZE) {
+            return sample >>> (bits - Byte.SIZE);
+        }
+        return sample * OPAQUE_ALPHA / ((1 << bits) - 1);
     }
 
     @Override

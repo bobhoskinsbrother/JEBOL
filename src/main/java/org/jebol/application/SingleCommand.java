@@ -3,6 +3,8 @@ package org.jebol.application;
 import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.Postbox;
+import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ErrorCategory;
@@ -105,6 +107,20 @@ final class SingleCommand implements Command {
     @Override
     public Postbox postbox() {
         return evaluator.postbox();
+    }
+
+    @Override
+    public Optional<byte[]> readFile(String path) {
+        try {
+            return Optional.of(evaluator.ports().files().readBytes(path));
+        } catch (FilePort.Denied unreadable) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public ImagePort imageCodec() {
+        return evaluator.ports().images();
     }
 
     @Override

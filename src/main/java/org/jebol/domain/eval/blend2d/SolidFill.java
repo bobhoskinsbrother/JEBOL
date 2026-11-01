@@ -33,16 +33,6 @@ public final class SolidFill implements PixelSource {
                         globalAlpha, simplified.hasSourceAlpha()));
     }
 
-    static Optional<SolidFill> resolvePremultiplied(CompositingOperator operator, int prgb, int globalAlpha) {
-        if (globalAlpha == 0) {
-            return Optional.empty();
-        }
-        return SimplifiedOperator.forSolid(operator, prgb)
-                .map(simplified -> new SolidFill(simplified.operator(),
-                        simplified.replacesSource() ? simplified.replacement() : prgb,
-                        globalAlpha, simplified.hasSourceAlpha()));
-    }
-
     public static int scaleAlpha(double alpha) {
         double clamped = Math.clamp(alpha, 0.0, 1.0);
         double scaled = clamped * FULL_ALPHA;

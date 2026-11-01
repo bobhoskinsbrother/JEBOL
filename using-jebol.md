@@ -188,9 +188,11 @@ byte for byte. That module fills boxes, rounded boxes, polygons, triangles,
 circles, ellipses, arcs and cubics, and strokes lines and every outline with
 its widths, joins and caps, and draws `shape` and `path` from the path dialect
 with smooth curves and SVG arcs, under any transform, clip, alpha and blend
-mode today. Gradients and image patterns are drawn too, within a couple of
-levels of Blend2D rather than exactly. Drawing an image, a `point` or text,
-which are not ported yet, raises an error naming it.
+mode today, and blits images, R3's own or PNG, BMP, QOI and JPEG files.
+Gradients, image patterns, images scaled or placed between pixels, and JPEG
+files are drawn within a couple of levels of Blend2D rather than exactly.
+Drawing a `point` or text, which are not ported yet, raises an error naming
+it.
 
 ```
 ./build/install/jebol/bin/jebol --screen=window examples/blend2d/

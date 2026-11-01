@@ -13,9 +13,10 @@ rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 rotation -- each filled byte for byte against the release's C, and the
 stroker, which draws `line` and every one of those outlines under `pen`,
 `line-width`, `line-join` and `line-cap`, and `shape` and `path` with their
-dialect. Gradients and image patterns are drawn too, but not byte for byte:
-see below. Not yet: the rest goals 1a lists, each of which raises an error
-naming what it cannot draw.
+dialect, and `image` blits at whole pixels, from R3 images and from PNG, BMP
+and QOI files. Gradients, image patterns, blits between pixels and JPEG files
+are drawn too, but not byte for byte: see below. Not yet: the rest goals 1a
+lists, each of which raises an error naming what it cannot draw.
 
 ---
 
@@ -150,9 +151,21 @@ not. Porting Blend2D's gradient lookup table, its JIT fetchers and its
 compositing of a source that varies per pixel would follow several thousand
 more lines of C, and the decision was to draw them plainly instead.
 `Blend2DGradient` and `Blend2DPattern` give the colour at a point in user
-space, and `PaintedFill` hands each pixel's colour to the same compositing a
-solid colour goes through, so every operator, mask and alpha still behaves as
-Blend2D's.
+space. The compositing that follows is Blend2D's own, byte for byte:
+`PaintedFill` simplifies the operator once, by the source's format, and
+composites every pixel through the variable-mask formulas.
+
+Both halves of that come from the C. Blend2D simplifies a fetched source by
+its format and never by its pixels: a gradient is FRGB32 when every stop is
+opaque and PRGB32 otherwise (`gradient.cpp`, `FLAG_ALPHA_NOT_ONE`), a pattern
+or a blit takes its image's format, and a gradient with no stops draws
+nothing. A per-pixel simplification would turn `destination-atop` into
+`destination-over` wherever a pixel is opaque, which is right for a solid and
+wrong under a global alpha. And where a solid has formulas of its own for a
+constant mask, a fetched source has none: `cMaskProcRGBA32Vec` hands any
+source that is not solid to `vMaskProcRGBA32Vec` with the constant as its
+mask, and without a mask when it is 255. Before that was followed, `minus`
+under `alpha 0.6` came out 102 levels away.
 
 What they keep of Blend2D's behaviour:
 
@@ -181,6 +194,70 @@ as premultiplied, so a colour above its alpha is invalid data to Blend2D,
 which composites it with byte arithmetic that wraps. JEBOL composites the same
 data with the saturating arithmetic it uses everywhere. Both draw something
 odd; they draw different odd things.
+
+## Images: blits, and images read from files
+
+`image` blits as `blitImageDImpl` and `blitScaledImageDImpl` do, in
+`Blend2DCanvas.blitImage` and `blitScaledImage`. The extension calls its
+second pair the bottom right, but hands it to Blend2D as the width and
+height, so `image img 10x10 20x20` draws the image 20 pixels square at 10x10.
+It also steps one value past that pair after reading it, so whatever follows
+is skipped.
+
+- Under no transform or a translation the blit is worked in 24.8 fixed
+  point: the start mapped, clipped to the clip box, and the box filled as a
+  box is, aligned or not. The image is sampled from `floor(start) / 256`, so
+  at a whole-pixel start every sample is a pixel's centre and comes through
+  unchanged.
+- Under any other transform the image is a pattern placed by the transform
+  times the translation to the corner, and the box goes through the same
+  path as `box` does.
+- A scaled blit is a pattern placed by the scale to the size, then the
+  transform, unless the size is the image's own, when it is an ordinary blit
+  as the C's shortcut makes it.
+- A blit pads past the image's edges, `BL_RASTER_CONTEXT_PREFERRED_BLIT_EXTEND`.
+
+`blend2d-image.tsv` holds 154 cases drawn by the extension's C, each marked
+`exact` or `close`. The 121 exact ones are every blit at whole pixels: from an
+R3 image, opaque or validly premultiplied, under all 29 operators, global
+alpha, clips aligned or not, a mirror, a handle, and from every lossless file.
+JEBOL draws all of them byte for byte. The 33 close ones sample between pixels
+-- a fractional corner, a scale, a rotation -- or read a JPEG, and land within
+2 levels: the bilinear weights are the patterns' (above), and the JPEG
+decoder is the host's (below).
+
+A difference left on purpose: drawing an image onto itself. Blend2D reads the
+source while it writes the target, so an offset copy smears the rows it has
+already written; JEBOL reads the source once before drawing.
+
+### Images read from files
+
+`b2d/image %file` and `image %file` in `draw` read the file through JEBOL's
+file port and decode it with the host's image codec, by decision: Blend2D's
+own PNG, JPEG, BMP and QOI decoders would be about four thousand lines more,
+and only JPEG would come out differently. `Blend2DImage.decode` keeps what
+Blend2D decides around the decoding:
+
+- It reads what Blend2D reads, by the bytes rather than the name: PNG, JPEG,
+  BMP and QOI. A GIF, anything else, and a file that cannot be read make no
+  handle, and in `draw` end the walk without an error, as
+  `b2d_init_image_from_arg` failing does.
+- A BMP is read only with an information header of 12, 40, 52, 56 or 108
+  bytes. Blend2D's `kHeaderSizeWIN_V5` is 12 where it should be 124, so a V5
+  bitmap -- which is what JEBOL's own `save %file.bmp` writes -- is refused.
+- The format: a PNG of colour type 2 (RGB) is XRGB32 and every other PNG is
+  PRGB32, greyscale ones included; a JPEG is XRGB32; a BMP is PRGB32 when its
+  header carries an alpha mask and XRGB32 otherwise; a QOI is PRGB32 with four
+  channels and XRGB32 with three. `info/of` reports 1 or 2 accordingly, and
+  an XRGB32 image composites as an opaque one.
+- PNG and QOI alpha is premultiplied with rounding, `(c * a + 127) / 255`.
+  A BMP's alpha is not: Blend2D marks a BMP alpha mask
+  `BL_FORMAT_FLAG_PREMULTIPLIED` and takes the bytes as they stand.
+
+Reading them this way found a fault in JEBOL's desktop codec: `getRGB` moves
+a greyscale image's levels through a gamma curve, so a grey PNG or JPEG read
+73 levels away from its bytes, and so did `image/load`. `JavaImage` now reads
+a grey image's samples as stored, the high byte of a 16-bit one.
 
 ## Shape and path
 

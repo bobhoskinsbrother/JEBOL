@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.Postbox;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.HandleValue;
@@ -9,6 +10,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface Command {
@@ -39,4 +41,8 @@ public interface Command {
     Value readSystemField(String field, String... deeper);
 
     Postbox postbox();
+
+    Optional<byte[]> readFile(String path);
+
+    ImagePort imageCodec();
 }

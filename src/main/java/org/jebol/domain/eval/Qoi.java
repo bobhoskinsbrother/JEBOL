@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-final class Qoi {
+public final class Qoi {
 
     private Qoi() {
     }
@@ -45,7 +45,7 @@ final class Qoi {
         return true;
     }
 
-    static Decoded decode(byte[] bytes) {
+    public static Decoded decode(byte[] bytes) {
         if (!identifies(bytes) || isHeaderWithNothingAfterIt(bytes)) {
             return null;
         }
@@ -57,7 +57,7 @@ final class Qoi {
         return new Decoded(wide, high, readPixelsIn(bytes, wide * high));
     }
 
-    record Decoded(int wide, int high, byte[] pixels) {
+    public record Decoded(int wide, int high, byte[] pixels) {
     }
 
     private static boolean isHeaderWithNothingAfterIt(byte[] bytes) {

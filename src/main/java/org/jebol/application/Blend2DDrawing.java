@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
 import org.jebol.domain.eval.blend2d.Blend2DGradient;
+import org.jebol.domain.eval.blend2d.Blend2DImage;
 import org.jebol.domain.eval.blend2d.Blend2DPathBuilder;
 import org.jebol.domain.eval.blend2d.Blend2DPattern;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
@@ -33,6 +34,7 @@ import org.jebol.domain.value.WordValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 final class Blend2DDrawing {
 
@@ -469,13 +471,14 @@ final class Blend2DDrawing {
                 if (!Blend2DExtension.isImageHandle(read.value())) {
                     return false;
                 }
-                return usePattern(call.unwrap(read.value(), Blend2DExtension.ImageHandle.class).image());
+                return usePattern(Blend2DExtension.readImage(
+                        call.unwrap(read.value(), Blend2DExtension.ImageHandle.class)));
             }
             case IMAGE -> {
                 if (((ImageValue) read.value()).storage().wide() == 0 || ((ImageValue) read.value()).storage().high() == 0) {
                     return false;
                 }
-                return usePattern((ImageValue) read.value());
+                return usePattern(Blend2DExtension.readImage((ImageValue) read.value()));
             }
             case UNSET -> {
                 long mode = fetchMode(index - 1, ARGUMENT_LINEAR, GRADIENT_TYPE_LARGEST);
@@ -487,23 +490,19 @@ final class Blend2DDrawing {
         }
     }
 
-    private boolean usePattern(ImageValue image) {
-        long mode = fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST);
-        if (mode >= 0) {
-            index++;
-        } else {
-            mode = EXTEND_MODE_REPEAT;
-        }
-        canvas.setFillPaint(makePattern(image, (int) mode));
+    private boolean usePattern(Blend2DImage image) {
+        canvas.setFillPaint(new Blend2DPattern(image, (int) readExtendMode()));
         hasFill = true;
         return true;
     }
 
-    private static Blend2DPattern makePattern(ImageValue image, int mode) {
-        ImageValue head = image.head();
-        int wide = head.storage().wide();
-        int high = head.storage().high();
-        return new Blend2DPattern(Blend2DExtension.readPixels(head.storage(), wide * high), wide, high, mode);
+    private long readExtendMode() {
+        long mode = fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST);
+        if (mode >= 0) {
+            index++;
+            return mode;
+        }
+        return EXTEND_MODE_REPEAT;
     }
 
     private boolean useGradient(long mode) {
@@ -571,13 +570,8 @@ final class Blend2DDrawing {
                 if (((ImageValue) read.value()).storage().wide() == 0 || ((ImageValue) read.value()).storage().high() == 0) {
                     return false;
                 }
-                long mode = fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST);
-                if (mode >= 0) {
-                    index++;
-                } else {
-                    mode = EXTEND_MODE_REPEAT;
-                }
-                canvas.setFillPaint(makePattern((ImageValue) read.value(), (int) mode));
+                canvas.setFillPaint(new Blend2DPattern(Blend2DExtension.readImage((ImageValue) read.value()),
+                        (int) readExtendMode()));
                 hasStroke = true;
                 return true;
             }
@@ -940,33 +934,37 @@ final class Blend2DDrawing {
 
     private boolean drawImage() {
         Read read = resolveNext();
-        switch (read.kind()) {
-            case HANDLE -> {
-                if (!Blend2DExtension.isImageHandle(read.value())) {
-                    return false;
-                }
-            }
-            case IMAGE -> {
-                ImageValue image = (ImageValue) read.value();
-                if (image.storage().wide() == 0 || image.storage().high() == 0) {
-                    endedEarly = true;
-                    return true;
-                }
-            }
-            case FILE -> canvas.refuse("an image read from a file");
-            default -> {
-                endedEarly = true;
-                return true;
-            }
-        }
-        if (resolvePair() == null) {
+        if (read.kind() == Kind.HANDLE && !Blend2DExtension.isImageHandle(read.value())) {
             return false;
         }
-        if (resolvePairOptionally() != null) {
-            index++;
+        Optional<Blend2DImage> source = readBlitSource(read);
+        if (source.isEmpty()) {
+            endedEarly = true;
+            return true;
         }
-        canvas.refuse("an image");
+        double[] corner = resolvePair();
+        if (corner == null) {
+            return false;
+        }
+        double[] size = resolvePairOptionally();
+        if (size != null) {
+            index++;
+            canvas.blitScaledImage(source.get(), corner[0], corner[1], size[0], size[1]);
+        } else {
+            canvas.blitImage(source.get(), corner[0], corner[1]);
+        }
         return true;
+    }
+
+    private Optional<Blend2DImage> readBlitSource(Read read) {
+        return switch (read.kind()) {
+            case HANDLE -> Optional.of(Blend2DExtension.readImage(
+                    call.unwrap(read.value(), Blend2DExtension.ImageHandle.class)));
+            case IMAGE -> Optional.of(Blend2DExtension.readImage((ImageValue) read.value()))
+                    .filter(image -> image.wide() > 0 && image.high() > 0);
+            case FILE -> Blend2DExtension.readImageFile(call, (FileValue) read.value());
+            default -> Optional.empty();
+        };
     }
 
     private boolean chooseFont() {

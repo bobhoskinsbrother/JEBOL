@@ -70,9 +70,12 @@ class Blend2DDrawFromTheSourceTest {
         HexFormat hex = HexFormat.of();
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int word = noise.next();
-            colours.append(hex.toHexDigits((byte) (word >>> 16))).append(hex.toHexDigits((byte) (word >>> 8)))
-                    .append(hex.toHexDigits((byte) word));
-            alphas.append(hex.toHexDigits(parts[0].equals("opaque") ? (byte) 0xFF : (byte) (word >>> 24)));
+            int alpha = parts[0].equals("opaque") ? 0xFF : word >>> 24;
+            int scale = parts[0].equals("premul") ? alpha : 0xFF;
+            colours.append(hex.toHexDigits((byte) (((word >>> 16) & 0xFF) * scale / 0xFF)))
+                    .append(hex.toHexDigits((byte) (((word >>> 8) & 0xFF) * scale / 0xFF)))
+                    .append(hex.toHexDigits((byte) ((word & 0xFF) * scale / 0xFF)));
+            alphas.append(hex.toHexDigits((byte) alpha));
         }
         return "make image! [" + wide + "x" + high + " #{" + colours + "} #{" + alphas + "}]";
     }

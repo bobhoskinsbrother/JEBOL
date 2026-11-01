@@ -81,12 +81,13 @@ class Blend2DPaintTest {
     @DisplayName("a pattern samples its pixels at their centres, and pads, tiles or flips past its edges per axis")
     void samplesAndExtendsAPattern() {
         int[] pixels = {RED, GREEN, BLUE, 0xFFFFFFFF};
-        Blend2DPattern tiled = new Blend2DPattern(pixels, 2, 2, 1);
+        Blend2DImage image = new Blend2DImage(2, 2, pixels, false);
+        Blend2DPattern tiled = new Blend2DPattern(image, 1);
         assertThat(tiled.premultipliedAt(0.5, 0.5)).isEqualTo(RED);
         assertThat(tiled.premultipliedAt(2.5, 0.5)).isEqualTo(RED);
-        Blend2DPattern padded = new Blend2DPattern(pixels, 2, 2, 0);
+        Blend2DPattern padded = new Blend2DPattern(image, 0);
         assertThat(padded.premultipliedAt(9.5, 0.5)).isEqualTo(GREEN);
-        Blend2DPattern flipped = new Blend2DPattern(pixels, 2, 2, 2);
+        Blend2DPattern flipped = new Blend2DPattern(image, 2);
         assertThat(flipped.premultipliedAt(2.5, 0.5)).isEqualTo(GREEN);
         assertThat(tiled.premultipliedAt(1.0, 0.5)).isEqualTo(0xFF808000);
     }
