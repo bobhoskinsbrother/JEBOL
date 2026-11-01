@@ -2,10 +2,12 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
 import org.jebol.domain.eval.blend2d.Blend2DImage;
-import org.jebol.domain.eval.blend2d.Blend2DNotPortedYet;
+import org.jebol.domain.eval.blend2d.Blend2DRefusal;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
+import org.jebol.domain.eval.blend2d.OpenTypeFace;
 import org.jebol.domain.eval.blend2d.Blend2DSurface;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.HandleValue;
@@ -37,6 +39,7 @@ final class Blend2DExtension {
 
     private static final String NO_IMAGE_HANDLE = "Blend2D failed to make an image handle!";
     private static final String NO_IMAGE = "Blend2D's blImageCreateFromData failed!";
+    private static final String NO_FONT_FACE = "Blend2D's blFontFaceCreateFromFile failed!";
 
     private static final int FORMAT_PREMULTIPLIED = 1;
     private static final int FORMAT_OPAQUE = 2;
@@ -49,7 +52,7 @@ final class Blend2DExtension {
     record PathHandle(Blend2DShape shape) {
     }
 
-    record FontHandle() {
+    record FontHandle(OpenTypeFace face) {
     }
 
     private Blend2DExtension() {
@@ -66,9 +69,7 @@ final class Blend2DExtension {
                                 Blend2DDrawing.buildPath(call, (AnyBlockValue) call.arguments().getFirst())))),
                 new ExtensionCommand("font", "{Prepares font handle} file [file! string!] "
                         + "{Font location or name}",
-                        call -> {
-                            throw new IllegalStateException(new Blend2DNotPortedYet("with a font").getMessage());
-                        }),
+                        Blend2DExtension::makeFont),
                 new ExtensionCommand("image", "{Prepares Blend2D's native image} from [pair! image! file!]",
                         Blend2DExtension::makeImage),
                 new ExtensionCommand("info", "{Returns info about Blend2D library} "
@@ -90,6 +91,20 @@ final class Blend2DExtension {
         return value instanceof HandleValue handle && handle.typeName().equals(PATH_HANDLE);
     }
 
+    static boolean isFontHandle(Value value) {
+        return value instanceof HandleValue handle && handle.typeName().equals(FONT_HANDLE);
+    }
+
+    static Optional<OpenTypeFace> readFontFile(Command call, AnyStringValue file) {
+        return call.readFile(file.storage().text()).flatMap(OpenTypeFace::read);
+    }
+
+    private static Value makeFont(Command call) {
+        return readFontFile(call, (AnyStringValue) call.arguments().getFirst())
+                .map(face -> call.makeHandle(FONT_HANDLE, new FontHandle(face)))
+                .orElseThrow(() -> new IllegalStateException(NO_FONT_FACE));
+    }
+
     private static Value draw(Command call) {
         ImageValue image = call.arguments().getFirst() instanceof PairValue size
                 ? makeWhiteImage(size)
@@ -103,9 +118,9 @@ final class Blend2DExtension {
         Blend2DSurface surface = new Blend2DSurface(wide, high, readPixels(storage, wide * high));
         try {
             Blend2DDrawing.draw(call, new Blend2DCanvas(surface), (AnyBlockValue) call.arguments().get(1));
-        } catch (Blend2DNotPortedYet notYet) {
+        } catch (Blend2DRefusal refusal) {
             writePixels(surface, storage);
-            throw new IllegalStateException(notYet.getMessage());
+            throw new IllegalStateException(refusal.getMessage());
         }
         writePixels(surface, storage);
         return image;
@@ -182,6 +197,9 @@ final class Blend2DExtension {
             return StringValue.of(describeLibrary());
         }
         Value handle = call.arguments().getFirst();
+        if (isFontHandle(handle)) {
+            return StringValue.of(call.unwrap(handle, FontHandle.class).face().describe());
+        }
         if (isImageHandle(handle)) {
             ImageHandle image = call.unwrap(handle, ImageHandle.class);
             ImageStorage storage = image.image().storage();

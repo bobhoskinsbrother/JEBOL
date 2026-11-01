@@ -192,7 +192,8 @@ mode today, draws points, and blits images, R3's own or PNG, BMP, QOI and
 JPEG files.
 Gradients, image patterns, images scaled or placed between pixels, and JPEG
 files are drawn within a couple of levels of Blend2D rather than exactly.
-Drawing text, which is not ported yet, raises an error naming it.
+Text is drawn byte for byte in any TrueType or CFF font a script names with
+`font`, kerned and with ligatures as Blend2D shapes it.
 
 ```
 ./build/install/jebol/bin/jebol --screen=window examples/blend2d/

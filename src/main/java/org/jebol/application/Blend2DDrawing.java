@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
+import org.jebol.domain.eval.blend2d.Blend2DFont;
+import org.jebol.domain.eval.blend2d.OpenTypeFace;
 import org.jebol.domain.eval.blend2d.Blend2DGradient;
 import org.jebol.domain.eval.blend2d.Blend2DImage;
 import org.jebol.domain.eval.blend2d.Blend2DPathBuilder;
@@ -8,6 +10,7 @@ import org.jebol.domain.eval.blend2d.Blend2DPattern;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.CompositingOperator;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.DecimalValue;
@@ -82,6 +85,10 @@ final class Blend2DDrawing {
     private static final double DEGREES_TO_RADIANS = 3.14159265358979323846264338327950288 / 180.0;
 
     private static final double DEFAULT_POINT_RADIUS = 1.0;
+
+    private static final double DEFAULT_FONT_SIZE = 10.0;
+
+    private static final int LARGEST_BYTE = 0xFF;
 
     private enum Kind {
         END, UNSET, NONE, HANDLE, LOGIC, INTEGER, DECIMAL, PERCENT, PAIR, TUPLE, WORD, LIT_WORD,
@@ -277,7 +284,13 @@ final class Blend2DDrawing {
 
     private boolean endedEarly;
 
-    private boolean isFontAskedFor;
+    private Optional<Blend2DFont> font = Optional.empty();
+
+    private Optional<OpenTypeFace> loadedFace = Optional.empty();
+
+    private Optional<OpenTypeFace> handleFace = Optional.empty();
+
+    private double fontSize = DEFAULT_FONT_SIZE;
 
     private boolean runCommand() {
         commandPosition = index;
@@ -437,10 +450,6 @@ final class Blend2DDrawing {
             case INTEGER -> (double) ((IntegerValue) read.value()).magnitude();
             default -> null;
         };
-    }
-
-    private void skipOptionalNumber() {
-        readOptionalNumber();
     }
 
     private Double readOptionalNumber() {
@@ -1001,32 +1010,61 @@ final class Blend2DDrawing {
     }
 
     private boolean chooseFont() {
+        font = Optional.empty();
         Read read = resolveNext();
-        return switch (read.kind()) {
-            case HANDLE -> false;
+        switch (read.kind()) {
+            case HANDLE -> {
+                if (!Blend2DExtension.isFontHandle(read.value())) {
+                    handleFace = Optional.empty();
+                    return false;
+                }
+                handleFace = Optional.of(call.unwrap(read.value(), Blend2DExtension.FontHandle.class).face());
+                font = handleFace.map(face -> Blend2DFont.of(face, fontSize));
+                return true;
+            }
             case FILE, STRING -> {
-                isFontAskedFor = true;
-                yield true;
+                handleFace = Optional.empty();
+                Optional<OpenTypeFace> loaded = Blend2DExtension.readFontFile(call, (AnyStringValue) read.value());
+                if (loaded.isEmpty()) {
+                    return false;
+                }
+                loadedFace = loaded;
+                font = loadedFace.map(face -> Blend2DFont.of(face, fontSize));
+                return true;
             }
             default -> {
-                isFontAskedFor = false;
-                yield true;
+                return true;
             }
-        };
+        }
     }
 
     private boolean writeText() {
-        if (resolvePair() == null) {
+        double[] corner = resolvePair();
+        if (corner == null) {
             return false;
         }
-        skipOptionalNumber();
-        if (resolveNext().kind() != Kind.STRING) {
+        Double size = readOptionalNumber();
+        double asked = size == null ? 0.0 : size;
+        if (asked != fontSize && asked > 0.0) {
+            fontSize = asked;
+            font = (handleFace.isPresent() ? handleFace : loadedFace).map(face -> Blend2DFont.of(face, fontSize));
+        }
+        Read read = resolveNext();
+        if (read.kind() != Kind.STRING) {
             return false;
         }
-        if (isFontAskedFor) {
-            canvas.refuse("text");
-        }
+        font.ifPresent(chosen -> canvas.fillText(chosen, corner[0], corner[1], readCodePoints((StringValue) read.value())));
         return true;
+    }
+
+    private static int[] readCodePoints(StringValue text) {
+        String whole = text.storage().text();
+        int[] codePoints = whole.codePoints().toArray();
+        boolean isByteWide = java.util.Arrays.stream(codePoints).allMatch(codePoint -> codePoint <= LARGEST_BYTE);
+        if (isByteWide) {
+            return Blend2DFont.decodeUtf8(codePoints);
+        }
+        return Blend2DFont.decodeUtf16(whole.chars().toArray());
     }
 
     private boolean scale() {

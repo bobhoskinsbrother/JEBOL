@@ -170,6 +170,45 @@ and (by its absence) `missing.png`. `probe/image-cases.py` writes the cases:
 - every file blitted with `source-copy` and `source-over`, and used as a
   `fill` pattern through a handle, and the four refused files ending the walk.
 
+## blend2d-text.tsv
+
+112 texts drawn by the same probe, in the image table's columns, every pixel
+kept. `Blend2DTextFromTheSourceTest` expects the 111 `exact` rows byte for
+byte and the one `close` row, under a gradient, within 2 levels.
+`probe/text-cases.py` writes them:
+
+- the carried font: single glyphs, a no-break space, a space and nothing;
+  kerned pairs and ligatures; a sentence; sizes from 0.5 to 24 and the
+  default 10; fractional and clipped origins; a colour with alpha, an
+  operator, a gradient; rotation, scale, mirror, uneven scale, clip and an
+  invalid transform; Greek, Cyrillic, a CJK glyph Noto lacks, and Latin-1
+  text that reaches Blend2D as invalid UTF-8;
+- the walk's font state: a handle, a name, no font, a missing file, `font`
+  given a number, a size kept and a size rebuilding the font, zero and
+  negative sizes, text before any fill, a value that is not a string, no
+  position, a path handle given as a font, and a pen with no fill;
+- the CFF font: glyphs, pairs, ligatures, a sentence, sizes, transforms, an
+  operator, a handle, and both fonts in one block;
+- four fonts that kern through a legacy table, each with four strings.
+
+## fonts/
+
+`NotoSans-Regular.ttf` is a byte-for-byte copy of the font JEBOL carries.
+`NotoSans-Regular.otf` is Noto Sans 2.015 with CFF outlines, from
+https://github.com/notofonts/notofonts.github.io (`fonts/NotoSans/unhinted/otf`),
+the only CFF font under a licence JEBOL can carry; its own name table says
+"Copyright 2022 The Noto Project Authors" and both are under the SIL Open
+Font License in `NotoSans-OFL.txt`, which names no Reserved Font Name.
+
+The `kern-*.kern` files are legacy `kern` tables written by
+`probe/kern-fonts.py`: Windows format 0 sorted and unsorted, format 2 with
+override and minimum format 0 subtables and a vertical one, and a Mac table
+with format 0, an exactly sized format 3 and a vertical subtable. The test
+builds each font from the carried TTF as the script does -- `GPOS` renamed
+`gpos`, the `STAT` record pointed at the table appended after the font, and
+64 KB of zeros after it, so a search that runs past the table reads zeros in
+both -- and checks its SHA-256 before using it.
+
 ## Making them again
 
 Blend2D and asmjit are not checked in. Clone them at the commits above, read
@@ -193,6 +232,10 @@ image it prints into a row:
     python3 probe/image-files.py images && python3 probe/image-cases.py image.r3 image.tsv
     (cd images && ../probe ../image.r3) > image.out
     python3 probe/image-table.py image.tsv image.out blend2d-image.tsv
+    mkdir fontwork && cp fonts/NotoSans-Regular.* fontwork/
+    python3 probe/kern-fonts.py fonts/NotoSans-Regular.ttf fonts fontwork
+    python3 probe/text-cases.py text.r3 text.tsv && (cd fontwork && ../probe ../text.r3) > text.out
+    python3 probe/image-table.py text.tsv text.out blend2d-text.tsv
 
 `B2D_THREADS=0` (or any count) and `B2D_NO_JIT=1` override what the extension
 asks Blend2D for, which is how the port's notes on bands, threads and the

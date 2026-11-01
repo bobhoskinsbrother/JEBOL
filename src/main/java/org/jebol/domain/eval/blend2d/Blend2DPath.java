@@ -59,6 +59,10 @@ final class Blend2DPath {
         return new Point(xAt(at), yAt(at));
     }
 
+    void setCommandAt(int at, byte command) {
+        commands[at] = command;
+    }
+
     void setPointAt(int at, Point point) {
         vertices[2 * at] = point.x();
         vertices[2 * at + 1] = point.y();

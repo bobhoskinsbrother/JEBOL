@@ -313,6 +313,69 @@ public final class Blend2DCanvas {
         }
     }
 
+    public void fillText(Blend2DFont font, double x, double y, int[] codePoints) {
+        Optional<PixelSource> fill = resolveFill();
+        if (fill.isEmpty() || transform.kind() == Blend2DMatrix.Kind.INVALID) {
+            return;
+        }
+        Optional<Blend2DFont.GlyphRun> run;
+        try {
+            run = font.shape(codePoints);
+        } catch (IndexOutOfBoundsException pastTheFont) {
+            return;
+        }
+        if (run.isEmpty() || run.get().glyphs().length == 0) {
+            return;
+        }
+        EdgeBuilder builder = new EdgeBuilder(clipFixed);
+        try {
+            if (!addGlyphRunEdges(builder, font, run.get(), x, y)) {
+                return;
+            }
+        } catch (IndexOutOfBoundsException pastTheFont) {
+            return;
+        }
+        paintEdges(builder, fill.get(), globalAlpha, AnalyticFill.FillRule.NON_ZERO);
+    }
+
+    private boolean addGlyphRunEdges(EdgeBuilder builder, Blend2DFont font, Blend2DFont.GlyphRun run,
+                                     double x, double y) {
+        Blend2DMatrix fixed = transform.toFixedPoint();
+        double originX = x * fixed.m00() + y * fixed.m10() + fixed.m20();
+        double originY = x * fixed.m01() + y * fixed.m11() + fixed.m21();
+        double scale = font.scale();
+        double fontM00 = scale;
+        double fontM01 = 0.0;
+        double fontM10 = 0.0;
+        double fontM11 = -scale;
+        double m00 = fontM00 * fixed.m00() + fontM01 * fixed.m10();
+        double m01 = fontM00 * fixed.m01() + fontM01 * fixed.m11();
+        double m10 = fontM10 * fixed.m00() + fontM11 * fixed.m10();
+        double m11 = fontM10 * fixed.m01() + fontM11 * fixed.m11();
+        double advanceX = originX;
+        double advanceY = originY;
+        int[] glyphs = run.glyphs();
+        int[][] placements = run.placements();
+        for (int at = 0; at < glyphs.length; at++) {
+            double placementX = placements[at][0];
+            double placementY = placements[at][1];
+            double glyphX = placementX * m00 + placementY * m10 + advanceX;
+            double glyphY = placementX * m01 + placementY * m11 + advanceY;
+            Blend2DPath outline = new Blend2DPath();
+            if (!font.decodeGlyph(glyphs[at], new Blend2DMatrix(m00, m01, m10, m11, glyphX, glyphY), outline)) {
+                return false;
+            }
+            if (!builder.addPath(outline, true)) {
+                return false;
+            }
+            double stepX = placements[at][2];
+            double stepY = placements[at][3];
+            advanceX += stepX * m00 + stepY * m10;
+            advanceY += stepX * m01 + stepY * m11;
+        }
+        return true;
+    }
+
     public void blitImage(Blend2DImage source, double x, double y) {
         int wide = source.wide();
         int high = source.high();
@@ -373,6 +436,6 @@ public final class Blend2DCanvas {
     }
 
     public void refuse(String what) {
-        throw new Blend2DNotPortedYet(what);
+        throw new Blend2DRefusal(what);
     }
 }

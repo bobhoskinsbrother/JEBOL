@@ -128,7 +128,7 @@ does on a real 3.22.5 that can fetch it. easing, blurhash, deflate and zlib-ng
 are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
 `docs/zlib-ng-port.md`). The rest, in the order to build them:
 
-1. **blend2d** 0.12.0, served in part (`docs/blend2d-port.md`, decision 59).
+1. **blend2d** 0.12.0, served (`docs/blend2d-port.md`, decision 59).
    `import 'blend2d` answers the release's module, and `draw` walks every
    command as the extension's C does. What needs no rasteriser draws
    byte for byte as the release does: Blend2D's compositing, all 29
@@ -144,14 +144,16 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    files read through the host's codec. Gradients, image patterns, blits
    between pixels and JPEG files are drawn within 2 levels a channel of the
    release, not byte for byte, by decision (`docs/blend2d-port.md`). `point`
-   draws byte for byte. Left: fonts and `text`. Until then each
-   of those raises an error naming what it cannot draw rather than drawing it
-   wrongly. Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
+   draws byte for byte, and so do `font` and `text`: Blend2D's OpenType
+   reader, its character maps, its GSUB and GPOS engine and legacy `kern`,
+   TrueType and CFF outlines, CID-keyed fonts and collections, each with
+   Blend2D's own faults kept (`docs/blend2d-port.md`). Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
    JEBOL's are `StrictMath`'s, so an edge pixel can differ in their last bit
    as it does between R3 on Linux and on Windows (`docs/blend2d-port.md`).
-   `examples/blend2d` shows the 29 operators on the desktop and on a page;
-   each piece that lands gets a tile there, and a row in
-   `blend2d-draw.tsv` from the probe in `src/testFixtures/resources/blend2d/probe/`.
+   `examples/blend2d` shows the 29 operators on the desktop and on a page,
+   with every piece but text in each tile: text needs a font file the script
+   can name, and the example carries none. Each piece has rows in a table
+   from the probe in `src/testFixtures/resources/blend2d/probe/`.
 2. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
    `eval expression variables`, a vector of doubles. MathPresso compiles to
    machine code with asmjit; JEBOL evaluates the same grammar and must give

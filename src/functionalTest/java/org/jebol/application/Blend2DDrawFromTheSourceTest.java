@@ -302,16 +302,6 @@ class Blend2DDrawFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("what is not ported yet is refused by name, not drawn wrongly")
-        void refusesWhatItCannotDrawYet() {
-            assertThat(answerTo("""
-                    e: try [b2d/draw 4x4 [font %any.ttf text 1x1 "hi"]]
-                    reduce [e/id e/arg1]"""))
-                    .isEqualTo("""
-                            [command-fail {blend2d cannot yet draw text in JEBOL: that part of Blend2D is not ported}]""");
-        }
-
-        @Test
         @DisplayName("points read from a vector of 64-bit decimals draw what the same centres given as pairs draw")
         void drawsPointsFromAVector() {
             assertThat(answerTo("""

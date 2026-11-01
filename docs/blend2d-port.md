@@ -6,7 +6,7 @@ note carries what the code cannot: what the extension does, which Blend2D it
 builds, how the port is checked, and how the pixels are split between the domain
 and the platform.
 
-Work in progress. Served: the module, the whole `draw` walk, the compositing,
+Served in full: the module, the whole `draw` walk, the compositing,
 `fill-all`, `clear-all`, `clear`, boxes and clips under any transform, and the
 rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 `arc` with `pie` and `chord`, rounded boxes, `cubic`, and any of them under a
@@ -14,9 +14,9 @@ rotation -- each filled byte for byte against the release's C, and the
 stroker, which draws `line` and every one of those outlines under `pen`,
 `line-width`, `line-join` and `line-cap`, and `shape` and `path` with their
 dialect, `point` at any `point-size`, and `image` blits at whole pixels, from R3 images and from PNG, BMP
-and QOI files. Gradients, image patterns, blits between pixels and JPEG files
-are drawn too, but not byte for byte: see below. Not yet: the rest goals 1a
-lists, each of which raises an error naming what it cannot draw.
+and QOI files, and `font` and `text` in TrueType and CFF fonts. Gradients,
+image patterns, blits between pixels and JPEG files are drawn too, but not
+byte for byte: see below.
 
 ---
 
@@ -258,6 +258,90 @@ Reading them this way found a fault in JEBOL's desktop codec: `getRGB` moves
 a greyscale image's levels through a gamma curve, so a grey PNG or JPEG read
 73 levels away from its bytes, and so did `image/load`. `JavaImage` now reads
 a grey image's samples as stored, the high byte of a 16-bit one.
+
+## Fonts and text
+
+`font` and `text` follow `blend2d-command-draw.c`, and everything beneath
+them is Blend2D's own font engine, ported: `OpenTypeFace` reads the face as
+`otcore`, `otname`, `otcmap`, `otmetrics` and `otlayout` do, `GlyfOutlines`
+and `CffOutlines` decode outlines, `OpenTypeLayout` applies GSUB and GPOS,
+`OpenTypeKerning` the legacy `kern` table, and `Blend2DCanvas.fillText`
+gives each glyph's outline to the edge builder as `addFilledGlyphRunEdges`
+does, filling the run non-zero.
+
+### The walk
+
+`draw` keeps three pieces of font state, as the C does: the font, a face
+`font` loaded from a file or name, and a face borrowed from a handle. `font`
+resets the font before it reads its argument; a handle sets the borrowed
+face, a file or string loads into the owned one, and a file that cannot be
+read leaves the font reset and the owned face as it was. `text` with a size
+that is positive and not the current one rebuilds the font from the borrowed
+face if there is one, the owned one otherwise; text in no font draws nothing.
+The size reaches Blend2D as a `float`, so the scale is `(float) size /
+unitsPerEm`.
+
+The extension hands Blend2D the whole string from its head, ignoring its
+index, and hands a byte-wide R3 string as UTF-8 although R3 stores it as
+Latin-1, so `é` is an invalid byte and draws as U+FFFD; Blend2D steps one
+byte past each invalid one. JEBOL takes a string as byte-wide when every
+character is at most 0xFF, which is how R3 stores a string it read.
+
+### Shaping, and Blend2D's faults in it
+
+Blend2D shapes with the `latn` script (else `DFLT`), the default language
+system, and only the features its tag table enables by default: `calt`,
+`clig`, `cpsp`, `kern`, `liga`, `opbd` and `rvrn`. `ccmp`, `mark` and
+`mkmk` never run. Each lookup in the plan runs every one of its subtables
+over the whole buffer in turn, and lookup flags are read and ignored. What
+the C does that the specification does not, and JEBOL keeps:
+
+- Extension lookups (GSUB 7, GPOS 9) never apply: `validateLookup` fails the
+  first subtable of every one, testing `!extPreviousLookupType` where it
+  means the opposite.
+- Multiple substitution (GSUB 2) never applies to a well-formed font: its
+  validator fails a sequence that fits. Its apply also writes past the front
+  of the buffer; JEBOL does not port that.
+- Contextual and chained lookups (GSUB 5 and 6, GPOS 7 and 8) match and do
+  nothing: their nested lookups are a `TODO`. GPOS 3 does nothing either, and
+  GPOS 4 to 6 always fail validation.
+- Alternate substitution takes the first alternate; pair positioning tries
+  every position and never skips the second glyph; a pair subtable whose
+  class definition is empty or truncated is skipped, as its format bits come
+  out of range.
+- Legacy `kern` applies only when GPOS has lookups and no `kern` feature
+  anywhere. Every group in it is applied as format 0: `makeReferenced` packs
+  the format at bit 2 and `format()` reads bit 4, so a format 2 or 3 group is
+  binary-searched as pairs, its byte size taken as its pair count, and its
+  format bits read as flags -- format 2 as override.
+
+### Outlines
+
+The probe runs Blend2D's AVX2 `glyf` decoder, built with `-mavx2` and not
+`-mfma`, so its arithmetic is plain double: each delta transformed as
+`x * m00 + y * m10`, accumulated, and midpoints as `p - d * 0.5`.
+`GlyfOutlines` does the same arithmetic in the SIMD decoder's shape, which
+emits nothing for a one-point contour where the scalar decoder emits a move.
+
+`CffOutlines` is the charstring interpreter with its quirks: it always uses
+the CFF1 operator table, CFF2 included; widths are never parsed, only
+ignored, because every operator reads its operands from the top of the
+stack; flex and `roll` work from the bottom of the stack; `ifelse` takes its
+second value when `v1 <= v2`; a number past an `int` converts as x86's
+`cvttsd2si` does. The font matrix is ignored, as Blend2D scales by
+`unitsPerEm`.
+
+### The checks
+
+`blend2d-text.tsv` holds 112 cases drawn by the probe: 111 in a solid colour
+are byte for byte, and the one under a gradient is within 2 levels. The
+carried Noto Sans, Noto Sans as CFF, and four fonts that kern through a
+legacy table are in it. Noto Sans CJK, a CID-keyed CFF collection, was
+checked against the probe by hand, face 0 with Chinese, Japanese and Korean
+text: byte for byte, but at twenty megabytes it is not checked in.
+
+A font whose tables run past the end of its file reads memory in the C;
+JEBOL draws nothing from it.
 
 ## Points
 
