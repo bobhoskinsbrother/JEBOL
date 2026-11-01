@@ -124,9 +124,10 @@ served in Java as a goal of its own, or left out on purpose under Standing.
 Brotli is 1b and webp is goal 10.
 
 Six are to be served in Java, so that `import 'easing` answers a module as it
-does on a real 3.22.5 that can fetch it. easing, blurhash, deflate and zlib-ng
-are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
-`docs/zlib-ng-port.md`). The rest, in the order to build them:
+does on a real 3.22.5 that can fetch it. easing, blurhash, deflate, zlib-ng
+and blend2d are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
+`docs/zlib-ng-port.md`, `docs/blend2d-port.md`). blend2d's entry below
+records what it serves; the rest follow it in the order to build them:
 
 1. **blend2d** 0.12.0, served (`docs/blend2d-port.md`, decision 59).
    `import 'blend2d` answers the release's module, and `draw` walks every
@@ -147,8 +148,9 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    draws byte for byte, and so do `font` and `text`: Blend2D's OpenType
    reader, its character maps, its GSUB and GPOS engine and legacy `kern`,
    TrueType and CFF outlines, CID-keyed fonts and collections, each with
-   Blend2D's own faults kept (`docs/blend2d-port.md`). Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
-   JEBOL's are `StrictMath`'s, so an edge pixel can differ in their last bit
+   Blend2D's own faults kept (`docs/blend2d-port.md`). Blend2D's `sin`,
+   `cos`, `pow` and `cbrt` are the platform's and JEBOL's are
+   `StrictMath`'s, so an edge pixel can differ in their last bit
    as it does between R3 on Linux and on Windows (`docs/blend2d-port.md`).
    `examples/blend2d` shows the 29 operators on the desktop and on a page,
    with every piece but text in each tile: text needs a font file the script
