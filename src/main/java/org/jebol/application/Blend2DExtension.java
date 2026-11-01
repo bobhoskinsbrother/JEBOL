@@ -116,7 +116,7 @@ final class Blend2DExtension {
         return ImageValue.of(wide, high);
     }
 
-    private static int[] readPixels(ImageStorage storage, int count) {
+    static int[] readPixels(ImageStorage storage, int count) {
         int[] pixels = new int[count];
         for (int pixel = 0; pixel < count; pixel++) {
             int[] rgba = storage.readPixelAt(pixel + 1);

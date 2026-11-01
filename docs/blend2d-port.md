@@ -13,7 +13,8 @@ rasteriser with its curves -- `polygon`, `triangle`, `circle`, `ellipse`,
 rotation -- each filled byte for byte against the release's C, and the
 stroker, which draws `line` and every one of those outlines under `pen`,
 `line-width`, `line-join` and `line-cap`, and `shape` and `path` with their
-dialect. Not yet: the rest goals 1a lists, each of which raises an error
+dialect. Gradients and image patterns are drawn too, but not byte for byte:
+see below. Not yet: the rest goals 1a lists, each of which raises an error
 naming what it cannot draw.
 
 ---
@@ -141,6 +142,45 @@ both in the stroke of one closed cubic whose quad steps come from `pow`, and
 the table keeps both rows, checked to draw without error but not pixel for
 pixel. R3 itself differs this way between platforms: on Windows it calls
 Microsoft's library.
+
+## Gradients and patterns, close rather than exact
+
+Everything else here is Blend2D's own arithmetic; gradients and patterns are
+not. Porting Blend2D's gradient lookup table, its JIT fetchers and its
+compositing of a source that varies per pixel would follow several thousand
+more lines of C, and the decision was to draw them plainly instead.
+`Blend2DGradient` and `Blend2DPattern` give the colour at a point in user
+space, and `PaintedFill` hands each pixel's colour to the same compositing a
+solid colour goes through, so every operator, mask and alpha still behaves as
+Blend2D's.
+
+What they keep of Blend2D's behaviour:
+
+- The geometry of each gradient: linear from one point to another, radial
+  with a centre, a focal point and a radius, conic from a centre and a start
+  angle in radians with a repeat count. Linear and radial pad past their
+  ends, conic repeats, as the extension creates them.
+- The stops: an offset outside 0 to 1 is refused rather than clamped, a stop
+  goes after every stop at or before its offset, and a third stop at one
+  offset replaces the second, so two make a sharp edge.
+- The style's transform is the one in force when `fill` sets the style, not
+  when a shape is drawn, because `setStyleImpl` builds the fetch data then.
+- Patterns sample bilinearly, Blend2D's default pattern quality, with the nine
+  extend modes the extension's words name, and their pixels are taken as
+  premultiplied, as the extension hands R3's memory to Blend2D as PRGB32.
+
+`blend2d-paint.tsv` holds 65 cases drawn by the extension's C, with every
+pixel kept; `Blend2DPaintFromTheSourceTest` expects JEBOL within 2 levels a
+channel of each. That holds for every gradient kind, stop list and transform
+in it, and for an opaque pattern under every extend mode, a fractional
+translation, a scale and a rotation.
+
+One thing it does not hold for, and does not try to: a translucent R3 image
+used as a pattern. R3 images are straight alpha and the extension passes them
+as premultiplied, so a colour above its alpha is invalid data to Blend2D,
+which composites it with byte arithmetic that wraps. JEBOL composites the same
+data with the saturating arithmetic it uses everywhere. Both draw something
+odd; they draw different odd things.
 
 ## Shape and path
 

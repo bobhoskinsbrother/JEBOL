@@ -1,7 +1,9 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.blend2d.Blend2DCanvas;
+import org.jebol.domain.eval.blend2d.Blend2DGradient;
 import org.jebol.domain.eval.blend2d.Blend2DPathBuilder;
+import org.jebol.domain.eval.blend2d.Blend2DPattern;
 import org.jebol.domain.eval.blend2d.Blend2DShape;
 import org.jebol.domain.eval.blend2d.CompositingOperator;
 import org.jebol.domain.value.AnyBlockValue;
@@ -61,6 +63,9 @@ final class Blend2DDrawing {
     private static final int ARGUMENT_LARGE = 49;
 
     private static final int EXTEND_MODE_LARGEST = 8;
+    private static final int EXTEND_MODE_REPEAT = 1;
+    private static final long GRADIENT_LINEAR = 0;
+    private static final long GRADIENT_RADIAL = 1;
     private static final int GRADIENT_TYPE_LARGEST = 2;
     private static final int COMPOSITING_OPERATOR_LARGEST = 28;
     private static final int STROKE_JOIN_WORD_LARGEST = 3;
@@ -464,13 +469,13 @@ final class Blend2DDrawing {
                 if (!Blend2DExtension.isImageHandle(read.value())) {
                     return false;
                 }
-                return usePattern();
+                return usePattern(call.unwrap(read.value(), Blend2DExtension.ImageHandle.class).image());
             }
             case IMAGE -> {
                 if (((ImageValue) read.value()).storage().wide() == 0 || ((ImageValue) read.value()).storage().high() == 0) {
                     return false;
                 }
-                return usePattern();
+                return usePattern((ImageValue) read.value());
             }
             case UNSET -> {
                 long mode = fetchMode(index - 1, ARGUMENT_LINEAR, GRADIENT_TYPE_LARGEST);
@@ -482,40 +487,68 @@ final class Blend2DDrawing {
         }
     }
 
-    private boolean usePattern() {
-        if (fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST) >= 0) {
+    private boolean usePattern(ImageValue image) {
+        long mode = fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST);
+        if (mode >= 0) {
             index++;
+        } else {
+            mode = EXTEND_MODE_REPEAT;
         }
-        canvas.setFillThatIsNotSolid("an image pattern");
+        canvas.setFillPaint(makePattern(image, (int) mode));
         hasFill = true;
         return true;
     }
 
+    private static Blend2DPattern makePattern(ImageValue image, int mode) {
+        ImageValue head = image.head();
+        int wide = head.storage().wide();
+        int high = head.storage().high();
+        return new Blend2DPattern(Blend2DExtension.readPixels(head.storage(), wide * high), wide, high, mode);
+    }
+
     private boolean useGradient(long mode) {
+        List<double[]> stops = new ArrayList<>();
         Read read = resolveNext();
         while (read.kind() == Kind.TUPLE) {
-            if (readNumber() == null) {
+            Double offset = readNumber();
+            if (offset == null) {
                 return false;
             }
+            stops.add(new double[] {offset, toColour((TupleValue) read.value())});
             read = resolveNext();
         }
         index--;
-        if (resolvePair() == null) {
+        double[] start = resolvePair();
+        if (start == null) {
             return false;
         }
-        if (mode == 1) {
-            if (resolvePair() == null || readNumber() == null) {
+        Blend2DGradient gradient;
+        if (mode == GRADIENT_RADIAL) {
+            double[] focus = resolvePair();
+            if (focus == null) {
                 return false;
             }
-        } else if (mode == 0) {
-            if (resolvePair() == null) {
+            Double radius = readNumber();
+            if (radius == null) {
                 return false;
             }
+            gradient = Blend2DGradient.radial(start[0], start[1], focus[0], focus[1], radius);
+        } else if (mode == GRADIENT_LINEAR) {
+            double[] end = resolvePair();
+            if (end == null) {
+                return false;
+            }
+            gradient = Blend2DGradient.linear(start[0], start[1], end[0], end[1]);
         } else {
-            skipOptionalNumber();
-            skipOptionalNumber();
+            Double angle = readOptionalNumber();
+            Double repeat = readOptionalNumber();
+            gradient = Blend2DGradient.conic(start[0], start[1], angle == null ? 0 : angle, repeat == null ? 1 : repeat);
+            gradient.setExtend(Blend2DGradient.Extend.REPEAT);
         }
-        canvas.setFillThatIsNotSolid("a gradient");
+        for (double[] stop : stops) {
+            gradient.addStop(stop[0], (int) stop[1]);
+        }
+        canvas.setFillPaint(gradient);
         hasFill = true;
         return true;
     }
@@ -538,10 +571,13 @@ final class Blend2DDrawing {
                 if (((ImageValue) read.value()).storage().wide() == 0 || ((ImageValue) read.value()).storage().high() == 0) {
                     return false;
                 }
-                if (fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST) >= 0) {
+                long mode = fetchMode(index, ARGUMENT_PAD, EXTEND_MODE_LARGEST);
+                if (mode >= 0) {
                     index++;
+                } else {
+                    mode = EXTEND_MODE_REPEAT;
                 }
-                canvas.setFillThatIsNotSolid("an image pattern");
+                canvas.setFillPaint(makePattern((ImageValue) read.value(), (int) mode));
                 hasStroke = true;
                 return true;
             }

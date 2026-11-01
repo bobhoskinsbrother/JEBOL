@@ -20,7 +20,7 @@ final class AnalyticFill {
         EVEN_ODD
     }
 
-    static void fill(Blend2DSurface surface, AnalyticCells cells, FillRule rule, int globalAlpha, SolidFill fill) {
+    static void fill(Blend2DSurface surface, AnalyticCells cells, FillRule rule, int globalAlpha, PixelSource fill) {
         int ruleMask = rule == FillRule.NON_ZERO ? NON_ZERO_RULE : EVEN_ODD_RULE;
         int end = surface.wide();
         for (int row = 0; row < cells.high(); row++) {
@@ -29,7 +29,7 @@ final class AnalyticFill {
     }
 
     private static void fillRow(Blend2DSurface surface, AnalyticCells cells, int row, int end,
-                                int ruleMask, int globalAlpha, SolidFill fill) {
+                                int ruleMask, int globalAlpha, PixelSource fill) {
         int groupCount = cells.groupCount();
         int group = nextMarkedGroup(cells, row, 0, groupCount);
         if (group == groupCount) {
@@ -46,7 +46,7 @@ final class AnalyticFill {
             for (; x < spanEnd; x++) {
                 coverage += cells.cellAt(row, x);
                 int mask = calculateMask(coverage, ruleMask, globalAlpha);
-                surface.setPixel(x, row, fill.compositeUnderAnalyticMask(surface.pixelAt(x, row), mask));
+                surface.setPixel(x, row, fill.compositeUnderAnalyticMask(surface.pixelAt(x, row), mask, x, row));
             }
             coverage += cells.cellAt(row, x);
             int gapMask = calculateMask(coverage, ruleMask, globalAlpha);
@@ -60,7 +60,7 @@ final class AnalyticFill {
             int gapEnd = group * GROUP;
             if (gapMask != 0) {
                 for (; x < gapEnd; x++) {
-                    surface.setPixel(x, row, fill.compositeUnderConstantMask(surface.pixelAt(x, row), gapMask));
+                    surface.setPixel(x, row, fill.compositeUnderConstantMask(surface.pixelAt(x, row), gapMask, x, row));
                 }
             }
             x = gapEnd;

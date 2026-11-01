@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.blend2d;
 
+import java.util.Optional;
+
 record Blend2DMatrix(double m00, double m01, double m10, double m11, double m20, double m21) {
 
     static final Blend2DMatrix IDENTITY = new Blend2DMatrix(1, 0, 0, 1, 0, 0);
@@ -46,6 +48,16 @@ record Blend2DMatrix(double m00, double m01, double m10, double m11, double m20,
                 m10 * sine + m11 * cosine,
                 m20 * cosine - m21 * sine,
                 m20 * sine + m21 * cosine);
+    }
+
+    Optional<Blend2DMatrix> invert() {
+        double determinant = m00 * m11 - m01 * m10;
+        if (determinant == 0 || !Double.isFinite(determinant)) {
+            return Optional.empty();
+        }
+        return Optional.of(new Blend2DMatrix(
+                m11 / determinant, -m01 / determinant, -m10 / determinant, m00 / determinant,
+                (m10 * m21 - m11 * m20) / determinant, (m01 * m20 - m00 * m21) / determinant));
     }
 
     Blend2DMatrix toFixedPoint() {

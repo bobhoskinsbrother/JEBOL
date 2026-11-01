@@ -56,7 +56,7 @@ class Blend2DDrawFromTheSourceTest {
                 .toList();
     }
 
-    private static String imageSource(String image) {
+    static String imageSource(String image) {
         String[] parts = image.split(" ");
         if (parts[0].equals("pair")) {
             return parts[1];
@@ -72,7 +72,7 @@ class Blend2DDrawFromTheSourceTest {
             int word = noise.next();
             colours.append(hex.toHexDigits((byte) (word >>> 16))).append(hex.toHexDigits((byte) (word >>> 8)))
                     .append(hex.toHexDigits((byte) word));
-            alphas.append(hex.toHexDigits((byte) (word >>> 24)));
+            alphas.append(hex.toHexDigits(parts[0].equals("opaque") ? (byte) 0xFF : (byte) (word >>> 24)));
         }
         return "make image! [" + wide + "x" + high + " #{" + colours + "} #{" + alphas + "}]";
     }

@@ -24,7 +24,7 @@ final class UnalignedBoxFill {
     private record RowGroup(List<Span> spans, int rows) {
     }
 
-    static void fill(Blend2DSurface surface, int x0, int y0, int x1, int y1, int alpha, SolidFill fill) {
+    static void fill(Blend2DSurface surface, int x0, int y0, int x1, int y1, int alpha, PixelSource fill) {
         int ax0 = x0 >>> 8;
         int ay0 = y0 >>> 8;
         int ax1 = (x1 + FRACTION_MASK) >>> 8;
@@ -131,12 +131,12 @@ final class UnalignedBoxFill {
         }
     }
 
-    private static void paint(Blend2DSurface surface, List<RowGroup> groups, int top, int bottom, SolidFill fill) {
+    private static void paint(Blend2DSurface surface, List<RowGroup> groups, int top, int bottom, PixelSource fill) {
         paint(surface, groups, top, bottom, fill, 0);
     }
 
     private static void paint(Blend2DSurface surface, List<RowGroup> groups, int top, int bottom,
-                              SolidFill fill, int masksStartAt) {
+                              PixelSource fill, int masksStartAt) {
         int row = top;
         for (RowGroup group : groups) {
             for (int repeat = 0; repeat < group.rows() && row < bottom; repeat++, row++) {
@@ -147,12 +147,12 @@ final class UnalignedBoxFill {
         }
     }
 
-    private static void paintSpan(Blend2DSurface surface, int row, Span span, SolidFill fill, int masksStartAt) {
+    private static void paintSpan(Blend2DSurface surface, int row, Span span, PixelSource fill, int masksStartAt) {
         for (int across = span.from(); across < span.to(); across++) {
             int destination = surface.pixelAt(across, row);
             int painted = span.isConstant()
-                    ? fill.compositeUnderConstantMask(destination, span.constantMask())
-                    : fill.compositeUnderVariableMask(destination, span.masks()[across - masksStartAt]);
+                    ? fill.compositeUnderConstantMask(destination, span.constantMask(), across, row)
+                    : fill.compositeUnderVariableMask(destination, span.masks()[across - masksStartAt], across, row);
             surface.setPixel(across, row, painted);
         }
     }

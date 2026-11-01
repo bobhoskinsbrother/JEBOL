@@ -24,7 +24,9 @@ public final class Blend2DCanvas {
 
     private int fillColour = OPAQUE_BLACK;
 
-    private Optional<String> fillThatIsNotSolid = Optional.empty();
+    private Optional<Blend2DPaint> fillPaint = Optional.empty();
+
+    private Optional<Blend2DMatrix> fillPaintDeviceToUser = Optional.empty();
 
     private int strokeColour = OPAQUE_BLACK;
 
@@ -67,11 +69,12 @@ public final class Blend2DCanvas {
 
     public void setFillColour(int argb) {
         fillColour = argb;
-        fillThatIsNotSolid = Optional.empty();
+        fillPaint = Optional.empty();
     }
 
-    public void setFillThatIsNotSolid(String what) {
-        fillThatIsNotSolid = Optional.of(what);
+    public void setFillPaint(Blend2DPaint paint) {
+        fillPaint = Optional.of(paint);
+        fillPaintDeviceToUser = transform.invert();
     }
 
     public void translate(double across, double down) {
@@ -131,7 +134,7 @@ public final class Blend2DCanvas {
     }
 
     public void fillAll() {
-        resolveSolidFill().ifPresent(fill -> paintClipArea(fill, globalAlpha));
+        resolveFill().ifPresent(fill -> paintClipArea(fill, globalAlpha));
     }
 
     public void clearAll() {
@@ -139,7 +142,7 @@ public final class Blend2DCanvas {
     }
 
     public void fillRect(double x, double y, double wide, double high) {
-        resolveSolidFill().ifPresent(fill -> paintBox(fill, globalAlpha, Blend2DBox.fromRect(x, y, wide, high)));
+        resolveFill().ifPresent(fill -> paintBox(fill, globalAlpha, Blend2DBox.fromRect(x, y, wide, high)));
     }
 
     public void clearRect(double x, double y, double wide, double high) {
@@ -147,7 +150,7 @@ public final class Blend2DCanvas {
     }
 
     public void fill(Blend2DShape shape) {
-        resolveSolidFill().ifPresent(fill -> paintPath(fill, globalAlpha, shape.path(), AnalyticFill.FillRule.NON_ZERO));
+        resolveFill().ifPresent(fill -> paintPath(fill, globalAlpha, shape.path(), AnalyticFill.FillRule.NON_ZERO));
     }
 
     public void stroke(Blend2DShape shape) {
@@ -182,7 +185,7 @@ public final class Blend2DCanvas {
         strokeEndCap = cap;
     }
 
-    private void paintPolygon(SolidFill fill, int alpha, double[] points, AnalyticFill.FillRule rule) {
+    private void paintPolygon(PixelSource fill, int alpha, double[] points, AnalyticFill.FillRule rule) {
         paintPath(fill, alpha, Blend2DShape.polygon(points).path(), rule);
     }
 
@@ -206,7 +209,7 @@ public final class Blend2DCanvas {
         return mapped;
     }
 
-    private void paintPath(SolidFill fill, int alpha, Blend2DPath path, AnalyticFill.FillRule rule) {
+    private void paintPath(PixelSource fill, int alpha, Blend2DPath path, AnalyticFill.FillRule rule) {
         if (transform.kind() == Blend2DMatrix.Kind.INVALID || path.isEmpty()) {
             return;
         }
@@ -239,7 +242,7 @@ public final class Blend2DCanvas {
         paintEdges(builder, fill, globalAlpha, AnalyticFill.FillRule.NON_ZERO);
     }
 
-    private void paintEdges(EdgeBuilder builder, SolidFill fill, int alpha, AnalyticFill.FillRule rule) {
+    private void paintEdges(EdgeBuilder builder, PixelSource fill, int alpha, AnalyticFill.FillRule rule) {
         builder.finish();
         if (builder.isEmpty()) {
             return;
@@ -252,14 +255,16 @@ public final class Blend2DCanvas {
         AnalyticFill.fill(surface, cells, rule, alpha, fill);
     }
 
-    private Optional<SolidFill> resolveSolidFill() {
+    private Optional<PixelSource> resolveFill() {
         if (hasNoClipArea) {
             return Optional.empty();
         }
-        fillThatIsNotSolid.ifPresent(what -> {
-            throw new Blend2DNotPortedYet("with " + what);
-        });
-        return SolidFill.resolve(operator, fillColour, globalAlpha);
+        if (fillPaint.isPresent()) {
+            return fillPaintDeviceToUser.map(deviceToUser -> new PaintedFill(fillPaint.get(), operator, globalAlpha,
+                    new double[] {deviceToUser.m00(), deviceToUser.m01(), deviceToUser.m10(), deviceToUser.m11(),
+                        deviceToUser.m20(), deviceToUser.m21()}));
+        }
+        return SolidFill.resolve(operator, fillColour, globalAlpha).map(fill -> fill);
     }
 
     private Optional<SolidFill> resolveClearing() {
@@ -269,7 +274,7 @@ public final class Blend2DCanvas {
         return SolidFill.resolve(CompositingOperator.SOURCE_COPY, TRANSPARENT, FULL_ALPHA);
     }
 
-    private void paintClipArea(SolidFill fill, int alpha) {
+    private void paintClipArea(PixelSource fill, int alpha) {
         if (isClipAligned) {
             paintAlignedBox(fill, clipWhole[0], clipWhole[1], clipWhole[2], clipWhole[3]);
         } else {
@@ -278,7 +283,7 @@ public final class Blend2DCanvas {
         }
     }
 
-    private void paintBox(SolidFill fill, int alpha, Blend2DBox box) {
+    private void paintBox(PixelSource fill, int alpha, Blend2DBox box) {
         Blend2DMatrix.Kind kind = transform.kind();
         if (kind == Blend2DMatrix.Kind.INVALID) {
             return;
@@ -303,10 +308,10 @@ public final class Blend2DCanvas {
         }
     }
 
-    private void paintAlignedBox(SolidFill fill, int left, int top, int right, int bottom) {
+    private void paintAlignedBox(PixelSource fill, int left, int top, int right, int bottom) {
         for (int down = top; down < bottom; down++) {
             for (int across = left; across < right; across++) {
-                surface.setPixel(across, down, fill.composite(surface.pixelAt(across, down)));
+                surface.setPixel(across, down, fill.composite(surface.pixelAt(across, down), across, down));
             }
         }
     }

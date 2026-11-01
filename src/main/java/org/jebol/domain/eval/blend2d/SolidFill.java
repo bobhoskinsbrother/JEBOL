@@ -2,7 +2,7 @@ package org.jebol.domain.eval.blend2d;
 
 import java.util.Optional;
 
-public final class SolidFill {
+public final class SolidFill implements PixelSource {
 
     private static final int OPAQUE = 0xFF;
 
@@ -33,6 +33,16 @@ public final class SolidFill {
                         globalAlpha, simplified.hasSourceAlpha()));
     }
 
+    static Optional<SolidFill> resolvePremultiplied(CompositingOperator operator, int prgb, int globalAlpha) {
+        if (globalAlpha == 0) {
+            return Optional.empty();
+        }
+        return SimplifiedOperator.forSolid(operator, prgb)
+                .map(simplified -> new SolidFill(simplified.operator(),
+                        simplified.replacesSource() ? simplified.replacement() : prgb,
+                        globalAlpha, simplified.hasSourceAlpha()));
+    }
+
     public static int scaleAlpha(double alpha) {
         double clamped = Math.clamp(alpha, 0.0, 1.0);
         double scaled = clamped * FULL_ALPHA;
@@ -56,6 +66,26 @@ public final class SolidFill {
 
     int compositeUnderConstantMask(int destination, int mask) {
         return ConstantMaskCompositor.composite(operator, destination, premultiplied, mask);
+    }
+
+    @Override
+    public int composite(int destination, int across, int down) {
+        return composite(destination);
+    }
+
+    @Override
+    public int compositeUnderConstantMask(int destination, int mask, int across, int down) {
+        return compositeUnderConstantMask(destination, mask);
+    }
+
+    @Override
+    public int compositeUnderVariableMask(int destination, int mask, int across, int down) {
+        return compositeUnderVariableMask(destination, mask);
+    }
+
+    @Override
+    public int compositeUnderAnalyticMask(int destination, int mask, int across, int down) {
+        return compositeUnderAnalyticMask(destination, mask);
     }
 
     int compositeUnderAnalyticMask(int destination, int mask) {

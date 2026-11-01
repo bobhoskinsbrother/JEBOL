@@ -199,14 +199,15 @@ static Cell readValue(void) {
 		c.type = RXT_FILE; c.arg.series = makeString((const unsigned char *)s, at - s); c.arg.index = 0;
 		return c;
 	}
-	if (!strncmp(at, "<noise ", 7)) {
+	if (!strncmp(at, "<noise ", 7) || !strncmp(at, "<opaque ", 8)) {
 		int w, h, seed, used = 0;
-		sscanf(at, "<noise %dx%d %d>%n", &w, &h, &seed, &used);
-		at += used;
+		int isOpaque = at[1] == 'o';
+		sscanf(at + (isOpaque ? 8 : 7), "%dx%d %d>%n", &w, &h, &seed, &used);
+		at += (isOpaque ? 8 : 7) + used;
 		REBSER *img = makeImageSeries(w, h);
 		u32 state = (u32)seed * 2654435761u + 1;
 		u32 *p = (u32 *)img->data;
-		for (REBCNT i = 0; i < img->tail; i++) { state = state * 1103515245u + 12345u; u32 x = state ^ (state >> 15); state = state * 1103515245u + 12345u; p[i] = x ^ (state << 7); }
+		for (REBCNT i = 0; i < img->tail; i++) { state = state * 1103515245u + 12345u; u32 x = state ^ (state >> 15); state = state * 1103515245u + 12345u; p[i] = x ^ (state << 7); if (isOpaque) p[i] |= 0xFF000000u; }
 		c.type = RXT_IMAGE; c.arg.image = img; c.arg.width = w; c.arg.height = h;
 		return c;
 	}

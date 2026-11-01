@@ -139,9 +139,11 @@ are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
    under any transform, and the stroker draws `line` and every outline under
    `pen`, `line-width`, `line-join` and `line-cap`, and `shape` and `path`
    take the path dialect with its smooth curves and SVG arcs. `info`, `image`
-   from an image and `set-threads` answer as the release does. Left, in the
-   order to build it: gradients and image patterns; image blits, and images
-   read from files; `point`; then fonts and `text`. Until then each
+   from an image and `set-threads` answer as the release does. Gradients and
+   image patterns are drawn within 2 levels a channel of the release, not byte
+   for byte, by decision (`docs/blend2d-port.md`). Left, in the order to build
+   it: image blits, and images read from files; `point`; then fonts and
+   `text`. Until then each
    of those raises an error naming what it cannot draw rather than drawing it
    wrongly. Blend2D's `sin`, `cos`, `pow` and `cbrt` are the platform's and
    JEBOL's are `StrictMath`'s, so an edge pixel can differ in their last bit

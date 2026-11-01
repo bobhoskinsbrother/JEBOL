@@ -111,6 +111,26 @@ A block that opens with something that is not a command reads `cmd_pos`
 before the C has set it, so what happens is the compiler's: this probe, built
 with GCC 15.2 at `-O2`, behaves as if it were 3, and so does JEBOL.
 
+## blend2d-paint.tsv
+
+65 gradient and pattern fills drawn by the same probe, kept whole because
+JEBOL is expected near them rather than equal to them. Each row is `image`,
+`pattern` (empty, or `opaque WxH seed`: the noise generator with every alpha
+255, which the stub reads as `<opaque WxH seed>`), `block` (with `PATTERN`
+where the pattern goes), the `size`, and every pixel as an ARGB word.
+`Blend2DPaintFromTheSourceTest` binds `PATTERN`, draws each row and expects
+every channel within 2 levels.
+
+`probe/paint-cases.py` writes the cases and `probe/paint-table.py` turns the
+probe's output into the table. They cover six stop lists -- two stops, three,
+transparent ends, stops inside the run, two at one offset, and stops outside
+0 to 1 -- under linear, radial with the focus at and off the centre, and conic
+gradients, conic start angles and repeats, a vertical and a degenerate linear
+gradient, a gradient with no stops, gradients set before and after a rotation,
+under a scale and an operator, and an opaque pattern under all nine extend
+words, whole and translated, translated by a fraction, scaled, rotated, under
+an operator, and given to `pen`.
+
 ## Making them again
 
 Blend2D and asmjit are not checked in. Clone them at the commits above, read
@@ -129,6 +149,8 @@ image it prints into a row:
     python3 probe/draw-cases.py cases.r3 cases.tsv
     split -l 200 -d cases.r3 chunk- && for f in chunk-*; do ./probe $f >> cases.out; done
     python3 probe/draw-table.py cases.tsv cases.out blend2d-draw.tsv
+    python3 probe/paint-cases.py paint.r3 paint.tsv && ./probe paint.r3 > paint.out
+    python3 probe/paint-table.py paint.tsv paint.out blend2d-paint.tsv
 
 `B2D_THREADS=0` (or any count) and `B2D_NO_JIT=1` override what the extension
 asks Blend2D for, which is how the port's notes on bands, threads and the
