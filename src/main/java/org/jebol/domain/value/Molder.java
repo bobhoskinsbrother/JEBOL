@@ -242,7 +242,7 @@ public final class Molder {
                     : character.toString();
             case PairValue pair -> moldHalf(pair.x()) + "x" + moldHalf(pair.y());
             case EventValue event -> renderEvent(event);
-            case HandleValue handle -> "#(handle! " + handle.typeName() + ")";
+            case HandleValue handle -> "#(handle! " + handle.typeName() + moldInside(handle) + ")";
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
             case DateValue date -> WRITING_EVERYTHING_OUT.get()
@@ -849,6 +849,13 @@ public final class Molder {
         return segments.isEmpty()
                 || path.storageLength() <= 1
                 || !(segments.getFirst() instanceof WordValue);
+    }
+
+    private static String moldInside(HandleValue handle) {
+        return handle.payload() instanceof JavaObjectValue carried
+                && carried.held().filter(MoldedInsideHandle.class::isInstance).isPresent()
+                ? " " + ((MoldedInsideHandle) carried.held().get()).moldInsideHandle()
+                : "";
     }
 
     private static String renderEvent(EventValue event) {

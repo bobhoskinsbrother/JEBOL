@@ -23,7 +23,7 @@ a baseline from the same machine rather than against the row.
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 3,711 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
+| the shipped jar               | 3,939 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
 | the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
@@ -98,8 +98,8 @@ smallest failing case is one line before reading any code.
 
 **JEBOL never fetches an extension** (decision 58). One it serves is ported to
 Java and carried in the build as a delayed entry, which IMPORT makes into a
-module the first time a script asks for it. Seven are served that way: easing,
-blurhash, deflate, zlib-ng, blend2d, mathpresso and zstd. Brotli is 1b and webp
+module the first time a script asks for it. Eight are served that way: easing,
+blurhash, deflate, zlib-ng, blend2d, mathpresso, zstd and bzip2. Brotli is 1b and webp
 is goal 10. What R3 names and JEBOL leaves out is decision 61.
 
 **What each exports is read from its source, never from running it.** Each
@@ -111,10 +111,8 @@ is what stays.
 
 Two pieces, in this order, each with its failing tests written first:
 
-1. **`import 'bzip2`.** bzip2 1.1.0 ported to Java, byte-exact: `version`,
-   `compress`, `decompress`, `make-encoder`, `make-decoder`, `write` and `read`.
-   The JDK has no bzip2, and JEBOL has only a file signature. Follow the rules
-   for porting a codec in `CLAUDE.md`, with bzip2's own test corpus.
+1. **`import 'bzip2`.** Done: `docs/bzip2-port.md`. Where the C never answers,
+   `write/flush` above all, it says what JEBOL does instead.
 2. **SQLite as an optional extension.** A separate jar, `jebol-sqlite`, built
    here and over Xerial's `sqlite-jdbc`. A script gets `import 'sqlite` by adding
    that jar and its library jars to the classpath and nothing else: no flag, no
@@ -126,7 +124,7 @@ Two pieces, in this order, each with its failing tests written first:
    because its `Bounds` holds none unless a host adds one. And a public extension
    exports every command to `lib` and is refused `already-used` for a name `lib`
    holds, so one with an `open` and a `close` cannot install: the route that keeps
-   commands in the module until IMPORT, which the seven bundled extensions take,
+   commands in the module until IMPORT, which the eight bundled extensions take,
    is not public. Rebol-SQLite 3.46.0.0 declares fourteen commands, and its
    `ci-test.r3` is a further source of cases.
 

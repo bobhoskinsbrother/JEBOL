@@ -10,33 +10,27 @@ import java.util.Arrays;
 
 final class StoredOctets {
 
-    private static final int WIDEST_CHARACTER_STORED_IN_BYTE = 0xFF;
-
     private StoredOctets() {
     }
 
     static long countUnitsFromIndex(Value data) {
-        int skipped = ((RebolSeries) data).index() - 1;
-        long units = data instanceof BinaryValue bytes
-                ? bytes.head().octetsFromHere().length
-                : ((AnyStringValue) data).head().text().codePointCount(0, ((AnyStringValue) data).head().text().length());
-        return units - skipped;
+        return readAllFromIndex(data).length;
     }
 
     static byte[] readFromIndex(Value data, long length) {
-        int skipped = ((RebolSeries) data).index() - 1;
-        byte[] stored = readStoredFromHead(data);
-        int from = Math.min(skipped, stored.length);
-        int to = (int) Math.min(stored.length, from + Math.max(0, length));
-        return Arrays.copyOfRange(stored, from, to);
+        byte[] stored = readAllFromIndex(data);
+        return Arrays.copyOf(stored, (int) Math.max(0, Math.min(stored.length, length)));
     }
 
-    private static byte[] readStoredFromHead(Value data) {
+    private static byte[] readAllFromIndex(Value data) {
+        int skipped = ((RebolSeries) data).index() - 1;
         if (data instanceof BinaryValue bytes) {
-            return bytes.head().octetsFromHere();
+            byte[] stored = bytes.head().octetsFromHere();
+            return Arrays.copyOfRange(stored, Math.min(skipped, stored.length), stored.length);
         }
         String characters = ((AnyStringValue) data).head().text();
-        boolean isStoredWide = characters.codePoints().anyMatch(code -> code > WIDEST_CHARACTER_STORED_IN_BYTE);
-        return characters.getBytes(isStoredWide ? StandardCharsets.UTF_16LE : StandardCharsets.ISO_8859_1);
+        int characterCount = characters.codePointCount(0, characters.length());
+        int from = characters.offsetByCodePoints(0, Math.min(skipped, characterCount));
+        return characters.substring(from).getBytes(StandardCharsets.UTF_8);
     }
 }

@@ -386,6 +386,59 @@ and do not ship.
 
 ------------------------------------------------------------------------
 
+This product includes a port of Rebol-Bzip2 1.1.0
+(https://github.com/Oldes/Rebol-Bzip2), Copyright (c) 2026 Oldes, under the
+MIT License above, and of bzip2/libbzip2 (https://gitlab.com/bzip2/bzip2),
+under the licence below.
+
+The files under src/main/java/org/jebol/domain/eval/compression/bzip2/ are
+altered versions of libbzip2: its block sort, its compressor and decompressor
+and the stream half of its library, converted from C to Java. They are not the
+original software. They remain under the licence below; they are not relicensed
+under the Apache License. src/main/java/org/jebol/application/Bzip2Extension.java
+and Bzip2Stream.java are written from Rebol-Bzip2's commands and remain under
+the MIT License. They ship: they are inside the jar.
+
+src/testFixtures/resources/bzip2/ holds tables of bzip2's own answers, the C that
+made them, and test files, with their licences in its LICENSE; they do not ship.
+
+    This program, "bzip2", the associated library "libbzip2", and all
+    documentation, are copyright (C) 1996-2010 Julian R Seward.  All
+    rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. The origin of this software must not be misrepresented; you must
+       not claim that you wrote the original software.  If you use this
+       software in a product, an acknowledgment in the product
+       documentation would be appreciated but is not required.
+
+    3. Altered source versions must be plainly marked as such, and must
+       not be misrepresented as being the original software.
+
+    4. The name of the author may not be used to endorse or promote
+       products derived from this software without specific prior written
+       permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+    OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+    DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+    DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+    GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+------------------------------------------------------------------------
+
 This product includes a port of the Rebol-MathPresso extension 0.1.0
 (https://github.com/Siskin-framework/Rebol-MathPresso), by Oldes, whose
 module header declares the Apache License, Version 2.0, as JEBOL is.

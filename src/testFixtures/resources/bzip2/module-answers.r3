@@ -1,0 +1,75 @@
+Rebol []
+b: import (to-rebol-file system/options/args/1)
+show: func [code [block!] /local answer] [
+	print [mold/flat code "=>" mold/flat try code]
+]
+head-of: func [x] [to string! copy/part x 4]
+show [spec-of b]
+show [words-of b]
+show [b/version]
+show [last system/catalog/compressions]
+
+print "--- which block size each route writes"
+foreach l [0 1 6 9 10 -1 99] [print ["command /level" l head-of b/compress/level "hello" l]]
+foreach l [0 1 6 9 10] [print ["native /level" l head-of compress/level "hello" 'bzip2 l]]
+print ["command default" head-of b/compress "hello"]
+print ["native default" head-of compress "hello" 'bzip2]
+foreach l [0 1 9 10 -1] [e: b/make-encoder/level l print ["make-encoder /level" l head-of b/write/finish :e "hello"]]
+print ["make-encoder default" head-of b/write/finish b/make-encoder "hello"]
+
+print "--- one-shot"
+c: b/compress "hello hello hello hello"
+show [c]
+show [b/decompress c]
+show [b/decompress/size c 5]
+show [b/decompress/size c 0]
+show [b/decompress/size c 1000]
+show [b/decompress/max c 5]
+show [b/decompress/max c 0]
+show [b/decompress/size/max c 12 5]
+show [b/decompress/size c -1]
+show [b/decompress/max c -1]
+show [decompress/size c 'bzip2 -1]
+show [decompress/size c 'bzip2 5]
+show [b/decompress #{}]
+show [decompress #{} 'bzip2]
+show [b/decompress #{425A683181E8FFFFFF}]
+show [decompress #{425A683181E8FFFFFF} 'bzip2]
+show [b/decompress join c #{0102}]
+show [b/decompress/part c 5]
+show [b/compress ""]
+show [b/compress "ěšč"]
+show [b/compress/part "abcdefghij" -3]
+show [b/compress/part "abcdefghij" 5]
+
+print "--- streams"
+e: b/make-encoder
+show [type? :e]
+print ["mold of an encoder:" mold :e]
+show [b/write/finish :e none]
+show [b/read :e]
+show [same? :e b/write :e "x"]
+show [b/read :e]
+show [b/read :e]
+show [b/write/finish :e "y"]
+show [b/read :e]
+show [b/write :e "z"]
+show [b/write :e none]
+e2: b/make-encoder
+show [same? :e2 b/write :e2 #{}]
+show [b/read :e2]
+show [b/write/finish :e2 #{}]
+d: b/make-decoder
+print ["mold of a decoder:" mold :d]
+show [b/read :d]
+show [b/write :d none]
+show [same? :d b/write :d c]
+show [b/read :d]
+show [b/read :d]
+show [b/write :d c]
+show [b/write :d none]
+d2: b/make-decoder
+show [b/write/flush :d2 copy/part c 10]
+show [b/write/finish :d2 skip c 10]
+show [b/read 1]
+print "--- done"

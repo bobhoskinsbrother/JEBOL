@@ -1,0 +1,15 @@
+Nothing in this directory ships: it is test data, and it is not inside the jar
+or the distribution archive.
+
+The tables here hold bzip2's own answers, and table.c, inputs.h and generate.sh
+compile bzip2's C to make them. bzip2's licence is at corpus/samples/COPYING.
+
+The test files under corpus/ come from bzip2's own repository and from
+https://sourceware.org/git/bzip2-tests.git, and keep the licences they came with:
+
+    corpus/samples/            bzip2's licence, COPYING
+    corpus/commons-compress/   Apache License 2.0, LICENSE.txt and NOTICE.txt
+    corpus/dotnetzip/          zlib licence, License.zlib.txt, and Ms-PL, License.txt
+    corpus/go/                 BSD-style, LICENSE
+    corpus/lbzip2/             GNU GPL version 3 or later, COPYING
+    corpus/pyflate/            any DFSG-compatible licence, as its README says

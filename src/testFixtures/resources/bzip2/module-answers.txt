@@ -1,0 +1,75 @@
+[spec-of b] => make object! [version: 1.1.0 title: "Rebol Bzip2 Extension" name: 'Bzip2 type: 'module date: 14-Apr-2026/7:02:37 file: _ author: 'Oldes needs: 3.20.5 options: [extension] checksum: _ License: 'MIT Url: https://github.com/Oldes/Rebol-Bzip2]
+[words-of b] => [lib-base lib-file lib-local words version compress decompress make-encoder make-decoder write read]
+[b/version] => "1.1.0"
+[last system/catalog/compressions] => bzip2
+--- which block size each route writes
+command /level 0 BZh9
+command /level 1 BZh1
+command /level 6 BZh6
+command /level 9 BZh9
+command /level 10 BZh9
+command /level -1 BZh1
+command /level 99 BZh9
+native /level 0 BZh9
+native /level 1 BZh1
+native /level 6 BZh6
+native /level 9 BZh9
+native /level 10 BZh9
+command default BZh6
+native default BZh1
+make-encoder /level 0 BZh1
+make-encoder /level 1 BZh1
+make-encoder /level 9 BZh9
+make-encoder /level 10 BZh9
+make-encoder /level -1 BZh1
+make-encoder default BZh6
+--- one-shot
+[c] => #{425A683631415926535902F8B0BD000003910040000244A00030CD00548696719B38A3C5DC914E142400BE2C2F40}
+[b/decompress c] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/size c 5] => #{68656C6C6F}
+[b/decompress/size c 0] => #{}
+[b/decompress/size c 1000] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/max c 5] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 decompression failed." arg2: _ arg3: _ near: [b/decompress/max c 5] where: [decompress try print show do either either if -apply-]]
+[b/decompress/max c 0] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/size/max c 12 5] => #{68656C6C6F}
+[b/decompress/size c -1] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Invalid output size limit (/size)." arg2: _ arg3: _ near: [b/decompress/size c -1] where: [decompress try print show do either either if -apply-]]
+[b/decompress/max c -1] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Invalid /max (must be >= 0)." arg2: _ arg3: _ near: [b/decompress/max c -1] where: [decompress try print show do either either if -apply-]]
+[decompress/size c 'bzip2 -1] => make error! [code: 329 type: 'Script id: 'out-of-range arg1: -1 arg2: _ arg3: _ near: [decompress/size c 'bzip2 -1] where: [decompress try print show do either either if -apply-]]
+[decompress/size c 'bzip2 5] => #{68656C6C6F}
+[b/decompress #{}] => #{}
+[decompress #{} 'bzip2] => #{}
+[b/decompress #{425A683181E8FFFFFF}] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 decompression failed." arg2: _ arg3: _ near: [b/decompress #{425A683181E8FFFFFF}] where: [decompress try print show do either either if -apply-]]
+[decompress #{425A683181E8FFFFFF} 'bzip2] => make error! [code: 351 type: 'Script id: 'bad-press arg1: -4 arg2: _ arg3: _ near: [decompress #{425A683181E8FFFFFF} 'bzip2] where: [decompress try print show do either either if -apply-]]
+[b/decompress join c #{0102}] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/part c 5] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 decompression failed." arg2: _ arg3: _ near: [b/decompress/part c 5] where: [decompress try print show do either either if -apply-]]
+[b/compress ""] => #{425A683617724538509000000000}
+[b/compress "ěšč"] => #{425A6836314159265359170A0F700000020074000200082000060020002183419A0C831C5DC914E142405C283DC0}
+[b/compress/part "abcdefghij" -3] => #{425A683617724538509000000000}
+[b/compress/part "abcdefghij" 5] => #{425A6836314159265359A35B4DF400000001003E0020002183419A025C7177245385090A35B4DF40}
+--- streams
+[type? :e] => #(handle!)
+mold of an encoder: #(handle! bzip2-encoder bzip2:enc:0x…)
+[b/write/finish :e none] => _
+[b/read :e] => _
+[same? :e b/write :e "x"] => #(true)
+[b/read :e] => #{425A6836314159265359774BB014000000008000402000211846}
+[b/read :e] => #{}
+[b/write/finish :e "y"] => #{86282B24CA6B2E7155B4600000001000040400042308D05DC914E142427477362C}
+[b/read :e] => #{}
+[b/write :e "z"] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 stream is already finished." arg2: _ arg3: _ near: [b/write :e "z"] where: [write try print show do either either if -apply-]]
+[b/write :e none] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 stream is already finished." arg2: _ arg3: _ near: [b/write :e none] where: [write try print show do either either if -apply-]]
+[same? :e2 b/write :e2 #{}] => #(true)
+[b/read :e2] => #{425A68}
+[b/write/finish :e2 #{}] => #{3617724538509000000000}
+mold of a decoder: #(handle! bzip2-decoder bzip2:dec:0x…)
+[b/read :d] => _
+[b/write :d none] => _
+[same? :d b/write :d c] => #(true)
+[b/read :d] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/read :d] => #{}
+[b/write :d c] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 stream is already finished." arg2: _ arg3: _ near: [b/write :d c] where: [write try print show do either either if -apply-]]
+[b/write :d none] => make error! [code: 600 type: 'Command id: 'command-fail arg1: "Bzip2 stream is already finished." arg2: _ arg3: _ near: [b/write :d none] where: [write try print show do either either if -apply-]]
+[b/write/flush :d2 copy/part c 10] => #{}
+[b/write/finish :d2 skip c 10] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/read 1] => make error! [code: 305 type: 'Script id: 'expect-arg arg1: 'read arg2: 'codec arg3: #(integer!) near: [try code] where: [try print show do either either if -apply-]]
+--- done

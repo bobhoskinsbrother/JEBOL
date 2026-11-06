@@ -6957,3 +6957,31 @@ used to be its own.
 
 `Lz4FromTheSourceTest` and `LzavFromTheSourceTest` pin all of it, every expectation
 read off `./r3-head`.
+
+---
+
+## Strings reach C as UTF-8
+
+**A series holding anything past ASCII is stored as UTF-8 and flagged `SER_UTF8`,
+and its index is an octet offset.** An extension command reads the raw series
+(`BIN_SKIP(data, index)` for `SERIES_TAIL - index` octets), so `"é"` arrives as
+`#{C3A9}`, never `#{E9}`. `skip "ěšč" 1` starts at the second character, because
+the index already counts its octets. A command's own `/part` counts octets, so it can
+split a character: `b/compress/part "ěšč" 1` reads `#{C4}`. JEBOL's `StoredOctets`
+used to hand extensions Latin-1 or UTF-16, which no R3 of this age stores.
+
+**A native's `/part` goes through `Partial1`, which counts characters, with two
+traps on a flagged string, in `f-stubs.c`.**
+
+- `len = UTF8_Skip(series, idx, len) - idx` subtracts two unsigned values. A negative
+  count therefore wraps to a huge one and is clamped to what remains: `/part skip
+  "ěšč" 2 -1` reads forwards, `#{C48D}`, where `skip "abc" 2` with -1 reaches back to
+  `#{62}`. A position as the part is measured directly and is not caught by this.
+- `UTF8_Skip` stops at a zero octet, so `/part "ě^@b" 3` is `#{C49B}`, and `"a^@b"`,
+  unflagged, is `#{610062}`.
+
+COMPRESS and CHECKSUM show both. `APartOfAStringFromTheSourceTest` and
+`ExtensionsReadStringsAsStoredFromTheSourceTest` pin them. Rebol-Bzip2's and the
+natives' expectations were read off `./r3-head`. Rebol-Zstd, Rebol-Deflate and
+Rebol-Zlib-ng were not run: their `*-commands.c` take the same
+`BIN_SKIP(data, index)` for `SERIES_TAIL(data) - index`, and that is the evidence.

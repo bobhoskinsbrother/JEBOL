@@ -93,6 +93,7 @@ public final class Interpreter {
         installation.installDelayed(Blend2DExtension.create());
         installation.installDelayed(MathPressoExtension.create());
         installation.installDelayed(ZstdExtension.create());
+        installation.installDelayed(Bzip2Extension.create());
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
         handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();

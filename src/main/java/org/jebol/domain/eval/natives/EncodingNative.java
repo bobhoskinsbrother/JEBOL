@@ -14,6 +14,8 @@ import java.util.Set;
 
 public abstract class EncodingNative extends DefaultNative {
 
+    private static final int LAST_ASCII = 0x7F;
+
     protected final Encodings encodings;
 
     protected EncodingNative(Encodings encodings) {
@@ -68,11 +70,39 @@ public abstract class EncodingNative extends DefaultNative {
 
     protected byte[] readOctetsWithinAnyPart(Value source, List<Value> arguments, Set<String> refinements) {
         byte[] octets = source.asOctets();
+        boolean isCounted = refinementArgument("part", 0, arguments, refinements)
+                .filter(asked -> asked instanceof IntegerValue || asked instanceof DecimalValue)
+                .isPresent();
         return countHowManyWanted(source, arguments, refinements)
-                .map(count -> count < 0
-                        ? readOctetsBehind(source, octets, -count)
-                        : Arrays.copyOf(octets, (int) Math.min(count, octets.length)))
+                .map(count -> {
+                    if (source instanceof AnyStringValue written && holdsMoreThanAscii(written)) {
+                        return readCharacters(written, octets, count, isCounted);
+                    }
+                    return count < 0
+                            ? readOctetsBehind(source, octets, -count)
+                            : Arrays.copyOf(octets, (int) Math.min(count, octets.length));
+                })
                 .orElse(octets);
+    }
+
+    private static boolean holdsMoreThanAscii(AnyStringValue written) {
+        return written.head().text().codePoints().anyMatch(code -> code > LAST_ASCII);
+    }
+
+    private byte[] readCharacters(AnyStringValue written, byte[] octets, long count, boolean isCounted) {
+        if (count < 0) {
+            return isCounted ? octets : readOctetsBehind(written, octets, -count);
+        }
+        String text = written.text();
+        int end = 0;
+        for (long taken = 0; taken < count && end < text.length(); taken++) {
+            int character = text.codePointAt(end);
+            if (isCounted && character == 0) {
+                break;
+            }
+            end += Character.charCount(character);
+        }
+        return text.substring(0, end).getBytes(StandardCharsets.UTF_8);
     }
 
     private byte[] readOctetsBehind(Value source, byte[] octets, long count) {
