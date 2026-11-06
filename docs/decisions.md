@@ -2599,3 +2599,27 @@ bit already differs between Linux, Windows and macOS, and Java's `Math` differs
 between JVMs and CPUs. The tests compare those answers closely, never by bits,
 so the build passes on every platform. Every NaN, infinity and domain error
 answers glibc's exact bits, and `log2` of a power of two is exact.
+
+## 61. What R3 names and JEBOL leaves out
+
+**Four things R3 names are left out on purpose, and none is a goal.** Each
+answers as a build without it does: `system/modules` has no entry, or the scheme
+is registered and refuses to open, so `import` fails with a catchable error.
+
+**`speak`.** Rebol-Speak 0.0.1 carries engines for Windows and macOS only, and
+the JDK has no speech API, so there is no Linux behaviour to match and little a
+test could check.
+
+**`triangulate`.** Rebol-Triangulate 1.6.0.0 builds a triangle mesh from points
+using Shewchuk's Triangle, which "may not be sold or included in commercial
+products without a license". A port keeps its source's licence, so it cannot go
+in the interpreter jar without changing that jar's Apache licence.
+
+**The `serial` scheme.** The JDK has no serial API, so it would need calls
+specific to each operating system. The scheme stays registered, and opening one
+is refused as on a build with no such device.
+
+**`osx-dialogs`.** R3 shells out to `osascript` on macOS only. JEBOL serves
+`request-color`, `request-dir` and `request-file` through its own port on every
+screen, which Standing in `goals.md` already records, so the module has nothing
+left to do.

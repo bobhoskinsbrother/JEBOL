@@ -94,45 +94,45 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. Serve seven of R3's compiled extensions from inside the build
-
-R3 has 69 entries in `system/modules`. Fourteen are release addresses of
-compiled extensions: blend2d, blurhash, brotli, bzip2, deflate, easing,
-mathpresso, miniaudio, speak, sqlite, triangulate, webp, zlib-ng and zstd.
-IMPORT downloads one and runs it as native code. Two more are host modules:
-`window` (none in a macOS r3) and `osx-dialogs`.
+#### 1a. The `bzip2` module, and SQLite as an optional jar
 
 **JEBOL never fetches an extension** (decision 58). One it serves is ported to
 Java and carried in the build as a delayed entry, which IMPORT makes into a
-module the first time a script asks for it. One it does not serve has no
-entry at all: the table carries no address, so there is nothing to fetch.
+module the first time a script asks for it. Seven are served that way: easing,
+blurhash, deflate, zlib-ng, blend2d, mathpresso and zstd. Brotli is 1b and webp
+is goal 10. What R3 names and JEBOL leaves out is decision 61.
 
 **What each exports is read from its source, never from running it.** Each
 repository's `src/*-rebol-extension.r3`, at the tag R3's address names, declares
-the commands and holds the REBOL its module runs on import; read it as text.
-No release binary is run, and `./r3-head` could not import one anyway: it asks
-for `<name>-linux-x86_64.rebx` where every release names the file `x64`, and
-bzip2's and webp's addresses lack the `v` their tags carry. Where a test needs
-what the extension answers, the answer comes from its C, read and then compiled
-alone into a probe, or from the REBOL the extension carries.
+the commands; read it as text. No release binary is run. **A probe is never
+thrown away:** whatever is compiled or scripted to learn an answer is checked
+in as a generator with the tables it writes, or becomes a test, and that test
+is what stays.
 
-**For the rest the decision is still to write down**: bzip2, miniaudio, speak,
-sqlite and triangulate, `window`, `osx-dialogs` and the `serial` scheme -- each
-served in Java as a goal of its own, or left out on purpose under Standing.
-Brotli is 1b and webp is goal 10.
+Two pieces, in this order, each with its failing tests written first:
 
-Seven are served in Java, so that `import 'easing` answers a module as it does
-on a real 3.22.5 that can fetch it: easing, blurhash, deflate, zlib-ng,
-blend2d, mathpresso and zstd (`docs/easing-port.md`, `docs/blurhash-port.md`,
-`docs/zlib-ng-port.md`, `docs/blend2d-port.md`, `docs/mathpresso-port.md`,
-`docs/zstd-port.md`).
+1. **`import 'bzip2`.** bzip2 1.1.0 ported to Java, byte-exact: `version`,
+   `compress`, `decompress`, `make-encoder`, `make-decoder`, `write` and `read`.
+   The JDK has no bzip2, and JEBOL has only a file signature. Follow the rules
+   for porting a codec in `CLAUDE.md`, with bzip2's own test corpus.
+2. **SQLite as an optional extension.** A separate jar, `jebol-sqlite`, built
+   here and over Xerial's `sqlite-jdbc`. A script gets `import 'sqlite` by adding
+   that jar and its library jars to the classpath and nothing else: no flag, no
+   configuration. JEBOL's own jar keeps its zero dependencies and never names
+   SQLite, and without the jars `import 'sqlite` fails as it does now. It is an
+   ordinary extension written to `docs/writing-an-extension.md`: `Extension`,
+   its commands and its handles are already public. Two things are missing, and
+   PDF (goal 12) needs both. The command line finds no extension on the classpath,
+   because its `Bounds` holds none unless a host adds one. And a public extension
+   exports every command to `lib` and is refused `already-used` for a name `lib`
+   holds, so one with an `open` and a `close` cannot install: the route that keeps
+   commands in the module until IMPORT, which the seven bundled extensions take,
+   is not public. Rebol-SQLite 3.46.0.0 declares fourteen commands, and its
+   `ci-test.r3` is a further source of cases.
 
-**Done when** each of the sixteen has a decision written down, and each of
-the seven imports as a module that works fully: every word it exports answers
-as the extension's does on a real 3.22.5, its exports reach `lib`, its
-`Accept-Encoding` edit is made, and `system/modules/<name>` is the module
-afterwards. Each gets a `*FromTheSourceTest` with expectations read off its
-probe. Brotli is reviewed: 1b.
+**Done when** every `bzip2` command answers as the extension's C does, and an
+end-to-end test runs the command line with and
+without the SQLite jars on the classpath and gets each answer.
 
 #### 1b. The `brotli` module, and the streaming encoder it needs
 
@@ -260,9 +260,8 @@ wrong, so it is fixed first.
 
 #### 1g. An error's arguments are values, not sentences
 
-Three times now JEBOL has put an English sentence where R3 puts a value: arg1
-of the operator error (1f), arg1 of `gui-metric/set 'restore true` ("no host
-serves the metric restore"), and arg1 of `no-value`, which for `get first
+Twice now JEBOL has put an English sentence where R3 puts a value: arg1
+of the operator error (1f), and arg1 of `no-value`, which for `get first
 [zork]` is a `word!` spelt `zork has no value` where R3's is `zork`. A script
 that reads `e/arg1` gets prose.
 
@@ -466,7 +465,9 @@ Standing entry, and the suite records the `image-diff` difference.
   built. Read the C for the id.
 - **`gui-metric/set`** with `'restore`, `'minimize`, `'maximize` and
   `'activate` controls the window, on the desktop. Say what each does in a
-  browser, where a page cannot minimise itself.
+  browser, where a page cannot minimise itself. This goes past the C, where
+  neither host handles those words and each raises `command-fail`, which is
+  what JEBOL answers until then.
 
 **Done when** both are rules, with an end-to-end test that minimises,
 restores and maximises a real window.
@@ -753,6 +754,60 @@ served tree, and a `%../` refused with nothing requested. `ORDER.txt`'s note
 on `sys-start.reb` says a url has no directory to run in, and stops being true
 the day this lands.
 
+### 12. PDF as an optional extension
+
+**The borrowed `codec-pdf.reb` stays as it is.** It reads a file into its
+objects and writes them back, which is all a real 3.22.5 does, and `load` and
+`save` answer the same with or without this goal's jars. What the codec cannot
+do is say what a document contains: its text, or what a page looks like.
+
+**It is an extension exactly as SQLite is (1a, piece 2), written to
+`docs/writing-an-extension.md`.** A separate
+jar, `jebol-pdf`, built here. Apache PDFBox is its implementation, and no script
+sees that name. A script gets the commands below from `import 'pdf` by adding that
+jar and its library jars to the classpath and nothing else: no flag, no
+configuration. JEBOL's own jar keeps its zero dependencies and never names PDFBox.
+
+**Without the jars the commands are still there and do nothing, unlike SQLite's.**
+SQLite was never in the core language, so its import fails. PDF is a core function
+that needs an extra library, so each command answers none and raises nothing. `pdf` in
+`system/modules` is already the codec's module, so these commands join that
+module and the codec stays reachable through it either way.
+
+R3 has no such extension, so no C decides these answers and this goal does:
+
+| Command                       | What it does                                        |
+|-------------------------------|-----------------------------------------------------|
+| `version`                     | the implementation's version                        |
+| `open` `/password`            | a handle on a document, from a file or a binary     |
+| `close`                       | releases the handle                                 |
+| `page-count`                  | how many pages                                      |
+| `read-text` `/pages`          | the document's text, or that of a range of pages    |
+| `render-page` `/dpi`          | one page as an `image!`                             |
+| `merge`                       | several documents as one binary                     |
+| `extract-pages`               | a range of pages as one binary                      |
+
+Settle this table in `spec/` before building: it is a proposal until then.
+
+**What the tests compare against.** Rebol's own six fixtures, under
+`src/tests/units/files/`, each checked by length and digest before it is trusted.
+Text is compared with what each file is known to say, read independently of
+PDFBox. A rendered page is compared by size and by chosen pixels, not byte for
+byte, because PDFBox's output depends on the JVM's rasteriser and fonts. The
+boundaries include an empty document, a damaged and a truncated file, a wrong and
+a missing password, a page number either side of the range, and a closed handle.
+
+**Done when** every command in the settled table has a standalone test, the
+codec's answers are shown not to change, and an end-to-end test runs the command
+line with and without the jars on the classpath and gets each answer.
+
+### 13. The `miniaudio` module, as a port
+
+`import 'miniaudio` answering as Oldes/Rebol-MiniAudio 0.11.23.0 does: its
+devices, playback, fades and effect nodes, ported rather than bound to a native
+library. Last on purpose. Sound cannot be compared byte for byte the way a codec
+can, so working out what its tests compare against is the first step.
+
 ---
 
 ## Standing
@@ -792,5 +847,5 @@ the day this lands.
   fresh interpreter on the JVM, which the console and the command line wire.
   A browser runs none. `TheFateOfATasksBodyIsTheHostsToDecide` in
   `spec/natives.allium`, decision 30.
-- **No Java PDF implementation.** The borrowed codec is what Rebol has; more
-  than that is a library the caller adds.
+- **No Java PDF implementation in the interpreter jar.** The borrowed codec is
+  what Rebol has; more than that is a library the caller adds, which is goal 12.
