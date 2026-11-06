@@ -199,6 +199,12 @@ Text is drawn byte for byte in any TrueType or CFF font a script names with
 ./build/install/jebol/bin/jebol --screen=window examples/blend2d/
 ```
 
+The fifth steps through what `cursor` can show, every system cursor, the pointer hidden and an image, changing every two and a half seconds with the current one named in the title bar. Closing the window ends it.
+
+```
+./build/install/jebol/bin/jebol --screen=window examples/cursor/
+```
+
 `to image! gob` paints a gob and its pane into an image of the gob's size, over white, as R3 does on Windows. It needs a screen: on the JVM Java2D paints it, with or without a display, and on a page the worker paints it into an OffscreenCanvas. Without a screen it is the refusal R3 gives on a host that cannot compose, `cannot MAKE image! from: gob`.
 
 ### **Places, Back and Forward**
