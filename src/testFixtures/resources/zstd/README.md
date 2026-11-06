@@ -102,7 +102,10 @@ appended, a second frame appended — is fed to a fresh `ZSTD_DStream` by
 whole content, everything at once into room for half of it, random chunks of
 input and output up to 2^17, and chunks of up to 15 octets. A row records the
 calls, the input read, the output written and its digest, a digest of every
-value `ZSTD_decompressStream` returned, and its last answer.
+value `ZSTD_decompressStream` returned, and its last answer. A row stops at the
+end of the frame, at a refusal, or after 32 calls in a row that read and wrote
+nothing. That is past zstd's own limit of 16, so every refusal it would make is
+still reached, and a stream that progresses at least once in 32 calls must end.
 
 What a decoder does that a frame can steer, read from the C:
 
@@ -116,6 +119,7 @@ What a decoder does that a frame can steer, read from the C:
 | a window over 2^27 | `frameParameter_windowTooLarge` from a stream, none in one pass | the 2^28 frame |
 | a checksum, a dictionary id, a reserved bit | `ZSTD_decodeFrameHeader` | damaged rows: e22, e32, e14 |
 | no progress for 16 calls | `noForwardProgress_destFull` and `_inputEmpty` | cut and half-room rows: e80, e82 |
+| a frame cut inside its header | `zdss_loadHeader` returns its hint before the no-progress check, so it is never refused | the 2,109 cut rows stopped after 32 calls |
 | a hostage octet held until the output is flushed | the end of `ZSTD_decompressStream` | chunked rows ending in 1 |
 
 ## zstd-compress.tsv and zstd-compress-stream.tsv

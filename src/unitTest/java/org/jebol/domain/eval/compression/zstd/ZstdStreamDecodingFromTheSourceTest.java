@@ -21,7 +21,7 @@ class ZstdStreamDecodingFromTheSourceTest {
     private static final int RANDOM_CHUNKS = 1;
     private static final long FNV_START = 0xcbf29ce484222325L;
     private static final long FNV_PRIME = 0x100000001b3L;
-    private static final long MOST_CALLS = 2_000_000;
+    private static final int MOST_CALLS_WITHOUT_PROGRESS = 32;
 
     private static byte[] resource(String name) throws IOException {
         try (InputStream in = Objects.requireNonNull(
@@ -111,6 +111,7 @@ class ZstdStreamDecodingFromTheSourceTest {
         int written = 0;
         long returns = FNV_START;
         long calls = 0;
+        int callsWithoutProgress = 0;
         long result = 0;
         String outcome;
         int[] seed = {seedValue};
@@ -142,9 +143,11 @@ class ZstdStreamDecodingFromTheSourceTest {
             }
             calls++;
             returns = foldWord(returns, result);
+            callsWithoutProgress = input.position == read && out.position == written ? callsWithoutProgress + 1 : 0;
             read = input.position;
             written = out.position;
-            if (isFailed || (result == 0 && read == source.length) || calls >= MOST_CALLS) {
+            if (isFailed || (result == 0 && read == source.length)
+                    || callsWithoutProgress >= MOST_CALLS_WITHOUT_PROGRESS) {
                 break;
             }
         }
@@ -187,5 +190,16 @@ class ZstdStreamDecodingFromTheSourceTest {
                 "e82");
     }
 
-    private static final String FRAMES_DIGEST = "15c1a1f2ca780529";
+    @Test
+    @DisplayName("A frame cut inside its header is never refused: zstd goes on asking for the octets that will not come")
+    void aFrameCutInsideItsHeaderGoesOnAsking() throws IOException {
+        List<String[]> stopped = rowsOf("zstd-decode.tsv").stream()
+                .filter(row -> Integer.parseInt(row[5]) >= MOST_CALLS_WITHOUT_PROGRESS)
+                .filter(row -> row[1].startsWith("t") && row[7].equals("0") && !row[10].startsWith("e"))
+                .toList();
+        assertThat(stopped).hasSize(2109);
+        assertThat(stopped).allSatisfy(row -> assertThat(Integer.parseInt(row[6])).isLessThanOrEqualTo(9));
+    }
+
+    private static final String FRAMES_DIGEST ="15c1a1f2ca780529";
 }

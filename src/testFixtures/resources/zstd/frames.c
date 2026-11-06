@@ -198,6 +198,7 @@ static int fileFrame(const char *dir, const char *name) {
 
 /* the decoding: a fresh DStream, fed by a schedule, as JEBOL's test feeds its own */
 enum { WHOLE = 0, RANDOM_CHUNKS = 1, SMALL_CHUNKS = 2 };
+enum { MOST_CALLS_WITHOUT_PROGRESS = 32 };
 
 static void decode(int frame, const char *mutation, const unsigned char *src, size_t len, int schedule,
                    unsigned seed, size_t outCap) {
@@ -207,6 +208,7 @@ static void decode(int frame, const char *mutation, const unsigned char *src, si
     size_t inPos = 0, outPos = 0;
     uint64_t returns = FNV_START;
     long calls = 0;
+    int callsWithoutProgress = 0;
     size_t r = 0;
     uint32_t s = seed;
     for (;;) {
@@ -229,11 +231,12 @@ static void decode(int frame, const char *mutation, const unsigned char *src, si
         calls++;
         uint64_t asWord = (uint64_t)r;
         returns = fnvInto(returns, (const unsigned char *)&asWord, 8);
+        callsWithoutProgress = (ib.pos == inPos && ob.pos == outPos) ? callsWithoutProgress + 1 : 0;
         inPos = ib.pos;
         outPos = ob.pos;
         if (ZSTD_isError(r)) break;
         if (r == 0 && inPos == len) break;
-        if (calls >= 2000000) break;
+        if (callsWithoutProgress >= MOST_CALLS_WITHOUT_PROGRESS) break;
     }
     fprintf(rows, "%d\t%s\t%d\t%u\t%zu\t%ld\t%zu\t%zu\t%016llx\t%016llx\t", frame, mutation, schedule, seed, outCap,
             calls, inPos, outPos, (unsigned long long)fnvInto(FNV_START, out, outPos), (unsigned long long)returns);
