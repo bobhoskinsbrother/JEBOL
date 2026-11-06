@@ -341,3 +341,49 @@ and do not ship.
     2. Altered source versions must be plainly marked as such, and must not be
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
+
+------------------------------------------------------------------------
+
+This product includes a port of the Rebol-MathPresso extension 0.1.0
+(https://github.com/Siskin-framework/Rebol-MathPresso), by Oldes, whose
+module header declares the Apache License, Version 2.0, as JEBOL is.
+src/main/java/org/jebol/application/MathPressoExtension.java is written
+from its C++.
+
+------------------------------------------------------------------------
+
+This product includes a port of MathPresso
+(https://github.com/kobalicek/mathpresso), commit 734c292, Copyright (c)
+2015, Petr Kobalicek, licensed under the zlib License below.
+
+MathPressoOperator, MathPressoToken, MathPressoTokenizer, MathPressoNode,
+MathPressoSymbol, MathPressoScope, MathPressoReporter, MathPressoParser,
+MathPressoOptimizer, CompiledFolding, MathPressoExpression, Sse2Rounding,
+SseDoubles and MathPressoContext, under
+src/main/java/org/jebol/domain/eval/mathpresso/, are written from
+MathPresso's tokenizer, parser, optimizer and JIT compiler and are an
+altered version of it: they are Java, and they interpret what the JIT
+would emit rather than emitting machine code, so they are not the original
+software. They remain under the zlib License; they are not relicensed
+under the Apache License. They ship: they are inside the jar. The table,
+its probe and its generator under src/testFixtures/resources/mathpresso/
+are MathPresso's output and do not ship.
+
+    MathPresso - Mathematical Expression Parser And JIT Compiler
+    Copyright (c) 2015, Petr Kobalicek <kobalicek.petr@gmail.com>
+
+    This software is provided 'as-is', without any express or implied
+    warranty. In no event will the authors be held liable for any damages
+    arising from the use of this software.
+
+    Permission is granted to anyone to use this software for any purpose,
+    including commercial applications, and to alter it and redistribute it
+    freely, subject to the following restrictions:
+
+    1. The origin of this software must not be misrepresented; you must not
+       claim that you wrote the original software. If you use this software
+       in a product, an acknowledgment in the product documentation would be
+       appreciated but is not required.
+    2. Altered source versions must be plainly marked as such, and must not be
+       misrepresented as being the original software.
+    3. This notice may not be removed or altered from any source distribution.

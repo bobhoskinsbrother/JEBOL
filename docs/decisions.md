@@ -2569,3 +2569,33 @@ through them: the paint list, the GUI and the page keep decision 35's one
 executor and the platform's toolkits. The cost decision 35 names is paid for one
 extension, once, and buys the extension's own bytes everywhere, the web
 included, with no platform port at all.
+
+## 60. The mathpresso extension interprets what the JIT emits, as the Linux release emits it
+
+**MathPresso compiles an expression to x86 machine code, and JEBOL does not
+generate code.** A tree-walking evaluator of the same grammar would answer the
+textbook doubles, and the release does not: its optimizer folds constants in C,
+its JIT computes everything else with SSE2 instructions, and the two disagree on
+`isfinite`, `abs(-0)`, `-0`, comparisons with a NaN, `%`, `min` and `max`.
+
+**So the port evaluates the instructions the JIT would emit, on the operands it
+would have.** It keeps the JIT's bookkeeping too: which operand is read only,
+because that decides whether `+`, `*`, `avg`, `min` and `max` swap; and that a
+variable with itself is one register, because `copysign(x, x)` and `x % x`
+overwrite it. Doubles travel as their `long` bits, so NaN payloads and signs
+come out as a register holds them, on the web as well.
+
+**The JIT is the one the Linux release runs, which rounds with SSE2.** AsmJit's
+cached CPU features are zeroed by a static constructor that runs after
+MathPresso has read them, given the order the linker takes the two objects from
+the archive. So the release never uses `roundsd`, whatever the CPU, and JEBOL
+answers the SSE2 sequence's doubles. A Windows or macOS build links differently
+and may round with SSE4.1. JEBOL follows the Linux build, because that is the
+one that can be built and measured here (`docs/mathpresso-port.md`).
+
+**The C library's functions are Java's, and their last bit is not a goal.**
+The release calls the platform's `exp`, `sin`, `pow` and the rest, so its last
+bit already differs between Linux, Windows and macOS, and Java's `Math` differs
+between JVMs and CPUs. The tests compare those answers closely, never by bits,
+so the build passes on every platform. Every NaN, infinity and domain error
+answers glibc's exact bits, and `log2` of a power of two is exact.

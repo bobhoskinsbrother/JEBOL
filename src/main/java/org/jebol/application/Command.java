@@ -4,6 +4,7 @@ import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.Postbox;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.Raised;
@@ -41,6 +42,10 @@ public interface Command {
     Value readSystemField(String field, String... deeper);
 
     Postbox postbox();
+
+    String canonicalSpellingFor(AnyWordValue word);
+
+    void writeLine(String text);
 
     Optional<byte[]> readFile(String path);
 

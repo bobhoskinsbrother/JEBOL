@@ -124,10 +124,11 @@ served in Java as a goal of its own, or left out on purpose under Standing.
 Brotli is 1b and webp is goal 10.
 
 Six are to be served in Java, so that `import 'easing` answers a module as it
-does on a real 3.22.5 that can fetch it. easing, blurhash, deflate, zlib-ng
-and blend2d are served (`docs/easing-port.md`, `docs/blurhash-port.md`,
-`docs/zlib-ng-port.md`, `docs/blend2d-port.md`). blend2d's entry below
-records what it serves; the rest follow it in the order to build them:
+does on a real 3.22.5 that can fetch it. easing, blurhash, deflate, zlib-ng,
+blend2d and mathpresso are served (`docs/easing-port.md`,
+`docs/blurhash-port.md`, `docs/zlib-ng-port.md`, `docs/blend2d-port.md`,
+`docs/mathpresso-port.md`). The entries for blend2d and mathpresso below record
+what they serve; zstd is the one left to build:
 
 1. **blend2d** 0.12.0, served (`docs/blend2d-port.md`, decision 59).
    `import 'blend2d` answers the release's module, and `draw` walks every
@@ -156,11 +157,21 @@ records what it serves; the rest follow it in the order to build them:
    with every piece but text in each tile: text needs a font file the script
    can name, and the example carries none. Each piece has rows in a table
    from the probe in `src/testFixtures/resources/blend2d/probe/`.
-2. **mathpresso** 0.1.0. `context spec`, `compile context expression` and
-   `eval expression variables`, a vector of doubles. MathPresso compiles to
-   machine code with asmjit; JEBOL evaluates the same grammar and must give
-   the same double for every operator and function it accepts, and refuse
-   what it refuses.
+2. **mathpresso** 0.1.0, served (`docs/mathpresso-port.md`, decision 60).
+   `import 'mathpresso` answers the release's module, and `context`, `compile`
+   and `eval` answer as its C++ does, refusals and printed messages included.
+   MathPresso compiles to machine code with AsmJit; JEBOL interprets what the
+   JIT emits, so every operator and function answers the Linux release's
+   double, bit for bit, NaN payloads included: the optimizer's folding and the
+   JIT's SSE2 code where they disagree, the operand swap that `min` and `max`
+   show, a variable with itself in one register, and MathPresso's own faults
+   kept. The JIT rounds with SSE2 on that release, never `roundsd`, because
+   AsmJit's CPU table is wiped after MathPresso reads it. `exp`, `log`, `log2`,
+   the trigonometric and hyperbolic functions, `pow`, `atan2` and `hypot` are
+   Java's, close to glibc's but not to the last bit, which is not a goal: the
+   release's own last bit differs between platforms. Every NaN and limit is
+   glibc's.
+   30,275 rows from the probe in `src/testFixtures/resources/mathpresso/`.
 3. **zstd** 0.1.0. The same seven commands as brotli's and the same
    `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
    all, so this is a port of the size of Brotli's, decoder first, and every

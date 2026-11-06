@@ -60,6 +60,10 @@ public final class VectorStorage extends ProtectableStorage {
         elements[oneBasedIndex - 1] = stored;
     }
 
+    public void setBeneathAnyProtection(int oneBasedIndex, long stored) {
+        elements[oneBasedIndex - 1] = stored;
+    }
+
     public void append(long stored) {
         refuseIfProtected();
         makeRoomForOneMore();

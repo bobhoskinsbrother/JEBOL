@@ -91,6 +91,7 @@ public final class Interpreter {
         installation.installDelayed(DeflateExtension.create());
         installation.installDelayed(ZlibNgExtension.create());
         installation.installDelayed(Blend2DExtension.create());
+        installation.installDelayed(MathPressoExtension.create());
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
         handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();

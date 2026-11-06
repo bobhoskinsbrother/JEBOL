@@ -17,6 +17,8 @@ public final class SymbolTable {
 
     private final List<Integer> canonByIndex = new ArrayList<>(List.of(0));
 
+    private final List<String> spellingByIndex = new ArrayList<>(List.of(""));
+
     private final Map<String, Integer> indexBySpelling = new HashMap<>();
 
     private final Map<String, Integer> canonByFoldedSpelling = new HashMap<>();
@@ -41,8 +43,13 @@ public final class SymbolTable {
         int index = canonByIndex.size();
         int canon = canonByFoldedSpelling.computeIfAbsent(fold(spelling), unseen -> index);
         canonByIndex.add(canon);
+        spellingByIndex.add(spelling);
         indexBySpelling.put(spelling, index);
         return canon;
+    }
+
+    public String canonicalSpellingFor(String spelling) {
+        return spellingByIndex.get(canonicalIndexFor(spelling));
     }
 
     public void internWhatWasRead(List<Value> read) {

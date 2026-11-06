@@ -6,6 +6,7 @@ import org.jebol.domain.eval.Postbox;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
@@ -107,6 +108,16 @@ final class SingleCommand implements Command {
     @Override
     public Postbox postbox() {
         return evaluator.postbox();
+    }
+
+    @Override
+    public String canonicalSpellingFor(AnyWordValue word) {
+        return evaluator.symbols().canonicalSpellingFor(word.spelling());
+    }
+
+    @Override
+    public void writeLine(String text) {
+        evaluator.findOutput().writeLine(text);
     }
 
     @Override

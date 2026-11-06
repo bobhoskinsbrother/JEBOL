@@ -103,6 +103,8 @@ The `Command` holds:
 | `call.registerCompression(name, method)`   | COMPRESS and DECOMPRESS use your method under that name, as `RL_REGISTER_COMPRESS_METHOD` makes them |
 | `call.restoreBuiltInCompression(name)`     | COMPRESS and DECOMPRESS go back to the built-in method of that name |
 | `call.readSystemField(field, deeper...)`   | What `system/field/...` holds in this interpreter                   |
+| `call.canonicalSpellingFor(word)`          | The word's canonical spelling, the first R3 interned, as `RL_WORD_STRING` gives it |
+| `call.writeLine(text)`                     | A line on the interpreter's output, where a C extension's `printf` would go |
 
 **Arguments arrive as REBOL values, not Java ones.** A `file!` arrives as a
 `FileValue` and a `string!` as a `StringValue`, so you can tell `%a.txt` from
