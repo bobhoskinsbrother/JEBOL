@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -26,6 +27,8 @@ import org.jebol.domain.host.OutputPort;
 final class SuiteHost {
 
     private static final Queue<Path> ROOTS_TO_REMOVE_AT_EXIT = new ConcurrentLinkedQueue<>();
+
+    private static final Duration LONGEST_A_STEP_MAY_RUN_ON_A_LOADED_MACHINE = Duration.ofSeconds(60);
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(SuiteHost::removeEveryRoot));
@@ -50,7 +53,7 @@ final class SuiteHost {
     }
 
     static Bounds grantEverything() {
-        Bounds bounds = Bounds.standard();
+        Bounds bounds = Bounds.standard().withTimeLimit(LONGEST_A_STEP_MAY_RUN_ON_A_LOADED_MACHINE);
         for (HostService service : HostService.values()) {
             bounds = bounds.grant(service);
         }
