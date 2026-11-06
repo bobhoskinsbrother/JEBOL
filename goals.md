@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count, jar and web build rows on 2026-10-31,
+Measured on 2026-10-12, the jar and web build rows on 2026-11-06,
 and the timing rows on 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
 an Intel one read about 122ms median and 187ms p95, so compare a change against
 a baseline from the same machine rather than against the row.
@@ -22,11 +22,9 @@ a baseline from the same machine rather than against the row.
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `./gradlew allTests`          | 29,957 tests on 2026-10-31: `unitTests` 3,235, `functionalTests` 24,632, `heapExhaustionTests` 1, `endToEndTests` 2,089                                                                                           |
-| `./gradlew networkTests`      | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line                                                                                        |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 3,488 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
-| the web build                 | 16.3 MB of WebAssembly (4.9 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 16.9 MB, 5.2 MB gzipped                                                                          |
+| the shipped jar               | 3,711 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
+| the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
 
