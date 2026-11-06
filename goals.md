@@ -125,56 +125,18 @@ Six are to be served in Java, so that `import 'easing` answers a module as it
 does on a real 3.22.5 that can fetch it. easing, blurhash, deflate, zlib-ng,
 blend2d and mathpresso are served (`docs/easing-port.md`,
 `docs/blurhash-port.md`, `docs/zlib-ng-port.md`, `docs/blend2d-port.md`,
-`docs/mathpresso-port.md`). The entries for blend2d and mathpresso below record
-what they serve; zstd is the one left to build:
+`docs/mathpresso-port.md`). zstd is the one left to build:
 
-1. **blend2d** 0.12.0, served (`docs/blend2d-port.md`, decision 59).
-   `import 'blend2d` answers the release's module, and `draw` walks every
-   command as the extension's C does. What needs no rasteriser draws
-   byte for byte as the release does: Blend2D's compositing, all 29
-   operators, global alpha, `fill-all`, `clear-all`, `clear`, boxes and clips
-   under any transform, and Blend2D's edge builder, analytic rasteriser and
-   fill loop with its curve flattening: `polygon`, `triangle`, `circle`,
-   `ellipse`, `arc` with `pie` and `chord`, rounded boxes and `cubic` all fill
-   under any transform, and the stroker draws `line` and every outline under
-   `pen`, `line-width`, `line-join` and `line-cap`, and `shape` and `path`
-   take the path dialect with its smooth curves and SVG arcs. `info`, `image`
-   from an image and `set-threads` answer as the release does. `image` blits
-   byte for byte at whole pixels, from R3 images and from PNG, BMP and QOI
-   files read through the host's codec. Gradients, image patterns, blits
-   between pixels and JPEG files are drawn within 2 levels a channel of the
-   release, not byte for byte, by decision (`docs/blend2d-port.md`). `point`
-   draws byte for byte, and so do `font` and `text`: Blend2D's OpenType
-   reader, its character maps, its GSUB and GPOS engine and legacy `kern`,
-   TrueType and CFF outlines, CID-keyed fonts and collections, each with
-   Blend2D's own faults kept (`docs/blend2d-port.md`). Blend2D's `sin`,
-   `cos`, `pow` and `cbrt` are the platform's and JEBOL's are
-   `StrictMath`'s, so an edge pixel can differ in their last bit
-   as it does between R3 on Linux and on Windows (`docs/blend2d-port.md`).
-   `examples/blend2d` shows the 29 operators on the desktop and on a page,
-   with every piece but text in each tile: text needs a font file the script
-   can name, and the example carries none. Each piece has rows in a table
-   from the probe in `src/testFixtures/resources/blend2d/probe/`.
-2. **mathpresso** 0.1.0, served (`docs/mathpresso-port.md`, decision 60).
-   `import 'mathpresso` answers the release's module, and `context`, `compile`
-   and `eval` answer as its C++ does, refusals and printed messages included.
-   MathPresso compiles to machine code with AsmJit; JEBOL interprets what the
-   JIT emits, so every operator and function answers the Linux release's
-   double, bit for bit, NaN payloads included: the optimizer's folding and the
-   JIT's SSE2 code where they disagree, the operand swap that `min` and `max`
-   show, a variable with itself in one register, and MathPresso's own faults
-   kept. The JIT rounds with SSE2 on that release, never `roundsd`, because
-   AsmJit's CPU table is wiped after MathPresso reads it. `exp`, `log`, `log2`,
-   the trigonometric and hyperbolic functions, `pow`, `atan2` and `hypot` are
-   Java's, close to glibc's but not to the last bit, which is not a goal: the
-   release's own last bit differs between platforms. Every NaN and limit is
-   glibc's.
-   30,275 rows from the probe in `src/testFixtures/resources/mathpresso/`.
-3. **zstd** 0.1.0. The same seven commands as brotli's and the same
-   `Accept-Encoding` edit, appending `,zstd`. There is no zstd in JEBOL at
-   all, so this is a port of the size of Brotli's, decoder first, and every
-   rule in `CLAUDE.md` for a codec applies. Zstandard's own test corpus is
-   the corpus.
+**zstd** 0.1.0. The same seven commands as brotli's and the same
+`Accept-Encoding` edit, appending `,zstd`. A port of the size of Brotli's,
+decoder first, of Zstandard v1.5.7 (`docs/zstd-port.md` says why that and
+not the `dev` branch the release built), and every rule in `CLAUDE.md` for a
+codec applies. Zstandard's own test corpus is the corpus. The decoder's
+pieces are ported and checked against Zstandard's own C
+(`src/testFixtures/resources/zstd/`): the bit reader, FSE counts, Huffman
+tables and both Huffman decoders, the sequence tables and the frame header.
+The frame and block decoder, the stream, the encoder and the module are
+left.
 
 **Done when** each of the sixteen has a decision written down, and each of
 the six imports as a module that works fully: every word it exports answers
