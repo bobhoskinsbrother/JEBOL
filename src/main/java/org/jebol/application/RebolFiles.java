@@ -35,7 +35,8 @@ final class RebolFiles implements BootSources {
 
     @Override
     public List<String> functionDeclarations() {
-        return List.of(actions().textSource(), natives().textSource(), genNatives().textSource());
+        return List.of(actions().textSource(), natives().textSource(), genNatives().textSource(),
+                windowCommands().textSource());
     }
 
     RebolFile errors() {
@@ -64,6 +65,10 @@ final class RebolFiles implements BootSources {
 
     RebolFile genNatives() {
         return jebolDir("gen-natives.reb");
+    }
+
+    RebolFile windowCommands() {
+        return jebolDir("window.reb");
     }
 
     RebolFile bootSymbolsTxt() {

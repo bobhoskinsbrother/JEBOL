@@ -7,6 +7,7 @@ import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
@@ -59,7 +60,7 @@ public class GuiMetricNative extends ScreenNative {
                     "gui-metric takes a word, not " + asked.datatype().literalSpelling());
         }
         return ScreenMetric.findMetricNamed(word.canonical()).orElseThrow(() ->
-                Raised.of(EvaluationFailure.INVALID_ARG, "no host serves the metric " + word.canonical()));
+                Raised.of(EvaluationFailure.COMMAND_FAIL, NoneValue.none()));
     }
 
     private int displayAskedFor(List<Value> arguments, Set<String> refinements) {

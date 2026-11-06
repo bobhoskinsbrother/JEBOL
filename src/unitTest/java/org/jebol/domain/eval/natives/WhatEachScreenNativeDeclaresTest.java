@@ -129,7 +129,9 @@ class WhatEachScreenNativeDeclaresTest {
         return Stream.of(
                 Arguments.of(new InitTopWindowNative(granted), "init-top-window", Set.of()),
                 Arguments.of(new GuiMetricNative(granted), "gui-metric", Set.of("set", "display")),
-                Arguments.of(new ShowNative(granted), "show", Set.of()));
+                Arguments.of(new ShowNative(granted), "show", Set.of()),
+                Arguments.of(new CursorNative(granted), "cursor", Set.of()),
+                Arguments.of(new ShowSoftKeyboardNative(granted), "show-soft-keyboard", Set.of("attach")));
     }
 
     @ParameterizedTest(name = "{1}")
@@ -390,10 +392,10 @@ class WhatEachScreenNativeDeclaresTest {
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"nosuch", "virtual-screen-size", "screen-size-x", "screen-siz", "restore"})
-        @DisplayName("a word no host serves is refused as invalid-arg")
+        @DisplayName("a word no host serves is refused as command-fail")
         void refusesAnUnservedWord(String spelling) {
             assertThat(catchTheRefusalOf(definition, makeAScreenOf(1), Set.of(), nameAMetric(spelling)).error().errorId())
-                    .isEqualTo("invalid-arg");
+                    .isEqualTo("command-fail");
         }
 
         @Test

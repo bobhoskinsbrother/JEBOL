@@ -12,4 +12,5 @@ append system/modules [
     upgrade:         bundled://upgrade.reb
     webdriver:       bundled://webdriver.reb
     websocket:       bundled://websocket.reb
+    window:          #(none)
 ]

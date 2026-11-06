@@ -308,12 +308,43 @@ rule TheTitleBarHasNoWidth {
 -- `virtual-screen-size` is the case that shows this is not hypothetical: it
 -- is in the word list boot/window.reb hands the host, so it looks supported,
 -- and neither host has a branch for it.
+--
+-- RXR_BAD_ARGS raises command-fail in f-extension.c, whose arg1 is the message
+-- the host left in its frame. Here there is none, so arg1 is none: the C would
+-- read a word's number as the address of a message, and that is not copied.
 rule AMetricNameNoHostServesIsRefused {
     when: script_asks_for_a_metric(run, metric, display)
     requires: windows_are_granted(run)
     requires: not the_metric_is_one_of_the_twelve(metric)
 
     ensures: run.conclusion = raised
+    ensures: raised_error_id(run) = "command-fail"
+    ensures: raised_error_arg1(run) = none
+}
+
+-- CURSOR takes an id, an image or none, and answers unset.
+--
+-- The Windows host loads an id with LoadCursor, makes a cursor of an image with
+-- its hot spot at the top left, and hands SetCursor whatever it got. An id the
+-- system does not know loads as NULL, as does none or zero, and SetCursor(NULL)
+-- hides the pointer. The posix host's functions are empty, so a screen that is
+-- not there does nothing, and that is not a refusal.
+rule CursorChangesThePointer {
+    when: script_asks_for_a_cursor(run, cursor)
+    requires: windows_are_granted(run)
+
+    ensures: run.interpreter.screen_port.pointer = cursor
+    ensures: run.answer = unset
+}
+
+-- SHOW-SOFT-KEYBOARD is declared in boot/window.reb and neither host's
+-- dispatcher has a branch for it, so RXR_NO_COMMAND reaches f-extension.c's
+-- default, which answers unset. It does nothing anywhere.
+rule ShowSoftKeyboardDoesNothing {
+    when: script_asks_for_the_soft_keyboard(run)
+    requires: windows_are_granted(run)
+
+    ensures: run.answer = unset
 }
 
 -- A display index outside the range of displays that exist is refused.

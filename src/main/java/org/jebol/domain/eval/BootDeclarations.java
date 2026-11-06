@@ -7,6 +7,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.ParameterKind;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
@@ -20,10 +21,12 @@ import org.jebol.domain.value.WordValue;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class BootDeclarations {
 
@@ -142,7 +145,8 @@ public final class BootDeclarations {
                 if (values.get(at) instanceof SetWordValue declaring
                         && values.get(at + 1) instanceof AnyWordValue kind
                         && (kind.canonical().equals("native")
-                                || kind.canonical().equals("action"))
+                                || kind.canonical().equals("action")
+                                || kind.canonical().equals("command"))
                         && values.get(at + 2) instanceof BlockValue spec) {
                     found.putIfAbsent(declaring.canonical(), spec);
                 }
@@ -156,7 +160,13 @@ public final class BootDeclarations {
 
     private AnyBlockValue specBlockFor(List<Parameter> parameters) {
         List<Value> spec = new ArrayList<>();
+        Set<String> refinementsWritten = new HashSet<>();
         for (Parameter parameter : parameters) {
+            if (parameter.kind() == ParameterKind.REFINEMENT) {
+                refinementsWritten.add(parameter.name());
+            }
+            parameter.owningRefinement().filter(refinementsWritten::add)
+                    .ifPresent(owner -> spec.add(RefinementValue.of(owner)));
             switch (parameter.kind()) {
                 case REFINEMENT -> spec.add(RefinementValue.of(parameter.name()));
                 case HARD_QUOTED -> spec.add(GetWordValue.of(parameter.name()));

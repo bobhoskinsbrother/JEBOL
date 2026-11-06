@@ -145,6 +145,11 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
     }
 
     @Override
+    public void useCursor(String message) {
+        dispatchToRegisteredBrowsers("cursor", message);
+    }
+
+    @Override
     public void close() {
         server.stop(0);
         browserConnections.clear();

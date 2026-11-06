@@ -49,6 +49,8 @@
       asks.take(said);
     } else if (said.type === 'typing') {
       asks.holdTyping(said.held, said.heading);
+    } else if (said.type === 'cursor') {
+      screen.useCursor(said);
     } else if (said.type === 'navigate' || said.type === 'guard' || said.type === 'title') {
       navigation.take(said);
     } else if (said.type === 'printed') {

@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
@@ -26,6 +27,7 @@ final class RecordingScreen extends GobScreen {
     private final List<GobValue> refreshed = new ArrayList<>();
     private final List<GobValue> closed = new ArrayList<>();
     private final List<GobValue> withWindows = new ArrayList<>();
+    private final List<ScreenCursor> cursorsAskedFor = new ArrayList<>();
 
     private RecordingScreen(boolean present) {
         super(() -> 0L, new WindowHistory());
@@ -86,6 +88,15 @@ final class RecordingScreen extends GobScreen {
             shown.add(gob);
         }
         super.show(gob);
+    }
+
+    @Override
+    public void useCursor(ScreenCursor cursor) {
+        cursorsAskedFor.add(cursor);
+    }
+
+    List<ScreenCursor> listCursorsAskedFor() {
+        return List.copyOf(cursorsAskedFor);
     }
 
     @Override

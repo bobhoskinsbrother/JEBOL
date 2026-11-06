@@ -29,6 +29,7 @@
       const said = JSON.parse(message.data);
       asks.holdTyping(said.held, said.heading);
     });
+    pictures.addEventListener('cursor', message => screen.useCursor(JSON.parse(message.data)));
     for (const kind of ['navigate', 'guard', 'title']) {
       pictures.addEventListener(kind, message => navigation.take(JSON.parse(message.data)));
     }

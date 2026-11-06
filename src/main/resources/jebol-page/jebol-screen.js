@@ -16,4 +16,17 @@ class JebolScreen {
     this.brush.clearRect(0, 0, picture.wide, picture.high);
     this.painter.paintCalls(picture.paint);
   }
+
+  useCursor(said) {
+    this.canvas.style.cursor = said.rgba ? this.cursorFromPixels(said) : said.css;
+  }
+
+  cursorFromPixels(said) {
+    const picture = document.createElement('canvas');
+    picture.width = said.wide;
+    picture.height = said.high;
+    const octets = Uint8ClampedArray.from(atob(said.rgba), character => character.charCodeAt(0));
+    picture.getContext('2d').putImageData(new ImageData(octets, said.wide, said.high), 0, 0);
+    return 'url(' + picture.toDataURL() + ') 0 0, auto';
+  }
 }

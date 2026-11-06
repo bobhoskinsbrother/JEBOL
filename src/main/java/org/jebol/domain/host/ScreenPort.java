@@ -170,6 +170,10 @@ public interface ScreenPort {
     default void releaseTyping() {
     }
 
+    /** Changes what the pointer looks like, and with no display does nothing. */
+    default void useCursor(ScreenCursor cursor) {
+    }
+
     /** Why the screen refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
 

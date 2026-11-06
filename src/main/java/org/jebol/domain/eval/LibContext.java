@@ -398,8 +398,10 @@ public final class LibContext {
         registerExtension(new RequestColorNative(grantedServices));
         registerExtension(new XtestNative());
         registerExtension(new InitTopWindowNative(grantedServices));
+        registerExtension(new CursorNative(grantedServices));
         registerExtension(new ShowNative(grantedServices));
         registerExtension(new GuiMetricNative(grantedServices));
+        registerExtension(new ShowSoftKeyboardNative(grantedServices));
         registerExtension(new CaretToOffsetNative(grantedServices));
         registerExtension(new OffsetToCaretNative(grantedServices));
         registerExtension(new SizeTextNative(grantedServices));

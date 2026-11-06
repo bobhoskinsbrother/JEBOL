@@ -22,11 +22,12 @@ class RebolFilesAsBootSourcesTest {
     }
 
     @Test
-    @DisplayName("the function declarations are the actions, natives and generated natives, in that order")
+    @DisplayName("the function declarations are the actions, natives, generated natives and window commands, in that order")
     void ordersFunctionDeclarations() {
         assertThat(sources.functionDeclarations()).containsExactly(
                 rebolFiles.actions().textSource(),
                 rebolFiles.natives().textSource(),
-                rebolFiles.genNatives().textSource());
+                rebolFiles.genNatives().textSource(),
+                rebolFiles.windowCommands().textSource());
     }
 }

@@ -93,6 +93,11 @@ final class WorkerSession implements BrowserScreen.Viewer {
     }
 
     @Override
+    public void useCursor(String message) {
+        postToPage(message);
+    }
+
+    @Override
     public void takePostedLines() {
         for (String posted = takeInbox(); posted != null; posted = takeInbox()) {
             pageHasSpoken = true;

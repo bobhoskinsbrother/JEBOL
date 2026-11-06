@@ -4,6 +4,7 @@ import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.ImagePort;
+import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -226,6 +227,11 @@ public final class BrowserScreen extends GobScreen {
         viewer.releaseTyping();
     }
 
+    @Override
+    public void useCursor(ScreenCursor cursor) {
+        viewer.useCursor(new CursorMessage(cursor).write());
+    }
+
     public interface Viewer {
         boolean isConnected();
         void paint(List<DrawingCommand> painting);
@@ -234,6 +240,8 @@ public final class BrowserScreen extends GobScreen {
         default void takeTyping(String heading) {
         }
         default void releaseTyping() {
+        }
+        default void useCursor(String message) {
         }
         default void changeHistory(String move, HistoryEntry entry) {
         }

@@ -7,6 +7,7 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ImagePort;
+import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.TextMeasurement;
@@ -39,6 +40,7 @@ public final class DesktopScreen extends GobScreen {
     private final List<GobValue> openedInOrder = new ArrayList<>();
     private final LeavingConfirmation leaving;
     private final BackForwardChords chords;
+    private Optional<Cursor> chosenCursor = Optional.empty();
 
     private DesktopScreen(FilePort files, boolean present, LeavingConfirmation leaving, BackForwardChords chords) {
         super(() -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND, new WindowHistory());
@@ -247,8 +249,21 @@ public final class DesktopScreen extends GobScreen {
                 .findFirst();
     }
 
+    @Override
+    public void useCursor(ScreenCursor cursor) {
+        if (!present) {
+            return;
+        }
+        onToolkitThreadAndWaitedFor(() -> {
+            Cursor chosen = AwtCursors.cursorFor(cursor);
+            chosenCursor = Optional.of(chosen);
+            windows.values().forEach(frame -> frame.setCursor(chosen));
+        });
+    }
+
     private JFrame showWindow(GobValue gob) {
         JFrame frame = new JFrame(windowTitle(gob));
+        chosenCursor.ifPresent(frame::setCursor);
         showJebolIcon(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         frame.setContentPane(paintSurface(gob));
