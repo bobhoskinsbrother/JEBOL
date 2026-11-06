@@ -94,7 +94,7 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. Serve six of R3's compiled extensions from inside the build
+#### 1a. Serve seven of R3's compiled extensions from inside the build
 
 R3 has 69 entries in `system/modules`. Fourteen are release addresses of
 compiled extensions: blend2d, blurhash, brotli, bzip2, deflate, easing,
@@ -121,25 +121,14 @@ sqlite and triangulate, `window`, `osx-dialogs` and the `serial` scheme -- each
 served in Java as a goal of its own, or left out on purpose under Standing.
 Brotli is 1b and webp is goal 10.
 
-Six are to be served in Java, so that `import 'easing` answers a module as it
-does on a real 3.22.5 that can fetch it. easing, blurhash, deflate, zlib-ng,
-blend2d and mathpresso are served (`docs/easing-port.md`,
-`docs/blurhash-port.md`, `docs/zlib-ng-port.md`, `docs/blend2d-port.md`,
-`docs/mathpresso-port.md`). zstd is the one left to build:
-
-**zstd** 0.1.0. The same seven commands as brotli's and the same
-`Accept-Encoding` edit, appending `,zstd`. A port of the size of Brotli's,
-decoder first, of Zstandard v1.5.7 (`docs/zstd-port.md` says why that and
-not the `dev` branch the release built), and every rule in `CLAUDE.md` for a
-codec applies. Zstandard's own test corpus is the corpus. The decoder's
-pieces are ported and checked against Zstandard's own C
-(`src/testFixtures/resources/zstd/`): the bit reader, FSE counts, Huffman
-tables and both Huffman decoders, the sequence tables and the frame header.
-The frame and block decoder, the stream, the encoder and the module are
-left.
+Seven are served in Java, so that `import 'easing` answers a module as it does
+on a real 3.22.5 that can fetch it: easing, blurhash, deflate, zlib-ng,
+blend2d, mathpresso and zstd (`docs/easing-port.md`, `docs/blurhash-port.md`,
+`docs/zlib-ng-port.md`, `docs/blend2d-port.md`, `docs/mathpresso-port.md`,
+`docs/zstd-port.md`).
 
 **Done when** each of the sixteen has a decision written down, and each of
-the six imports as a module that works fully: every word it exports answers
+the seven imports as a module that works fully: every word it exports answers
 as the extension's does on a real 3.22.5, its exports reach `lib`, its
 `Accept-Encoding` edit is made, and `system/modules/<name>` is the module
 afterwards. Each gets a `*FromTheSourceTest` with expectations read off its

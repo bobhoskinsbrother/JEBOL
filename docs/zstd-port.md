@@ -3,9 +3,11 @@
 Rebol-Zstd 0.1.0, the extension R3's `system/modules` names at
 `https://github.com/Oldes/Rebol-Zstd/releases/download/0.1.0/`, wrapping
 Zstandard. JEBOL serves it in Java as decision 58 says. This note carries what
-the code cannot. The port is under way: the decoder's pieces are in
-`org.jebol.domain.eval.compression.zstd`, and the frame and block decoder, the
-encoder and the module are not yet written.
+the code cannot. The decoder, the encoder at every level and both streams are in
+`org.jebol.domain.eval.compression.zstd`, and the module, its seven commands and
+its two handles are `ZstdExtension` and `ZstdStream`. The tables in
+`src/testFixtures/resources/zstd/` hold zstd's own answers, and the Java gives
+every one of them octet for octet.
 
 ---
 
@@ -64,10 +66,7 @@ from the default distributions, as the C's comment says they were made, and
 
 ---
 
-## What the stream does, read ahead of the port
-
-Read from `zstd_decompress.c` and the extension's `zstd-commands.c`, for the
-pieces still to write:
+## What the decoder does that a clean one would not
 
 - `ZSTD_decompressStream` decodes a whole frame in one pass, into the caller's
   buffer, when the frame's content size is known, the room left is at least that,
@@ -75,8 +74,47 @@ pieces still to write:
   the 2^27 limit the streaming pass enforces.
 - After 16 calls with no progress it fails, with `noForwardProgress_destFull` or
   `noForwardProgress_inputEmpty`.
-- The extension's one-shot `decompress` shares one decoder across every call in
-  the process, re-initialised each time, so its buffers carry over between
-  calls.
-- The extension's one-shot `decompress` stops at the end of the first frame, and
-  starts with room for twice the input, or the limit given.
+- Its memory is modelled, not its meaning: literals sit in the output buffer,
+  in its extra buffer or split between them exactly where the C puts them, and
+  the 8-, 16- and 32-octet copies write what the C's wildcopies write, so a
+  damaged frame whose matches run over literals not yet copied, or over the
+  wrapped window's history, decodes to the same octets as in C.
+
+## What the encoder does that a clean one would not
+
+- **A reused context keeps its tables.** When a stream starts its next frame
+  with the same workspace, zstd continues its indexes rather than clearing its
+  tables, and the row matchfinder moves its hash salt on, mixing in every hash
+  it looked up. A second frame from one encoder handle can therefore differ from
+  the same input through a fresh one. JEBOL models the workspace's table region
+  as one array, as the C lays it out, and the salt as the C computes it.
+  Whether the workspace is resized, which resets everything, follows
+  `ZSTD_estimateCCtxSize_usingCCtxParams_internal` to the octet.
+- **`ZSTD_ldm_gear_reset` does nothing.** It rolls the hash into a local and
+  never stores it, so long-distance matching starts every chunk, and restarts
+  after every match, from the hash it already had.
+- **The optimal parser's shortest path has `} {` where `} else {` was meant**,
+  so the last literals' bookkeeping is always overwritten. Ported as written.
+- **A literal or sequence header cost of an error is still a number.** Where
+  `HUF_writeCTable` fails inside the block splitter's estimate, the C adds the
+  error code to sizes as an unsigned number before noticing; JEBOL does the same
+  sums.
+
+## What the extension does
+
+- `compress` defaults to level 6. COMPRESS with `'zstd` and no `/level` passes
+  R3's unknown level, 0xFFFFFFFF, which the C clamps to 22.
+- `version` packs `ZSTD_versionNumber()` 10507 into a tuple's octets as
+  `(n >> 24)`, `(n >> 12)` and `n`, each truncated to a byte, so it answers
+  0.2.11.
+- The one-shot `decompress` and the registered method share one decoder for the
+  whole session, re-initialised each call, so its buffers carry over. It stops
+  at the end of the first frame and starts with room for twice the input, or the
+  limit given. When the room fills it expands the binary by its whole rest and
+  gives zstd `SERIES_AVAIL` as the buffer's size, which is the room after the
+  tail rather than the room in all; JEBOL grows the series as `Expand_Series`
+  does (`ExpandingBinary`) and passes the same size.
+- **Where JEBOL differs:** WRITE on an encoder calls `ZSTD_compressStream` until
+  the input is consumed without ever growing the output, so a write whose
+  compressed form outgrows the binary's rest spins forever in C. JEBOL raises
+  the extension's own compress error instead of hanging.
