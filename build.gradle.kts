@@ -266,6 +266,9 @@ fun Test.readsAlsoFrom(what: String, vararg files: Any) {
 val unitTests = tasks.register<Test>("unitTests") {
     description = "Tests that never build an interpreter: values, codecs, the reader, the domain on its own"
     runsTheTestsIn(unitTest)
+    // Gradle's default of 512 MB is what ZstdCompressionFromTheSourceTest's
+    // level 22 streams need on their own, so sharing a fork ran it out of heap.
+    maxHeapSize = "1g"
     dependsOn(functionalTest.classesTaskName, endToEndTest.classesTaskName, networkTest.classesTaskName)
     readsAlsoFrom(
         "the other suites' classes",
