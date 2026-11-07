@@ -2,13 +2,18 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.compression.brotli.Brotli;
+import org.jebol.domain.eval.compression.brotli.BrotliStreamDecoder;
+import org.jebol.domain.eval.compression.brotli.BrotliStreamEncoder;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 final class BrotliExtension {
 
@@ -28,6 +33,9 @@ final class BrotliExtension {
 
     private static final String NO_COMPRESS = "Failed to compress using the Brotli encoder!";
     private static final String NO_DECOMPRESS = "Failed to decompress using the Brotli decoder!";
+    private static final String INVALID_HANDLE = "Invalid Brotli encoder or decoder handle!";
+    private static final String ENCODER = "brotli-encoder";
+    private static final String DECODER = "brotli-decoder";
     private static final int DEFAULT_LEVEL = 6;
     private static final long NO_LIMIT = 0xFFFFFFFFL;
     private static final long UNSIGNED_32 = 0xFFFFFFFFL;
@@ -54,9 +62,51 @@ final class BrotliExtension {
                 new ExtensionCommand("decompress", "{Decompress data using Brotli.} " + data
                         + "{Input data to decompress.} " + part
                         + "/size {Limit the output size.} bytes [integer!] {Maximum number of uncompressed bytes.}",
-                        BrotliExtension::decompress)))
+                        BrotliExtension::decompress),
+                new ExtensionCommand("make-encoder", "{Create a new Brotli encoder handle.} "
+                        + "/level quality [integer!] {Compression level from 0 to 11.}",
+                        BrotliExtension::makeEncoder),
+                new ExtensionCommand("make-decoder", "{Create a new Brotli decoder handle.}",
+                        call -> call.makeHandle(DECODER, BrotliStream.decoding(new BrotliStreamDecoder()))),
+                new ExtensionCommand("write", "{Feed data into a Brotli streaming codec.} "
+                        + "codec [handle!] {Brotli encoder or decoder handle.} "
+                        + "data [binary! any-string! none!] "
+                        + "{Data to compress or decompress, or NONE to finish the stream.} "
+                        + "/flush {Finish the current data block and return the encoded chunk.} "
+                        + "/finish {Encode all remaining input and mark the stream as complete.}",
+                        BrotliExtension::write),
+                new ExtensionCommand("read", "{Retrieve pending encoded or decoded data from the stream.} "
+                        + "codec [handle!] {Brotli encoder or decoder handle.}",
+                        call -> unwrapStream(call).read())))
+                .withHandleType(new HandleType(ENCODER, BrotliStream.class))
+                .withHandleType(new HandleType(DECODER, BrotliStream.class))
                 .withScript(SCRIPT)
                 .withHeader(HEADER);
+    }
+
+    private static Value makeEncoder(Command call) {
+        int level = call.refinements().contains("level")
+                ? (int) DeflateExtension.magnitudeAt(call, 0)
+                : DEFAULT_LEVEL;
+        return call.makeHandle(ENCODER, BrotliStream.encoding(new BrotliStreamEncoder(level)));
+    }
+
+    private static BrotliStream unwrapStream(Command call) {
+        try {
+            return call.unwrap(call.arguments().getFirst(), BrotliStream.class);
+        } catch (Raised notOurs) {
+            throw new IllegalStateException(INVALID_HANDLE);
+        }
+    }
+
+    private static Value write(Command call) {
+        BrotliStream stream = unwrapStream(call);
+        Value data = call.arguments().get(1);
+        Optional<byte[]> octets = data instanceof NoneValue
+                ? Optional.empty()
+                : Optional.of(StoredOctets.readFromIndex(data, StoredOctets.countUnitsFromIndex(data)));
+        return stream.write(call.arguments().getFirst(), octets, call.refinements().contains("flush"),
+                call.refinements().contains("finish"));
     }
 
     static CompressionMethod method() {
