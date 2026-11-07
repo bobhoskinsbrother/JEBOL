@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.ExtensionDescriptors;
 import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.adapter.host.JavaProcess;
@@ -217,7 +218,7 @@ public final class Repl {
     }
 
     private static Bounds grantEveryHostService() {
-        Bounds everything = Bounds.standard();
+        Bounds everything = new ExtensionDescriptors(Repl.class.getClassLoader()).addJvmSetupsTo(Bounds.standard());
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
         }

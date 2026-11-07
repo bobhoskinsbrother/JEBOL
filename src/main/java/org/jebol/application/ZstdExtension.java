@@ -40,11 +40,11 @@ final class ZstdExtension {
     private ZstdExtension() {
     }
 
-    static BundledExtension create() {
+    static Extension create() {
         ZstdOneShot oneShot = new ZstdOneShot();
         String data = "data [binary! any-string!] ";
         String part = "/part {Limit the input data to a given length.} length [integer!] {Length of input data.} ";
-        return new BundledExtension(new Extension("zstd", "0.1.0", List.of(
+        return new Extension("zstd", "0.1.0", List.of(
                 new ExtensionCommand("init-words", "args [block!] type [block!]", call -> {
                     call.registerCompression("zstd", oneShot.method());
                     return LogicValue.of(true);
@@ -74,7 +74,8 @@ final class ZstdExtension {
                         call -> unwrapStream(call).read())))
                 .withHandleType(new HandleType(ENCODER, ZstdStream.class))
                 .withHandleType(new HandleType(DECODER, ZstdStream.class))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     private static Value compress(Command call) {

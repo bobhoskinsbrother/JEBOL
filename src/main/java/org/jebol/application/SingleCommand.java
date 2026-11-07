@@ -3,6 +3,8 @@ package org.jebol.application;
 import org.jebol.domain.eval.CompressionMethod;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.Postbox;
+import org.jebol.domain.eval.ports.Ports;
+import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.value.AnyBlockValue;
@@ -36,16 +38,19 @@ final class SingleCommand implements Command {
 
     private final AtomicInteger handlesMade;
 
+    private final Ports ports;
+
     private Optional<RuntimeException> escaped = Optional.empty();
 
     SingleCommand(Extension extension, List<Value> arguments, Set<String> refinements,
-                  Evaluator evaluator, Context context, AtomicInteger handlesMade) {
+                  Evaluator evaluator, Context context, AtomicInteger handlesMade, Ports ports) {
         this.extension = extension;
         this.arguments = List.copyOf(arguments);
         this.refinements = Set.copyOf(refinements);
         this.evaluator = evaluator;
         this.context = context;
         this.handlesMade = handlesMade;
+        this.ports = ports;
     }
 
     @Override
@@ -89,6 +94,36 @@ final class SingleCommand implements Command {
             return type.cast(carried.held().get());
         }
         throw Raised.of(EvaluationFailure.INVALID_HANDLE, handle);
+    }
+
+    @Override
+    public Optional<String> handleKind(Value value) {
+        return value instanceof HandleValue handle ? Optional.of(handle.typeName()) : Optional.empty();
+    }
+
+    @Override
+    public CommandFiles files() {
+        return new CommandFiles() {
+            @Override
+            public Optional<byte[]> read(String path) {
+                return ports.readOctetsForCommand(path, evaluator);
+            }
+
+            @Override
+            public boolean write(String path, byte[] contents) {
+                return ports.writeOctetsForCommand(path, contents, evaluator);
+            }
+
+            @Override
+            public Optional<FileInformation> describe(String path) {
+                return ports.describeForCommand(path, evaluator);
+            }
+
+            @Override
+            public String hostPath(String path) {
+                return evaluator.ports().files().hostPath(path);
+            }
+        };
     }
 
     private Optional<HandleType> findDeclaredType(String kind) {

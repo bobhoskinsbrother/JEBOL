@@ -58,8 +58,8 @@ final class Blend2DExtension {
     private Blend2DExtension() {
     }
 
-    static BundledExtension create() {
-        return new BundledExtension(new Extension("blend2d", "0.12.0", List.of(
+    static Extension create() {
+        return new Extension("blend2d", "0.12.0", List.of(
                 new ExtensionCommand("init-words", "cmd-words [block!] arg-words [block!]",
                         call -> LogicValue.of(true)),
                 new ExtensionCommand("draw", "{Draws scalable vector graphics to an image} "
@@ -80,7 +80,8 @@ final class Blend2DExtension {
                 .withHandleType(new HandleType(IMAGE_HANDLE, ImageHandle.class))
                 .withHandleType(new HandleType(PATH_HANDLE, PathHandle.class))
                 .withHandleType(new HandleType(FONT_HANDLE, FontHandle.class))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     static boolean isImageHandle(Value value) {

@@ -36,8 +36,8 @@ final class DeflateExtension {
     private DeflateExtension() {
     }
 
-    static BundledExtension create() {
-        return new BundledExtension(new Extension("deflate", "0.1.0", List.of(
+    static Extension create() {
+        return new Extension("deflate", "0.1.0", List.of(
                 new ExtensionCommand("init-words", "args [block!] type [block!]", call -> {
                     REGISTERED.forEach(call::restoreBuiltInCompression);
                     return LogicValue.of(true);
@@ -56,7 +56,8 @@ final class DeflateExtension {
                         + "/size {Limit the output size.} bytes [integer!] {Maximum number of uncompressed bytes.} "
                         + "/zlib {Assumes the zlib wrapper format} /gzip {Assumes the gzip wrapper format}",
                         DeflateExtension::decompress)))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     static String readMethod(Command call) {

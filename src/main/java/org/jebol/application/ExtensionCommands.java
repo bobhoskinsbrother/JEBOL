@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.ExtensionDispatcher;
+import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
@@ -18,8 +19,11 @@ final class ExtensionCommands implements ExtensionDispatcher {
 
     private final AtomicInteger handlerCount = new AtomicInteger();
 
-    ExtensionCommands(Extension extension) {
+    private final Ports ports;
+
+    ExtensionCommands(Extension extension, Ports ports) {
         this.extension = extension;
+        this.ports = ports;
     }
 
     @Override
@@ -30,7 +34,7 @@ final class ExtensionCommands implements ExtensionDispatcher {
                     StringValue.of(extension.name() + " has no command " + command));
         }
         SingleCommand call = new SingleCommand(
-                extension, arguments, refinements, evaluator, context, handlerCount);
+                extension, arguments, refinements, evaluator, context, handlerCount, ports);
         try {
             return extension.commands().get((int) command).behaviour().answer(call);
         } catch (Raised raised) {

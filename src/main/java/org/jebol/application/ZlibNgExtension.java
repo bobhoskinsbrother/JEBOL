@@ -61,12 +61,12 @@ final class ZlibNgExtension {
     private ZlibNgExtension() {
     }
 
-    static BundledExtension create() {
+    static Extension create() {
         String data = "data [binary! any-string!] ";
         String part = "/part {Limit the input data to a given length.} length [integer!] {Length of input data.} ";
         String wrappers = "/zlib {Assumes the zlib wrapper format} /gzip {Assumes the gzip wrapper format}";
         String level = "/level {Compression level (0..9, default 6)} quality [integer!] {0=fastest, 9=best ratio}";
-        return new BundledExtension(new Extension("zlib-ng", "2.3.2", List.of(
+        return new Extension("zlib-ng", "2.3.2", List.of(
                 new ExtensionCommand("init-words", "args [block!] type [block!]", ZlibNgExtension::register),
                 new ExtensionCommand("version", "{Native Zlib-ng version}", call -> TupleValue.of(2, 3, 2)),
                 new ExtensionCommand("compress", "{Compress data using Zlib.} " + data + "{Input data to compress.} "
@@ -107,7 +107,8 @@ final class ZlibNgExtension {
                         call -> unwrapStream(call).read())))
                 .withHandleType(new HandleType(ENCODER, ZlibNgStream.class))
                 .withHandleType(new HandleType(DECODER, ZlibNgStream.class))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     private static int readOperatingSystem(Command call) {

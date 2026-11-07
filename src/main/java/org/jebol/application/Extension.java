@@ -9,11 +9,12 @@ public record Extension(
         List<ExtensionCommand> commands,
         String script,
         List<HandleType> handleTypes,
-        StartExtension start) {
+        StartExtension start,
+        String header) {
 
     public Extension {
         if (name == null || version == null || commands == null || script == null
-                || handleTypes == null || start == null) {
+                || handleTypes == null || start == null || header == null) {
             throw new IllegalArgumentException("an extension needs every part; use an empty one to have none");
         }
         commands = List.copyOf(commands);
@@ -22,20 +23,28 @@ public record Extension(
 
     public Extension(String name, String version, List<ExtensionCommand> commands) {
         this(name, version, commands, "", List.of(), postbox -> {
-        });
+        }, "");
     }
 
     public Extension withScript(String rebol) {
-        return new Extension(name, version, commands, rebol, handleTypes, start);
+        return new Extension(name, version, commands, rebol, handleTypes, start, header);
     }
 
     public Extension withHandleType(HandleType type) {
         List<HandleType> more = new ArrayList<>(handleTypes);
         more.add(type);
-        return new Extension(name, version, commands, script, more, start);
+        return new Extension(name, version, commands, script, more, start, header);
     }
 
     public Extension startWith(StartExtension extension) {
-        return new Extension(name, version, commands, script, handleTypes, extension);
+        return new Extension(name, version, commands, script, handleTypes, extension, header);
+    }
+
+    public Extension withHeader(String rebolHeader) {
+        return new Extension(name, version, commands, script, handleTypes, start, rebolHeader);
+    }
+
+    public boolean waitsForImport() {
+        return !header.isBlank();
     }
 }

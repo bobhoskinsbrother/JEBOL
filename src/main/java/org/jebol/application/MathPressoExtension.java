@@ -40,8 +40,8 @@ final class MathPressoExtension {
     private MathPressoExtension() {
     }
 
-    static BundledExtension create() {
-        return new BundledExtension(new Extension("mathpresso", "0.1.0", List.of(
+    static Extension create() {
+        return new Extension("mathpresso", "0.1.0", List.of(
                 new ExtensionCommand("context",
                         "{Initialize MPContext handle with given variable names} "
                                 + "spec [block!] {Block with variable names used by expressions}",
@@ -57,7 +57,8 @@ final class MathPressoExtension {
                         MathPressoExtension::evaluate)))
                 .withHandleType(new HandleType(CONTEXT_HANDLE, MathPressoContext.class))
                 .withHandleType(new HandleType(EXPRESSION_HANDLE, MathPressoExpression.class))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     private static Value makeContext(Command call) {

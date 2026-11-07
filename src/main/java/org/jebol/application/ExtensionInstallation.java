@@ -3,8 +3,10 @@ package org.jebol.application;
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.SealedLibrary;
+import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.DispatcherHandle;
@@ -14,11 +16,13 @@ import org.jebol.domain.value.JavaObjectValue;
 import org.jebol.domain.value.ModuleValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,15 +42,22 @@ final class ExtensionInstallation {
             header/name: the-name
             append system/modules reduce [to set-word! the-name reduce [header extension]]""";
 
+    private static final String HEADER_WORD = "rebol";
+
+    private static final String EXPORTS_FIELD = "exports";
+
     private final Evaluator evaluator;
 
     private final SealedLibrary library;
 
+    private final Ports ports;
+
     private final Map<String, Class<?>> knownTypes = new HashMap<>();
 
-    ExtensionInstallation(Evaluator evaluator, SealedLibrary library) {
+    ExtensionInstallation(Evaluator evaluator, SealedLibrary library, Ports ports) {
         this.evaluator = evaluator;
         this.library = library;
+        this.ports = ports;
     }
 
     ExtensionReport installAndReport(Extension extension) {
@@ -58,27 +69,33 @@ final class ExtensionInstallation {
         }
     }
 
-    void installDelayed(BundledExtension bundled) {
-        Extension extension = bundled.extension();
-        Context context = Context.makeChildOf(evaluator.systemContext());
-        context.register("the-source", BinaryValue.ofBytes(
-                writeRebolSource(bundled.header(), extension).getBytes(StandardCharsets.UTF_8)));
-        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
-                evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
-        context.register("the-name", WordValue.of(extension.name()));
-        evaluateOrRaise(evaluator.read(STORE_DELAYED_EXTENSION_REBOL_STRING), context);
+    void installBundled(Extension extension) {
+        ExtensionReport report = installAndReport(extension);
+        if (!report.installed()) {
+            throw new IllegalStateException("the bundled " + extension.name() + " extension was refused: "
+                    + report.refusal().orElseThrow());
+        }
     }
 
     private void install(Extension extension) {
         refuseIfUnreadable(extension);
-        refuseRegisteredLibraryExtension(extension);
+        List<String> namesForLib = extension.waitsForImport() ? readHeaderExports(extension) : commandNames(extension);
+        refuseNamesLibHolds(namesForLib);
         refuseKnownHandleTypes(extension);
         start(extension);
-        ModuleValue module = makeModule(extension);
+        if (extension.waitsForImport()) {
+            storeUntilImport(extension);
+        } else {
+            ModuleValue module = makeModule(extension);
+            registerSystemModules(extension.name(), module);
+            namesForLib.forEach(name ->
+                    library.register(name, module.context().findSlotFor(Context.canonicalise(name)).value()));
+        }
         extension.handleTypes().forEach(type -> knownTypes.put(type.name(), type.holds()));
-        registerSystemModules(extension.name(), module);
-        extension.commands().forEach(command ->
-                library.register(command.name(), module.context().findSlotFor(Context.canonicalise(command.name())).value()));
+    }
+
+    private List<String> commandNames(Extension extension) {
+        return extension.commands().stream().map(ExtensionCommand::name).toList();
     }
 
     private void refuseIfUnreadable(Extension extension) {
@@ -88,27 +105,54 @@ final class ExtensionInstallation {
         Set<String> distinctCommandNames = extension.commands().stream()
                 .map(command -> Context.canonicalise(command.name()))
                 .collect(Collectors.toSet());
-        if (extension.name().isBlank() || !isTuple || !isEverySpecPresent ||
+        boolean isHeaderReadable = !extension.waitsForImport() || readHeaderFields(extension).isPresent();
+        if (extension.name().isBlank() || !isTuple || !isEverySpecPresent || !isHeaderReadable ||
                 distinctCommandNames.size() != extension.commands().size()) {
             throw refuseBadExtension(extension);
         }
     }
 
     private Optional<Value> readFirstValue(String source) {
-        TranscodeResult read = evaluator.read(source);
-        return read.values()
-                .map(AnyBlockValue::remaining)
+        return readValues(source)
                 .filter(values -> values.size() == 1)
                 .map(List::getFirst);
+    }
+
+    private Optional<List<Value>> readValues(String source) {
+        TranscodeResult read = evaluator.read(source);
+        return read.values().map(AnyBlockValue::remaining);
+    }
+
+    private Optional<List<Value>> readHeaderFields(Extension extension) {
+        return readValues(extension.header())
+                .filter(values -> values.size() == 2
+                        && values.getFirst() instanceof WordValue word
+                        && word.canonical().equals(HEADER_WORD)
+                        && values.getLast() instanceof AnyBlockValue)
+                .map(values -> ((AnyBlockValue) values.getLast()).remaining());
+    }
+
+    private List<String> readHeaderExports(Extension extension) {
+        List<Value> fields = readHeaderFields(extension).orElseThrow();
+        List<String> exported = new ArrayList<>();
+        for (int at = 0; at + 1 < fields.size(); at++) {
+            if (fields.get(at) instanceof SetWordValue field && field.canonical().equals(EXPORTS_FIELD)
+                    && fields.get(at + 1) instanceof AnyBlockValue words) {
+                words.remaining().stream()
+                        .filter(AnyWordValue.class::isInstance)
+                        .map(word -> ((AnyWordValue) word).spelling())
+                        .forEach(exported::add);
+            }
+        }
+        return exported;
     }
 
     private Raised refuseBadExtension(Extension extension) {
         return Raised.of(EvaluationFailure.BAD_EXTENSION, WordValue.of(extension.name().isBlank() ? "extension" : extension.name()));
     }
 
-    private void refuseRegisteredLibraryExtension(Extension extension) {
-        extension.commands().stream()
-                .map(ExtensionCommand::name)
+    private void refuseNamesLibHolds(List<String> names) {
+        names.stream()
                 .filter(library::holds)
                 .findFirst()
                 .ifPresent(taken -> {
@@ -134,11 +178,18 @@ final class ExtensionInstallation {
         }
     }
 
+    private void storeUntilImport(Extension extension) {
+        Context context = makeDispatchingContext(extension, writeRebolSource(extension.header(), extension));
+        context.register("the-name", WordValue.of(extension.name()));
+        try {
+            evaluateOrRaise(evaluator.read(STORE_DELAYED_EXTENSION_REBOL_STRING), context);
+        } catch (Raised unloadable) {
+            throw refuseBadExtension(extension);
+        }
+    }
+
     private ModuleValue makeModule(Extension extension) {
-        Context context = Context.makeChildOf(evaluator.systemContext());
-        context.register("the-source", BinaryValue.ofBytes(writeRebolSource(extension).getBytes(StandardCharsets.UTF_8)));
-        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
-                evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
+        Context context = makeDispatchingContext(extension, writeRebolSource(extension));
         TranscodeResult read = evaluator.read(LOAD_BOOT_EXTENSIONS_REBOL_STRING);
         try {
             if (evaluateOrRaise(read, context) instanceof ModuleValue made) {
@@ -148,6 +199,14 @@ final class ExtensionInstallation {
             throw refuseBadExtension(extension);
         }
         throw refuseBadExtension(extension);
+    }
+
+    private Context makeDispatchingContext(Extension extension, String source) {
+        Context context = Context.makeChildOf(evaluator.systemContext());
+        context.register("the-source", BinaryValue.ofBytes(source.getBytes(StandardCharsets.UTF_8)));
+        context.register("the-dispatcher", HandleValue.wrapFunction(DispatcherHandle.KIND_DISPATCHER_IS,
+                evaluator.numberNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension, ports))));
+        return context;
     }
 
     private Value evaluateOrRaise(TranscodeResult read, Context context) {

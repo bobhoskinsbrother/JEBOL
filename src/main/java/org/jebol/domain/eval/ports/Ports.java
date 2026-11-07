@@ -3,6 +3,7 @@ package org.jebol.domain.eval.ports;
 import org.jebol.domain.eval.*;
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.DigestPort;
+import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
@@ -380,6 +381,40 @@ public final class Ports {
         return refinements.contains("lines")
                 ? BlockValue.of(StringValue.of(text.orElseThrow()).linesDroppingOneTrailingEmptyLine())
                 : StringValue.of(text.orElseThrow());
+    }
+
+    public Optional<byte[]> readOctetsForCommand(String path, Evaluator evaluator) {
+        granted.require(HostService.FILES);
+        requireFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
+        return answerUnlessRefusedBySecurity(() -> Optional.of(evaluator.ports().files().readBytes(path)),
+                Optional.empty());
+    }
+
+    public boolean writeOctetsForCommand(String path, byte[] contents, Evaluator evaluator) {
+        granted.require(HostService.FILES);
+        requireFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
+        return answerUnlessRefusedBySecurity(() -> {
+            evaluator.ports().files().write(path, contents);
+            evaluator.ports().files().finishWriting(path);
+            return true;
+        }, false);
+    }
+
+    public Optional<FileInformation> describeForCommand(String path, Evaluator evaluator) {
+        granted.require(HostService.FILES);
+        requireFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
+        return answerUnlessRefusedBySecurity(() -> evaluator.ports().files().describe(path), Optional.empty());
+    }
+
+    private <T> T answerUnlessRefusedBySecurity(Supplier<T> operation, T unreachable) {
+        try {
+            return operation.get();
+        } catch (FilePort.Denied denied) {
+            if (denied.isSecurityRefusal()) {
+                throw denied.raise();
+            }
+            return unreachable;
+        }
     }
 
     public Value readFile(String path, Evaluator evaluator, PortRequest asked) {

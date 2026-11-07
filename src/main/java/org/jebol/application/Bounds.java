@@ -18,7 +18,8 @@ public record Bounds(
         Set<HostService> grantedServices,
         Set<HostService> unavailableServices,
         String hostName,
-        List<Extension> extensions) {
+        List<Extension> extensions,
+        List<ExtensionReport> refusedExtensions) {
 
     private static final Duration DEFAULT_TIME_LIMIT = Duration.ofSeconds(5);
     private static final int DEFAULT_MAXIMUM_NESTING = 10_000;
@@ -49,23 +50,24 @@ public record Bounds(
             throw new IllegalArgumentException(
                     "a host names itself in a refusal; it may not be nameless");
         }
-        if (extensions == null) {
+        if (extensions == null || refusedExtensions == null) {
             throw new IllegalArgumentException(
                     "extensions is a decision; use an empty list to add none");
         }
         extensions = List.copyOf(extensions);
+        refusedExtensions = List.copyOf(refusedExtensions);
     }
 
     /** Long enough for ordinary work, short enough not to hold a request open. */
     public static Bounds standard() {
         return new Bounds(
                 DEFAULT_TIME_LIMIT, DEFAULT_MAXIMUM_NESTING, DEFAULT_CHECK_EVERY,
-                Set.of(), Set.of(), DEFAULT_HOST_NAME, List.of());
+                Set.of(), Set.of(), DEFAULT_HOST_NAME, List.of(), List.of());
     }
 
     public Bounds withTimeLimit(Duration limit) {
         return new Bounds(limit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, hostName, extensions);
+                unavailableServices, hostName, extensions, refusedExtensions);
     }
 
     public Bounds withoutTimeLimit() {
@@ -82,12 +84,12 @@ public record Bounds(
 
     public Bounds withMaximumNesting(int nesting) {
         return new Bounds(timeLimit, nesting, checkEvery, grantedServices,
-                unavailableServices, hostName, extensions);
+                unavailableServices, hostName, extensions, refusedExtensions);
     }
 
     public Bounds withCheckEvery(int steps) {
         return new Bounds(timeLimit, maximumNesting, steps, grantedServices,
-                unavailableServices, hostName, extensions);
+                unavailableServices, hostName, extensions, refusedExtensions);
     }
 
     public Bounds grant(HostService service) {
@@ -101,7 +103,7 @@ public record Bounds(
         wider.addAll(grantedServices);
         wider.add(service);
         return new Bounds(timeLimit, maximumNesting, checkEvery, wider,
-                unavailableServices, hostName, extensions);
+                unavailableServices, hostName, extensions, refusedExtensions);
     }
 
     public Bounds markUnavailable(HostService service) {
@@ -116,19 +118,26 @@ public record Bounds(
         fewer.addAll(unavailableServices);
         fewer.add(service);
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                fewer, hostName, extensions);
+                fewer, hostName, extensions, refusedExtensions);
     }
 
     public Bounds calls(String name) {
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, name, extensions);
+                unavailableServices, name, extensions, refusedExtensions);
     }
 
     public Bounds add(Extension extension) {
         List<Extension> more = new ArrayList<>(extensions);
         more.add(extension);
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, hostName, more);
+                unavailableServices, hostName, more, refusedExtensions);
+    }
+
+    public Bounds refuse(ExtensionReport refusal) {
+        List<ExtensionReport> more = new ArrayList<>(refusedExtensions);
+        more.add(refusal);
+        return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
+                unavailableServices, hostName, extensions, more);
     }
 
     public boolean grants(HostService service) {

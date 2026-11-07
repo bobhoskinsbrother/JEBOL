@@ -35,10 +35,10 @@ final class Bzip2Extension {
     private Bzip2Extension() {
     }
 
-    static BundledExtension create() {
+    static Extension create() {
         String data = "data [binary! any-string!] ";
         String part = "/part {Limit the input data to a given length.} length [integer!] {Length of input data.} ";
-        return new BundledExtension(new Extension("bzip2", "1.1.0", List.of(
+        return new Extension("bzip2", "1.1.0", List.of(
                 new ExtensionCommand("init-words", "args [block!] type [block!]", call -> {
                     call.registerCompression("bzip2", Bzip2OneShot.method());
                     return LogicValue.of(true);
@@ -68,7 +68,8 @@ final class Bzip2Extension {
                         call -> unwrapStream(call).read())))
                 .withHandleType(new HandleType(ENCODER, Bzip2Stream.class))
                 .withHandleType(new HandleType(DECODER, Bzip2Stream.class))
-                .withScript(SCRIPT), HEADER);
+                .withScript(SCRIPT)
+                .withHeader(HEADER);
     }
 
     private static Value compress(Command call) {

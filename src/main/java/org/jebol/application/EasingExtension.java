@@ -25,8 +25,8 @@ final class EasingExtension {
     private EasingExtension() {
     }
 
-    static BundledExtension create() {
-        return new BundledExtension(new Extension("easing", "1.0.0", List.of(
+    static Extension create() {
+        return new Extension("easing", "1.0.0", List.of(
                 makeCommand("linear", "{Modeled after the line     y = x}", Easing::linear),
                 makeCommand("in-quad", "{Modeled after the parabola y = x^^2}", Easing::inQuad),
                 makeCommand("in-cubic", "{Modeled after the cubic    y = x^^3}", Easing::inCubic),
@@ -74,7 +74,8 @@ final class EasingExtension {
                         + "and y = (1/2)*(1-((1-x)^3-(1-x)*sin((1-x)*pi))+1) for x [0.5, 1]}",
                         Easing::inOutBack),
                 makeCommand("in-out-bounce", "{}", Easing::inOutBounce)))
-                .withScript(TWEEN), HEADER);
+                .withScript(TWEEN)
+                .withHeader(HEADER);
     }
 
     private static ExtensionCommand makeCommand(String name, String help, DoubleUnaryOperator easing) {

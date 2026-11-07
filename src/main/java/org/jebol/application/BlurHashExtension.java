@@ -31,8 +31,8 @@ final class BlurHashExtension {
     private BlurHashExtension() {
     }
 
-    static BundledExtension create() {
-        return new BundledExtension(new Extension("blurhash", "1.0.0", List.of(
+    static Extension create() {
+        return new Extension("blurhash", "1.0.0", List.of(
                 new ExtensionCommand("encode",
                         "{Encode an image using BlurHash algorithm} img [image!] {Source image}",
                         call -> encode((ImageValue) call.arguments().getFirst())),
@@ -44,7 +44,7 @@ final class BlurHashExtension {
                         call -> decode(call.arguments().getFirst(), call.arguments().get(1),
                                 call.refinements().contains("contrast")
                                         ? (int) ((IntegerValue) call.arguments().get(2)).magnitude()
-                                        : 1)))), HEADER);
+                                        : 1)))).withHeader(HEADER);
     }
 
     private static Value encode(ImageValue image) {

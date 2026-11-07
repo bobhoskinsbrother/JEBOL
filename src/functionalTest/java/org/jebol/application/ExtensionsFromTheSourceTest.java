@@ -1,21 +1,33 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.eval.Postbox;
+import org.jebol.domain.host.FileInformation;
+import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -547,6 +559,230 @@ class ExtensionsFromTheSourceTest {
 
             assertThat(answerTo(interpreter, "wait [p 0.3]")).isEqualTo("_");
             assertThat(System.nanoTime() - started).isGreaterThanOrEqualTo(TimeUnit.MILLISECONDS.toNanos(300));
+        }
+    }
+
+    @Nested
+    @DisplayName("an extension with a header waits in system/modules for IMPORT, as R3 keeps one whose header asks for delay")
+    class WithAHeader {
+
+        private static final String HEADER = """
+                REBOL [Title: {Rebol Store Extension} Name: store Type: module Version: 2.0.0 Exports: []]""";
+
+        private Extension store() {
+            return new Extension("store", "2.0.0", List.of(
+                    new ExtensionCommand("open", "name [string!]", call -> call.makeHandle("shelf",
+                            ((StringValue) call.arguments().getFirst()).text())),
+                    new ExtensionCommand("close", "shelf [handle!]",
+                            call -> StringValue.of("closed " + call.unwrap(call.arguments().getFirst(), String.class)))))
+                    .withHandleType(new HandleType("shelf", String.class))
+                    .withHeader(HEADER);
+        }
+
+        @Test
+        @DisplayName("its commands may share a native's name, because they never reach lib")
+        void keepsItsCommandsInItsModule() {
+            Interpreter interpreter = makeAnInterpreterWith(store());
+
+            assertThat(interpreter.extensions()).containsExactly(new ExtensionReport("store", Optional.empty()));
+            assertThat(answerTo(interpreter, "action? :open")).isEqualTo("#(true)");
+            assertThat(answerTo(interpreter, "action? :lib/close")).isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("system/modules holds its header and extension until IMPORT makes the module")
+        void waitsForImport() {
+            Interpreter interpreter = makeAnInterpreterWith(store());
+
+            assertThat(answerTo(interpreter, "block? select system/modules 'store")).isEqualTo("#(true)");
+            assertThat(answerTo(interpreter, """
+                    s: import 'store
+                    reduce [module? s same? s select system/modules 'store s/close s/open {top}]"""))
+                    .isEqualTo("""
+                            [#(true) #(true) "closed top"]""");
+        }
+
+        @Test
+        @DisplayName("its module carries the header it declared, named as IMPORT names it")
+        void carriesItsHeader() {
+            assertThat(answerTo(makeAnInterpreterWith(store()), """
+                    s: spec-of import 'store
+                    reduce [s/title s/name s/version s/exports]"""))
+                    .isEqualTo("""
+                            ["Rebol Store Extension" store 2.0.0 []]""");
+        }
+
+        @Test
+        @DisplayName("the names its header exports reach lib on IMPORT, and only those")
+        void exportsWhatItsHeaderNames() {
+            Extension exporting = new Extension("shelving", "1.0.0", List.of(
+                    new ExtensionCommand("stack-up", "", call -> IntegerValue.of(3)),
+                    new ExtensionCommand("unstack", "", call -> IntegerValue.of(4))))
+                    .withHeader("REBOL [Name: shelving Type: module Exports: [stack-up]]");
+
+            Interpreter interpreter = makeAnInterpreterWith(exporting);
+
+            assertThat(readTheRefusalIn(interpreter, "stack-up")).startsWith("[no-value stack-up");
+            assertThat(answerTo(interpreter, "import 'shelving stack-up")).isEqualTo("3");
+            assertThat(readTheRefusalIn(interpreter, "unstack")).startsWith("[no-value unstack");
+        }
+
+        @Test
+        @DisplayName("a header exporting a word lib already holds is already-used, and nothing is stored")
+        void refusesASealedExport() {
+            Extension clashing = new Extension("clashing", "1.0.0", List.of(
+                    new ExtensionCommand("append", "a b", call -> IntegerValue.of(1))))
+                    .withHeader("REBOL [Name: clashing Type: module Exports: [append]]");
+
+            Interpreter interpreter = makeAnInterpreterWith(clashing);
+
+            assertThat(interpreter.extensions()).containsExactly(
+                    new ExtensionReport("clashing", Optional.of("already-used")));
+            assertThat(answerTo(interpreter, "none? select system/modules 'clashing")).isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("a header that does not read is bad-extension")
+        void refusesABrokenHeader() {
+            Extension broken = store().withHeader("REBOL [Name: store");
+
+            assertThat(makeAnInterpreterWith(broken).extensions().getFirst().refusal()).contains("bad-extension");
+        }
+
+        @Test
+        @DisplayName("its start runs when it is installed, and a failing one is extension-init with nothing stored")
+        void runsItsStart() {
+            AtomicReference<Postbox> started = new AtomicReference<>();
+            Interpreter running = makeAnInterpreterWith(store().startWith(started::set));
+            Interpreter failing = makeAnInterpreterWith(store().startWith(postbox -> {
+                throw new IllegalStateException("no shelves here");
+            }));
+
+            assertThat(started.get()).isNotNull();
+            assertThat(running.extensions().getFirst().installed()).isTrue();
+            assertThat(failing.extensions().getFirst().refusal()).contains("extension-init");
+            assertThat(answerTo(failing, "none? select system/modules 'store")).isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("its handle kinds are checked against those already known")
+        void checksItsHandleKinds() {
+            Extension other = new Extension("other", "1.0.0", List.of())
+                    .withHandleType(new HandleType("shelf", Integer.class));
+
+            assertThat(makeAnInterpreterWith(other, store()).extensions().getLast().refusal())
+                    .contains("handle-exists");
+        }
+    }
+
+    @Nested
+    @DisplayName("a command asks what kind of handle it was given without raising")
+    class HandleKinds {
+
+        private Extension asking() {
+            return new Extension("asking", "1.0.0", List.of(
+                    new ExtensionCommand("kind-of-handle", "value",
+                            call -> call.handleKind(call.arguments().getFirst())
+                                    .<Value>map(WordValue::of)
+                                    .orElse(NoneValue.none()))));
+        }
+
+        @Test
+        @DisplayName("a handle another part of Rebol made answers its kind")
+        void answersAnyHandlesKind() {
+            assertThat(answerTo(makeAnInterpreterWith(asking()), "kind-of-handle rc4/key #{00}"))
+                    .isEqualTo("rc4");
+        }
+
+        @Test
+        @DisplayName("anything else answers empty")
+        void answersEmptyForAnythingElse() {
+            assertThat(answerTo(makeAnInterpreterWith(asking()), "kind-of-handle 1")).isEqualTo("_");
+        }
+    }
+
+    @Nested
+    @DisplayName("a command reaches files as READ and WRITE do: through the host's port, from what-dir, checked by SECURE")
+    class ReachingFiles {
+
+        @TempDir
+        Path directory;
+
+        private Extension filing() {
+            return new Extension("filing", "1.0.0", List.of(
+                    new ExtensionCommand("slurp", "name [file!]", call -> call.files()
+                            .read(((FileValue) call.arguments().getFirst()).text())
+                            .<Value>map(BinaryValue::ofBytes)
+                            .orElse(StringValue.of("unreadable"))),
+                    new ExtensionCommand("spit", "name [file!] data [binary!]", call -> LogicValue.of(call.files()
+                            .write(((FileValue) call.arguments().getFirst()).text(),
+                                    ((BinaryValue) call.arguments().get(1)).octetsFromHere()))),
+                    new ExtensionCommand("size-of", "name [file!]", call -> call.files()
+                            .describe(((FileValue) call.arguments().getFirst()).text())
+                            .flatMap(FileInformation::size)
+                            .<Value>map(IntegerValue::of)
+                            .orElse(StringValue.of("nothing there")))));
+        }
+
+        private Interpreter reaching(HostService... granted) {
+            Bounds bounds = Bounds.standard().add(filing());
+            for (HostService service : granted) {
+                bounds = bounds.grant(service);
+            }
+            return Interpreter.createOn(
+                    AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
+                    bounds);
+        }
+
+        @Test
+        @DisplayName("what one command writes another reads, and READ reads it too")
+        void writesAndReads() {
+            Interpreter interpreter = reaching(HostService.FILES);
+
+            assertThat(answerTo(interpreter, "reduce [spit %a.bin #{0102} slurp %a.bin read %a.bin size-of %a.bin]"))
+                    .isEqualTo("[#(true) #{0102} #{0102} 2]");
+        }
+
+        @Test
+        @DisplayName("a relative path counts from what-dir")
+        void countsFromWhatDir() throws IOException {
+            Files.createDirectories(directory.resolve("sub"));
+            Interpreter interpreter = reaching(HostService.FILES, HostService.WORKING_DIRECTORY);
+
+            assertThat(answerTo(interpreter, "change-dir %sub/ spit %in.bin #{07} change-dir %.. read %sub/in.bin"))
+                    .isEqualTo("#{07}");
+        }
+
+        @Test
+        @DisplayName("a file the port cannot reach is empty for reading, false for writing, and nothing for describing")
+        void answersWhatCannotBeReached() {
+            Interpreter interpreter = reaching(HostService.FILES);
+
+            assertThat(answerTo(interpreter, "reduce [slurp %missing.bin spit %no/such/dir/x.bin #{01} size-of %missing.bin]"))
+                    .isEqualTo("""
+                            ["unreadable" #(false) "nothing there"]""");
+        }
+
+        @Test
+        @DisplayName("SECURE refuses a command as it refuses READ")
+        void obeysSecure() {
+            Interpreter interpreter = reaching(HostService.FILES);
+
+            answerTo(interpreter, "write %a.bin #{01} secure [file throw]");
+
+            assertThat(readTheRefusalIn(interpreter, "slurp %a.bin")).startsWith("[security");
+            assertThat(readTheRefusalIn(interpreter, "spit %a.bin #{02}")).startsWith("[security");
+            assertThat(readTheRefusalIn(interpreter, "size-of %a.bin")).startsWith("[security");
+        }
+
+        @Test
+        @DisplayName("without the files grant a command is refused as READ is")
+        void needsTheGrant() {
+            Interpreter interpreter = reaching();
+
+            assertThat(readTheRefusalIn(interpreter, "slurp %a.bin"))
+                    .isEqualTo(readTheRefusalIn(interpreter, "read %a.bin"));
         }
     }
 }

@@ -65,6 +65,10 @@ public final class Boot {
         return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, machine);
     }
 
+    public Ports ports() {
+        return ports;
+    }
+
     public Construction construction() {
         return withoutEvaluating;
     }

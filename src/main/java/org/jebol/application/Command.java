@@ -26,6 +26,10 @@ public interface Command {
 
     <T> T unwrap(Value handle, Class<T> type);
 
+    Optional<String> handleKind(Value value);
+
+    CommandFiles files();
+
     Raised failure(ErrorCategory category, String id, Value... arguments);
 
     /**
