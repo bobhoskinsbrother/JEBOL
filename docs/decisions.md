@@ -2621,5 +2621,95 @@ is refused as on a build with no such device.
 
 **`osx-dialogs`.** R3 shells out to `osascript` on macOS only. JEBOL serves
 `request-color`, `request-dir` and `request-file` through its own port on every
-screen, which Standing in `goals.md` already records, so the module has nothing
+screen, which `docs/standing.md` already records, so the module has nothing
 left to do.
+
+## 62. bzip2 answers where its C never does, and nowhere else differs
+
+**`import 'bzip2` is libbzip2 1.1.0 in Java, octet for octet** (2026-11-06).
+Every answer the C gives is checked against tables the C wrote, from a
+checked-in generator. `docs/bzip2-port.md` has the detail.
+
+**Where the C has no answer, JEBOL gives one:**
+
+- **`write/flush` raises `"Bzip2 compression failed."`.** When a flush's output
+  fits, the C loops for ever.
+- **Three damaged-stream cases are data errors:** a selector error followed by
+  another call, a symbol past the move table, and re-entering the mapping loops
+  past their end. In the C each reads or writes past an array.
+- **Garbage collection never crashes it.** The C segfaulted under `cmd_write`
+  with several encoder handles and collection on. The cause was not found, and
+  JEBOL's handles share no memory.
+
+**Two checks no input reaches are kept anyway:** three checks on `unzftab` and
+`cftab`, and a randomised block's run overrunning its end. They are marked
+`(none)` in `src/testFixtures/resources/bzip2/README.md`.
+
+**Not ported, because the extension cannot reach them:** the `FILE*` API, small
+mode, verbosity, a work factor other than 30, and `AssertH`.
+
+## 63. An extension is one jar with setups, named in a descriptor
+
+**Agreed on 2026-11-07, for SQLite first and Postgres next.** Goals 1a and 13
+hold the work. Decision 0 already wanted this: REBOL against a Java Postgres driver,
+rather than reimplementing it.
+
+**One jar, with a setup per platform.** The jar carries a descriptor,
+`META-INF/jebol/extension.reb`, that names each setup, the provider that builds
+its `Extension`, and what the setup needs: library jars for `jvm`, assets for
+`web`.
+- The command line and the desktop app read every descriptor on the classpath
+  and take the `jvm` setup.
+- The site build is given jars with `-Pextensions`, takes the `web` setup, and
+  compiles it into `jebol-web.wasm`.
+- The manifest's `Class-Path` is generated from the `jvm` setup's `needs`.
+- JEBOL's own jar keeps its zero dependencies and names no extension.
+- A `buildSrc` plugin, `jebol-extension`, builds such a jar from one
+  declaration, so every extension repeats the pattern rather than copying it.
+
+**Without the jar, a clear extension's `import` fails.** That holds for SQLite
+and Postgres. PDF is a core function that needs a library, so its commands
+answer none instead.
+
+**An extension may use prebuilt libraries.** Core is one jar that relies on no
+extension, so what an extension loads is its own affair. "No release binary is
+run" is about where reference answers come from, not about extensions.
+
+**SQLite: two engines behind one set of commands.**
+- `jvm` runs sqlite4j (Apache-2.0): Xerial's driver with SQLite compiled to
+  WebAssembly, then translated to Java bytecode by Endive. It is pure Java and
+  unpacks no native library.
+- `web` runs sqlite.org's own `sqlite3.wasm` in the worker, through TeaVM's JS
+  interop. Both files are carried in the jar.
+- The commands are written once, against a `SqliteEngine` interface.
+- **Rejected, Xerial's `sqlite-jdbc`:** it unpacks a native library and can
+  never run on the web.
+- **Rejected, one driver calling one `sqlite3.wasm` on both platforms:** far
+  too complicated for what it buys.
+- **Rejected, a pure-Java database that TeaVM compiles:** none is known. H2 and
+  HSQLDB rest on `java.sql`, threads and file channels.
+- **Rejected, a database over HTTP** (rqlite, libSQL, CouchDB, PostgREST): it
+  would work on both platforms, but it is not embedded.
+
+**Every file goes through the host's `FilePort`.** Both engines hold the database
+in memory. It is read through the port on `open`, and written back through it
+after a change and on `close`, so SECURE, the grants and `what-dir` apply as they
+do to any file. `:memory:` never touches the port.
+
+**SQLite answers as Rebol-SQLite 3.46.0.0's C does,** with these differences:
+- A bad handle is the C's `command-fail` string, not `invalid-handle`.
+- `info` and `trace` are tested by their shape, because pointers, memory and
+  nanoseconds vary from run to run.
+- `sqlite-scheme.reb` is included as the extension's script.
+- Both engines are pinned to the newest SQLite they share. The module keeps
+  version 3.46.0.0, and only `info`'s `SQLite-version` reports the engine.
+
+**Postgres is JVM only.** A browser cannot open a TCP socket, so reaching
+Postgres from the web would need a relay someone runs, and pgjdbc does not
+compile under TeaVM.
+- A site build that names Postgres is refused.
+- pgjdbc's `SocketFactory` is JEBOL's own, and it checks the NETWORK grant and
+  SECURE before it connects.
+- No C decides Postgres's answers, so its commands are settled in `spec/`
+  first, shaped like SQLite's, with a `postgres://` scheme.
+- The tests run a Postgres installed from apt, not a Docker image.

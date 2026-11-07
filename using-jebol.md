@@ -246,7 +246,7 @@ REBOL string literals use curly braces `({...})`. This allows embedding strings 
 
 An Interpreter instance is single-threaded and must be confined to one thread at a time. Concurrent execution requires multiple interpreter instances. The only thread-safe cross-thread method is cancel(), which halts execution from another thread.
 
-Initial interpreter instantiation takes approximately 430 ms, settling to around 50 ms after JVM warmup. High-throughput applications creating per-request interpreters should account for initialization overhead (see goals.md and scripts/timing.py boot for benchmarks).
+Initial interpreter instantiation takes approximately 430 ms, settling to around 50 ms after JVM warmup. High-throughput applications creating per-request interpreters should account for initialization overhead (see docs/standing.md and scripts/timing.py boot for benchmarks).
 
 ---
 
@@ -627,7 +627,7 @@ Java null and REBOL none are kept distinct during conversion. Use asOptionalHost
 
 Review this section prior to integration. It details feature coverage, pending work, and intentional deviations from C-Rebol.
 
-**Test Suite Parity:** All assertions in REBOL's test suite either pass in JEBOL or represent known failures present in standard Oldes/Rebol3 3.22.5 (documented in fails-on-rebol-too.txt). Intentional architectural differences are tracked in goals.md.
+**Test Suite Parity:** All assertions in REBOL's test suite either pass in JEBOL or represent known failures present in standard Oldes/Rebol3 3.22.5 (documented in fails-on-rebol-too.txt). Intentional architectural differences are tracked in docs/standing.md.
 
 **Datatypes and System Features:** All standard R3 datatypes are implemented. task! execution requires host thread support enabled via withTasks. OS user context fields in access-os (uid, euid, gid, egid) return not-here due to JVM platform abstractions. Scheme names match R3 registrations, failing at open time if unhandled by the host.
 

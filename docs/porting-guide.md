@@ -137,8 +137,8 @@ All of these stay where they are. A change that moves one is wrong.
   inner loop between changes. **Every assertion its files write is
   run.** `fails-on-rebol-too.txt` holds the ones that are not run at
   all, each carrying the `r3-head` session showing a real Rebol does not run it
-  either. **For the counts see `goals.md`, which is the only file that carries
-  them.**
+  either. **For the counts see `docs/standing.md`, which is the only file that
+  carries them.**
 - **`./gradlew networkTests`** -- the twelve suite assertions that reach a host,
   in a gate of their own and out of `allTests` on purpose. Run it after a change
   to fetching, TLS, or import from a url.
@@ -177,7 +177,8 @@ All of these stay where they are. A change that moves one is wrong.
   columns first, because those name behaviour JEBOL already has and reports
   under the wrong id or not at all.
 
-**Every figure these produce is text down in `goals.md` and nowhere else.**
+**Every figure these produce is written down in `docs/standing.md` and nowhere
+else.**
 This section deliberately names what each measure asks rather than what it last
 answered: this file carried a count of raisable error ids that was both stale
 and the wrong way round, against a count file that was right, and a reader had
@@ -227,6 +228,35 @@ apart, and the C settles every case.
 plainly wrong rather than surprising, write what it meant and record what it
 does.
 
+## How to work on a goal
+
+Read `CLAUDE.md` first.
+
+- **`./r3-head`** is a real Rebol 3.22.5 and the authority. It takes a script
+  file with a `Rebol []` header. Ask it rather than guessing. It is not
+  checked in: `scripts/build-r3.sh` builds it from `rebol3-source/`, and says
+  how to get the one Rebol it needs to do that.
+- **`rebol3-source/`** is the C, searched through the IntelliJ MCP.
+- **`scripts/sweep.py <file.r3>`** shows which suite assertions answer
+  differently; **`org.jebol.suite.SuiteStops`** shows which raise. Fix a
+  raise first: everything after it never runs.
+- **`org.jebol.adapter.cli.Repl`** reads a script from standard input, one
+  expression per line, so the same cases can be put to both interpreters and
+  diffed.
+- **`scripts/serve-example.sh <app directory> [port]`** builds the web module,
+  assembles an app such as `examples/blend2d` as a site, and serves it to the
+  network, printing the addresses to open.
+- To learn whether a line of C can be reached, copy `rebol3-source/` to the
+  scratchpad, add a print, build with `scripts/build-r3.sh` and watch. Never
+  instrument `rebol3-source/` itself.
+- An assertion a real Rebol does not pass either goes in
+  `fails-on-rebol-too.txt` with the `./r3-head` session that settles it. Never
+  because it is hard.
+- Every fix gets a JEBOL test in `src/functionalTest/java` (or `src/unitTest/java`
+  where no interpreter is needed) that stands on its own, with
+  expectations read off `./r3-head`.
+- Commit to `main`, never branch, no attribution trailers.
+
 ## Working notes
 
 Each of these cost time once.
@@ -257,7 +287,7 @@ Each of these cost time once.
   not there contributes nothing either.** `series-test.r3` sat inside a green
   3721 for as long as vector literals would not lex, and 54 of Rebol's 76 unit
   files were never vendored at all. `SuiteCoverageTest` now fails on the first
-  and the measures in `goals.md` count the second, but the habit is the point: before
+  and the measures in `docs/standing.md` count the second, but the habit is the point: before
   trusting a count, ask what it is counting and what it silently is not.
 - **A borrowed file that loads is not a borrowed file that works.** REWORD,
   SPLIT, PAD and SUM are Rebol's own REBOL and all four were loaded and all

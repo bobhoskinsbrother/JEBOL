@@ -39,7 +39,7 @@ gzipped, the runtime loader 38 KB and 8.6 KB, the worker's shell 5.5 KB and
 1.7 KB, the carried font 556 KB and 277 KB, the page with its examples 90 KB and
 26 KB -- the whole site 14.3 MB, 4.4 MB gzipped, which is what a page downloads
 to run its first example. Obfuscation is deliberately off: the TeaVM faults
-below are read from the names in a stack trace. `goals.md` carries these
+below are read from the names in a stack trace. `docs/standing.md` carries these
 figures.
 
 The trial below measured a boot in Chrome of 477 ms going cold and 164 to 201 ms

@@ -246,6 +246,22 @@ boundary sits nowhere near one. Assert the input's length and checksum, not only
 the output's. A fixture that lies makes a green test that measures nothing, and
 nothing else in the build will ever notice.
 
+## Porting an extension R3 names
+
+**JEBOL never fetches an extension** (decision 58). One R3 names in
+`system/modules` is ported to Java and served from inside the build, or carried
+in an extension jar (decision 63).
+
+**What it exports is read from its source, never from running it.** The
+repository's `src/*-rebol-extension.r3`, at the tag R3's address names,
+declares the commands: read it as text. Reference answers come from its C
+compiled here from source and loaded into `./r3-head`, never from a release
+binary.
+
+**A probe is never thrown away.** Whatever is compiled or scripted to learn an
+answer is checked in as a generator with the tables or transcripts it writes, or
+becomes a test, and that test is what stays.
+
 ## Running the suite
 
 **`./gradlew allTests` is the gate.** It runs the spec check, then four suites,
@@ -357,7 +373,7 @@ The functional tests take about five minutes, and their floor is
 `Interpreter.create()`: about 54ms warm, and one full run
 builds about 16,300 interpreters. Ask `scripts/timing.py boot` for the current
 boot figures, `scripts/timing.py speed` for the interpreter's own speed against
-a real 3.22.5, and goals.md for both. It used to be 86ms and twenty-two
+a real 3.22.5, and `docs/standing.md` for both. It used to be 86ms and twenty-two
 minutes, and where that went is worth knowing before trying to speed anything
 else up -- reading Rebol's library was most of it, and `LibrarySource` now
 reads each file once for the whole process and hands out a copy. Where the
@@ -369,11 +385,11 @@ Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail wit
 cleanFunctionalTests` (or `cleanUnitTests`, `cleanEndToEndTests`) instead.
 
 Selenium is a test dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 3,090 KB, of which
+has no dependencies and this does not change that** -- about 3,940 KB, of which
 556 KB is the carried font, 228 KB the borrowed REBOL library, and about 190 KB
 Brotli's static dictionary and the three tables that index it, all carried in
-the source because the domain may not read a file. The size is in `goals.md`
-too and that is the copy to correct when it moves.
+the source because the domain may not read a file. The size is in
+`docs/standing.md` too and that is the copy to correct when it moves.
 
 ## Code comments: never. Javadoc: only on the contract
 

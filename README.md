@@ -186,8 +186,8 @@ Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
 declaration does not say. `scripts/runtime-parity.py` asks two *running*
 interpreters instead — what datatype each function reports itself as, what
 `words-of` gives back, and its specification text for text — and when it was
-first text most of Rebol's library answered differently here. `goals.md`
-records what both last said, and they should be read together or not at all.
+first text most of Rebol's library answered differently here.
+`docs/standing.md` records what both last said, and they should be read together or not at all.
 
 That second script compared the *length* of a specification until September
 2026, and a measure that counts instead of comparing will agree with anything:
@@ -209,14 +209,14 @@ the prose. `errors.reb` is there on the same footing.
 that Rebol's own runner runs is vendored (the few deliberately left out are
 named in `not-vendored.txt`) and every assertion they write is reached and run.
 
-**The counts live in `goals.md` and nowhere else**, so there is one place to
+**The counts live in `docs/standing.md` and nowhere else**, so there is one place to
 correct when they move rather than four that drift apart.
 
 Beside it, and outliving it:
 
 - **A corpus** — published REBOL examples with their published results, plus
   fourteen complete real programs that must load and survive a round trip
-  through MOLD. The count is in `goals.md` with the rest of the measures.
+  through MOLD. The count is in `docs/standing.md` with the rest of the measures.
 - **Standalone tests** for every behaviour fixed because of a suite assertion,
   which build an interpreter and read no `.r3` file. The suite is scaffolding
   and will be deleted when it goes green; these are what lasts.
@@ -231,7 +231,7 @@ Beside it, and outliving it:
 **Rebol's own suite passes, and the handful of assertions that do not are
 accounted for by name** — `fails-on-rebol-too.txt` - assertions that fail in r3 too. Those are usually one arm of an `either error? try
 [...]` whose other arm is the one taken, and each line carries the `r3-head`
-session that settled it. For the figures, see `goals.md`.
+session that settled it. For the figures, see `docs/standing.md`.
 
 **So the suite has nothing left to say, and what remains is what it could never
 see.** No assertion in it asks whether an error id can be raised, whether a
@@ -241,11 +241,11 @@ work now comes from measures the suite does not provide: two running
 interpreters asked the same question, the C read for a line nobody has
 reached, and the reference instrumented and watched.
 
-**`goals.md` breaks all of it into pieces of work**, each with its size, what
-blocks it, which C file to read and how to check the answer against a real
-Rebol. **The sizes live there and are not repeated here.** It also carries the
-working method: one authority and one canonical reference, the measuring tools, the ratchet,
-and a rule for the assertions a real Rebol does not run either.
+**`goals.md` breaks all of it into pieces of work**, each with what blocks it,
+which C file to read and how to check the answer against a real Rebol. The
+working method -- one authority and one canonical reference, the measuring
+tools, and a rule for the assertions a real Rebol does not run either -- is in
+`docs/porting-guide.md`.
 
 **The order there has one rule above the rest: agreeing with the C comes before
 improving on it.** This is a port. A place where JEBOL answers something a real
@@ -292,8 +292,8 @@ Things to note:
   allocates on a script's say-so can still throw an `OutOfMemoryError` out of
   the interpreter, and the guarantee is only as good as its thinnest path.
 
-`goals.md` carries the rest with the numbers, and every number in it was
-checked by running it rather than by remembering it.
+`goals.md` carries what is left, and `docs/standing.md` the numbers, every one
+of them checked by running it rather than by remembering it.
 
 ## Embedding
 
@@ -365,8 +365,9 @@ scripts/         the measures, which are run rather than remembered:
                  c-parity (declarations) and runtime-parity (two running
                  interpreters), error-parity, sweep.py for diffing one suite
                  file against a real Rebol, timing.py for boots and speed
-docs/            decisions, the porting guide, findings about Rebol itself
-goals.md         everything left to do, ordered by importance, and the method
+docs/            decisions, where the port stands, the porting guide, findings
+                 about Rebol itself
+goals.md         everything left to do, ordered by importance
 ```
 
 The dependency rule points inward and is enforced by `DependencyRuleTest`
@@ -444,13 +445,15 @@ refuses.
 `scripts/error-parity.py` asks whether every error id can be raised;
 `scripts/sweep.py` diffs one suite file assertion by assertion; and
 `scripts/timing.py` reports how long a boot takes and how the interpreter
-compares with the C. What each last said is in `goals.md`, which is also where
-the jar's size and the counts live.
+compares with the C. What each last said is in `docs/standing.md`, which is
+also where the jar's size and the counts live.
 
 ## Reading further
 
-- `goals.md` — everything left to do, ordered by importance, with the numbers
-  and the method for doing any of it: start here to pick something up
+- `goals.md` — everything left to do, ordered by importance: start here to pick
+  something up
+- `docs/standing.md` — the counts and measures, and where JEBOL differs from a
+  real 3.22.5 on purpose
 - `docs/decisions.md` — what has been decided, why, and what it rules out
 - `docs/porting-guide.md` — how to port a function, and what the authorities are
 - `docs/rebol-findings.md` — what reading Rebol's source turned up about Rebol

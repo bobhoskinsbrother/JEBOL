@@ -3,61 +3,9 @@
 What is left to do on this port, in one order. A finished goal, or a finished
 part of one, is deleted; what it said is in the git history.
 
-The counts live here and nowhere else. `README.md`, `docs/porting-guide.md`
-and `using-jebol.md` point here for them.
-
----
-
-## Where the port stands
-
-Measured on 2026-10-12, the jar and web build rows on 2026-11-06,
-and the timing rows on 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
-an Intel one read about 122ms median and 187ms p95, so compare a change against
-a baseline from the same machine rather than against the row.
-
-| Measure                       | Reads                                                                                                                                                                                                             |
-|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `fails-on-rebol-too.txt`      | 160 a real 3.22.5 also fails or never runs                                                                                                                                                                        |
-| `scripts/c-parity.py`         | 279 of 279 C functions match R3's surface                                                                                                                                                                         |
-| `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see Standing                                                                                                                                                         |
-| `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
-| `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
-| `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 3,939 KB, of which the 2010 GUI is 75 KB before compression, and no dependencies                                                                                                                                  |
-| the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
-| a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
-| the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
-
----
-
-## How to work on any of them
-
-Read `CLAUDE.md` first.
-
-- **`./r3-head`** is a real Rebol 3.22.5 and the authority. It takes a script
-  file with a `Rebol []` header. Ask it rather than guessing. It is not
-  checked in: `scripts/build-r3.sh` builds it from `rebol3-source/`, and says
-  how to get the one Rebol it needs to do that.
-- **`rebol3-source/`** is the C, searched through the IntelliJ MCP.
-- **`scripts/sweep.py <file.r3>`** shows which suite assertions answer
-  differently; **`org.jebol.suite.SuiteStops`** shows which raise. Fix a
-  raise first: everything after it never runs.
-- **`org.jebol.adapter.cli.Repl`** reads a script from standard input, one
-  expression per line, so the same cases can be put to both interpreters and
-  diffed.
-- **`scripts/serve-example.sh <app directory> [port]`** builds the web module,
-  assembles an app such as `examples/blend2d` as a site, and serves it to the
-  network, printing the addresses to open.
-- To learn whether a line of C can be reached, copy `rebol3-source/` to the
-  scratchpad, add a print, build with `scripts/build-r3.sh` and watch. Never
-  instrument `rebol3-source/` itself.
-- An assertion a real Rebol does not pass either goes in
-  `fails-on-rebol-too.txt` with the `./r3-head` session that settles it. Never
-  because it is hard.
-- Every fix gets a JEBOL test in `src/functionalTest/java` (or `src/unitTest/java`
-  where no interpreter is needed) that stands on its own, with
-  expectations read off `./r3-head`.
-- Commit to `main`, never branch, no attribution trailers.
+Nothing else goes here. What has been decided is in `docs/decisions.md`, where
+the port stands and where it differs on purpose is in `docs/standing.md`, and
+how to work on any goal is in `docs/porting-guide.md`.
 
 ---
 
@@ -94,132 +42,14 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. SQLite and Postgres as extension jars
+#### 1a. `import 'sqlite`, from an extension jar with a `jvm` and a `web` setup
 
-**JEBOL never fetches an extension** (decision 58). One it serves is ported to
-Java and carried in the build as a delayed entry, which IMPORT makes into a
-module the first time a script asks for it. Eight are served that way: easing,
-blurhash, deflate, zlib-ng, blend2d, mathpresso, zstd and bzip2. Brotli is 1b and webp
-is goal 10. What R3 names and JEBOL leaves out is decision 61.
+`import 'sqlite` answering as Rebol-SQLite 3.46.0.0 does, its fourteen commands
+and its `sqlite:` scheme, from `jebol-sqlite.jar`. Decision 63 says how the jar is
+shaped and why. `docs/sqlite-port.md` says what the C does, command by command.
 
-**What each exports is read from its source, never from running it.** Each
-repository's `src/*-rebol-extension.r3`, at the tag R3's address names, declares
-the commands; read it as text. No release binary is run. **A probe is never
-thrown away:** whatever is compiled or scripted to learn an answer is checked
-in as a generator with the tables it writes, or becomes a test, and that test
-is what stays.
-
-Two pieces, in this order, each with its failing tests written first:
-
-1. **SQLite, as one extension jar with two setups.** The full plan is below,
-   under "The SQLite plan". It was agreed on 2026-11-07.
-2. **Postgres, next, on the same pattern.** The same kind of jar with only a
-   `jvm` setup, over pgjdbc. Browsers cannot open a TCP socket, so a site build
-   that names it is refused. R3 has no Postgres extension, so no C decides its
-   answers: settle its commands in `spec/` first, shaped like SQLite's (`open`,
-   `exec`, `eval`, `prepare`, `step /rows /with`, `columns`, `finalize`, `close`,
-   `info`), with a `postgres://` scheme like SQLite's, so that a script reads the
-   same against either. pgjdbc opens its own sockets, so its `SocketFactory` is
-   JEBOL's and checks the NETWORK grant and SECURE before connecting. The tests
-   start a Postgres installed from apt by `scripts/setup-machine.sh`, as they
-   start Chrome; no Docker image.
-
-**Done when** SQLite's "Done when" below holds, and Postgres's does once its
-table is settled.
-
-##### The SQLite plan
-
-**What was decided, and why.** Agreed with the user on 2026-11-07, after
-weighing the alternatives below.
-
-- **One jar, `jebol-sqlite.jar`, with two setups: `jvm` and `web`.** It also
-  carries a descriptor, its configuration, that says what each setup is and
-  what it needs. The command line and the desktop app take the `jvm` setup. The
-  site build takes the `web` setup. JEBOL's own jar keeps its zero dependencies
-  and never names SQLite.
-- **`jvm` runs sqlite4j** (`io.roastedroot:sqlite4j`, Apache-2.0): Xerial's
-  sqlite-jdbc with SQLite compiled to WebAssembly, then translated to plain Java
-  bytecode at build time by Endive. It is pure Java, with no native library to
-  unpack. Xerial's own `sqlite-jdbc` was the first plan. It was dropped because
-  it unpacks a native library and could never run on the web.
-- **`web` runs sqlite.org's official WebAssembly build** (`sqlite3.wasm` and its
-  JS API) in the worker, through TeaVM's JS interop, the way `BrowserStore` calls
-  the page's store. Both files are carried inside the jar.
-- **The commands are written once, against a `SqliteEngine` interface.** Each
-  setup supplies its own engine. Rejected: one hand-written driver calling one
-  `sqlite3.wasm` through Endive on the JVM and the browser's engine on the web
-  ("stupidly complicated"). Also rejected: a pure-Java database TeaVM compiles,
-  because none exists that we know of; H2 and HSQLDB rest on `java.sql`, threads
-  and file channels.
-- **Every file goes through the host's `FilePort`.** No setup reads a path on its
-  own. Both engines hold the database in memory: on `open` its octets are read
-  through the port, and after a change, and on `close`, they are written back
-  through it. So SECURE, the grants and `what-dir` apply as they do to any file.
-  `:memory:` never touches the port.
-- **Extensions, unlike the reference, may use prebuilt libraries.** "No release
-  binary is run" is about where the reference answers come from. The
-  user, 2026-11-07: core is one jar, and an extension can do whatever it needs,
-  since core does not rely on it.
-- **A bad handle answers as the C does,** with `command-fail` carrying
-  `"Invalid SQLite DB handle!"` or `"Invalid SQLite STMT handle!"`, not with
-  `invalid-handle`.
-- **`info` and `trace` are tested by their shape.** Their pointers, memory figures
-  and nanoseconds differ from run to run, and sqlite4j cannot report SQLite's
-  memory at all.
-- **`sqlite-scheme.reb` is included,** run as the extension's own script.
-- **The version.** Pin both engines to the newest SQLite that both sqlite4j
-  (3.48.0.0 onwards on Maven Central) and sqlite.org's WebAssembly downloads
-  have, and check that the pair really exists before pinning. The reference is
-  3.46.0. The module itself keeps the header's `Version: 3.46.0.0`, and only
-  `info`'s `SQLite-version` line reports the engine's version.
-  `docs/sqlite-port.md` records every place the newer SQLite answers
-  differently from the transcripts.
-
-**The sources.** Rebol-SQLite at tag `3.46.0.0`, MIT licence:
-https://github.com/Siskin-framework/Rebol-SQLite. These files matter:
-
-| File | What it is |
-| --- | --- |
-| `src/sqlite-rebol-extension.r3` | The 14 commands' specs, and the module header (`Name: sqlite Type: module Exports: []`, version 3.46.0.0) |
-| `src/sqlite-command-*.c` | One file per command |
-| `src/sqlite-rebol-extension.c` | Registers the handles `sqlite-db` and `sqlite-stmt`, and calls `sqlite3_initialize` |
-| `sqlite/sqlite3.c` | The SQLite 3.46.0 amalgamation, public domain, which the reference build compiles |
-| `ci-test.r3` | The extension's own test script, the larger source of cases |
-| `sqlite-scheme.reb` | The `sqlite:` scheme |
-
-`rebol3-source/src/tests/test-extension-sqlite.r3` is a third source of cases.
-`f-extension.c:543` turns a command's error string into an error, which JEBOL
-already has as `command-fail` carrying the message.
-
-**What each command does, read from the C.** The reference transcripts settle
-the exact answers.
-
-| Command | Answers | Notes from the C |
-| --- | --- | --- |
-| `info /of handle` | a string | Without `/of`: needed and current Rebol version, `SQLite-version`, `SQLite-memory`, `SQLite-mem-top`. With `/of` on a db: the context and db pointers, and `sqlite-buffer-size`. With `/of` on a statement: two pointers, `last-result-code`, `bind-parameters`, `data-count`. Any other handle: an empty string |
-| `open file` | a `sqlite-db` handle | The file's text is handed to SQLite as it is. Failure: `"[SQLITE] <errstr>"` |
-| `exec db sql` | unset | Runs every statement, separated by semicolons. Prints each row as `name = value` lines, `NULL` for null, then a blank line. Failure: `"[SQLITE] <errstr> <errmsg>"` |
-| `eval db query` | a block of rows laid out flat, or the count of rows changed | `query` is a string, a statement handle, or a block. A block holds a string or a statement handle, then the parameters, either flat or as one block per row. It binds a string from the head of its series, ignoring the index. Failure: `"[SQLITE] <errstr>"` |
-| `last-insert-id db` | an integer | |
-| `prepare db sql` | a `sqlite-stmt` handle | Sets `last_result_code` to `SQLITE_ROW`. Failure: `"[SQLITE] <errstr> <errmsg>"` |
-| `step stmt /rows count /with parameters` | a block of rows laid out flat, or none | Without `/rows`, one row. A count below 1 means every row. `/with` binds by position: integer, decimal, string, none and logic, with words, get-words and get-paths resolved first. Any other type fails with `"[SQLITE] Unsupported value type!"`, and `binary!` is one of them. A string binds from the head of its series, ignoring the index (`ci-test`'s `next "xA_di"` exercises this). A read-only statement that has already answered `DONE` answers none without stepping. Other failures: `"[SQLITE] Statement is busy!"`, `"[SQLITE] Statement misuse!"`, or the bare errstr, with no prefix |
-| `columns stmt` | a block of strings, or none for no columns | |
-| `reset stmt` | unset | Sets `last_result_code` back to `SQLITE_ROW` |
-| `finalize stmt` | unset | Every later use is `"Invalid SQLite STMT handle!"` |
-| `close db` | unset | The handle still passes its check afterwards, and SQLite itself refuses what follows |
-| `trace db mask` | unset | `mask and 15`. Prints `TRACE[n] STMT: <sql>`, `PROFILE: <n>ns`, `ROW` or `CLOSE` with a raw `printf`. JEBOL prints through `call.writeLine` |
-| `initialize`, `shutdown` | `#(true)` | |
-
-Columns map INTEGER to `integer!`, FLOAT to `decimal!`, TEXT to `string!`, BLOB
-to `binary!` and NULL to `none`. A zero-length blob reaches no `memcpy`, so what
-the C answers for one is for the reference to say.
-
-The scheme's actions are `open /new`, `open?`, `close`, `write` (exec), `insert`
-(prepare, caching statements by their text), `take /part`, `read /part`, `pick`
-(read what was just inserted) and `modify 'trace-level`. A missing file without
-`/new` raises `access cannot-open`. The scheme starts with `sqlite: import
-sqlite`, which cannot run inside the module it imports: change it to use the
-module's own words, and record the change as a borrowed-file edit.
+sqlite4j (`io.roastedroot:sqlite4j`) publishes 3.48.0.0 onwards. Before pinning
+a version, check that sqlite.org has a WebAssembly download of the same one.
 
 **What the core lacks today.** Found by reading it on 2026-11-07:
 
@@ -275,13 +105,12 @@ module's own words, and record the change as a borrowed-file edit.
   drift apart. Check what sqlite4j itself needs at runtime: Xerial's driver needs
   `slf4j-api`, which warns on stderr when it finds no logging provider.
 
-**The pattern, so that Postgres and PDF repeat it.** A `buildSrc` convention
-plugin, `jebol-extension`, builds such a jar from a short declaration of the name,
-the version, and each setup's provider, libraries and assets. From that one
-declaration it writes the descriptor and the manifest. It also wires the
-extension's tests into `allTests`. The core and the site build only ever read
-the descriptor. PDF (goal 12) needs the same jar shape, plus its rule that its
-commands answer none when the jar is absent. Revisit goal 12 when this lands.
+**The pattern, so that PDF (goal 12) and Postgres (goal 13) repeat it.** A
+`buildSrc` convention plugin, `jebol-extension`, builds such a jar from a short
+declaration of the name, the version, and each setup's provider, libraries and
+assets. From that one declaration it writes the descriptor and the manifest. It
+also wires the extension's tests into `allTests`. The core and the site build
+only ever read the descriptor.
 
 **The order.** Each step's failing tests are written before its code.
 
@@ -289,7 +118,7 @@ commands answer none when the jar is absent. Revisit goal 12 when this lands.
    fetches Rebol-SQLite at its tag. It compiles the extension's C with its
    `sqlite3.c` and its own `rebol-extension.h` into a `.rebx` with `gcc -shared
    -fPIC`, and runs `module-*.r3` scripts in `./r3-head` with the `.rebx` as their
-   argument, as `bzip2/README.md` describes. The scripts and their `.txt` output are
+   argument, as `src/testFixtures/resources/bzip2/README.md` describes. The scripts and their `.txt` output are
    checked in. They cover every boundary in the list below.
 1. **The core, in `src/functionalTest`:**
    1. Pin today's answer to `import 'sqlite` first. It is what a host without the
@@ -327,11 +156,11 @@ commands answer none when the jar is absent. Revisit goal 12 when this lands.
    - A site built with and without the extension, driven in Chrome, running the
      same scripts as step 3, so any difference between the two engines fails.
 6. **The docs.**
-   - Decision 62: an extension jar with setups and a descriptor.
+   - Decision 63, amended to match whatever the work settled.
    - `spec/embed.allium`.
    - A section in `writing-an-extension.md` on writing an extension in its own jar.
    - `docs/sqlite-port.md`: where JEBOL differs from the C, and how the file
-     round-trip works.
+     round-trip works, added to what it already says.
    - `using-jebol.md`: how to run with the jar.
    - These goals.
 
@@ -373,8 +202,7 @@ answer.
 write R3's bytes. `system/modules/brotli` is something else: a link to
 Oldes/Rebol-Brotli 0.1.0, a native extension R3 downloads on `import brotli`.
 Its source is at https://github.com/Oldes/Rebol-Brotli (`src/brotli-rebol-extension.r3`
-declares the commands, `src/brotli-commands.c` implements them). A real
-3.22.5 here cannot import it: the download meets the TLS inspector (Standing).
+declares the commands, `src/brotli-commands.c` implements them).
 
 What `import brotli` gives a script, against what JEBOL's port has:
 
@@ -510,11 +338,9 @@ test.
 
 #### 1h. Clear the spec's open questions
 
-All 63 were read against the code and `./r3-head` on 2026-10-23 and each has
-an answer; 60 are left, the three about a port's actor having become rules
-with the dispatch they describe. The work that follows from the answers is
-1c, 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it. Every edit
-runs `allium check` clean.
+Every open question in the spec has an answer. The work that follows from the
+answers is 1c, 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it.
+Every edit runs `allium check` clean.
 
 1. **Already answered: the question becomes a rule, or goes.** Each of
    these now matches R3 or is built. Where the behaviour is not already a
@@ -647,11 +473,12 @@ REBOL's user file at home.
 #### 1k. Fix five Rebol bugs, and copy one
 
 Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
-real 3.22.5 does not, so each gets a Standing entry saying what and why.
+real 3.22.5 does not, so each gets an entry in `docs/standing.md` saying what
+and why.
 
 1. **`find` in a binary finds 255.** `find #{00FF} 255` is none in R3 and
-   `#{FF}` here; JEBOL is already right. Write it in Standing, and turn the
-   open question into a rule.
+   `#{FF}` here; JEBOL is already right. Write it in `docs/standing.md`, and
+   turn the open question into a rule.
 2. **`make image!` takes a block of tuples.** `make image! [2x1 [1.1.1
    2.2.2]]` is a malconstruct in R3, because the reader that consumes the
    block never steps past it. Read the C and decide what the block should
@@ -680,16 +507,11 @@ real 3.22.5 does not, so each gets a Standing entry saying what and why.
      here it deletes the file.
    - `rename p %zz` refuses in both, as `no-rename`, but arg1 is the file in
      R3 and the whole port object here.
-   These are the only differences left on any built-in scheme after the
-   port-actor work:
-   every one of the thirty-seven verbs otherwise answers what R3 answers,
-   on each of file, dir, tcp, udp, dns, console, event, system, callback,
-   checksum, crypt and midi.
 6. **Copied, not fixed:** `change/part` on an image with a count changes
    nothing. The question becomes a finding in `docs/rebol-findings.md`.
 
-**Done when** the five behave as above, each with a rule, tests, and a
-Standing entry, and the suite records the `image-diff` difference.
+**Done when** the five behave as above, each with a rule, tests, and an entry
+in `docs/standing.md`, and the suite records the `image-diff` difference.
 
 #### 1l. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
 
@@ -801,9 +623,6 @@ What still switches on the datatype, by `scripts/complexity.py`:
 - **`Molder.renderOne`** (cc 47) -- per-datatype writing, which should become
   each value molding itself.
 
-The `BrotliDictionaryMatches`, `LzmaEncoder` and `SymmetryPartitionSort`
-methods are high on purpose: their shape is the C's.
-
 **Tooling to fix on the way:** `PortingBacklogTest` reads R3's function list
 from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
@@ -826,18 +645,16 @@ running evaluation could be paused, resumed, or moved to another thread --
 say which of those JEBOL promises, and at what step a script can be stopped.
 
 **Next, with tracing to see what a boot builds: copy a booted interpreter
-rather than boot one per test.** The gate builds about 16,300 interpreters at
-about 41ms each, and nearly all of that is evaluating the borrowed library to
-define the same functions and objects every time. Caching the parsed library
+rather than boot one per test.** The gate builds about 16,300 interpreters,
+and nearly all of each boot is evaluating the borrowed library to define the
+same functions and objects every time. Caching the parsed library
 (decision 39) and reading each file once only touch the parsing, which is
 not where the time goes. Boot one interpreter per test process and hand each
 test a deep copy of it. Measure the copy first and stop if it is not clearly
 under about 15ms; if it is, every piece of interpreter state -- contexts,
 functions, objects, and ports holding host resources -- must copy, proven by
 isolation tests of the whole interpreter like `LibrarySourceIsolationTest`.
-The gate read 5m21s to 5m22s on 2026-10-23, with one test process per core,
-in three of four runs; the fourth read 4m46s and was not explained. Runs are
-kept in `test-history/`.
+Compare the gate's time before and after against `test-history/`.
 
 ### 7. Dev tools
 
@@ -890,8 +707,7 @@ one dependency, with a gate of its own rather than `allTests`.
    grants CONSOLE and hands no `ConsolePort` over, so a script's read of a
    line meets `ConsolePort.none()`'s "this script was given no console to
    read", where a real r3 reads the terminal. One adapter over the command
-   line's own input stream is the fix, and it is the same shape of gap the
-   windows service had until decision 48.
+   line's own input stream is the fix.
 
 ### 9. A drag still lags, and the interpreter has a next tier
 
@@ -905,13 +721,8 @@ replays the whole canvas for each. The three actions for that, unchanged:
 patch the paint list rather than rebuilding it, paint at most once a frame,
 and drop a pointer move a later one has superseded.
 
-The interpreter's first tier is done. Decision 38 took the streams off the
-per-call path, kept the parameter sequence per call instead of rescanning,
-made the argument list one copy instead of up to four, and interned
-canonical names: about 2x on the timing workloads, 75ms to 54ms on a warm
-boot, 5m16s to 4m19s on the test run. Decision 53 made a call's frame an
-array: calls about 15% faster, recursion unchanged. The profile's next tier,
-if the drag still reads slow after the paint work:
+If the drag still reads slow after the paint work, the interpreter's next
+tier, from the profile:
 
 1. **`BlockStorage.at(int)`**, 6 to 8 per cent of some workloads: every value
    read from a block pays bounds arithmetic and an indirection.
@@ -994,18 +805,14 @@ objects and writes them back, which is all a real 3.22.5 does, and `load` and
 `save` answer the same with or without this goal's jars. What the codec cannot
 do is say what a document contains: its text, or what a page looks like.
 
-**It is an extension exactly as SQLite is (1a, piece 2), written to
-`docs/writing-an-extension.md`.** A separate
-jar, `jebol-pdf`, built here. Apache PDFBox is its implementation, and no script
-sees that name. A script gets the commands below from `import 'pdf` by adding that
-jar and its library jars to the classpath and nothing else: no flag, no
-configuration. JEBOL's own jar keeps its zero dependencies and never names PDFBox.
+**An extension jar as SQLite's is (1a, decision 63)**, `jebol-pdf`, built here
+over Apache PDFBox, which no script sees by name. JEBOL's own jar never names
+PDFBox.
 
-**Without the jars the commands are still there and do nothing, unlike SQLite's.**
-SQLite was never in the core language, so its import fails. PDF is a core function
-that needs an extra library, so each command answers none and raises nothing. `pdf` in
-`system/modules` is already the codec's module, so these commands join that
-module and the codec stays reachable through it either way.
+**Without the jar the commands are still there and answer none,** unlike
+SQLite's (decision 63). `pdf` in `system/modules` is already the codec's module,
+so these commands join that module and the codec stays reachable through it
+either way.
 
 R3 has no such extension, so no C decides these answers and this goal does:
 
@@ -1034,51 +841,28 @@ a missing password, a page number either side of the range, and a closed handle.
 codec's answers are shown not to change, and an end-to-end test runs the command
 line with and without the jars on the classpath and gets each answer.
 
-### 13. The `miniaudio` module, as a port
+### 13. Postgres as an extension jar
+
+A real 3.22.5 has no Postgres, so like PDF this goal improves on the C rather
+than agreeing with it. `jebol-postgres.jar` is built on the pattern 1a builds,
+with only a `jvm` setup, over pgjdbc. Decision 63 says why it has no `web` setup
+and how its sockets are checked.
+
+1. **Settle the commands in `spec/` first,** shaped like SQLite's (`open`,
+   `exec`, `eval`, `prepare`, `step /rows /with`, `columns`, `finalize`,
+   `close`, `info`), with a `postgres://` scheme like SQLite's, so that a script
+   reads the same against either.
+2. **A Postgres for the tests:** installed from apt by
+   `scripts/setup-machine.sh` and started by the tests themselves, as Chrome
+   is.
+
+**Done when** every command in the settled table has a standalone test, a site
+build that names it is refused, and an end-to-end test runs the command line
+with and without the jar against a real Postgres.
+
+### 14. The `miniaudio` module, as a port
 
 `import 'miniaudio` answering as Oldes/Rebol-MiniAudio 0.11.23.0 does: its
 devices, playback, fades and effect nodes, ported rather than bound to a native
 library. Last on purpose. Sound cannot be compared byte for byte the way a codec
 can, so working out what its tests compare against is the first step.
-
----
-
-## Standing
-
-- **`request-color`, `request-dir` and `request-file` answer `native!` where R3
-  answers `function!`, on purpose.** R3 shells out to `osascript` on macOS
-  only; JEBOL serves them through its own port. See `mezz/ORDER.txt` before
-  changing it.
-- **A TLS server must be trusted, where R3 trusts every one, on purpose.** An
-  expired, self-signed, wrong-host or untrusted-root certificate reads in a
-  real 3.22.5 and is refused here, and a TLS 1.2 elliptic curve server reads
-  here and fails there. The vendored `prot-tls.reb` carries four edits for
-  it. Decision 43 and finding 222 say what and why.
-- **The command line trusts the machine's authorities, and a certificate with
-  a GeneralizedTime validity reads here, on purpose.** The keychain, the
-  Windows root store and the Linux bundle are added to the JDK's, and
-  `--cafile` adds a bundle of its own; the verdicts above still hold. The
-  borrowed DER/CRT codecs now decode GeneralizedTime, which X.509 permits, so
-  a server behind a company's TLS inspector reads here and stops a real
-  3.22.5 at "Missing public key in certifiate". The nine github assertions
-  that came off `fails-on-rebol-too.txt` for that reason are this divergence.
-  Decision 47.
-- **A file is judged by where it really leads, where R3 judges the path as
-  text, on purpose.** A symbolic link in a script's own folder pointing out
-  of it reads in a real 3.22.5 and is a security violation here, naming where
-  it leads; a link leaving a host's `--root` is refused even with every policy
-  at allow. Links that stay inside are followed. `AFileIsJudgedByWhereItReallyLeads`
-  in `spec/natives.allium` and `ALinkLeavingTheRootIsRefused` in
-  `spec/embed.allium`.
-- **An app has a history, and `system/catalog/event-types` has 49 types where
-  R3 has 47, on purpose.** `back` and `forward` come after the C's last, so no
-  index the C fixed moves; `go`, `go-back`, `go-forward`, `current-place` and
-  `unsaved-work` are JEBOL's own words. Decision 50 and `spec/nav.allium`.
-- **A task's body runs, where R3 never runs it, on purpose.** R3 makes a
-  task and DO answers it, but nothing ever starts the body: an obvious bug.
-  JEBOL runs it where a host supplies a way to: on a thread of its own in a
-  fresh interpreter on the JVM, which the console and the command line wire.
-  A browser runs none. `TheFateOfATasksBodyIsTheHostsToDecide` in
-  `spec/natives.allium`, decision 30.
-- **No Java PDF implementation in the interpreter jar.** The borrowed codec is
-  what Rebol has; more than that is a library the caller adds, which is goal 12.
