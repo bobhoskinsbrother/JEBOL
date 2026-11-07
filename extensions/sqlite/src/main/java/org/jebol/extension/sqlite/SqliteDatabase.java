@@ -32,6 +32,8 @@ final class SqliteDatabase {
 
     private static final int NOT_A_DATABASE = 26;
 
+    private static final byte[] DEFAULT_PAGE_SIZE = "PRAGMA page_size = 4096".getBytes(StandardCharsets.US_ASCII);
+
     private static final int OPCODE_COLUMN = 1;
 
     private static final String OPENS_THE_FILE = "Transaction";
@@ -46,12 +48,21 @@ final class SqliteDatabase {
 
     void load(byte[] contents) {
         if (contents.length == 0) {
+            useSqlitesDefaultPageSize();
             return;
         }
         if (Arrays.equals(contents, 0, Math.min(contents.length, HEADER.length), HEADER, 0, HEADER.length)) {
             engine.deserialize(connection, contents);
         } else {
             notADatabase = true;
+        }
+    }
+
+    private void useSqlitesDefaultPageSize() {
+        SqliteEngine.Prepared pragma = engine.prepare(connection, DEFAULT_PAGE_SIZE, 0);
+        if (pragma.resultCode() == SqliteEngine.OK && pragma.statement() != 0) {
+            engine.step(pragma.statement());
+            engine.finalizeStatement(pragma.statement());
         }
     }
 

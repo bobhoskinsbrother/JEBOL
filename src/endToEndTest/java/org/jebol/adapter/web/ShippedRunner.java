@@ -17,13 +17,18 @@ final class ShippedRunner implements AutoCloseable {
 
     private static final String ORIGIN_IN_A_SCRIPT = "{THE-ORIGIN}";
 
-    private final Path webBuild = Path.of(System.getProperty("jebol.webBuild", "build/generated/teavm/wasm-gc"));
+    private final Path webBuild;
     private final Map<String, HttpHandler> routes = new ConcurrentHashMap<>();
     private final HttpServer serving;
     private final String runnerPage;
     private volatile String entryScript = "";
 
     ShippedRunner() throws IOException {
+        this(Path.of(System.getProperty("jebol.webBuild", "build/generated/teavm/wasm-gc")));
+    }
+
+    ShippedRunner(Path webBuild) throws IOException {
+        this.webBuild = webBuild;
         runnerPage = Files.readString(Path.of("site/runner.html"));
         serving = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         serving.createContext("/", this::answer);

@@ -1,7 +1,9 @@
 package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.JavaHost;
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.WebExtensionProvider;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostPorts;
@@ -14,6 +16,7 @@ import org.teavm.jso.function.JSConsumer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 
 final class WorkerSession implements BrowserScreen.Viewer {
 
@@ -42,7 +45,15 @@ final class WorkerSession implements BrowserScreen.Viewer {
                 .withImages(new BrowserImageCodec(new BrowserImages()));
         screen = BrowserScreen.showTo(this, ports.carriedFiles());
         interpreter = Interpreter.createOn(ports.withScreen(screen), this::relayPrinted,
-                new ShippedPageBounds().bounds());
+                addSiteExtensions(new ShippedPageBounds().bounds()));
+    }
+
+    private static Bounds addSiteExtensions(Bounds bounds) {
+        Bounds added = bounds;
+        for (WebExtensionProvider provider : ServiceLoader.load(WebExtensionProvider.class)) {
+            added = added.add(provider.provide());
+        }
+        return added;
     }
 
     void serve() {

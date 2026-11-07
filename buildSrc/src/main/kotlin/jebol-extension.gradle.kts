@@ -43,7 +43,16 @@ val writeExtensionDescriptor = tasks.register<WriteExtensionDescriptor>("writeEx
     webProvider = declaration.webProvider
     jvmLibraries.from(configurations.named("jvmLibraries"))
     webAssets.from(declaration.webAssets)
+    val resourcesDirectory = layout.projectDirectory.dir("src/main/resources")
+    resources.from(resourcesDirectory)
+    resourcesRoot = resourcesDirectory.asFile.path
     destination = layout.buildDirectory.dir("generated/jebol-extension")
+}
+
+dependencies {
+    "compileOnly"("org.teavm:teavm-jso:0.16.0")
+    "compileOnly"("org.teavm:teavm-jso-apis:0.16.0")
+    "compileOnly"("org.jetbrains:annotations:24.1.0")
 }
 
 sourceSets.main {
@@ -116,19 +125,33 @@ tasks.register<Test>("functionalTests") {
     maxParallelForks = Runtime.getRuntime().availableProcessors()
 }
 
+val corePageTests = core.extensions.getByType<SourceSetContainer>()["endToEndTest"]
+
+dependencies {
+    add(endToEndTest.implementationConfigurationName, corePageTests.output)
+    add(endToEndTest.implementationConfigurationName, "org.seleniumhq.selenium:selenium-java:4.27.0")
+}
+
 tasks.register<Test>("endToEndTests") {
-    description = "The extension's tests that run the shipped jar with and without it"
+    description = "The extension's tests that run the shipped jar and a built site, with and without it"
     runsTheTestsIn(endToEndTest, declaration.name.map { "${it}EndToEndTests" })
-    dependsOn(assembleExtension, core.tasks.named("jar"))
+    dependsOn(assembleExtension, core.tasks.named("jar"), core.tasks.named("assembleWebBuildWithExtensions"),
+        core.tasks.named("buildWasmGC"))
+    workingDir = core.layout.projectDirectory.asFile
     val folder = layout.buildDirectory.dir("jebol-extension")
     val extensionJar = declaration.name.flatMap { name -> folder.map { it.file("jebol-$name.jar") } }
     val shippedJar = core.tasks.named<Jar>("jar").flatMap { it.archiveFile }
+    val webBuildWith = core.layout.buildDirectory.dir("generated/web-with-extensions")
+    val webBuildWithout = core.layout.buildDirectory.dir("generated/teavm/wasm-gc")
     jvmArgumentProviders.add(CommandLineArgumentProvider {
         listOf(
             "-Djebol.extensionFolder=" + folder.get().asFile.path,
             "-Djebol.extensionJar=" + extensionJar.get().asFile.path,
             "-Djebol.shippedJar=" + shippedJar.get().asFile.path,
+            "-Djebol.webBuildWithExtensions=" + webBuildWith.get().asFile.path,
+            "-Djebol.webBuild=" + webBuildWithout.get().asFile.path,
         )
     })
+    systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
     outputs.upToDateWhen { false }
 }

@@ -33,6 +33,13 @@ abstract class WriteExtensionDescriptor : DefaultTask() {
     @get:PathSensitive(PathSensitivity.NAME_ONLY)
     abstract val webAssets: ConfigurableFileCollection
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val resources: ConfigurableFileCollection
+
+    @get:Input
+    abstract val resourcesRoot: Property<String>
+
     @get:OutputDirectory
     abstract val destination: DirectoryProperty
 
@@ -59,8 +66,23 @@ abstract class WriteExtensionDescriptor : DefaultTask() {
         }
         lines += "]"
         descriptor.writeText(lines.joinToString("\n", postfix = "\n"))
+        if (webProvider.isPresent) {
+            writeWebServices()
+        }
+    }
+
+    private fun writeWebServices() {
+        val services = destination.get().file("META-INF/services/org.jebol.application.WebExtensionProvider").asFile
+        services.parentFile.mkdirs()
+        services.writeText(webProvider.get() + "\n")
+        val root = java.io.File(resourcesRoot.get())
+        val names = resources.asFileTree.files
+            .map { it.relativeTo(root).invariantSeparatorsPath }
+            .filter { !it.startsWith("META-INF/") }
+            .sorted()
+        destination.get().file("META-INF/jebol/web-resources.txt").asFile.writeText(names.joinToString("\n"))
     }
 
     private fun filesAsRebol(files: ConfigurableFileCollection): String =
-        files.files.map { "%" + it.name }.sorted().joinToString(" ")
+        files.asFileTree.files.map { "%" + it.name }.sorted().joinToString(" ")
 }

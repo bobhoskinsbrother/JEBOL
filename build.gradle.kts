@@ -99,6 +99,102 @@ tasks.named("buildWasmGC") {
     dependsOn(copyWorkerScript, copyPageScripts, copyCarriedFont)
 }
 
+val extensionProjects = listOf("sqlite")
+
+// An extension reaches a site as a jar named with -Pextensions: its classes join
+// the WasmGC build, which finds its web provider through META-INF/services, and its
+// assets go beside jebol-web.wasm. Decision 63.
+val siteExtensionJars: FileCollection = files(providers.gradleProperty("extensions")
+    .map { named -> named.split(",").map(String::trim).filter(String::isNotEmpty) }
+    .getOrElse(emptyList()))
+
+abstract class CheckSiteExtensions : DefaultTask() {
+
+    @get:Inject
+    abstract val archives: ArchiveOperations
+
+    @get:InputFiles
+    abstract val jars: ConfigurableFileCollection
+
+    @TaskAction
+    fun check() {
+        jars.files.forEach { jar ->
+            val descriptor = archives.zipTree(jar).matching { include("META-INF/jebol/extension.reb") }.files
+            val text = descriptor.firstOrNull()?.readText() ?: ""
+            if (!Regex("""(?m)^\s*web\s*\[""").containsMatchIn(text)) {
+                throw GradleException("$jar has no web setup in META-INF/jebol/extension.reb, so a site cannot carry it")
+            }
+        }
+    }
+}
+
+val checkSiteExtensions = tasks.register<CheckSiteExtensions>("checkSiteExtensions") {
+    group = "verification"
+    description = "Refuse an extension named with -Pextensions that has no web setup"
+    jars.from(siteExtensionJars)
+}
+
+val unpackSiteExtensions = tasks.register<Sync>("unpackSiteExtensions") {
+    group = "build"
+    description = "Unpack each jar named with -Pextensions, so the WasmGC build never reads a jar rebuilt under it"
+    dependsOn(checkSiteExtensions)
+    siteExtensionJars.forEach { jar ->
+        from(zipTree(jar)) {
+            into(jar.nameWithoutExtension)
+        }
+    }
+    into(layout.buildDirectory.dir("generated/site-extensions"))
+}
+
+tasks.named<org.teavm.gradle.tasks.GenerateWasmGCTask>("generateWasmGC") {
+    siteExtensionJars.forEach { jar ->
+        classpath.from(unpackSiteExtensions.map { it.destinationDir.resolve(jar.nameWithoutExtension) })
+    }
+    dependsOn(unpackSiteExtensions)
+}
+
+val buildWasmGCWithExtensions = tasks.register<org.teavm.gradle.tasks.GenerateWasmGCTask>("buildWasmGCWithExtensions") {
+    group = "build"
+    description = "The WasmGC build again, carrying every extension in extensions/, for their end-to-end tests"
+    val plain = tasks.named<org.teavm.gradle.tasks.GenerateWasmGCTask>("generateWasmGC")
+    classpath.from(plain.map { it.classpath })
+    extensionProjects.forEach { name ->
+        classpath.from(project(":extensions:$name").extensions.getByType<SourceSetContainer>()["main"].output)
+    }
+    mainClass.set(plain.flatMap { it.mainClass })
+    targetFileName.set(plain.flatMap { it.targetFileName })
+    obfuscated.set(plain.flatMap { it.obfuscated })
+    strict.set(plain.flatMap { it.strict })
+    debugInformation.set(plain.flatMap { it.debugInformation })
+    optimization.set(plain.flatMap { it.optimization })
+    fastGlobalAnalysis.set(plain.flatMap { it.fastGlobalAnalysis })
+    outOfProcess.set(plain.flatMap { it.outOfProcess })
+    processMemory.set(plain.flatMap { it.processMemory })
+    daemonClasspath.from(plain.map { it.daemonClasspath })
+    outputDir.set(layout.buildDirectory.dir("generated/teavm/wasm-gc-extensions").map { it.asFile })
+    mustRunAfter(plain)
+}
+
+val assembleWebBuildWithExtensions = tasks.register<Sync>("assembleWebBuildWithExtensions") {
+    group = "build"
+    description = "The web build's files with the WasmGC build that carries every extension, and their assets"
+    dependsOn(tasks.named("buildWasmGC"))
+    from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
+        exclude("jebol-web.wasm")
+    }
+    from(buildWasmGCWithExtensions) {
+        include("jebol-web.wasm")
+    }
+    extensionProjects.forEach { extension ->
+        from(project(":extensions:$extension").tasks.named("jar").map { zipTree((it as Jar).archiveFile) }) {
+            include("META-INF/jebol/assets/**")
+            eachFile { path = this.name }
+            includeEmptyDirs = false
+        }
+    }
+    into(layout.buildDirectory.dir("generated/web-with-extensions"))
+}
+
 val assembleSite = tasks.register<Sync>("assembleSite") {
     group = "build"
     description = "Assemble the static site: a runner page and the app it runs"
@@ -116,6 +212,11 @@ val assembleSite = tasks.register<Sync>("assembleSite") {
             "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
+    from(unpackSiteExtensions) {
+        include("*/META-INF/jebol/assets/**")
+        eachFile { path = this.name }
+        includeEmptyDirs = false
+    }
     val siteDirectory = layout.buildDirectory.dir("site")
     val app = file(theApp)
     doLast {
@@ -459,8 +560,6 @@ abstract class ArchiveTestResults : DefaultTask() {
         return head.toString().trim() + uncommitted
     }
 }
-
-val extensionProjects = listOf("sqlite")
 
 val extensionSuiteTasks = extensionProjects.flatMap { name ->
     listOf(":extensions:$name:functionalTests", ":extensions:$name:endToEndTests")
