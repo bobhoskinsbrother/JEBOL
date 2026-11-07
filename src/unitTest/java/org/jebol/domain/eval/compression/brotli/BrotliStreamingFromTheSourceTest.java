@@ -27,7 +27,21 @@ class BrotliStreamingFromTheSourceTest {
     private record Row(String key, List<String> calls) {
     }
 
+    private static byte[] readCorpusSlice(int size) {
+        try (InputStream in = BrotliStreamingFromTheSourceTest.class
+                .getResourceAsStream("/brotli/mapsdatazrh-first-30k.bin")) {
+            byte[] slice = in.readAllBytes();
+            assertThat(slice).hasSizeGreaterThanOrEqualTo(size);
+            return Arrays.copyOf(slice, size);
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+    }
+
     static byte[] makeInput(String kind, int size) {
+        if (kind.equals("maps")) {
+            return readCorpusSlice(size);
+        }
         byte[] out = new byte[size];
         long x = 12345;
         for (int at = 0; at < size; at++) {
@@ -172,75 +186,20 @@ class BrotliStreamingFromTheSourceTest {
         assertThat(replayDecode(row.key())).containsExactlyElementsOf(row.calls());
     }
 
-    private static final int BLOCK_SIZE_CAP = 1 << 24;
-    private static final int WORD_LENGTH = 4;
-    private static final int SHIFT_FOR_FOUR_LETTER_WORDS = 10;
-    private static final int TRIPLE_COPY_COMMAND = 130;
+    private static final int BLOCK_SIZE_CAP = BrotliBlockSwitchStreams.BLOCK_SIZE_CAP;
+    private static final int WORD_LENGTH = BrotliBlockSwitchStreams.WORD_LENGTH;
+    private static final int ONE_COMMAND_TYPE = 1;
+    private static final int TWO_COMMAND_TYPES = 2;
 
-    static int findFirstTransformEmptyingWord() {
-        byte[] out = new byte[600];
-        for (int transform = 1; transform < BrotliDictionary.TRANSFORM_COUNT; transform++) {
-            if (BrotliDictionary.writeTransformedWord(out, 0,
-                    BrotliDictionary.offsetFor(WORD_LENGTH), WORD_LENGTH, transform) == 0) {
-                return transform;
-            }
-        }
-        throw new IllegalStateException("no transform empties a four-letter word");
-    }
-
-    private record DistanceCode(int symbol, int extraBits, int extra) {
-
-        static DistanceCode forDistance(int distance) {
-            for (int symbol = 16; symbol < 64; symbol++) {
-                int bits = 1 + ((symbol - 16) >> 1);
-                int offset = ((2 + ((symbol - 16) & 1)) << bits) - 4;
-                if (distance - 1 >= offset && distance - 1 - offset < (1 << bits)) {
-                    return new DistanceCode(symbol, bits, distance - 1 - offset);
-                }
-            }
-            throw new IllegalArgumentException("no plain distance code reaches " + distance);
-        }
-    }
-
-    static byte[] buildEmptyWordsThenWord(int emptyWords) {
-        int transform = findFirstTransformEmptyingWord();
-        DistanceCode empty = DistanceCode.forDistance(1 + (transform << SHIFT_FOR_FOUR_LETTER_WORDS));
-        DistanceCode word = DistanceCode.forDistance(1);
-        BrotliBits bits = new BrotliBits(emptyWords / 8 * (2 + empty.extraBits()) + 64);
-        bits.write(1, 0);
-        bits.write(1, 1);
-        bits.write(1, 0);
-        bits.write(2, 0);
-        bits.write(16, WORD_LENGTH - 1);
-        bits.write(3, 0);
-        bits.write(6, 0);
-        bits.write(2, 0);
-        bits.write(2, 0);
-        bits.write(2, 1);
-        bits.write(2, 0);
-        bits.write(8, 'a');
-        bits.write(2, 1);
-        bits.write(2, 0);
-        bits.write(10, TRIPLE_COPY_COMMAND);
-        bits.write(2, 1);
-        bits.write(2, 1);
-        bits.write(6, word.symbol());
-        bits.write(6, empty.symbol());
-        for (int each = 0; each < emptyWords; each++) {
-            bits.write(1, 1);
-            bits.write(empty.extraBits(), empty.extra());
-        }
-        bits.write(1, 0);
-        bits.write(word.extraBits(), word.extra());
-        bits.jumpToByteBoundary();
-        return bits.written();
+    private static byte[] buildEmptyWordsThenWord(int emptyWords, int commandTypes) {
+        return BrotliBlockSwitchStreams.buildEmptyWordsThenWord(emptyWords, commandTypes);
     }
 
     private static List<String> replayCve(String key) {
-        int emptyWords = Integer.parseInt(key.split(" ")[1]);
-        byte[] stream = buildEmptyWordsThenWord(emptyWords);
+        String[] parts = key.split(" ");
+        byte[] stream = buildEmptyWordsThenWord(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
         List<String> calls = new ArrayList<>();
-        calls.add("transform:" + findFirstTransformEmptyingWord());
+        calls.add("transform:" + BrotliBlockSwitchStreams.findFirstTransformEmptyingWord());
         calls.add("stream:" + stream.length + ":" + digest(stream));
         BrotliStreamDecoder decoder = new BrotliStreamDecoder();
         try {
@@ -274,19 +233,22 @@ class BrotliStreamingFromTheSourceTest {
     @Nested
     class TheDecoder {
 
-        @Test
-        @DisplayName("2^24 commands of one block type decode, and the next one is refused")
-        void blockSizeCapIsInclusive() {
-            assertThat(Brotli.decompress(buildEmptyWordsThenWord(BLOCK_SIZE_CAP - 1), 0)).hasSize(WORD_LENGTH);
-            assertThatThrownBy(() -> Brotli.decompress(buildEmptyWordsThenWord(BLOCK_SIZE_CAP), 0))
+        @ParameterizedTest(name = "command block types {0}")
+        @ValueSource(ints = {ONE_COMMAND_TYPE, TWO_COMMAND_TYPES})
+        @DisplayName("2^24 commands, or distances, of one block type decode, and the next one is refused")
+        void blockSizeCapIsInclusive(int commandTypes) {
+            assertThat(Brotli.decompress(buildEmptyWordsThenWord(BLOCK_SIZE_CAP - 1, commandTypes), 0))
+                    .hasSize(WORD_LENGTH);
+            assertThatThrownBy(() -> Brotli.decompress(buildEmptyWordsThenWord(BLOCK_SIZE_CAP, commandTypes), 0))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("block switch");
         }
 
-        @Test
+        @ParameterizedTest(name = "command block types {0}")
+        @ValueSource(ints = {ONE_COMMAND_TYPE, TWO_COMMAND_TYPES})
         @DisplayName("the refused block switch is refused when it arrives a byte at a time, never waited on")
-        void blockSwitchRefusedWhileStreaming() {
-            byte[] stream = buildEmptyWordsThenWord(BLOCK_SIZE_CAP);
+        void blockSwitchRefusedWhileStreaming(int commandTypes) {
+            byte[] stream = buildEmptyWordsThenWord(BLOCK_SIZE_CAP, commandTypes);
             BrotliStreamDecoder decoder = new BrotliStreamDecoder();
             int head = stream.length - 8;
             decoder.decompress(Arrays.copyOfRange(stream, 0, head));

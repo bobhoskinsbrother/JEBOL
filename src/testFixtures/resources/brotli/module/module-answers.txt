@@ -147,6 +147,13 @@ native level 11 #{1B1600F88D946EDE445586966C206F214F1CE038}
 [decompress c 'br] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
 [decompress/size c 'br 5] => #{68656C6C6F}
 [decompress #{} 'br] => #{}
+--- decompress 'br refused, after import
+[decompress #{FFFFFFFF} 'br] => error Script/bad-press -15
+[decompress #{00} 'br] => error Script/bad-press 2
+[decompress #{11} 'br] => error Script/bad-press -13
+[decompress #{040000} 'br] => error Script/bad-press -1
+[decompress #{1C} 'br] => error Script/bad-press -2
+[decompress copy/part c (length? c) - 1 'br] => error Script/bad-press 2
 [length? b/decompress big] => 300000
 [equal? text 300000 b/decompress big] => #(true)
 [length? b/decompress/size big 100] => 100

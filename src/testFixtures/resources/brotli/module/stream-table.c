@@ -9,8 +9,19 @@
 
 static const char WORDS[] = "the quick brown fox jumps over a lazy dog ";
 
+static const char *corpus_slice;
+
 static uint8_t *make_input(const char *kind, size_t size) {
   uint8_t *out = malloc(size ? size : 1);
+  if (strcmp(kind, "maps") == 0) {
+    FILE *slice = fopen(corpus_slice, "rb");
+    if (!slice || fread(out, 1, size, slice) != size) {
+      fprintf(stderr, "the corpus slice holds fewer than %zu bytes\n", size);
+      exit(1);
+    }
+    fclose(slice);
+    return out;
+  }
   uint64_t x = 12345;
   size_t words = strlen(WORDS);
   for (size_t at = 0; at < size; at++) {
@@ -181,7 +192,23 @@ static int distance_symbol_for(uint32_t distance, int *extra_bits, uint32_t *ext
   return -1;
 }
 
-static void cve_case(size_t empty_words) {
+static void put_command_block_types(BitWriter *w, int command_types) {
+  if (command_types == 1) {
+    put_bits(w, 1, 0);
+    return;
+  }
+  put_bits(w, 1, 1);
+  put_bits(w, 3, 0);
+  put_bits(w, 2, 1);
+  put_bits(w, 2, 0);
+  put_bits(w, 2, 0);
+  put_bits(w, 2, 1);
+  put_bits(w, 2, 0);
+  put_bits(w, 5, 25);
+  put_bits(w, 24, (1u << 24) + 2 - 16625);
+}
+
+static void cve_case(size_t empty_words, int command_types) {
   int transform = first_transform_emptying_a_four_letter_word();
   uint32_t empty_distance = 1 + ((uint32_t)transform << 10);
   int empty_bits, word_bits;
@@ -194,16 +221,20 @@ static void cve_case(size_t empty_words) {
   put_bits(&w, 1, 0);
   put_bits(&w, 2, 0);
   put_bits(&w, 16, 4 - 1);
-  put_bits(&w, 3, 0);
+  put_bits(&w, 1, 0);
+  put_command_block_types(&w, command_types);
+  put_bits(&w, 1, 0);
   put_bits(&w, 6, 0);
   put_bits(&w, 2, 0);
   put_bits(&w, 2, 0);
   put_bits(&w, 2, 1);
   put_bits(&w, 2, 0);
   put_bits(&w, 8, 'a');
-  put_bits(&w, 2, 1);
-  put_bits(&w, 2, 0);
-  put_bits(&w, 10, 130);
+  for (int each = 0; each < command_types; each++) {
+    put_bits(&w, 2, 1);
+    put_bits(&w, 2, 0);
+    put_bits(&w, 10, 130);
+  }
   put_bits(&w, 2, 1);
   put_bits(&w, 2, 1);
   put_bits(&w, 6, (uint32_t)word_symbol);
@@ -224,7 +255,7 @@ static void cve_case(size_t empty_words) {
   BrotliDecoderResult result =
       BrotliDecoderDecompressStream(s, &available_in, &next_in, &available_out, &next_out, NULL);
   Record record = {FNV_START, 0, 0};
-  printf("cve %zu\ttransform:%d\tstream:%zu:%016llx", empty_words, transform, stream_size,
+  printf("cve %zu %d\ttransform:%d\tstream:%zu:%016llx", empty_words, command_types, transform, stream_size,
          (unsigned long long)fnv(w.data, stream_size, FNV_START));
   say_call(&record, 'D', buffer, sizeof buffer - available_out, (int)result);
   printf("\terror:%d\n", (int)BrotliDecoderGetErrorCode(s));
@@ -234,6 +265,7 @@ static void cve_case(size_t empty_words) {
 
 int main(int argc, char **argv) {
   FILE *cases = fopen(argv[1], "r");
+  corpus_slice = argv[2];
   char line[512];
   while (fgets(line, sizeof line, cases)) {
     char what[16], kind[16], hint[32], ops[64];
@@ -244,8 +276,8 @@ int main(int argc, char **argv) {
       encode_case(kind, size, level, mode, hint, ops);
     } else if (sscanf(line, "decode %15s %zu %d %zu", kind, &size, &level, &chunk) == 4) {
       decode_case(kind, size, level, chunk);
-    } else if (sscanf(line, "cve %zu", &size) == 1) {
-      cve_case(size);
+    } else if (sscanf(line, "cve %zu %d", &size, &level) == 2) {
+      cve_case(size, level);
     } else {
       sscanf(line, "%15s", what);
       fprintf(stderr, "unread case: %s", line);

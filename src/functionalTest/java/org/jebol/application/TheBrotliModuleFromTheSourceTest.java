@@ -1,13 +1,16 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.domain.eval.compression.brotli.BrotliBlockSwitchStreams;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.value.BinaryValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -258,6 +261,17 @@ class TheBrotliModuleFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("decompress 'br after import refuses with bad-press and the C's error number")
+        void refusesWithTheCsNumber() {
+            assertThat(answerTo("""
+                    c: b/compress {hello hello hello hello}
+                    collect [foreach bad reduce [#{FFFFFFFF} #{00} #{11} #{040000} #{1C} copy/part c (length? c) - 1] [
+                        e: try [decompress bad 'br]
+                        keep e/id keep e/arg1
+                    ]]""")).isEqualTo("[bad-press -15 bad-press 2 bad-press -13 bad-press -1 bad-press -2 bad-press 2]");
+        }
+
+        @Test
         @DisplayName("ignores bytes after the end of a stream")
         void ignoresTrailingBytes() {
             assertThat(answerTo("{hello} = to string! b/decompress join b/compress {hello} #{0102}"))
@@ -470,6 +484,45 @@ class TheBrotliModuleFromTheSourceTest {
                         r: try code keep/only either error? r [reduce [r/id r/arg1]] [r]
                     ]]""")).isEqualTo("""
                     [#(false) [invalid-path d/mode] 1 9 [bad-field-set mode] [bad-path-set d/finished:]]""");
+        }
+    }
+
+    @Nested
+    @DisplayName("CVE-2026-111497")
+    class BlockSwitchWithOneBlockType {
+
+        private String answerWithStream(byte[] stream, String source) {
+            Interpreter interpreter = makeInterpreter();
+            interpreter.define("stream", BinaryValue.ofBytes(stream));
+            interpreter.defineNewWordsIn(source);
+            return interpreter.display(interpreter.run(source));
+        }
+
+        @ParameterizedTest(name = "command block types {0}")
+        @ValueSource(ints = {1, 2})
+        @DisplayName("a block switch where there is one block type is refused by decompress 'br, by the module, and by its decoder")
+        void refusedEveryWay(int commandTypes) {
+            byte[] stream = BrotliBlockSwitchStreams.buildEmptyWordsThenWord(
+                    BrotliBlockSwitchStreams.BLOCK_SIZE_CAP, commandTypes);
+
+            assertThat(answerWithStream(stream, """
+                    before: error? try [decompress stream 'br]
+                    b: import 'brotli
+                    d: b/make-decoder
+                    r: try [b/decompress stream]
+                    after: try [decompress stream 'br]
+                    reduce [before after/id after/arg1 r/arg1 b/write/finish d stream d/finished]"""))
+                    .isEqualTo("""
+                            [#(true) bad-press -17 "Failed to decompress using the Brotli decoder!" #{} #(false)]""");
+        }
+
+        @Test
+        @DisplayName("2^24 commands of one block type are not refused by decompress 'br")
+        void capItselfDecodes() {
+            byte[] stream = BrotliBlockSwitchStreams.buildEmptyWordsThenWord(
+                    BrotliBlockSwitchStreams.BLOCK_SIZE_CAP - 1, 1);
+
+            assertThat(answerWithStream(stream, "length? decompress stream 'br")).isEqualTo("4");
         }
     }
 

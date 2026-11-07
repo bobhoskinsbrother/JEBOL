@@ -109,7 +109,7 @@ final class BrotliDecoder {
     static byte[] decodeUpToLimit(byte[] input, int limit) {
         Stream stream = new Stream(input, limit);
         if (stream.run() == Progress.NEEDS_MORE_INPUT) {
-            throw new IllegalArgumentException("Brotli data ends part way through");
+            throw new BrotliFormatError(BrotliFormatError.NEEDS_MORE_INPUT, "Brotli data ends part way through");
         }
         return stream.wholeOutput();
     }
@@ -212,7 +212,7 @@ final class BrotliDecoder {
                         case COMMANDS -> decodeCommands();
                         case PADDING -> {
                             markUnitStart();
-                            bits.jumpToByteBoundary();
+                            bits.jumpToByteBoundary(BrotliFormatError.PADDING_2);
                             phase = Phase.DONE;
                         }
                         case DONE -> {
@@ -257,7 +257,7 @@ final class BrotliDecoder {
             }
             more = bits.take(3);
             if (more == 1) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.WINDOW_BITS,
                         "this build does not read large-window Brotli");
             }
             windowBits = more != 0 ? 8 + more : 17;
@@ -290,14 +290,14 @@ final class BrotliDecoder {
             for (int each = 0; each < nibbles; each++) {
                 int nibble = bits.take(4);
                 if (each + 1 == nibbles && nibbles > 4 && nibble == 0) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.EXUBERANT_NIBBLE,
                             "Brotli meta-block length has a wasted nibble");
                 }
                 remaining |= nibble << (each * 4);
             }
             remaining++;
             if (!isLast && bits.take(1) != 0) {
-                bits.jumpToByteBoundary();
+                bits.jumpToByteBoundary(BrotliFormatError.PADDING_1);
                 lastMetaBlock = false;
                 phase = Phase.UNCOMPRESSED;
                 return;
@@ -330,7 +330,7 @@ final class BrotliDecoder {
 
         private int readMetadataLengthThenJumpToByteBoundary() {
             if (bits.take(1) != 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.RESERVED,
                         "Brotli metadata sets a reserved bit");
             }
             int byteCount = bits.take(2);
@@ -338,7 +338,7 @@ final class BrotliDecoder {
             for (int each = 0; each < byteCount; each++) {
                 int octet = bits.take(8);
                 if (each + 1 == byteCount && byteCount > 1 && octet == 0) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.EXUBERANT_META_NIBBLE,
                             "Brotli metadata length has a wasted byte");
                 }
                 remaining |= octet << (each * 8);
@@ -346,7 +346,7 @@ final class BrotliDecoder {
             if (byteCount != 0) {
                 remaining++;
             }
-            bits.jumpToByteBoundary();
+            bits.jumpToByteBoundary(BrotliFormatError.PADDING_1);
             return remaining;
         }
 
@@ -414,7 +414,7 @@ final class BrotliDecoder {
 
         private void refuseOverrun() {
             if (remaining < 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.BLOCK_LENGTH_2,
                         "Brotli commands run past the end of their meta-block");
             }
         }
@@ -488,7 +488,7 @@ final class BrotliDecoder {
             int reachable = (int) Math.min(dropped + outAt, maxBackwardDistance);
             if (distance > reachable) {
                 if (distance > MAX_ALLOWED_DISTANCE) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.DISTANCE,
                             "Brotli distance is larger than any distance can be");
                 }
                 remaining -= copyFromDictionaryAnsweringHowManyBytesItCameTo(
@@ -532,18 +532,18 @@ final class BrotliDecoder {
                 int address, int wordLength, int distance) {
             if (wordLength < BrotliDictionary.MIN_WORD_LENGTH
                     || wordLength > BrotliDictionary.LONGEST_LENGTH_WITH_SLOT) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.DICTIONARY,
                         "Brotli distance reaches past the start of the answer");
             }
             int shift = BrotliDictionary.readSizeBitsFor(wordLength);
             if (shift == 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.DICTIONARY,
                         "Brotli asks for a dictionary word of a length there are none of");
             }
             int wordIndex = address & ((1 << shift) - 1);
             int transform = address >>> shift;
             if (transform >= BrotliDictionary.TRANSFORM_COUNT) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.TRANSFORM,
                         "Brotli names a transform that is not there");
             }
             recentDistanceAt += howFarRecentDistanceCursorWasRolledBack;
@@ -552,7 +552,7 @@ final class BrotliDecoder {
             int written = BrotliDictionary.writeTransformedWord(
                     out, outAt, wordAt, wordLength, transform);
             if (written == 0 && distance <= 120) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.TRANSFORM,
                         "Brotli transform left nothing of its dictionary word");
             }
             outAt += written;
@@ -620,7 +620,7 @@ final class BrotliDecoder {
 
             void next() {
                 if (types == null) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.BLOCK_SWITCH,
                             "Brotli asks for a block switch where there is one block type");
                 }
                 int symbol = types.read(bits);
@@ -676,7 +676,7 @@ final class BrotliDecoder {
                 } else {
                     int repeats = (1 << symbol) + bits.take(symbol);
                     if (at + repeats > size) {
-                        throw new IllegalArgumentException(
+                        throw new BrotliFormatError(BrotliFormatError.CONTEXT_MAP_REPEAT,
                                 "Brotli context map repeats past its end");
                     }
                     for (int each = 0; each < repeats; each++) {
@@ -727,7 +727,7 @@ final class BrotliDecoder {
             for (int each = 0; each < howMany; each++) {
                 int symbol = bits.take(maxBits);
                 if (symbol >= alphabetSize) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.SIMPLE_HUFFMAN_ALPHABET,
                             "Brotli names a symbol outside its alphabet");
                 }
                 symbols[each] = symbol;
@@ -735,7 +735,7 @@ final class BrotliDecoder {
             for (int each = 0; each < howMany; each++) {
                 for (int other = each + 1; other < howMany; other++) {
                     if (symbols[each] == symbols[other]) {
-                        throw new IllegalArgumentException(
+                        throw new BrotliFormatError(BrotliFormatError.SIMPLE_HUFFMAN_SAME,
                                 "Brotli names the same symbol twice");
                     }
                 }
@@ -777,7 +777,7 @@ final class BrotliDecoder {
                     return each;
                 }
             }
-            throw new IllegalArgumentException(
+            throw new BrotliFormatError(BrotliFormatError.CL_SPACE,
                     "Brotli code-length code names nothing at all");
         }
 
@@ -800,7 +800,7 @@ final class BrotliDecoder {
                 }
             }
             if (symbolsUsed != 1 && space != 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.CL_SPACE,
                         "Brotli code-length code is not a prefix code");
             }
             Huffman lengthCode = symbolsUsed == 1
@@ -840,7 +840,7 @@ final class BrotliDecoder {
                 repeat += bits.take(extraBits) + 3;
                 int howMany = repeat - before;
                 if (symbol + howMany > alphabetSize) {
-                    throw new IllegalArgumentException(
+                    throw new BrotliFormatError(BrotliFormatError.HUFFMAN_SPACE,
                             "Brotli code lengths repeat past the alphabet");
                 }
                 if (repeatLength != 0) {
@@ -852,7 +852,7 @@ final class BrotliDecoder {
                 symbol += howMany;
             }
             if (remainingSpace != 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(BrotliFormatError.HUFFMAN_SPACE,
                         "Brotli prefix code does not fill its space");
             }
             return Huffman.ofLengths(lengths);
@@ -932,7 +932,7 @@ final class BrotliDecoder {
                     first = (first + howMany) << 1;
                     code <<= 1;
                 }
-                throw new IllegalArgumentException("Brotli symbol is longer than any code");
+                throw new BrotliFormatError(BrotliFormatError.UNREACHABLE, "Brotli symbol is longer than any code");
             }
         }
 
@@ -1005,10 +1005,10 @@ final class BrotliDecoder {
             return take(8);
         }
 
-        void jumpToByteBoundary() {
+        void jumpToByteBoundary(int refusedWith) {
             int spare = (int) (-position & 7);
             if (spare != 0 && take(spare) != 0) {
-                throw new IllegalArgumentException(
+                throw new BrotliFormatError(refusedWith,
                         "Brotli padding up to a byte boundary is not zero");
             }
         }

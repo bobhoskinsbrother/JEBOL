@@ -61,7 +61,7 @@ for index in $(seq 1 "$CASES"); do
     fi
 done
 
-"$WORK/stream-table" "$HERE/stream-cases.txt" > "$HERE/stream-table.tsv"
+"$WORK/stream-table" "$HERE/stream-cases.txt" "$HERE/../mapsdatazrh-first-30k.bin" > "$HERE/stream-table.tsv"
 
 rm -rf "$WORK"
 wc -l "$HERE"/module-*.txt "$HERE/stream-table.tsv"

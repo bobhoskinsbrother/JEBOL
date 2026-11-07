@@ -12,7 +12,7 @@ samples: [#{} #{00} #{0102} {hello hello hello hello}]
 foreach n [1000 16385 98305 300000] [append samples text n]
 encoding-before: copy system/schemes/http/headers/Accept-Encoding
 by-the-core: collect [
-	foreach sample samples [foreach level [0 1 2 5 6 9 10 11] [keep compress/level sample 'br level]]
+	foreach sample samples [foreach level [0 1 2 3 4 5 6 7 8 9 10 11] [keep compress/level sample 'br level]]
 ]
 b: either all [block? system/options/args not empty? system/options/args] [
 	import (to-rebol-file system/options/args/1)
@@ -20,10 +20,10 @@ b: either all [block? system/options/args not empty? system/options/args] [
 	import 'brotli
 ]
 by-the-extension: collect [
-	foreach sample samples [foreach level [0 1 2 5 6 9 10 11] [keep compress/level sample 'br level]]
+	foreach sample samples [foreach level [0 1 2 3 4 5 6 7 8 9 10 11] [keep compress/level sample 'br level]]
 ]
 by-its-command: collect [
-	foreach sample samples [foreach level [0 1 2 5 6 9 10 11] [keep b/compress/level sample level]]
+	foreach sample samples [foreach level [0 1 2 3 4 5 6 7 8 9 10 11] [keep b/compress/level sample level]]
 ]
 answer-of: func [r [any-type!]] [
 	case [
@@ -99,6 +99,9 @@ show [b/decompress "abc"]
 show [decompress c 'br]
 show [decompress/size c 'br 5]
 show [decompress #{} 'br]
+print "--- decompress 'br refused, after import"
+foreach bad [#{FFFFFFFF} #{00} #{11} #{040000} #{1C}] [show compose [decompress (bad) 'br]]
+show [decompress copy/part c (length? c) - 1 'br]
 big: b/compress text 300000
 show [length? b/decompress big]
 show [equal? text 300000 b/decompress big]

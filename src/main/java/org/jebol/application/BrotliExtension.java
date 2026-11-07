@@ -1,7 +1,9 @@
 package org.jebol.application;
 
 import org.jebol.domain.eval.CompressionMethod;
+import org.jebol.domain.eval.CompressionRefused;
 import org.jebol.domain.eval.compression.brotli.Brotli;
+import org.jebol.domain.eval.compression.brotli.BrotliFormatError;
 import org.jebol.domain.eval.compression.brotli.BrotliStreamDecoder;
 import org.jebol.domain.eval.compression.brotli.BrotliStreamEncoder;
 import org.jebol.domain.value.BinaryValue;
@@ -118,7 +120,11 @@ final class BrotliExtension {
 
             @Override
             public byte[] decompress(byte[] octets, long limit) {
-                return decompressUpTo(octets, limit & UNSIGNED_32);
+                try {
+                    return decodeUpTo(octets, limit & UNSIGNED_32);
+                } catch (BrotliFormatError refused) {
+                    throw new CompressionRefused(refused.code());
+                }
             }
         };
     }
@@ -149,16 +155,19 @@ final class BrotliExtension {
     }
 
     private static byte[] decompressUpTo(byte[] octets, long limit) {
+        try {
+            return decodeUpTo(octets, limit);
+        } catch (RuntimeException refused) {
+            throw new IllegalStateException(NO_DECOMPRESS);
+        }
+    }
+
+    private static byte[] decodeUpTo(byte[] octets, long limit) {
         long room = limit != NO_LIMIT ? limit : 2L * octets.length;
         if (room == 0) {
             return new byte[0];
         }
-        byte[] decoded;
-        try {
-            decoded = Brotli.decompress(octets, limit != NO_LIMIT && limit <= Integer.MAX_VALUE ? (int) limit : 0);
-        } catch (RuntimeException refused) {
-            throw new IllegalStateException(NO_DECOMPRESS);
-        }
+        byte[] decoded = Brotli.decompress(octets, limit <= Integer.MAX_VALUE ? (int) limit : 0);
         return limit != NO_LIMIT && decoded.length > limit ? Arrays.copyOf(decoded, (int) limit) : decoded;
     }
 }

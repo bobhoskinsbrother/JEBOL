@@ -1,6 +1,7 @@
 # One case a line: encode <input> <size> <level> <mode> <hint> <ops>
 #               or: decode <input> <size> <level> <chunk>
-# <input> is text or noise, made as stream-table.c and the Java tests make it.
+# <input> is text or noise, made as stream-table.c and the Java tests make it, or
+# maps, the first <size> bytes of ../mapsdatazrh-first-30k.bin from Brotli's corpus.
 # <hint> is - for none set. <ops> is one of:
 #   finish            the whole input, then FINISH in the same call
 #   process:N         chunks of N with PROCESS, then FINISH with no input
@@ -9,11 +10,14 @@
 #   late-hint:N       one chunk of N with PROCESS, then the hint set, then the rest with FINISH
 # A decode case compresses the input in one call at <level>, then feeds the stream
 # in chunks of <chunk> with unlimited output, writing what each call gave out.
-#               or: cve <words>
+#               or: cve <words> <command-types>
 # A cve case builds one meta-block of <words> dictionary words a transform leaves
-# empty, then one four-letter word, with one block type of each kind, and decodes it
-# in one call with 1.2.1's decoder: past 2^24 commands the block switch it asks for
-# is the one CVE-2026-111497 reported as wanting more input.
+# empty, then one four-letter word, and decodes it in one call with 1.2.1's decoder.
+# Literals and distances have one block type. With one command type, past 2^24
+# commands the command switch it asks for is the one CVE-2026-111497 reported as
+# wanting more input; with two, the first command block is longer than 2^24, and
+# the distance switch is the one asked for. Literals cannot reach theirs: a
+# meta-block holds at most 2^24 bytes.
 encode text 0 0 0 - finish
 encode text 1 0 0 - finish
 encode text 2 0 0 - finish
@@ -704,7 +708,49 @@ decode text 23 5 1
 decode text 0 5 1
 decode text 23 11 1
 decode text 0 11 1
-cve 0
-cve 3
-cve 16777215
-cve 16777216
+cve 0 1
+cve 3 1
+cve 16777215 1
+cve 16777216 1
+cve 0 2
+cve 16777215 2
+cve 16777216 2
+encode maps 30000 0 0 - process:4096
+encode maps 30000 1 0 - process:4096
+encode maps 30000 2 0 - process:4096
+encode maps 30000 3 0 - process:4096
+encode maps 30000 4 0 - process:4096
+encode maps 30000 5 0 - process:4096
+encode maps 30000 6 0 - process:4096
+encode maps 30000 7 0 - process:4096
+encode maps 30000 8 0 - process:4096
+encode maps 30000 9 0 - process:4096
+encode maps 30000 10 0 - process:4096
+encode maps 30000 11 0 - process:4096
+encode maps 30000 0 0 - flush:7000
+encode maps 30000 1 0 - flush:7000
+encode maps 30000 2 0 - flush:7000
+encode maps 30000 3 0 - flush:7000
+encode maps 30000 4 0 - flush:7000
+encode maps 30000 5 0 - flush:7000
+encode maps 30000 6 0 - flush:7000
+encode maps 30000 7 0 - flush:7000
+encode maps 30000 8 0 - flush:7000
+encode maps 30000 9 0 - flush:7000
+encode maps 30000 10 0 - flush:7000
+encode maps 30000 11 0 - flush:7000
+encode maps 30000 5 2 - read:5000
+encode maps 30000 11 2 - read:5000
+decode maps 30000 0 1000
+decode maps 30000 1 1000
+decode maps 30000 2 1000
+decode maps 30000 3 1000
+decode maps 30000 4 1000
+decode maps 30000 5 1000
+decode maps 30000 6 1000
+decode maps 30000 7 1000
+decode maps 30000 8 1000
+decode maps 30000 9 1000
+decode maps 30000 10 1000
+decode maps 30000 11 1000
+decode maps 30000 11 1
