@@ -1,0 +1,101 @@
+--- an encoder's fields
+[e] => handle #(handle! brotli-encoder 0#<address>)
+[e/type] => brotli-encoder
+[e/finished] => #(false)
+[e/mode] => error Script/invalid-path e/mode
+[e/size-hint] => error Script/invalid-path e/size-hint
+[e/nonsense] => error Script/invalid-path e/nonsense
+[e/finished: true] => error Script/bad-path-set e/finished:
+[e/mode: 1] => 1
+[e/mode: "text"] => error Script/bad-field-set mode
+[e/size-hint: 23] => 23
+[e/nonsense: 1] => error Script/bad-path-set e/nonsense:
+--- one encoder through every operation
+[same? e b/write e hello] => #(true)
+[e/finished] => #(false)
+[b/read e] => #{0B0B000024406A1065EAF09C3E03}
+[b/read e] => #{}
+[b/write/flush e hello] => #{B0000040022088892A3200}
+[b/write/flush e #{}] => #{}
+[b/write/flush e #{}] => #{}
+[b/write e none] => #{03}
+[e/finished] => #(true)
+[b/write e hello] => error Command/command-fail "Brotli encoder is finished!"
+[b/write/flush e hello] => error Command/command-fail "Brotli encoder is finished!"
+[b/write/finish e hello] => error Command/command-fail "Brotli encoder is finished!"
+[b/write e none] => error Command/command-fail "Brotli encoder is finished!"
+[b/read e] => error Command/command-fail "Brotli encoder is finished!"
+--- finishing at each level
+make-encoder/level 0 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+make-encoder/level 1 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+make-encoder/level 2 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+make-encoder/level 5 #{1B16000024406A1065EAF09C3E}
+make-encoder/level 6 #{1B16000024406A1065EAF09C3E}
+make-encoder/level 9 #{1B16000024406A1065EAF09C3E}
+make-encoder/level 10 #{1B1600F88D946EDE445586966C206F214F1CE038}
+make-encoder/level 11 #{1B1600F88D946EDE445586966C206F214F1CE038}
+make-encoder/level -1 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+make-encoder/level -2 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+make-encoder/level 12 #{1B1600F88D946EDE445586966C206F214F1CE038}
+[b/write/finish b/make-encoder hello] => #{1B16000024406A1065EAF09C3E}
+[b/write/finish b/make-encoder #{}] => #{3B}
+[b/write/finish b/make-encoder ""] => #{3B}
+[b/write/finish b/make-encoder "ěšč"] => #{8B0280C49BC5A1C48D03}
+[b/write/finish b/make-encoder next "Xhello"] => #{0B028068656C6C6F03}
+--- an encoder with nothing written
+[b/write b/make-encoder none] => _
+[b/read e] => _
+[b/write e none] => _
+[e/finished] => #(false)
+[b/write/flush e none] => _
+[b/write e none] => _
+--- small flushes
+[b/write/flush e "a"] => #{0B008061}
+[b/write/flush e "b"] => #{00000862}
+[b/write/finish e "c"] => #{0000086303}
+--- mode
+mode 0 0 binary of 11065 octets, crc 1479199562
+mode 1 1 binary of 11065 octets, crc 1479199562
+mode 2 2 binary of 11065 octets, crc 1479199562
+mode 3 3 binary of 11065 octets, crc 1479199562
+mode -1 -1 binary of 11065 octets, crc 1479199562
+--- size hint
+size-hint 0 0 binary of 11653 octets, crc 2241465854
+size-hint 1000 1000 binary of 11653 octets, crc 2241465854
+size-hint 20000 20000 binary of 11653 octets, crc 2241465854
+size-hint 1000000 1000000 binary of 11653 octets, crc 2241465854
+size-hint -1 -1 binary of 11161 octets, crc 449273823
+[e/size-hint: 20000] => 20000
+[b/write/finish e text 19000] => binary of 11070 octets, crc 2389998070
+--- a decoder's fields
+[d] => handle #(handle! brotli-decoder 0#<address>)
+[d/type] => brotli-decoder
+[d/finished] => #(false)
+[d/mode] => error Script/invalid-path d/mode
+[d/mode: 1] => 1
+[d/finished: true] => error Script/bad-path-set d/finished:
+--- one decoder through a stream in pieces
+[b/read d] => _
+[same? d b/write d copy/part c 10] => #(true)
+[b/read d] => #{}
+[length? b/write/flush d copy/part skip c 10 1000] => 1330
+[length? b/write/finish d skip c 1010] => 298670
+[d/finished] => #(true)
+[b/write d #{00}] => handle #(handle! brotli-decoder 0#<address>)
+[b/read d] => #{}
+[b/write d none] => #{}
+--- a decoder given a whole stream
+[b/write/finish d b/compress hello] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[d/finished] => #(true)
+[b/write d none] => #{}
+--- a decoder given what is not a stream
+[b/write/finish d #{FFFFFFFF}] => #{}
+[d/finished] => #(false)
+[b/write/finish d copy/part b/compress text 300000 100] => #{}
+[d/finished] => #(false)
+[b/write d none] => _
+--- handles of the wrong kind
+[b/write k hello] => error Command/command-fail "Invalid Brotli encoder or decoder handle!"
+[b/read k] => error Command/command-fail "Invalid Brotli encoder or decoder handle!"
+[k/finished] => error Script/invalid-path k/finished
+[b/write b/make-decoder b/make-encoder] => error Script/expect-arg write

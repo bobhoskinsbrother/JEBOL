@@ -103,10 +103,15 @@ since moved to 1.2.1 and is not what R3 asks for.
   finishes: the probe confirms the bytes agree before anything is built on it.
   Its decompress answers `#{}` for an empty input and for `/size 0` without
   decoding, and stops at the limit.
-- **`Accept-Encoding` is already right.** `prot-http.reb` appends `,br` when the
-  catalog has `br`, which the core's does, and the module's import code
-  appends only when no `br` follows a comma. So importing changes nothing there;
-  a test pins that.
+- **`Accept-Encoding` gains a second `br` on import.** `prot-http.reb` already
+  appends `,br` because the core's catalog has `br`, and the module's check only
+  looks at the item after the first comma, so it appends another:
+  `gzip,deflate,br,br`. The reference records it; JEBOL copies it.
+- **Step 0 found more,** all in `src/testFixtures/resources/brotli/module/README.md`:
+  the C corrupts memory silently, so every case there runs in a process of its
+  own; a level 0 or 1 encoder finished with `none` crashes; `make-encoder` clamps
+  a negative level to 0 where `compress` makes -1 into 6; and a decoder accepts
+  `mode` and `size-hint` because it inherits the encoder's `set_path`.
 - **The C's streaming quirks**, each to be confirmed by the probe: `write`
   answers the handle unless `/flush` or `/finish`, and then a copy of the buffer;
   `write` of `none` finishes; `read` on an encoder flushes first; `write` or

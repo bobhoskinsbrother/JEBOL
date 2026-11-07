@@ -1,0 +1,152 @@
+--- the module
+[encoding-before] => "gzip,deflate,br"
+[equal? by-the-core by-the-extension] => #(true)
+[equal? by-the-core by-its-command] => #(true)
+[select spec-of b 'version] => 0.1.0
+[select spec-of b 'title] => "Rebol Brotli Extension"
+[select spec-of b 'needs] => 3.20.5
+[words-of b] => [lib-base lib-file lib-local words version compress decompress make-encoder make-decoder write read]
+[b/version] => 1.2.0
+[type? b/version] => #(tuple!)
+[system/schemes/http/headers/Accept-Encoding] => "gzip,deflate,br,br"
+--- compress
+[b/compress hello] => #{1B16000024406A1065EAF09C3E}
+level 0 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+level 1 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+level 2 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+level 3 #{1B1600000036C6D6F51FA12114F2C4E15907}
+level 4 #{1B1600000436C6D6F51FA12114F2C4E15907}
+level 5 #{1B16000024406A1065EAF09C3E}
+level 6 #{1B16000024406A1065EAF09C3E}
+level 7 #{1B16000024406A1065EAF09C3E}
+level 8 #{1B16000024406A1065EAF09C3E}
+level 9 #{1B16000024406A1065EAF09C3E}
+level 10 #{1B1600F88D946EDE445586966C206F214F1CE038}
+level 11 #{1B1600F88D946EDE445586966C206F214F1CE038}
+level 12 #{1B1600F88D946EDE445586966C206F214F1CE038}
+level -1 #{1B16000024406A1065EAF09C3E}
+level -2 #{1B1600F88D946EDE445586966C206F214F1CE038}
+level 99 #{1B1600F88D946EDE445586966C206F214F1CE038}
+[b/compress #{}] => #{3B}
+[b/compress #{00}] => #{0B00800003}
+[b/compress #{0001}] => #{8B0080000103}
+[b/compress #{000102}] => #{0B018000010203}
+[b/compress ""] => #{3B}
+[b/compress "ěšč"] => #{8B0280C49BC5A1C48D03}
+[b/compress next "Xhello"] => #{0B028068656C6C6F03}
+[b/compress/part "abcdefghij" 5] => #{0B0280616263646503}
+[b/compress/part "abcdefghij" -3] => #{3B}
+[b/compress/part "abcdefghij" 100] => #{8B04806162636465666768696A03}
+[b/compress/part next "Xabcdefghij" 3] => #{0B018061626303}
+size 16383 level 0 binary of 9143 octets, crc 4253949976
+size 16383 level 1 binary of 9490 octets, crc 1597822914
+size 16383 level 2 binary of 9116 octets, crc 2856746061
+size 16383 level 5 binary of 9538 octets, crc 2307243212
+size 16383 level 9 binary of 9610 octets, crc 94702087
+size 16383 level 10 binary of 9080 octets, crc 571267093
+size 16383 level 11 binary of 9080 octets, crc 571267093
+size 16384 level 0 binary of 9144 octets, crc 2980968455
+size 16384 level 1 binary of 9491 octets, crc 1823489487
+size 16384 level 2 binary of 9116 octets, crc 2617157764
+size 16384 level 5 binary of 9539 octets, crc 4154427668
+size 16384 level 9 binary of 9611 octets, crc 310394614
+size 16384 level 10 binary of 9081 octets, crc 476202819
+size 16384 level 11 binary of 9081 octets, crc 476202819
+size 16385 level 0 binary of 9144 octets, crc 3243527609
+size 16385 level 1 binary of 9506 octets, crc 3704532975
+size 16385 level 2 binary of 9120 octets, crc 3290597257
+size 16385 level 5 binary of 9539 octets, crc 3119651156
+size 16385 level 9 binary of 9611 octets, crc 823860565
+size 16385 level 10 binary of 9080 octets, crc 2621406670
+size 16385 level 11 binary of 9080 octets, crc 2621406670
+size 65535 level 0 binary of 37171 octets, crc 1489100491
+size 65535 level 1 binary of 36070 octets, crc 125485939
+size 65535 level 2 binary of 36649 octets, crc 2538704648
+size 65535 level 5 binary of 38537 octets, crc 1079397523
+size 65535 level 9 binary of 38681 octets, crc 4182450856
+size 65535 level 10 binary of 36053 octets, crc 891833765
+size 65535 level 11 binary of 36053 octets, crc 891833765
+size 65536 level 0 binary of 37171 octets, crc 1640010501
+size 65536 level 1 binary of 36071 octets, crc 1150192708
+size 65536 level 2 binary of 36650 octets, crc 2057793890
+size 65536 level 5 binary of 38537 octets, crc 1384752870
+size 65536 level 9 binary of 38682 octets, crc 2317631584
+size 65536 level 10 binary of 36053 octets, crc 1971787604
+size 65536 level 11 binary of 36053 octets, crc 1971787604
+size 65537 level 0 binary of 37173 octets, crc 3368872414
+size 65537 level 1 binary of 36072 octets, crc 2138261891
+size 65537 level 2 binary of 36654 octets, crc 1746482271
+size 65537 level 5 binary of 38539 octets, crc 451757283
+size 65537 level 9 binary of 38683 octets, crc 2507581934
+size 65537 level 10 binary of 36054 octets, crc 1759861172
+size 65537 level 11 binary of 36054 octets, crc 1759861172
+size 98303 level 0 binary of 56048 octets, crc 722977614
+size 98303 level 1 binary of 54087 octets, crc 537894597
+size 98303 level 2 binary of 55212 octets, crc 1018407805
+size 98303 level 5 binary of 57974 octets, crc 2066544239
+size 98303 level 9 binary of 58136 octets, crc 571923045
+size 98303 level 10 binary of 54069 octets, crc 2031693825
+size 98303 level 11 binary of 54069 octets, crc 2031693825
+size 98304 level 0 binary of 56049 octets, crc 885275089
+size 98304 level 1 binary of 54087 octets, crc 4202083945
+size 98304 level 2 binary of 55213 octets, crc 2046133619
+size 98304 level 5 binary of 57974 octets, crc 309961456
+size 98304 level 9 binary of 58136 octets, crc 3314346486
+size 98304 level 10 binary of 54071 octets, crc 663477999
+size 98304 level 11 binary of 54071 octets, crc 663477999
+size 98305 level 0 binary of 56049 octets, crc 725628034
+size 98305 level 1 binary of 54088 octets, crc 3718007208
+size 98305 level 2 binary of 55217 octets, crc 1659252780
+size 98305 level 5 binary of 57975 octets, crc 2767606822
+size 98305 level 9 binary of 58137 octets, crc 3506322043
+size 98305 level 10 binary of 54072 octets, crc 4040608372
+size 98305 level 11 binary of 54072 octets, crc 4040608372
+size 4194303 level 0 binary of 2460117 octets, crc 1450547036
+size 4194303 level 1 binary of 2316886 octets, crc 802717735
+size 4194303 level 2 binary of 2405133 octets, crc 2350210007
+size 4194303 level 5 binary of 2447218 octets, crc 1442974724
+size 4194303 level 9 binary of 2466912 octets, crc 690633076
+size 4194303 level 10 binary of 2308345 octets, crc 3287744655
+size 4194303 level 11 binary of 2308345 octets, crc 3287744655
+size 4194304 level 0 binary of 2460118 octets, crc 3984017504
+size 4194304 level 1 binary of 2316887 octets, crc 3473891741
+size 4194304 level 2 binary of 2405133 octets, crc 1037853486
+size 4194304 level 5 binary of 2447219 octets, crc 2634368822
+size 4194304 level 9 binary of 2466912 octets, crc 528411479
+size 4194304 level 10 binary of 2308346 octets, crc 1081240723
+size 4194304 level 11 binary of 2308346 octets, crc 1081240723
+size 4194305 level 0 binary of 2460122 octets, crc 3198889903
+size 4194305 level 1 binary of 2316891 octets, crc 359158552
+size 4194305 level 2 binary of 2405138 octets, crc 1508581404
+size 4194305 level 5 binary of 2447219 octets, crc 1510692838
+size 4194305 level 9 binary of 2466913 octets, crc 2853988640
+size 4194305 level 10 binary of 2308348 octets, crc 4018855762
+size 4194305 level 11 binary of 2308348 octets, crc 4018855762
+--- compress 'br through the native, after import
+native level 0 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+native level 1 #{0B0B8068656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F03}
+native level 6 #{1B16000024406A1065EAF09C3E}
+native level 11 #{1B1600F88D946EDE445586966C206F214F1CE038}
+[compress hello 'br] => #{1B16000024406A1065EAF09C3E}
+[equal? compress text 100000 'br b/compress text 100000] => #(true)
+--- decompress
+[b/decompress c] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/size c 5] => #{68656C6C6F}
+[b/decompress/size c 0] => #{}
+[b/decompress/size c 1000] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/size c -1] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress/part c 5] => error Command/command-fail "Failed to decompress using the Brotli decoder!"
+[b/decompress/part c 0] => #{}
+[b/decompress/part c -1] => #{}
+[b/decompress #{}] => #{}
+[b/decompress #{00}] => error Command/command-fail "Failed to decompress using the Brotli decoder!"
+[b/decompress join c #{0102}] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[b/decompress copy/part c (length? c) - 1] => error Command/command-fail "Failed to decompress using the Brotli decoder!"
+[b/decompress #{FFFFFFFF}] => error Command/command-fail "Failed to decompress using the Brotli decoder!"
+[b/decompress "abc"] => error Command/command-fail "Failed to decompress using the Brotli decoder!"
+[decompress c 'br] => #{68656C6C6F2068656C6C6F2068656C6C6F2068656C6C6F}
+[decompress/size c 'br 5] => #{68656C6C6F}
+[decompress #{} 'br] => #{}
+[length? b/decompress big] => 300000
+[equal? text 300000 b/decompress big] => #(true)
+[length? b/decompress/size big 100] => 100
