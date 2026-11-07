@@ -94,7 +94,7 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. The `bzip2` module, then SQLite and Postgres as extension jars
+#### 1a. SQLite and Postgres as extension jars
 
 **JEBOL never fetches an extension** (decision 58). One it serves is ported to
 Java and carried in the build as a delayed entry, which IMPORT makes into a
@@ -109,13 +109,11 @@ thrown away:** whatever is compiled or scripted to learn an answer is checked
 in as a generator with the tables it writes, or becomes a test, and that test
 is what stays.
 
-Three pieces, in this order, each with its failing tests written first:
+Two pieces, in this order, each with its failing tests written first:
 
-1. **`import 'bzip2`.** Done: `docs/bzip2-port.md`. Where the C never answers,
-   `write/flush` above all, it says what JEBOL does instead.
-2. **SQLite, as one extension jar with two setups.** The full plan is below,
+1. **SQLite, as one extension jar with two setups.** The full plan is below,
    under "The SQLite plan". It was agreed on 2026-11-07.
-3. **Postgres, next, on the same pattern.** The same kind of jar with only a
+2. **Postgres, next, on the same pattern.** The same kind of jar with only a
    `jvm` setup, over pgjdbc. Browsers cannot open a TCP socket, so a site build
    that names it is refused. R3 has no Postgres extension, so no C decides its
    answers: settle its commands in `spec/` first, shaped like SQLite's (`open`,
@@ -126,8 +124,8 @@ Three pieces, in this order, each with its failing tests written first:
    start a Postgres installed from apt by `scripts/setup-machine.sh`, as they
    start Chrome; no Docker image.
 
-**Done when** every `bzip2` command answers as the extension's C does, SQLite's
-"Done when" below holds, and Postgres's does once its table is settled.
+**Done when** SQLite's "Done when" below holds, and Postgres's does once its
+table is settled.
 
 ##### The SQLite plan
 
