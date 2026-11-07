@@ -1,0 +1,8 @@
+[read %allowed.db] => error Access/security %./allowed.db
+[db: s/open %allowed.db] => #(handle! sqlite-db)
+[s/eval db "select a from t"] => [1]
+[s/eval db "insert into t values (2)"] => 1
+[s/close db] => unset
+[db: s/open %denied.db] => #(handle! sqlite-db)
+[s/exec db "create table t(a)"] => unset
+[s/close db] => unset

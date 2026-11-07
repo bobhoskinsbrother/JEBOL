@@ -1,0 +1,17 @@
+[s/exec db "select 1"] => error Command/command-fail {[SQLITE] bad parameter or other API misuse out of memory}
+[s/eval db "select 1"] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db st] => [1]
+[s/prepare db "select 1"] => error Command/command-fail {[SQLITE] bad parameter or other API misuse out of memory}
+[s/last-insert-id db] => crashed
+[s/trace db 3] => unset
+[s/step st] => [1]
+[s/columns st] => ["1"]
+[s/reset st] => unset
+[s/finalize st] => unset
+[s/eval db "select x''"] => crashed
+[s/eval db "select x'', 1"] => crashed
+[s/eval db "select 1, x''"] => crashed
+[s/eval db "select 'abc', x''"] => ["abc" #{616263}]
+[s/eval db "select x'01', x''"] => [#{01} #{01}]
+[s/step s/prepare db "select x''"] => crashed
+[s/eval db "select zeroblob(0)"] => crashed

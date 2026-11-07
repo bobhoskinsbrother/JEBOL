@@ -1,0 +1,63 @@
+--- the scheme
+[select system/schemes/sqlite 'title] => "SQLite database scheme"
+[exists? %new.db] => _
+[open sqlite:new.db] => error Access/cannot-open %./new.db "file not exists!"
+[open/new sqlite:not-exists/dir] => error Command/command-fail "[SQLITE] unable to open database file" _
+[exists? %new.db] => file
+[open? db] => #(true)
+[db/spec/path] => %./new.db
+[type? db/state/db] => #(handle!)
+[write db {create table cars(id integer primary key, name text); insert into cars values (1, 'Audi'), (2, 'Bentley'), (3, 'Citroen'), (4, 'Dacia'), (5, 'Elan')}] => unset
+n = 5
+
+[write db "select count(*) as n from cars"] => unset
+[write db "nonsense"] => error Command/command-fail {[SQLITE] SQL logic error near "nonsense": syntax error} _
+--- insert, take, read, pick
+[same? db insert db "select id, name from cars order by id"] => #(true)
+[length? db/state/statements] => 1
+[take db] => [1 "Audi"]
+[take db] => [2 "Bentley"]
+[take/part db 2] => [3 "Citroen" 4 "Dacia"]
+[take db] => [5 "Elan"]
+[take db] => _
+[take db] => _
+[same? db insert db "select id, name from cars order by id"] => #(true)
+[length? db/state/statements] => 1
+[read/part db 2] => [1 "Audi" 2 "Bentley"]
+[read db] => [3 "Citroen" 4 "Dacia" 5 "Elan"]
+[read db] => [1 "Audi" 2 "Bentley" 3 "Citroen" 4 "Dacia" 5 "Elan"]
+[same? db insert db "select id, name from cars order by id"] => #(true)
+[read db] => [1 "Audi" 2 "Bentley" 3 "Citroen" 4 "Dacia" 5 "Elan"]
+[insert db "nonsense"] => error Command/command-fail {[SQLITE] SQL logic error near "nonsense": syntax error} _
+[pick db "select name from cars where id > 3"] => ["Dacia" "Elan"]
+[length? db/state/statements] => 2
+[pick db "select name from cars where id > 99"] => _
+[same? db/data db/data] => #(true)
+[pick db "insert into cars values (6, 'Ford')"] => _
+[pick db "select count(*) from cars"] => [6]
+[pick db "insert into cars values (7, 'Gilbern')"] => _
+[pick db "select count(*) from cars"] => [7]
+--- modify
+[modify db 'trace-level 1] => unset
+[db/state/trace-level] => 1
+TRACE[1] STMT: select 1
+[pick db "select 1"] => [1]
+[modify db 'trace-level 0] => unset
+[modify db 'other 1] => _
+[pick db "select 2"] => [2]
+--- close
+[same? db close db] => #(true)
+[open? db] => #(false)
+[db/state/db] => _
+[length? db/state/statements] => 0
+[close db] => error Access/not-open sqlite:new.db _
+[write db "select 1"] => error Access/not-open sqlite:new.db _
+[insert db "select 1"] => error Access/not-open sqlite:new.db _
+[read db] => error Access/not-open sqlite:new.db _
+[take db] => error Access/not-open sqlite:new.db _
+[pick db "select 1"] => error Access/not-open sqlite:new.db _
+--- reopen
+[pick db "select name from cars order by id desc"] => ["Gilbern" "Ford" "Elan" "Dacia" "Citroen" "Bentley" "Audi"]
+[pick db "select count(*) from cars"] => [7]
+[db/spec/path] => %./sqlite
+[exists? %.db] => _

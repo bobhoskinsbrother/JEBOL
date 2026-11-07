@@ -1,0 +1,270 @@
+--- the module
+[reduce [spec/version spec/title spec/name spec/type spec/needs spec/author spec/License spec/Url spec/Exports]] => [3.46.0.0 "Rebol SQLite Extension" sqlite module 3.13.1 Oldes MIT https://github.com/Siskin-framework/Rebol-SQLite []]
+[words-of s] => [lib-base lib-file lib-local words info open exec eval last-insert-id finalize trace prepare reset step close columns initialize shutdown]
+[find words-of system/contexts/lib 'last-insert-id] => _
+[same? s system/modules/sqlite] => #(true)
+info: {
+Rebol-needed:   3.10.2
+Rebol-current:  3.22.5
+SQLite-version: ?
+SQLite-memory:  ?
+SQLite-mem-top: ?
+}
+--- open and exec
+[type? :db] => #(handle!)
+[mold :db] => "#(handle! sqlite-db)"
+info/of db: {sqlite-ctx-Ptr: <pointer>
+sqlite-ctx-DB:  <pointer>
+sqlite-buffer-size: 0
+}
+[s/exec db ""] => unset
+[s/exec db "   "] => unset
+[s/exec db {create table t(a, b); insert into t values (1, 'one'), (2, 'two');}] => unset
+a = 1
+b = one
+
+a = 2
+b = two
+
+n = 2
+
+[s/exec db "select * from t; select count(*) as n from t"] => unset
+[s/exec db "select null as nothing"] => error Command/command-fail {[SQLITE] SQL logic error near "nothing": syntax error}
+nil = NULL
+half = 1.5
+bin = 
+empty = 
+
+[s/exec db {select null as nil, 1.5 as half, x'00ff' as bin, '' as empty}] => unset
+[s/exec db "nonsense"] => error Command/command-fail {[SQLITE] SQL logic error near "nonsense": syntax error}
+[s/exec db "select * from missing"] => error Command/command-fail "[SQLITE] SQL logic error no such table: missing"
+[s/exec db {create table nn(a not null); insert into nn values (null)}] => error Command/command-fail {[SQLITE] constraint failed NOT NULL constraint failed: nn.a}
+1 = 1
+
+[s/exec db "select 1; nonsense; select 2"] => error Command/command-fail {[SQLITE] SQL logic error near "nonsense": syntax error}
+seven = 7
+
+[s/exec db next "Xselect 7 as seven"] => unset
+--- values
+[s/eval db {select 1, -1, 0, 9223372036854775807, -9223372036854775808}] => [1 -1 0 9223372036854775807 -9223372036854775808]
+[s/eval db "select 1.5, -0.25, 3.0, 1e300"] => [1.5 -0.25 3.0 1.0e300]
+[s/eval db "select 'text', '', 'Océane', 'ěšč', '😀'"] => ["text" "" "Océane" "ěšč" "😀"]
+[s/eval db "select null, x'00ff', x'01'"] => [_ #{00FF} #{01}]
+[length? first s/eval db "select zeroblob(100000)"] => 100000
+[s/eval db "select length(zeroblob(100000))"] => [100000]
+[s/eval db "select typeof(9223372036854775807 + 1)"] => ["real"]
+--- eval
+[s/eval db "select * from t order by a"] => [1 "one" 2 "two"]
+[s/eval db "select * from t where a > 100"] => 0
+[s/eval db "insert into t values (3, 'three')"] => 1
+[s/eval db "update t set b = upper(b)"] => 3
+[s/eval db "select a from t order by a; select 99"] => [1 2 3]
+[s/eval db next "Xselect 7"] => [7]
+[s/eval db reduce [next "Xselect 8"]] => [8]
+[s/eval db "nonsense"] => error Command/command-fail "[SQLITE] SQL logic error"
+[s/eval db ""] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db []] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db [1]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db ["select ?" 5]] => [5]
+[s/eval db ["select ?, ?" 5]] => [5 _]
+[s/eval db ["select ?" 5 6]] => [5]
+[s/eval db ["select 1"]] => [1]
+[s/eval db [sql]] => [3]
+[s/eval db [:sql]] => [3]
+[s/eval db ["select ?" next "xA_di"]] => [_]
+[s/eval db reduce ["select ?" next "xA_di"]] => ["xA_di"]
+[s/eval db reduce ["select ?, ?" next "xA_di" next "ěšč"]] => ["xA_di" "ěšč"]
+[s/eval db reduce ["select ?" :print]] => [_]
+[s/eval db reduce ["select ?" make map! []]] => [_]
+[s/eval db reduce ["select ?" 'word]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db ["select ?" o/y]] => ["why"]
+[s/eval db ["select ?" :o/y]] => ["why"]
+[s/eval db ["select ?" "ěšč"]] => ["ěšč"]
+[s/eval db ["select ?, ?, ?, ?, ?" 1 2.5 "x" _ #(true)]] => [1 2.5 "x" _ 1]
+[s/eval db ["select ?" #(false)]] => [0]
+[s/eval db ["select ?" #{01}]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db ["select ?" [1]]] => [1]
+[s/eval db ["select ?" foo]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/exec db "create table p(a, b, c)"] => unset
+[s/eval db ["insert into p values (?, ?, ?)" 1 2 3 4 5 6]] => 2
+[s/eval db ["insert into p values (?, ?, ?)" 7 8]] => 1
+[s/eval db ["insert into p values (?, ?, ?)" [10 11 12] [13 14] [15 16 17 18]]] => 3
+[s/eval db ["insert into p values (?, ?, ?)" [20 21 22] 23 24 25]] => 2
+[s/eval db "select * from p order by rowid"] => [1 2 3 4 5 6 7 8 _ 10 11 12 13 14 _ 15 16 17 20 21 22 23 24 25]
+[s/eval db ["insert into p values (?, ?, ?)" [30 31 32] [33 #{01} 34]]] => 2
+[s/eval db "select count(*) from p"] => [10]
+[s/exec db "create table q(a not null)"] => unset
+[s/eval db ["insert into q values (?)" 1 _ 2]] => error Command/command-fail "[SQLITE] constraint failed"
+[s/eval db "select * from q"] => [1]
+[s/last-insert-id db] => 1
+--- prepare, step, columns, reset, finalize
+[type? :st] => #(handle!)
+[mold :st] => "#(handle! sqlite-stmt)"
+info/of stmt: {sqlite-stmt-Ptr:  <pointer>
+sqlite-stmt:      <pointer>
+last-result-code:  100
+bind-parameters:   0
+data-count:        0
+}
+[s/columns st] => ["a" "b"]
+[s/step st] => [1 "ONE"]
+info/of stmt: {sqlite-stmt-Ptr:  <pointer>
+sqlite-stmt:      <pointer>
+last-result-code:  100
+bind-parameters:   0
+data-count:        2
+}
+[s/step st] => [2 "TWO"]
+[s/step st] => [3 "THREE"]
+[s/step st] => _
+[s/step st] => _
+[s/reset st] => unset
+[s/step/rows st 2] => [1 "ONE" 2 "TWO"]
+[s/step/rows st 2] => [3 "THREE"]
+[s/reset st] => unset
+[s/step/rows st 0] => [1 "ONE" 2 "TWO" 3 "THREE"]
+[s/reset st] => unset
+[s/step/rows st -1] => [1 "ONE" 2 "TWO" 3 "THREE"]
+[s/reset st] => unset
+[s/step/rows st 1] => [1 "ONE"]
+[s/reset st] => unset
+[s/step/rows st 100] => [1 "ONE" 2 "TWO" 3 "THREE"]
+[s/step/rows st 100] => _
+[s/finalize st] => unset
+info/of stmt: {sqlite-stmt-Ptr:  <pointer>
+sqlite-stmt:      <pointer>
+last-result-code:  101
+bind-parameters:   0
+data-count:        0
+}
+[s/step st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/columns st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/reset st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/finalize st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db reduce [st]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/eval db reduce [st 1]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/prepare db "nonsense"] => error Command/command-fail {[SQLITE] SQL logic error near "nonsense": syntax error}
+[s/prepare db next "Xselect 1"] => #(handle! sqlite-stmt)
+[type? :empty-st] => #(handle!)
+[s/step empty-st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/columns empty-st] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/columns s/prepare db "create table cc(a)"] => _
+[s/columns s/prepare db "select 1 as one, 2, x'01' as b"] => ["one" "2" "b"]
+[s/columns s/prepare db "select randomblob(4)"] => ["randomblob(4)"]
+--- many rows
+[reduce [length? r first r last r]] => [1001 1 1001]
+[reduce [length? r first r last r]] => [499 1002 1500]
+[s/step/rows many 1001] => _
+[s/reset many] => unset
+[reduce [length? r first r last r]] => [1500 1 1500]
+[s/finalize many] => unset
+[length? s/eval db {with recursive c(x) as (select 1 union all select x + 1 from c limit 1500) select x from c}] => 1500
+--- step/with
+[s/step/with w [1 2]] => [1 2]
+[s/reset w] => unset
+[s/step/with w [1]] => [1 _]
+[s/reset w] => unset
+[s/step/with w []] => [_ _]
+[s/reset w] => unset
+[s/step/with w [1 2 3]] => [1 2]
+[s/reset w] => unset
+[s/step/with w [1.5 "x"]] => [1.5 "x"]
+[s/reset w] => unset
+[s/step/with w [_ #(true)]] => [_ 1]
+[s/reset w] => unset
+[s/step/with w [#(false) "ěšč"]] => [0 "ěšč"]
+[s/reset w] => unset
+[s/step/with w reduce [next "xA_di" next "ěšč"]] => ["xA_di" "ěšč"]
+[s/reset w] => unset
+[s/step/with w [#{01} 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w [[1] 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w [unset-word 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w ['x 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w [1 2-Nov-2026]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w [x :x]] => [41 41]
+[s/reset w] => unset
+[s/step/with w [o/y 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step/with w [:o/y 1]] => ["why" 1]
+[s/reset w] => unset
+[s/step/with w [(1 + 1) 1]] => error Command/command-fail "[SQLITE] Unsupported value type!"
+[s/reset w] => unset
+[s/step w] => [_ _]
+[s/step/with w [5 6]] => _
+[s/step/with w [7 8]] => _
+[s/finalize w] => unset
+[s/step/with named [1 2 3 4]] => [1 2 3 4]
+[s/finalize named] => unset
+--- stepping after done
+[s/step ro] => [1]
+[s/step ro] => _
+[s/step ro] => _
+[s/step ro] => _
+info/of stmt: {sqlite-stmt-Ptr:  <pointer>
+sqlite-stmt:      <pointer>
+last-result-code:  101
+bind-parameters:   0
+data-count:        0
+}
+[s/reset ro] => unset
+[s/step ro] => [1]
+[s/finalize ro] => unset
+[s/step wr] => _
+[s/step wr] => _
+[s/step wr] => _
+[s/eval db "select count(*) from t where a = 9"] => [3]
+[s/finalize wr] => unset
+[s/step bad] => error Command/command-fail "constraint failed"
+[s/step bad] => error Command/command-fail "constraint failed"
+[s/finalize bad] => unset
+[s/step dup] => _
+[s/step dup] => error Command/command-fail "constraint failed"
+[s/finalize dup] => unset
+[s/eval db ev] => [1 2 3 9 9 9]
+[s/eval db ev] => [1 2 3 9 9 9]
+[s/step ev] => _
+[s/eval db reduce [ev]] => [1 2 3 9 9 9]
+[s/finalize ev] => unset
+[s/eval db reduce [lk 1]] => ["ONE"]
+[s/eval db reduce [lk 2]] => ["TWO"]
+[s/eval db reduce [lk 99]] => 0
+[s/eval db reduce [lk 3]] => ["THREE"]
+[s/finalize lk] => unset
+--- handles of the wrong kind
+[s/exec st "select 1"] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/eval st "select 1"] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/prepare st "select 1"] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/last-insert-id st] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/trace st 0] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/close st] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/step db] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/columns db] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/reset db] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/finalize db] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db db] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db reduce [db]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/exec k "select 1"] => error Command/command-fail "Invalid SQLite DB handle!"
+[s/step k] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db k] => error Command/command-fail "Invalid SQLite STMT handle!"
+[s/eval db reduce [k]] => error Command/command-fail "[SQLITE] bad parameter or other API misuse"
+[s/info/of k] => ""
+[s/finalize st] => unset
+--- the library
+[s/shutdown] => #(true)
+[s/shutdown] => #(true)
+[s/initialize] => #(true)
+[s/initialize] => #(true)
+[s/eval db "select count(*) from t"] => [6]
+--- close
+[s/close db] => unset
+[s/close db] => unset
+info/of db: {sqlite-ctx-Ptr: <pointer>
+sqlite-ctx-DB:  <pointer>
+sqlite-buffer-size: 0
+}

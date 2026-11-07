@@ -1,0 +1,22 @@
+--- 1: the statement
+TRACE[1] STMT: insert into t values (7)
+TRACE[1] STMT: select a from t where a = 'text'
+TRACE[1] STMT: select 1;
+1 = 1
+
+TRACE[1] STMT: select 2
+2 = 2
+
+TRACE[1] STMT: select 1.5, NULL
+--- 4: each row
+TRACE[4] ROW
+TRACE[4] ROW
+--- 6: rows and timings
+TRACE[4] ROW
+TRACE[2] PROFILE: <n>ns
+--- 0: nothing
+--- 17: masked to 1
+TRACE[1] STMT: select 17
+--- 8: the close
+TRACE[8] CLOSE
+--- done
