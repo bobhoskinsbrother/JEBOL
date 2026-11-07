@@ -460,7 +460,14 @@ abstract class ArchiveTestResults : DefaultTask() {
     }
 }
 
-val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests")
+val extensionProjects = listOf("sqlite")
+
+val extensionSuiteTasks = extensionProjects.flatMap { name ->
+    listOf(":extensions:$name:functionalTests", ":extensions:$name:endToEndTests")
+}
+
+val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests") +
+    extensionProjects.flatMap { name -> listOf("${name}FunctionalTests", "${name}EndToEndTests") }
 
 val gateWasAskedFor = gradle.startParameter.taskNames
     .map { it.removePrefix(":") }
@@ -478,9 +485,15 @@ val archiveTestResults = tasks.register<ArchiveTestResults>("archiveTestResults"
 
 val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests and endToEndTests, then archiveTestResults"
+    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests and endToEndTests, " +
+        "then each extension's functional and end-to-end tests, then archiveTestResults"
     dependsOn(checkSpec, unitTests, functionalTests, heapExhaustionTests, endToEndTests)
+    dependsOn(extensionSuiteTasks)
     finalizedBy(archiveTestResults)
+}
+
+extensionSuiteTasks.forEach { suite ->
+    project.tasks.named("archiveTestResults") { mustRunAfter(suite) }
 }
 
 listOf(unitTests, functionalTests, heapExhaustionTests, endToEndTests).forEach { suite ->

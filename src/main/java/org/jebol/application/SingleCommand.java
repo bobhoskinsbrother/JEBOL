@@ -123,6 +123,11 @@ final class SingleCommand implements Command {
             public String hostPath(String path) {
                 return evaluator.ports().files().hostPath(path);
             }
+
+            @Override
+            public String locationFor(String path) {
+                return evaluator.ports().files().locationFor(path);
+            }
         };
     }
 

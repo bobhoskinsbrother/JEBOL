@@ -13,6 +13,10 @@
 # Gradle
 /.gradle/
 /build/
+/buildSrc/.gradle/
+/buildSrc/.kotlin/
+/buildSrc/build/
+/extensions/*/build/
 
 # Every gate run's test results and summary, one timestamped folder each,
 # written by `archiveTestResults` at the end of `allTests`. Outside build/ so

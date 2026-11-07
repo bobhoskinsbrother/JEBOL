@@ -7,3 +7,5 @@ plugins {
 }
 
 rootProject.name = "jebol"
+
+include("extensions:sqlite")

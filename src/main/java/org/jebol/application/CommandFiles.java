@@ -13,4 +13,6 @@ public interface CommandFiles {
     Optional<FileInformation> describe(String path);
 
     String hostPath(String path);
+
+    String locationFor(String path);
 }
