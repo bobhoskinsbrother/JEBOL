@@ -2704,6 +2704,31 @@ do to any file. `:memory:` never touches the port.
 - Both engines are pinned to the newest SQLite they share. The module keeps
   version 3.46.0.0, and only `info`'s `SQLite-version` reports the engine.
 
+**What building SQLite settled, 2026-11-07.** `docs/sqlite-port.md` has the
+detail.
+- **An extension with a header waits for IMPORT.** `Extension.withHeader`
+  stores it as R3 stores a `delay` extension, so its commands never reach `lib`
+  and may share a native's name. Only its header's exports reach `lib`, on
+  IMPORT, and the seal is checked against them. The eight bundled extensions
+  take the same route, and `BundledExtension` is gone.
+- **The engines sit below the drivers.** Both expose SQLite's own C API to one
+  `SqliteEngine` interface: sqlite4j's WebAssembly exports called directly,
+  under its JDBC layer, and `sqlite3.wasm`'s exports through a short glue
+  script. The commands are then the C, call for call.
+- **A site finds a web provider through `ServiceLoader`,** which TeaVM supports
+  for WasmGC, not a generated class. The plugin writes
+  `META-INF/services/org.jebol.application.WebExtensionProvider` and the jar's
+  resource list, which TeaVM reads beside the core's. `-Pextensions` unpacks
+  each jar first, because TeaVM in the daemon keeps a jar open and reads a stale
+  copy when it is rebuilt under it.
+- **The gate builds the web module twice:** once plain, for the core's tests,
+  and once carrying every extension in `extensions/`, on which Chrome runs the
+  extension's reference scripts.
+- **A file is written after each change outside a transaction, and read again
+  when it changed,** by size, modification time, or a write-back from another
+  handle in the same JVM.
+- **Both engines are SQLite 3.54.1.** sqlite.org's zip is pinned by SHA-256.
+
 **Postgres is JVM only.** A browser cannot open a TCP socket, so reaching
 Postgres from the web would need a relay someone runs, and pgjdbc does not
 compile under TeaVM.

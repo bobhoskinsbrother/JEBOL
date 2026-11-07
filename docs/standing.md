@@ -64,3 +64,7 @@ a baseline from the same machine rather than against the row.
 - **No Java PDF implementation in the interpreter jar.** The borrowed codec is
   what Rebol has; more than that is a library the caller adds, which is goal 12.
 - **bzip2 answers where its C never does.** Decision 62.
+- **SQLite is a jar beside JEBOL's, not inside it.** `jebol-sqlite.jar` serves
+  Rebol-SQLite 3.46.0.0 on the command line and in a site built with it; without
+  it `import 'sqlite` fails. It asks SECURE where the C never does, and answers
+  where the C crashes. Decision 63 and `docs/sqlite-port.md`.

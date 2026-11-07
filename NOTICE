@@ -482,3 +482,26 @@ are MathPresso's output and do not ship.
     2. Altered source versions must be plainly marked as such, and must not be
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
+
+------------------------------------------------------------------------
+
+The SQLite extension, extensions/sqlite/, builds jebol-sqlite.jar, which is
+not part of JEBOL's own jar and ships apart from it.
+
+It includes a port of Rebol-SQLite 3.46.0.0
+(https://github.com/Siskin-framework/Rebol-SQLite), Copyright (c) 2024
+Oldes, licensed under the MIT License, whose text is carried in the jar at
+org/jebol/extension/sqlite/Rebol-SQLite-LICENSE.txt. The commands in
+extensions/sqlite/src/main/java/org/jebol/extension/sqlite/SqliteCommands.java
+are written from its C, and org/jebol/extension/sqlite/sqlite-scheme.reb is
+its sqlite-scheme.reb with the two edits docs/sqlite-port.md lists. They
+remain under the MIT License; they are not relicensed under the Apache
+License.
+
+The jar carries sqlite.org's WebAssembly build of SQLite 3.54.1, sqlite3.js
+and sqlite3.wasm, and runs on the JVM with sqlite4j 3.54.1.0 beside it.
+SQLite is in the public domain (https://sqlite.org/copyright.html).
+sqlite4j (https://github.com/roastedroot/sqlite4j), Endive and ZeroFS are
+licensed under the Apache License, Version 2.0, and are not modified. The
+reference transcripts under extensions/sqlite/src/functionalTest/resources/
+are the output of Rebol-SQLite's C and do not ship.

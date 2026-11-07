@@ -127,6 +127,11 @@ value Bounds {
     -- an extension is granting it: one the bounds do not carry is not
     -- there for the script to call.
     extensions: List<Extension> = empty
+
+    -- What was refused before any interpreter saw it: a jar whose
+    -- descriptor does not read, names no jvm setup, or names a provider
+    -- that is not there. Listed with the installed ones, as bad-extension.
+    refused_extensions: List<ExtensionReport> = empty
 }
 
 -- A library a host adds: Java behind REBOL words, in the shape R3's own
@@ -146,6 +151,10 @@ value Extension {
     -- Kinds of handle the commands hand to scripts, each naming the Java
     -- class it holds.
     handle_kinds: List<HandleKind> = empty
+    -- A REBOL header, as the extension's own C declares it. With one, the
+    -- extension waits in `system/modules` until IMPORT, as R3 keeps one
+    -- whose header asks for delay; without, its commands go into `lib`.
+    header: String = ""
 }
 
 -- One word the extension exports, with the spec a script sees: help text,
@@ -1017,9 +1026,55 @@ rule AnExtensionThatCannotStartIsNotInstalled {
 rule AnInstalledExtensionIsAModuleInLib {
     when: InstallExtension(interpreter, extension)
     requires: not ExtensionRefused(interpreter, extension)
+    requires: extension.header = ""
     ensures: system_modules_entry(interpreter, extension.name) = the_module_made(extension)
     ensures: for command in extension.commands:
         lib_word(interpreter, command.name) = a_command_value(command)
+}
+
+-- An extension with a header is stored as R3's `load-boot-exts` stores one
+-- whose header asks for delay: a block of the header and the extension in
+-- `system/modules`, which IMPORT makes into the module on first use. Its
+-- commands never reach `lib`, so they may share a native's name, as SQLite's
+-- `open` and `close` do. Only the words its header exports reach `lib`, on
+-- IMPORT, and the seal is checked against those words when it is installed.
+-- The eight extensions JEBOL carries take this route too.
+rule AnExtensionWithAHeaderWaitsForImport {
+    when: InstallExtension(interpreter, extension)
+    requires: not ExtensionRefused(interpreter, extension)
+    requires: extension.header != ""
+    ensures: system_modules_entry(interpreter, extension.name) = the_header_and_extension(extension)
+    ensures: for command in extension.commands:
+        not lib_word_made_by(interpreter, command.name, extension)
+}
+
+rule AHeadersExportsMayNotTakeANameTheLibraryHolds {
+    when: InstallExtension(interpreter, extension)
+    requires: extension.header != ""
+    requires: some_header_export_is_held_by_lib(extension, interpreter)
+    ensures: ExtensionRefused(interpreter, extension, error: already_used)
+}
+
+-- The command line and the desktop app read every
+-- `META-INF/jebol/extension.reb` on their classpath and add each jar's jvm
+-- setup to their bounds. A jar that cannot be read that way is refused as
+-- bad-extension and stops nothing else. A host embedding JEBOL reads none:
+-- adding an extension to its bounds is the grant. Decision 63.
+rule TheCommandLineAddsEveryJarsJvmSetup {
+    when: interpreter: Interpreter.built
+    requires: built_by_the_command_line(interpreter)
+    ensures: for jar in the_extension_jars_on_the_classpath():
+        jar_is_added_or_refused(interpreter.bounds, jar)
+}
+
+-- A command reaches files as READ and WRITE do: through the host's file
+-- port, from `what-dir`, refused without the files grant and checked by
+-- SECURE. A file the port cannot reach is an answer, not a failure. And a
+-- command may ask any value whether it is a handle, and of which kind,
+-- without raising.
+rule ACommandReachesFilesAsAScriptDoes {
+    when: CallCommand(command, arguments)
+    ensures: the_command_files_obey_the_grant_and_secure(the_calling_interpreter())
 }
 
 -- The host can ask what was installed and what was refused, and why.

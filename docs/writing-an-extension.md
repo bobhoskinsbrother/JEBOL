@@ -428,7 +428,123 @@ The seal is only against extensions. A script can still write
 
 ---
 
-## 10. Testing an extension
+## 10. Keeping the commands in the module: a header
+
+Give an extension a REBOL header, as an R3 extension's C declares one, and it
+behaves as an extension R3 loads with `delay`. It waits in `system/modules`
+until a script imports it, and its commands stay in the module:
+
+```java
+Extension store = new Extension("store", "2.0.0", List.of(
+        new ExtensionCommand("open", "name [string!]", call -> ...),
+        new ExtensionCommand("close", "shelf [handle!]", call -> ...)))
+        .withHeader("REBOL [Title: {Rebol Store Extension} Name: store Type: module Exports: []]");
+```
+
+```
+>> s: import 'store
+>> s/open "top"
+```
+
+Because nothing reaches `lib`, a command may share a native's name: SQLite's
+`open` and `close` do. The words the header's `Exports:` names reach `lib` on
+IMPORT, and only those are checked against the seal, when the extension is
+installed. Everything else in section 9 holds: the refusals, the report, and
+all or nothing.
+
+A command can also reach files and ask about handles without raising:
+
+- `call.files().read(path)`, `write(path, octets)` and `describe(path)` go
+  through the host's file port, from `what-dir`, as READ and WRITE do. They are
+  refused without the files grant and checked by SECURE, and that refusal
+  raises. A file the port cannot reach is an empty answer or `false`.
+  `locationFor(path)` answers where a relative path lies now, so a later
+  `change-dir` does not move it.
+- `call.handleKind(value)` answers a handle's kind, any extension's or Rebol's
+  own, and empty for anything else. Use it when the C answers its own failure
+  for a handle of the wrong kind, as SQLite's does, rather than `unwrap`'s
+  `invalid-handle`.
+
+---
+
+## 11. An extension in its own jar
+
+An extension that should not be in every build, or that needs libraries, goes
+in a jar of its own. The command line and the desktop app take it from the
+classpath; a site takes it from the build. Decision 63 says why.
+`extensions/sqlite/` is the worked example.
+
+**The project.** Add `extensions/<name>/build.gradle.kts`, include it in
+`settings.gradle.kts`, and add the name to `extensionProjects` in the root
+build so the gate runs its tests:
+
+```kotlin
+plugins {
+    id("jebol-extension")
+}
+
+jebolExtension {
+    name = "sqlite"
+    version = "3.46.0.0"
+    jvmProvider = "org.jebol.extension.sqlite.SqliteOnTheJvm"
+    webProvider = "org.jebol.extension.sqlite.SqliteInTheBrowser"
+    webAssets.from(fetchSqliteWasm, "src/web/jebol-sqlite.js")
+}
+
+dependencies {
+    jvmLibraries("io.roastedroot:sqlite4j:3.54.1.0")
+}
+```
+
+From that one declaration the plugin writes:
+
+- `META-INF/jebol/extension.reb`, the descriptor, naming each setup's provider,
+  the jvm setup's library jars and the web setup's assets;
+- the jar's manifest `Class-Path`, from the same libraries, so the two cannot
+  drift apart;
+- for a web setup, `META-INF/services/org.jebol.application.WebExtensionProvider`
+  and `META-INF/jebol/web-resources.txt`, the jar's resources for TeaVM.
+
+`assembleExtension` puts `jebol-<name>.jar` and its libraries in
+`build/jebol-extension/`. A web asset fetched from the internet is pinned with
+`FetchVerifiedArchive`, by SHA-256.
+
+**The providers.** A provider is a class with a public no-argument constructor
+that builds the `Extension`. The jvm one implements `ExtensionProvider`; the web
+one implements `WebExtensionProvider`, because a site finds it through
+`ServiceLoader`, and TeaVM cannot look a class up by its name. Keep what differs
+between the two behind an interface of your own, as `SqliteEngine` is, and
+build the commands once.
+
+**Running it.** On the command line, put both jars on the class path; `java -jar`
+ignores `-cp`:
+
+```sh
+java -cp jebol-3.22.5.jar:jebol-sqlite/jebol-sqlite.jar org.jebol.adapter.cli.JebolLauncher script.r3
+```
+
+A jar whose descriptor does not read, that has no jvm setup, or whose provider
+is not there is listed in `interpreter.extensions()` as `bad-extension`, and
+everything else still starts. For a site, build the jar first, then name it:
+
+```sh
+./gradlew :extensions:sqlite:assembleExtension
+./gradlew assembleSite -PsiteDir=my-app -Pextensions=extensions/sqlite/build/jebol-extension/jebol-sqlite.jar
+```
+
+A jar with no web setup fails that build and says so. Several jars are
+separated by commas.
+
+**Testing it.** The plugin gives the project `src/functionalTest` and
+`src/endToEndTest`, run by `functionalTests` and `endToEndTests`, which
+`allTests` runs and archives with the rest. The end-to-end tests get
+`jebol.shippedJar` and `jebol.extensionJar` to start the command line with and
+without the extension, and `jebol.webBuild` and `jebol.webBuildWithExtensions`
+for `ShippedRunner`, to drive a site with and without it.
+
+---
+
+## 12. Testing an extension
 
 Test it the way a script will use it: build an interpreter with it, run
 REBOL, and look at the answer.
@@ -470,7 +586,7 @@ good examples to copy from.
 
 ---
 
-## 11. The whole worked example
+## 13. The whole worked example
 
 This is the timers extension from the sections above, in one piece.
 
@@ -547,7 +663,7 @@ And a session using it:
 
 ---
 
-## 12. Quick reference
+## 14. Quick reference
 
 | Class                                     | What it is                                                                 |
 |-------------------------------------------|----------------------------------------------------------------------------|
@@ -566,7 +682,7 @@ script's side".
 
 ---
 
-## 13. Where the tests are
+## 15. Where the tests are
 
 All of these are functional tests, in `src/functionalTest/java/org/jebol/application/`
 unless the table says otherwise. Each test's `@DisplayName` says what it
@@ -577,7 +693,7 @@ checks, so a failure reads as a sentence. Run one class with, for example:
 ```
 
 **`ExtensionsFromTheSourceTest`**: the host's side, through `Bounds` and
-`Interpreter`. 40 tests in seven groups.
+`Interpreter`. 55 tests in ten groups.
 
 | Group             | Covers                                                                                                                                                                                                                                                                                                   | Guide section |
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
@@ -588,6 +704,9 @@ checks, so a failure reads as a sentence. Run one class with, for example:
 | `ItsOwnRebol`     | a scheme made in the extension's REBOL; a codec registered in it                                                                                                                                                                                                                                         | 7             |
 | `Handles`         | a handle going out to the script and back; a handle of another kind refused as `invalid-handle`                                                                                                                                                                                                          | 5             |
 | `Posting`         | an event posted from another thread waking a `wait`; a callback running on the script's thread and answering; a callback that fails; `do-callback` of an ordinary event; a `wait` with nothing woken letting its time pass                                                                               | 6             |
+| `WithAHeader`     | commands kept out of `lib`, a native's name allowed; waiting in `system/modules` until `import`; the header the module carries; exports reaching `lib` on `import`, and one `lib` holds refused; a header that does not read; start and its failure; handle kinds checked                              | 10            |
+| `HandleKinds`     | any handle's kind answered without raising, and empty for anything else                                                                                                                                                                                                                                 | 10            |
+| `ReachingFiles`   | `call.files()` writing and reading as READ does; a relative path from `what-dir`; what the port cannot reach; SECURE; the files grant                                                                                                                                                                   | 10            |
 
 **`CommandsFromTheSourceTest`**: the script's side, the natives R3 has for
 extensions. 32 tests in three groups.
@@ -602,6 +721,8 @@ extensions. 32 tests in three groups.
 
 | Test                                                                                            | Covers                                                                                                     |
 |-------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| `org.jebol.adapter.host.ExtensionDescriptorsFromTheSourceTest`                                  | a jar's jvm setup added from its descriptor; no jar; a jar with no jvm setup, a broken descriptor, a missing provider and a class that provides none, each `bad-extension` |
+| `extensions/sqlite/src/functionalTest` and `src/endToEndTest`                                   | the worked example of section 11: its jar, its descriptor and manifest, the command line and a site with and without it |
 | `InteropTest`, group `HostObjectMutability`                                                     | a Java object stays the host's to change, seen through a command                                           |
 | `AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest`, `saysHowACommandFailed`                     | the console wording of `command-fail`                                                                      |
 | `AWaitsTimeIsPassedByTheHostTest`                                                               | `wait` counting its time in the host's own pause slices, which the postbox's waits rely on                 |

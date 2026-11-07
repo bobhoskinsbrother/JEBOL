@@ -103,6 +103,17 @@ A script that uses `VIEW` needs a screen. `--screen=window` attaches a native wi
 ./build/install/jebol/bin/jebol --screen=window examples/r3-gui/
 ```
 
+### **Running with an Extension Jar: SQLite**
+
+Some modules R3 downloads as native extensions come instead as a jar beside JEBOL's own, so JEBOL itself keeps no dependencies. `jebol-sqlite.jar` is the first: Rebol-SQLite 3.46.0.0's `sqlite` module and `sqlite:` scheme. Build it, then put both jars on the class path; `java -jar` ignores `-cp`, so name the launcher class:
+
+```
+./gradlew jar :extensions:sqlite:assembleExtension
+java -cp build/libs/jebol-3.22.5.jar:extensions/sqlite/build/jebol-extension/jebol-sqlite.jar org.jebol.adapter.cli.JebolLauncher script.r3
+```
+
+The libraries the jar needs sit beside it in `build/jebol-extension/`, named by its manifest; keep the folder together. Without the jar, `import 'sqlite` fails as a module that cannot be found. A site carries it when built with `-Pextensions=` and the jar's path. `extensions/sqlite/README.md` shows the commands with SQL, and `docs/writing-an-extension.md` section 11 says how to build an extension of your own this way.
+
 #### **VID: windows from a layout block**
 
 VID is REBOL's dialect for describing a window: a block that lists the things on it, not code that draws them. Rebol 3.22 ships no VID of its own, so JEBOL carries the one R3 had: the R3 GUI from REBOL Technologies, version 0.2.1 of 2010, documented in its guide at https://www.rebol.com/r3/docs/gui/gui.html. It is REBOL from end to end and draws every widget with DRAW, so a layout looks the same in a native window, on `--screen=web` and in a page.
