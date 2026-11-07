@@ -69,32 +69,170 @@ extension sets `BROTLI_PARAM_MODE` and `BROTLI_PARAM_SIZE_HINT`, and
 `docs/brotli-port.md` records that the size hint changes which of the four
 hashers runs.
 
-Two stages, each specified, tested and built in that order:
+**It is a bundled extension, not a jar of its own.** Decision 58: it needs no
+library, because the Brotli port is already in the core, so it is served from
+inside JEBOL's jar as bzip2 and zstd are. It is an `Extension` with its own
+header, waiting in `system/modules` until `import 'brotli`, the route goal 1a
+gave all eight bundled extensions. Decision 63's own jar is for an extension
+that needs libraries or should not ship in every build; neither applies.
 
-1. **The module over the port as it is.** `version`, `compress`,
-   `decompress`, and the `Accept-Encoding` edit, served by an extension in
-   Java. `system/modules/brotli` then answers what an imported module
-   answers.
-2. **The streaming encoder and decoder.** A port, not wiring, done the way
-   the one-shot port was:
-    1. The reference probe first: the extension's `brotli-commands.c` compiled
-       against `rebol3-source/src/core/brotli/`, driven by a script of
-       `write`, `/flush`, `/finish` and `read` calls, writing each chunk.
-       Check which Brotli the extension is built against (its `.nest` names
-       upstream `@brotli`); if not 1.2.0, say what differs.
-    2. A boundary list from the C: chunk sizes either side of the input
-       block and the window, a flush on an empty stream, a flush twice, a
-       `write` after `/finish`, each mode, a size hint under and over the
-       real length, and every level.
-    3. The streaming state in Java, byte-exact against the probe; the
-       decoder fed in chunks split at every place a chunk can split.
-    4. The handles and their getters and setters, with R3's errors for a
-       wrong handle or a write after the end.
+**What the source says.** Read on 2026-11-07, at tag `0.1.0` (`5e93cd0`,
+2025-12-22), the tag R3's `system/modules/brotli` address names. `master` has
+since moved to 1.2.1 and is not what R3 asks for.
 
-**Done when** every command in the table answers as the extension does in
-a real 3.22.5, the stream's bytes match the probe at every boundary on the
-list, and Brotli's own corpus round-trips through the streaming API in
-chunks.
+- **The header** is `REBOL [Title: {Rebol Brotli Extension} Type: module
+  Version: 0.1.0 needs: 3.20.5]`, with no `Name:` and no `Exports:`. The commands
+  are `init-words` (hidden), `version`, `compress`, `decompress`, `make-encoder`,
+  `make-decoder`, `write` and `read`.
+- **Its Brotli is not pinned.** The `.nest` builds against `@brotli`, Google's
+  `master` when the release was built, not a tagged release. The reference is
+  built against `rebol3-source/src/core/brotli/`, 1.2.0, so `version` answers
+  `1.2.0` there; whatever the release binary was built with is recorded as
+  unknowable, not guessed.
+- **Its handles have fields**, which JEBOL's handles do not have yet:
+  `brotli-encoder` sets `mode` and `size-hint` and gets `finished`;
+  `brotli-decoder` gets `finished`. A field R3 does not know is
+  `PD_Handle`'s answer: `/type` for a context handle, otherwise a bad select. Both
+  mold as `#(handle! brotli-encoder 0#...)`: `Mold_Handle` appends the
+  extension's own `Common_mold`, an address, after the kind.
+- **Importing it replaces `br`.** `RX_Init` calls
+  `RL_REGISTER_COMPRESS_METHOD("br", ...)`, so after `import 'brotli`,
+  `compress`/`decompress` with `'br` run the extension's functions, not the
+  core's. Its compress sets `SIZE_HINT` to the input length, which the core never
+  does, but the C sets the same hint itself when one call feeds the input and
+  finishes: the probe confirms the bytes agree before anything is built on it.
+  Its decompress answers `#{}` for an empty input and for `/size 0` without
+  decoding, and stops at the limit.
+- **`Accept-Encoding` is already right.** `prot-http.reb` appends `,br` when the
+  catalog has `br`, which the core's does, and the module's import code
+  appends only when no `br` follows a comma. So importing changes nothing there;
+  a test pins that.
+- **The C's streaming quirks**, each to be confirmed by the probe: `write`
+  answers the handle unless `/flush` or `/finish`, and then a copy of the buffer;
+  `write` of `none` finishes; `read` on an encoder flushes first; `write` or
+  `read` after the encoder finished is `"Brotli encoder is finished!"`; a
+  handle of another kind is `"Invalid Brotli encoder or decoder handle!"`; a level
+  outside 0 to 11 is clamped through an unsigned cast, so a negative one is 11.
+  `write` checks `hob->handle` and then uses `hob->data`, which is the same
+  pointer: the two are a union in `REBHOB`.
+- **The C it is built from has CVE-2026-111497.** Brotli 1.0.3 to 1.2.0 report a
+  block switch in a category with one block type as "needs more input" rather
+  than a format error, so the streaming decoder overflows its 8-byte
+  `s->buffer` (`DecodeBlockTypeAndLength` in `c/dec/decode.c`; fixed by Google's
+  commit `0ed4268a4401abcb4472096340477cf4af7d1a2b`, "Detect and report invalid
+  stream earlier", released in 1.0.10, 1.1.1 and 1.2.1). `rebol3-source/` carries
+  1.2.0 and Rebol-Brotli 0.1.0 was built from `master` in December 2025, before
+  the fix: a real 3.22.5 with this extension is affected. JEBOL's Java decoder is
+  not (one block type never reads a switch, and it has no streaming state), and
+  the resumable decoder of step 4 must keep it that way: **port the fixed
+  behaviour, not the vulnerable one.** That stream is a format error,
+  `BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH`, never a request for more input.
+
+**The order.** Each step's failing tests come before its code, and each step is
+gated and committed on its own.
+
+0. **The reference, checked in.** `src/testFixtures/resources/brotli/module/
+   generate.sh` fetches Rebol-Brotli at `0.1.0`, compiles its C against
+   `rebol3-source/src/core/brotli/` into a `.rebx`, and runs `module-*.r3`
+   scripts in `./r3-head`, as `extensions/sqlite/.../reference/generate.sh`
+   does. Cases that crash run one process each. Beside it, a small C program
+   linked against the same Brotli drives `BrotliEncoderCompressStream` and
+   `BrotliDecoderDecompressStream` through a list of operations, writing each
+   output chunk's length and digest as a table, so every boundary below has a
+   C answer. Brotli's `testdata.txz` is fetched by the generator, not checked
+   in, except a slice where only it pins a behaviour. The decoder's table is
+   built with commit `0ed4268` applied to the 1.2.0 sources, so it records the
+   fixed answer; the module transcripts keep the unpatched build, and the one
+   case where the two differ is listed as a CVE the port does not reproduce.
+1. **Handle fields in the core,** in `src/functionalTest`, before anything uses
+   them. `HandleType` gains fields a script reads and sets by path, and an
+   optional mold, as R3's `REBHSP` has `get_path`, `set_path` and `mold`. Reading
+   and setting answer as `PD_Handle` does: an unknown field, a field that only
+   reads being set, and a wrong type each give R3's error. A new group in
+   `ExtensionsFromTheSourceTest`, the spec in `spec/embed.allium`, and a section
+   in `writing-an-extension.md`.
+2. **The module over the one-shot port.** `BrotliExtension`, bundled, with the
+   header above: `version`, `compress`, `decompress`, the `br` registration and
+   the import script. `TheBrotliModuleFromTheSourceTest` checks the transcripts.
+   If the probe finds the extension's compress writes other bytes than the core's,
+   the size hint goes into the Java encoder here, before any streaming.
+3. **The streaming encoder.** `BrotliGenericEncoder.run` becomes the C's
+   `BrotliEncoderCompressStream` state machine: PROCESS, FLUSH and FINISH, the
+   ring buffer kept between calls, the size hint updated as the C updates it, and
+   `mode`. Qualities 0 and 1 stream through the C's
+   `BrotliEncoderCompressStreamFast`, which buffers differently from the one-shot
+   fragment encoders, so that path is ported too. Byte-exact against the table.
+4. **The streaming decoder.** The Java decoder becomes resumable, the C's
+   `BrotliDecoderDecompressStream`: it takes input in pieces and gives out what
+   the C gives out after each piece, not only at the end. Byte-exact against the
+   table, with every input split at every position for small streams.
+5. **The handles and commands.** `make-encoder`, `make-decoder`, `write`, `read`,
+   the fields and the errors, over steps 3 and 4. The transcripts, and separate
+   `*FromTheSourceTest`s for every boundary without reading a `.r3` file.
+6. **The docs.** `docs/brotli-port.md` gains the streaming state, where JEBOL
+   differs, and the CVE; decision 58 gains the brotli module;
+   `docs/standing.md`; and these goals.
+
+**Where to start, for a session that did not do goal 1a.** The precedents to
+copy, not reinvent:
+
+- **A bundled streaming extension:** `Bzip2Extension` and `Bzip2Stream`, from
+  the same author's Rebol-Bzip2, with the same `make-encoder`, `write` and `read`
+  shape; `TheBzip2ModuleFromTheSourceTest` for its transcripts.
+- **A checked-in reference generator:** `extensions/sqlite/src/functionalTest/
+  resources/reference/generate.sh` and its README, which compile an extension's
+  C, run scripts in `./r3-head` each in a fresh folder, and run crashing cases in
+  a process each. `src/testFixtures/resources/bzip2/generate.sh` for a C table
+  harness.
+- **Extension machinery:** `ExtensionInstallation`, `Extension.withHeader`,
+  `HandleType`, `Command.handleKind`, and `ExtensionsFromTheSourceTest` for the
+  tests a core change adds a group to. A command's refinement arguments arrive
+  only for the refinements used, in order, so read them as bzip2 does.
+- **Handle paths today:** `Evaluator`'s `HandleValue` branch answers `/type` and
+  nothing else; R3's `PD_Handle` in `rebol3-source/src/core/t-handle.c` and
+  `Mold_Handle` in `s-mold.c` are what step 1 ports.
+- **The C:** `rebol3-source/src/core/brotli/` (1.2.0) and `u-compress.c` for the
+  core's `'br`; Rebol-Brotli is fetched by the generator at tag `0.1.0`.
+- **Things that bit goal 1a:** `./r3-head` runs a script from the script's own
+  folder, so copy each script into its work folder; `import` of an R3 module
+  address on `./r3-head` downloads a release binary, which the project forbids,
+  so always import the compiled `.rebx` by path; an `AnyBlockValue.index()` is
+  1-based where the C's is 0-based.
+
+**The boundaries.** Each is covered by the reference and by a JEBOL test:
+
+- **Levels:** every level 0 to 11, a level below 0, and one above 11, for
+  `compress`, `make-encoder` and `compress 'br` after import.
+- **Input sizes:** 0, 1, 2 and 3 bytes; either side of each quality's input
+  block (`1 << lgblock`) and of the window (`1 << 22`); either side of
+  `BrotliEncoderCompressStreamFast`'s buffers for qualities 0 and 1.
+- **Chunking:** one byte at a time; chunks either side of the input block;
+  a chunk exactly filling the window.
+- **Operations:** `/flush` on an empty stream, twice in a row, and after a
+  chunk; `read` with nothing written, and after a write; `/finish` with `none`
+  and with data; `write` and `read` after `/finish`; `finished` before and after.
+- **Fields:** `mode` 0, 1 and 2, and out of range; `size-hint` under, equal to and
+  over the real length, and set after the first write; an unknown field; setting
+  `finished`; a field of the wrong type.
+- **Decoding:** a stream split at every byte for small streams; an empty
+  input; a truncated stream; a damaged stream; writing after the stream ended;
+  `/size` 0, under and over the real size; `/part`.
+- **CVE-2026-111497:** a block switch for literals, commands and distances each
+  in a category with one block type, fed whole and one byte at a time, through
+  `decompress`, `decompress 'br` and the streaming decoder: a format error each
+  time, and no more input asked for.
+- **Strings:** a string as input, with wide characters, and not at its head, as
+  bzip2 reads them.
+- **Handles:** one kind where the other belongs; another extension's handle;
+  `mold` of each.
+- **The module:** `spec-of`, `words-of` with `init-words` hidden, `version`,
+  `Accept-Encoding` unchanged, and `compress 'br` before and after import.
+
+**Done when** every command, field and error answers as the reference does,
+with each exception recorded in `docs/brotli-port.md`; the stream's bytes match
+the C's table at every boundary on the list; every boundary has a standalone
+JEBOL test; and Brotli's own corpus round-trips through the streaming API in
+chunks, at every level, compressed bytes equal to the C's.
 
 
 #### 1c. The console honours echo, and `call/console` runs without one
