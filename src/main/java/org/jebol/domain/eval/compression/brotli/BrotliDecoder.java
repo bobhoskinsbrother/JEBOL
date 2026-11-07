@@ -85,19 +85,48 @@ final class BrotliDecoder {
         return table;
     }
 
-    static byte[] decodeUpToLimit(
-            byte[] input, int limit) {
-        return new Stream(input, limit).run();
-    }
 
     static final int NO_LIMIT = -1;
 
-    private static final class Stream {
+    enum Progress { NEEDS_MORE_INPUT, FINISHED, STOPPED_AT_LIMIT }
+
+    private enum Phase { STREAM_HEADER, META_BLOCK_START, UNCOMPRESSED, METADATA, COMMANDS, PADDING, DONE }
+
+    private enum CommandStep { COMMAND, LITERALS, DISTANCE }
+
+    private static final class RanOut extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        private RanOut() {
+            super(null, null, false, false);
+        }
+    }
+
+    private static final RanOut RAN_OUT = new RanOut();
+    private static final int BLOCK_SIZE_CAP = 1 << 24;
+
+    static byte[] decodeUpToLimit(byte[] input, int limit) {
+        Stream stream = new Stream(input, limit);
+        if (stream.run() == Progress.NEEDS_MORE_INPUT) {
+            throw new IllegalArgumentException("Brotli data ends part way through");
+        }
+        return stream.wholeOutput();
+    }
+
+    static final class Stream {
 
         private final BitsLeastSignificantOfEachByteFirst bits;
         private final int limit;
         private byte[] out = new byte[1 << 12];
         private int outAt;
+        private int givenUpTo;
+        private long dropped;
+
+        private Phase phase = Phase.STREAM_HEADER;
+        private long unitStart;
+        private boolean lastMetaBlock;
+        private int remaining;
 
         private int windowBits;
         private int maxBackwardDistance;
@@ -105,21 +134,111 @@ final class BrotliDecoder {
         private final int[] recentDistances = {16, 15, 11, 4};
         private int recentDistanceAt = 0;
 
+        private BlockSwitcher literals;
+        private BlockSwitcher commands;
+        private BlockSwitcher distances;
+        private int[] contextModes;
+        private ContextMap literalMap;
+        private ContextMap distanceMap;
+        private Huffman[] literalCodes;
+        private Huffman[] commandCodes;
+        private Huffman[] distanceCodes;
+        private int[] distanceExtraBits;
+        private int[] distanceOffset;
+        private int postfixBits;
+        private int contextMode;
+        private int literalContextBase;
+        private int distanceContextBase;
+        private Huffman commandCode;
+
+        private CommandStep commandStep = CommandStep.COMMAND;
+        private Command command;
+        private int insertLeft;
+        private int copyLength;
+
         private Stream(byte[] input, int limit) {
             this.bits = new BitsLeastSignificantOfEachByteFirst(input);
             this.limit = limit;
         }
 
-        private byte[] run() {
+        Stream() {
+            this(new byte[0], NO_LIMIT);
+        }
+
+        void give(byte[] input) {
+            bits.append(input);
+        }
+
+        boolean isFinished() {
+            return phase == Phase.DONE;
+        }
+
+        byte[] wholeOutput() {
+            return outAt == out.length ? out : Arrays.copyOf(out, outAt);
+        }
+
+        byte[] takeNewOutput() {
+            byte[] fresh = Arrays.copyOfRange(out, givenUpTo, outAt);
+            givenUpTo = outAt;
+            dropOutputPastWindow();
+            return fresh;
+        }
+
+        private void dropOutputPastWindow() {
+            int window = 1 << windowBits;
+            if (outAt <= 2 * window) {
+                return;
+            }
+            int dropping = outAt - window;
+            System.arraycopy(out, dropping, out, 0, window);
+            outAt = window;
+            givenUpTo = window;
+            dropped += dropping;
+        }
+
+        Progress run() {
+            try {
+                while (true) {
+                    switch (phase) {
+                        case STREAM_HEADER -> readStreamHeader();
+                        case META_BLOCK_START -> {
+                            if (enoughHasBeenMade()) {
+                                return Progress.STOPPED_AT_LIMIT;
+                            }
+                            readMetaBlockHeader();
+                        }
+                        case UNCOMPRESSED -> copyUncompressedBytes();
+                        case METADATA -> skipMetadataBytes();
+                        case COMMANDS -> decodeCommands();
+                        case PADDING -> {
+                            markUnitStart();
+                            bits.jumpToByteBoundary();
+                            phase = Phase.DONE;
+                        }
+                        case DONE -> {
+                            return Progress.FINISHED;
+                        }
+                    }
+                }
+            } catch (RanOut ranOut) {
+                bits.resetTo(unitStart);
+                return Progress.NEEDS_MORE_INPUT;
+            }
+        }
+
+        private void markUnitStart() {
+            unitStart = bits.position();
+        }
+
+        private void readStreamHeader() {
+            markUnitStart();
             readWindowBitsRefusingLargeWindowAsRebolDoes();
             maxBackwardDistance = (1 << windowBits) - WINDOW_GAP;
-            while (readOneMetaBlockAnsweringWhetherAnotherFollows()) {
-                if (enoughHasBeenMade()) {
-                    return outAt == out.length ? out : Arrays.copyOf(out, outAt);
-                }
-            }
-            bits.jumpToByteBoundary();
-            return outAt == out.length ? out : Arrays.copyOf(out, outAt);
+            phase = Phase.META_BLOCK_START;
+        }
+
+        private void endMetaBlock() {
+            phase = lastMetaBlock ? Phase.PADDING : Phase.META_BLOCK_START;
         }
 
         private boolean enoughHasBeenMade() {
@@ -152,17 +271,22 @@ final class BrotliDecoder {
             out = Arrays.copyOf(out, wanted);
         }
 
-        private boolean readOneMetaBlockAnsweringWhetherAnotherFollows() {
+        private void readMetaBlockHeader() {
+            markUnitStart();
             boolean isLast = bits.take(1) != 0;
             if (isLast && bits.take(1) != 0) {
-                return false;
+                lastMetaBlock = true;
+                phase = Phase.PADDING;
+                return;
             }
             int nibbles = bits.take(2) + 4;
             if (nibbles == 7) {
-                skipMetadataReadingItsLengthBeforeJumpingToByteBoundary();
-                return !isLast;
+                remaining = readMetadataLengthThenJumpToByteBoundary();
+                lastMetaBlock = isLast;
+                phase = Phase.METADATA;
+                return;
             }
-            int remaining = 0;
+            remaining = 0;
             for (int each = 0; each < nibbles; each++) {
                 int nibble = bits.take(4);
                 if (each + 1 == nibbles && nibbles > 4 && nibble == 0) {
@@ -174,17 +298,37 @@ final class BrotliDecoder {
             remaining++;
             if (!isLast && bits.take(1) != 0) {
                 bits.jumpToByteBoundary();
-                makeRoom(remaining);
-                for (int each = 0; each < remaining; each++) {
-                    out[outAt++] = (byte) bits.takeByte();
-                }
-                return true;
+                lastMetaBlock = false;
+                phase = Phase.UNCOMPRESSED;
+                return;
             }
-            readCompressedMetaBlock(remaining);
-            return !isLast;
+            readCompressedMetaBlockHeader();
+            lastMetaBlock = isLast;
+            commandStep = CommandStep.COMMAND;
+            phase = Phase.COMMANDS;
         }
 
-        private void skipMetadataReadingItsLengthBeforeJumpingToByteBoundary() {
+        private void copyUncompressedBytes() {
+            while (remaining > 0) {
+                markUnitStart();
+                int octet = bits.takeByte();
+                makeRoom(1);
+                out[outAt++] = (byte) octet;
+                remaining--;
+            }
+            endMetaBlock();
+        }
+
+        private void skipMetadataBytes() {
+            while (remaining > 0) {
+                markUnitStart();
+                bits.takeByte();
+                remaining--;
+            }
+            endMetaBlock();
+        }
+
+        private int readMetadataLengthThenJumpToByteBoundary() {
             if (bits.take(1) != 0) {
                 throw new IllegalArgumentException(
                         "Brotli metadata sets a reserved bit");
@@ -203,126 +347,164 @@ final class BrotliDecoder {
                 remaining++;
             }
             bits.jumpToByteBoundary();
-            for (int each = 0; each < remaining; each++) {
-                bits.takeByte();
-            }
+            return remaining;
         }
 
-        private void readCompressedMetaBlock(int remainingAtStart) {
-            int remaining = remainingAtStart;
-            BlockSwitcher literals = readBlockSwitcher();
-            BlockSwitcher commands = readBlockSwitcher();
-            BlockSwitcher distances = readBlockSwitcher();
+        private void readCompressedMetaBlockHeader() {
+            literals = readBlockSwitcher();
+            commands = readBlockSwitcher();
+            distances = readBlockSwitcher();
             int blockTypeCount0 = literals.typeCount;
             int blockTypeCount1 = commands.typeCount;
             int blockTypeCount2 = distances.typeCount;
 
             int packed = bits.take(6);
-            int postfixBits = packed & 3;
+            postfixBits = packed & 3;
             int directCodes = (packed >> 2) << postfixBits;
 
-            int[] contextModes = new int[blockTypeCount0];
+            contextModes = new int[blockTypeCount0];
             for (int each = 0; each < blockTypeCount0; each++) {
                 contextModes[each] = bits.take(2);
             }
 
-            ContextMap literalMap =
-                    readContextMap(blockTypeCount0 << LITERAL_CONTEXT_BITS);
-            ContextMap distanceMap =
-                    readContextMap(blockTypeCount2 << DISTANCE_CONTEXT_BITS);
+            literalMap = readContextMap(blockTypeCount0 << LITERAL_CONTEXT_BITS);
+            distanceMap = readContextMap(blockTypeCount2 << DISTANCE_CONTEXT_BITS);
 
             int distanceAlphabet = DISTANCE_SHORT_CODES + directCodes
                     + (MAX_DISTANCE_BITS << (postfixBits + 1));
 
-            Huffman[] literalCodes = readTreeGroup(literalMap.treeCount, LITERAL_SYMBOLS);
-            Huffman[] commandCodes = readTreeGroup(blockTypeCount1, COMMAND_SYMBOLS);
-            Huffman[] distanceCodes = readTreeGroup(distanceMap.treeCount, distanceAlphabet);
+            literalCodes = readTreeGroup(literalMap.treeCount, LITERAL_SYMBOLS);
+            commandCodes = readTreeGroup(blockTypeCount1, COMMAND_SYMBOLS);
+            distanceCodes = readTreeGroup(distanceMap.treeCount, distanceAlphabet);
 
-            int[] distanceExtraBits = new int[distanceAlphabet];
-            int[] distanceOffset = new int[distanceAlphabet];
+            distanceExtraBits = new int[distanceAlphabet];
+            distanceOffset = new int[distanceAlphabet];
             fillDistanceTable(distanceExtraBits, distanceOffset,
                     postfixBits, directCodes);
 
-            int contextMode = contextModes[literals.type()] & 3;
-            int literalContextBase = literals.type() << LITERAL_CONTEXT_BITS;
-            int distanceContextBase = distances.type() << DISTANCE_CONTEXT_BITS;
-            Huffman commandCode = commandCodes[commands.type()];
+            contextMode = contextModes[literals.type()] & 3;
+            literalContextBase = literals.type() << LITERAL_CONTEXT_BITS;
+            distanceContextBase = distances.type() << DISTANCE_CONTEXT_BITS;
+            commandCode = commandCodes[commands.type()];
+        }
 
-            while (remaining > 0) {
-                if (commands.exhausted()) {
-                    commands.next();
-                    commandCode = commandCodes[commands.type()];
-                }
-                commands.spendOne();
-                Command command = COMMANDS[commandCode.read(bits)];
-                int insertLength = command.insertOffset()
-                        + bits.take(command.insertExtraBits());
-                int copyLength = command.copyOffset()
-                        + bits.take(command.copyExtraBits());
-
-                for (int each = 0; each < insertLength; each++) {
-                    if (literals.exhausted()) {
-                        literals.next();
-                        contextMode = contextModes[literals.type()] & 3;
-                        literalContextBase = literals.type() << LITERAL_CONTEXT_BITS;
+        private void decodeCommands() {
+            while (true) {
+                switch (commandStep) {
+                    case COMMAND -> {
+                        if (remaining <= 0) {
+                            endMetaBlock();
+                            return;
+                        }
+                        readCommand();
                     }
-                    literals.spendOne();
-                    int previous = outAt > 0 ? out[outAt - 1] & 0xFF : 0;
-                    int beforeThat = outAt > 1 ? out[outAt - 2] & 0xFF : 0;
-                    int context =
-                            BrotliContext.of(contextMode, previous, beforeThat);
-                    Huffman code =
-                            literalCodes[literalMap.at(literalContextBase + context)];
-                    makeRoom(1);
-                    out[outAt++] = (byte) code.read(bits);
-                }
-                remaining -= insertLength;
-                if (remaining <= 0) {
-                    break;
-                }
-
-                int distance;
-                if (!command.distanceIsWritten()) {
-                    howFarRecentDistanceCursorWasRolledBack = 1;
-                    recentDistanceAt--;
-                    distance = recentDistances[recentDistanceAt & 3];
-                } else {
-                    if (distances.exhausted()) {
-                        distances.next();
-                        distanceContextBase = distances.type() << DISTANCE_CONTEXT_BITS;
+                    case LITERALS -> {
+                        decodeLiterals();
+                        if (remaining <= 0) {
+                            commandStep = CommandStep.COMMAND;
+                            endMetaBlock();
+                            return;
+                        }
+                        commandStep = CommandStep.DISTANCE;
                     }
-                    distances.spendOne();
-                    Huffman code = distanceCodes[distanceMap.at(
-                            distanceContextBase + command.distanceContext())];
-                    int symbol = code.read(bits);
-                    howFarRecentDistanceCursorWasRolledBack = 0;
-                    if (symbol < DISTANCE_SHORT_CODES) {
-                        distance = readDistanceFromRecentOnes(symbol);
-                    } else {
-                        distance = distanceOffset[symbol]
-                                + (bits.take(distanceExtraBits[symbol]) << postfixBits);
-                    }
-                }
-
-                int reachable = Math.min(outAt, maxBackwardDistance);
-                if (distance > reachable) {
-                    if (distance > MAX_ALLOWED_DISTANCE) {
-                        throw new IllegalArgumentException(
-                                "Brotli distance is larger than any distance can be");
-                    }
-                    remaining -= copyFromDictionaryAnsweringHowManyBytesItCameTo(
-                            distance - reachable - 1, copyLength, distance);
-                } else {
-                    recentDistances[recentDistanceAt & 3] = distance;
-                    recentDistanceAt++;
-                    makeRoom(copyLength);
-                    int fromHere = outAt - distance;
-                    for (int each = 0; each < copyLength; each++) {
-                        out[outAt++] = out[fromHere + each];
-                    }
-                    remaining -= copyLength;
+                    case DISTANCE -> copyFromDistance();
                 }
             }
+        }
+
+        private void refuseOverrun() {
+            if (remaining < 0) {
+                throw new IllegalArgumentException(
+                        "Brotli commands run past the end of their meta-block");
+            }
+        }
+
+        private void readCommand() {
+            if (commands.exhausted()) {
+                markUnitStart();
+                commands.next();
+                commandCode = commandCodes[commands.type()];
+            }
+            markUnitStart();
+            Command read = COMMANDS[commandCode.read(bits)];
+            int insertLength = read.insertOffset() + bits.take(read.insertExtraBits());
+            int copied = read.copyOffset() + bits.take(read.copyExtraBits());
+            commands.spendOne();
+            command = read;
+            insertLeft = insertLength;
+            copyLength = copied;
+            remaining -= insertLength;
+            refuseOverrun();
+            commandStep = CommandStep.LITERALS;
+        }
+
+        private void decodeLiterals() {
+            while (insertLeft > 0) {
+                if (literals.exhausted()) {
+                    markUnitStart();
+                    literals.next();
+                    contextMode = contextModes[literals.type()] & 3;
+                    literalContextBase = literals.type() << LITERAL_CONTEXT_BITS;
+                }
+                markUnitStart();
+                int previous = outAt > 0 ? out[outAt - 1] & 0xFF : 0;
+                int beforeThat = outAt > 1 ? out[outAt - 2] & 0xFF : 0;
+                int context = BrotliContext.of(contextMode, previous, beforeThat);
+                Huffman code = literalCodes[literalMap.at(literalContextBase + context)];
+                int literal = code.read(bits);
+                literals.spendOne();
+                makeRoom(1);
+                out[outAt++] = (byte) literal;
+                insertLeft--;
+            }
+        }
+
+        private void copyFromDistance() {
+            int distance;
+            if (!command.distanceIsWritten()) {
+                howFarRecentDistanceCursorWasRolledBack = 1;
+                recentDistanceAt--;
+                distance = recentDistances[recentDistanceAt & 3];
+            } else {
+                if (distances.exhausted()) {
+                    markUnitStart();
+                    distances.next();
+                    distanceContextBase = distances.type() << DISTANCE_CONTEXT_BITS;
+                }
+                markUnitStart();
+                Huffman code = distanceCodes[distanceMap.at(
+                        distanceContextBase + command.distanceContext())];
+                int symbol = code.read(bits);
+                int extra = symbol < DISTANCE_SHORT_CODES ? 0 : bits.take(distanceExtraBits[symbol]);
+                distances.spendOne();
+                howFarRecentDistanceCursorWasRolledBack = 0;
+                if (symbol < DISTANCE_SHORT_CODES) {
+                    distance = readDistanceFromRecentOnes(symbol);
+                } else {
+                    distance = distanceOffset[symbol] + (extra << postfixBits);
+                }
+            }
+
+            int reachable = (int) Math.min(dropped + outAt, maxBackwardDistance);
+            if (distance > reachable) {
+                if (distance > MAX_ALLOWED_DISTANCE) {
+                    throw new IllegalArgumentException(
+                            "Brotli distance is larger than any distance can be");
+                }
+                remaining -= copyFromDictionaryAnsweringHowManyBytesItCameTo(
+                        distance - reachable - 1, copyLength, distance);
+            } else {
+                recentDistances[recentDistanceAt & 3] = distance;
+                recentDistanceAt++;
+                makeRoom(copyLength);
+                int fromHere = outAt - distance;
+                for (int each = 0; each < copyLength; each++) {
+                    out[outAt++] = out[fromHere + each];
+                }
+                remaining -= copyLength;
+            }
+            refuseOverrun();
+            commandStep = CommandStep.COMMAND;
         }
 
         private int howFarRecentDistanceCursorWasRolledBack;
@@ -412,7 +594,7 @@ final class BrotliDecoder {
             private final Huffman types;
             private final Huffman lengths;
             private final int[] lastTwoTypes = {1, 0};
-            private int remaining = 1 << 28;
+            private int remaining = BLOCK_SIZE_CAP;
 
             private BlockSwitcher(int typeCount, Huffman types, Huffman lengths) {
                 this.typeCount = typeCount;
@@ -429,7 +611,7 @@ final class BrotliDecoder {
             }
 
             boolean exhausted() {
-                return types != null && remaining == 0;
+                return remaining == 0;
             }
 
             void spendOne() {
@@ -437,7 +619,12 @@ final class BrotliDecoder {
             }
 
             void next() {
+                if (types == null) {
+                    throw new IllegalArgumentException(
+                            "Brotli asks for a block switch where there is one block type");
+                }
                 int symbol = types.read(bits);
+                int length = readBlockLength(lengths);
                 int chosen;
                 if (symbol == 1) {
                     chosen = lastTwoTypes[1] + 1;
@@ -451,7 +638,7 @@ final class BrotliDecoder {
                 }
                 lastTwoTypes[0] = lastTwoTypes[1];
                 lastTwoTypes[1] = chosen;
-                remaining = readBlockLength(lengths);
+                remaining = length;
             }
         }
 
@@ -751,52 +938,67 @@ final class BrotliDecoder {
 
     private static final class BitsLeastSignificantOfEachByteFirst {
 
-        private final byte[] data;
-        private final int end;
-        private int at;
-        private long window;
-        private int held;
+        private byte[] data;
+        private int length;
+        private long position;
 
         private BitsLeastSignificantOfEachByteFirst(byte[] data) {
             this.data = data;
-            this.end = data.length;
+            this.length = data.length;
         }
 
-        private void fill(int wanted) {
-            while (held < wanted) {
-                if (at >= end) {
-                    throw new IllegalArgumentException("Brotli data ends part way through");
-                }
-                window |= (long) (data[at++] & 0xFF) << held;
-                held += 8;
-            }
+        long position() {
+            return position;
+        }
+
+        void resetTo(long earlier) {
+            position = earlier;
+        }
+
+        void append(byte[] more) {
+            int consumed = (int) (position >>> 3);
+            int kept = length - consumed;
+            byte[] grown = data.length >= kept + more.length && consumed == 0
+                    ? data
+                    : new byte[Math.max(kept + more.length, 2 * kept)];
+            System.arraycopy(data, consumed, grown, 0, kept);
+            System.arraycopy(more, 0, grown, kept, more.length);
+            data = grown;
+            length = kept + more.length;
+            position -= (long) consumed << 3;
+        }
+
+        private long bitsLeft() {
+            return ((long) length << 3) - position;
         }
 
         int take(int howMany) {
             if (howMany == 0) {
                 return 0;
             }
-            fill(howMany);
-            int taken = (int) (window & ((1L << howMany) - 1));
-            window >>>= howMany;
-            held -= howMany;
-            return taken;
+            if (howMany > bitsLeft()) {
+                throw RAN_OUT;
+            }
+            int byteAt = (int) (position >>> 3);
+            int shift = (int) (position & 7);
+            long gathered = 0;
+            for (int each = 0; each << 3 < shift + howMany; each++) {
+                gathered |= (long) (data[byteAt + each] & 0xFF) << (each << 3);
+            }
+            position += howMany;
+            return (int) ((gathered >>> shift) & ((1L << howMany) - 1));
         }
 
         int peekFourBits() {
-            while (held < 4 && at < end) {
-                window |= (long) (data[at++] & 0xFF) << held;
-                held += 8;
-            }
-            return (int) (window & 0xF);
+            int available = (int) Math.min(4, bitsLeft());
+            long before = position;
+            int peeked = take(available);
+            position = before;
+            return peeked;
         }
 
         void drop(int howMany) {
-            if (howMany > held) {
-                throw new IllegalArgumentException("Brotli data ends part way through");
-            }
-            window >>>= howMany;
-            held -= howMany;
+            take(howMany);
         }
 
         int takeByte() {
@@ -804,7 +1006,7 @@ final class BrotliDecoder {
         }
 
         void jumpToByteBoundary() {
-            int spare = held & 7;
+            int spare = (int) (-position & 7);
             if (spare != 0 && take(spare) != 0) {
                 throw new IllegalArgumentException(
                         "Brotli padding up to a byte boundary is not zero");

@@ -9,6 +9,11 @@
 #   late-hint:N       one chunk of N with PROCESS, then the hint set, then the rest with FINISH
 # A decode case compresses the input in one call at <level>, then feeds the stream
 # in chunks of <chunk> with unlimited output, writing what each call gave out.
+#               or: cve <words>
+# A cve case builds one meta-block of <words> dictionary words a transform leaves
+# empty, then one four-letter word, with one block type of each kind, and decodes it
+# in one call with 1.2.1's decoder: past 2^24 commands the block switch it asks for
+# is the one CVE-2026-111497 reported as wanting more input.
 encode text 0 0 0 - finish
 encode text 1 0 0 - finish
 encode text 2 0 0 - finish
@@ -699,3 +704,7 @@ decode text 23 5 1
 decode text 0 5 1
 decode text 23 11 1
 decode text 0 11 1
+cve 0
+cve 3
+cve 16777215
+cve 16777216

@@ -4,6 +4,8 @@
 #include <string.h>
 #include "brotli/decode.h"
 #include "brotli/encode.h"
+#include "common/dictionary.h"
+#include "common/transform.h"
 
 static const char WORDS[] = "the quick brown fox jumps over a lazy dog ";
 
@@ -143,6 +145,93 @@ static void decode_case(const char *kind, size_t size, int level, size_t chunk) 
   free(input);
 }
 
+typedef struct {
+  uint8_t *data;
+  size_t at;
+} BitWriter;
+
+static void put_bits(BitWriter *w, int count, uint32_t value) {
+  for (int each = 0; each < count; each++) {
+    if ((value >> each) & 1) w->data[w->at >> 3] |= (uint8_t)(1u << (w->at & 7));
+    w->at++;
+  }
+}
+
+static int first_transform_emptying_a_four_letter_word(void) {
+  const BrotliDictionary *dictionary = BrotliGetDictionary();
+  const BrotliTransforms *transforms = BrotliGetTransforms();
+  const uint8_t *word = dictionary->data + dictionary->offsets_by_length[4];
+  uint8_t out[64];
+  for (int each = 1; each < transforms->num_transforms; each++) {
+    if (BrotliTransformDictionaryWord(out, word, 4, transforms, each) == 0) return each;
+  }
+  return -1;
+}
+
+static int distance_symbol_for(uint32_t distance, int *extra_bits, uint32_t *extra) {
+  for (int symbol = 16; symbol < 64; symbol++) {
+    int bits = 1 + ((symbol - 16) >> 1);
+    uint32_t offset = ((2u + ((symbol - 16) & 1)) << bits) - 4;
+    if (distance - 1 >= offset && distance - 1 - offset < (1u << bits)) {
+      *extra_bits = bits;
+      *extra = distance - 1 - offset;
+      return symbol;
+    }
+  }
+  return -1;
+}
+
+static void cve_case(size_t empty_words) {
+  int transform = first_transform_emptying_a_four_letter_word();
+  uint32_t empty_distance = 1 + ((uint32_t)transform << 10);
+  int empty_bits, word_bits;
+  uint32_t empty_extra, word_extra;
+  int empty_symbol = distance_symbol_for(empty_distance, &empty_bits, &empty_extra);
+  int word_symbol = distance_symbol_for(1, &word_bits, &word_extra);
+  BitWriter w = {calloc((empty_words + 1) * (2 + (size_t)empty_bits) / 8 + 64, 1), 0};
+  put_bits(&w, 1, 0);
+  put_bits(&w, 1, 1);
+  put_bits(&w, 1, 0);
+  put_bits(&w, 2, 0);
+  put_bits(&w, 16, 4 - 1);
+  put_bits(&w, 3, 0);
+  put_bits(&w, 6, 0);
+  put_bits(&w, 2, 0);
+  put_bits(&w, 2, 0);
+  put_bits(&w, 2, 1);
+  put_bits(&w, 2, 0);
+  put_bits(&w, 8, 'a');
+  put_bits(&w, 2, 1);
+  put_bits(&w, 2, 0);
+  put_bits(&w, 10, 130);
+  put_bits(&w, 2, 1);
+  put_bits(&w, 2, 1);
+  put_bits(&w, 6, (uint32_t)word_symbol);
+  put_bits(&w, 6, (uint32_t)empty_symbol);
+  for (size_t each = 0; each < empty_words; each++) {
+    put_bits(&w, 1, 1);
+    put_bits(&w, empty_bits, empty_extra);
+  }
+  put_bits(&w, 1, 0);
+  put_bits(&w, word_bits, word_extra);
+  size_t stream_size = (w.at + 7) >> 3;
+  BrotliDecoderState *s = BrotliDecoderCreateInstance(NULL, NULL, NULL);
+  uint8_t buffer[64];
+  size_t available_in = stream_size;
+  const uint8_t *next_in = w.data;
+  size_t available_out = sizeof buffer;
+  uint8_t *next_out = buffer;
+  BrotliDecoderResult result =
+      BrotliDecoderDecompressStream(s, &available_in, &next_in, &available_out, &next_out, NULL);
+  Record record = {FNV_START, 0, 0};
+  printf("cve %zu\ttransform:%d\tstream:%zu:%016llx", empty_words, transform, stream_size,
+         (unsigned long long)fnv(w.data, stream_size, FNV_START));
+  say_call(&record, 'D', buffer, sizeof buffer - available_out, (int)result);
+  printf("\terror:%d\n", (int)BrotliDecoderGetErrorCode(s));
+  BrotliDecoderDestroyInstance(s);
+  free(w.data);
+}
+
 int main(int argc, char **argv) {
   FILE *cases = fopen(argv[1], "r");
   char line[512];
@@ -155,6 +244,8 @@ int main(int argc, char **argv) {
       encode_case(kind, size, level, mode, hint, ops);
     } else if (sscanf(line, "decode %15s %zu %d %zu", kind, &size, &level, &chunk) == 4) {
       decode_case(kind, size, level, chunk);
+    } else if (sscanf(line, "cve %zu", &size) == 1) {
+      cve_case(size);
     } else {
       sscanf(line, "%15s", what);
       fprintf(stderr, "unread case: %s", line);
