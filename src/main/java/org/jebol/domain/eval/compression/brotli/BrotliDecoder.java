@@ -115,9 +115,10 @@ final class BrotliDecoder {
             maxBackwardDistance = (1 << windowBits) - WINDOW_GAP;
             while (readOneMetaBlockAnsweringWhetherAnotherFollows()) {
                 if (enoughHasBeenMade()) {
-                    break;
+                    return outAt == out.length ? out : Arrays.copyOf(out, outAt);
                 }
             }
+            bits.jumpToByteBoundary();
             return outAt == out.length ? out : Arrays.copyOf(out, outAt);
         }
 
@@ -806,7 +807,7 @@ final class BrotliDecoder {
             int spare = held & 7;
             if (spare != 0 && take(spare) != 0) {
                 throw new IllegalArgumentException(
-                        "Brotli padding before stored bytes is not zero");
+                        "Brotli padding up to a byte boundary is not zero");
             }
         }
     }

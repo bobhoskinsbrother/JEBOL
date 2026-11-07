@@ -94,6 +94,7 @@ public final class Interpreter {
         installation.installBundled(MathPressoExtension.create());
         installation.installBundled(ZstdExtension.create());
         installation.installBundled(Bzip2Extension.create());
+        installation.installBundled(BrotliExtension.create());
         List<ExtensionReport> reports = new ArrayList<>(bounds.refusedExtensions());
         bounds.extensions().stream().map(installation::installAndReport).forEach(reports::add);
         this.extensionReports = List.copyOf(reports);

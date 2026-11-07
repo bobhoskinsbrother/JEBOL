@@ -94,7 +94,7 @@ class WhereAModuleComesFromFromTheSourceTest {
         assertThat(answerTo(root, "select system/modules 'sqlite")).isEqualTo("_");
         assertThat(answerTo(root, "type? first select system/modules 'bzip2")).isEqualTo("#(object!)");
         assertThat(answerTo(root, "type? first select system/modules 'zstd")).isEqualTo("#(object!)");
-        assertThat(answerTo(root, "error? try [import 'brotli]")).isEqualTo("#(true)");
+        assertThat(answerTo(root, "type? first select system/modules 'brotli")).isEqualTo("#(object!)");
         assertThat(answerTo(root, "type? select system/modules 'json"))
                 .as("already vendored and loaded, so it is a module and not an address")
                 .isEqualTo("#(module!)");

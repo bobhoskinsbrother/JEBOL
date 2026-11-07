@@ -295,6 +295,23 @@ class BrotliFromTheSourceTest {
                     failure: try [decompress copy/part packed 6 'br]
                     failure/id""")).isEqualTo("bad-press");
         }
+
+        @Test
+        @DisplayName("bits after the last meta-block that are not zero are refused, as the C's PADDING_2 refuses them")
+        void paddingAfterTheLastMetaBlockMustBeZero() {
+            assertThat(answerTo("""
+                    reduce [
+                        decompress #{3B} 'br
+                        (failure: try [decompress #{FB} 'br] failure/id)
+                        (failure: try [decompress #{FFFFFFFF} 'br] failure/id)
+                    ]""")).isEqualTo("[#{} bad-press bad-press]");
+        }
+
+        @Test
+        @DisplayName("and whole bytes after the end of a stream are left unread")
+        void bytesAfterTheStreamAreIgnored() {
+            assertThat(answerTo("reduce [decompress #{3B01} 'br decompress #{3BFF} 'br]")).isEqualTo("[#{} #{}]");
+        }
     }
 
     @Nested
