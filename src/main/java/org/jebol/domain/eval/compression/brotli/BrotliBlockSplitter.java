@@ -23,6 +23,12 @@ final class BrotliBlockSplitter {
     BrotliBlockSplitter(int alphabetSize, int smallestBlock,
             double splitThreshold, int howManySymbols, BrotliBlockSplit split) {
 
+        this(alphabetSize, alphabetSize, smallestBlock, splitThreshold, howManySymbols, split);
+    }
+
+    BrotliBlockSplitter(int alphabetSize, int histogramRoom, int smallestBlock,
+            double splitThreshold, int howManySymbols, BrotliBlockSplit split) {
+
         this.alphabetSize = alphabetSize;
         this.smallestBlock = smallestBlock;
         this.splitThreshold = splitThreshold;
@@ -33,10 +39,10 @@ final class BrotliBlockSplitter {
         int mostTypes = Math.min(mostBlocks, BrotliBlockSplit.MOST_TYPES_ALLOWED + 1);
         split.makeRoomFor(mostBlocks);
         split.setBlockCount(mostBlocks);
-        this.histograms = BrotliHistogram.makeFreshRow(mostTypes, alphabetSize);
+        this.histograms = BrotliHistogram.makeFreshRow(mostTypes, histogramRoom);
         this.howManyHistogramsAreUsed = mostTypes;
-        this.merged[0] = new BrotliHistogram(alphabetSize);
-        this.merged[1] = new BrotliHistogram(alphabetSize);
+        this.merged[0] = new BrotliHistogram(histogramRoom);
+        this.merged[1] = new BrotliHistogram(histogramRoom);
     }
 
     BrotliHistogram[] histograms() {

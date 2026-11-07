@@ -7,6 +7,7 @@ record BrotliDistances(int directCodes, int postfixBits) {
     static final int FURTHEST = 0x3FFFFFC;
 
     static final BrotliDistances PLAINEST = new BrotliDistances(0, 0);
+    static final BrotliDistances FONT = new BrotliDistances(12, 1);
 
     static int sizeAlphabetFor(int directCodes, int postfixBits) {
         return BrotliCommand.DISTANCE_SHORT_CODES + directCodes

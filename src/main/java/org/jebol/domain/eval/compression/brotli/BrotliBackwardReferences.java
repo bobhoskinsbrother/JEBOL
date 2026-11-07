@@ -29,7 +29,7 @@ final class BrotliBackwardReferences {
     static Found findAll(byte[] ringBuffer, int mask, int position,
             int howManyBytes, int quality, int windowBits, BrotliHasher hasher,
             int[] recentDistances, int insertLengthCarriedIn,
-            BrotliCommand commands) {
+            BrotliDistances distances, BrotliCommand commands) {
 
         int furthestBack = measureFurthestBack(windowBits);
         int insertLength = insertLengthCarriedIn;
@@ -110,7 +110,7 @@ final class BrotliBackwardReferences {
                 hasher.prepareDistanceCache(recentDistances);
             }
             commands.add(insertLength, (int) best.length, best.lengthCodeDelta,
-                    distanceCode, 0, 0);
+                    distanceCode, distances.directCodes(), distances.postfixBits());
             literalsWrittenIntoCommands += insertLength;
             insertLength = 0;
 

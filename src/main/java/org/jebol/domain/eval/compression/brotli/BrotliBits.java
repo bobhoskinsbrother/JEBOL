@@ -99,4 +99,17 @@ final class BrotliBits {
     byte[] written() {
         return Arrays.copyOf(data, position >> 3);
     }
+
+    byte[] writtenWithPartialByte() {
+        return Arrays.copyOf(data, (position >> 3) + 1);
+    }
+
+    byte[] takeCompleteBytes() {
+        int complete = position >> 3;
+        byte[] taken = Arrays.copyOf(data, complete);
+        data[0] = data[complete];
+        Arrays.fill(data, 1, Math.min(data.length, complete + 2), (byte) 0);
+        position &= 7;
+        return taken;
+    }
 }

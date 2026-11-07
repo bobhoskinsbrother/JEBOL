@@ -63,7 +63,7 @@ final class BrotliMetaBlock {
     }
 
     static int[] chooseContextMapFor(byte[] data, int mask, int from, int length,
-                                     int quality, int howMuchInputThereIs) {
+                                     int quality, long howMuchInputThereIs) {
 
         if (quality < QUALITY_THAT_FIRST_MODELS_CONTEXT
                 || length < SHORTEST_INPUT_WORTH_CONTEXT_MODELLING) {
@@ -200,7 +200,7 @@ final class BrotliMetaBlock {
                 BrotliCodes.COMMAND_SYMBOLS, SMALLEST_COMMAND_BLOCK,
                 COMMAND_SPLIT_THRESHOLD, commands.count(), built.commands);
         BrotliBlockSplitter distanceSymbols = new BrotliBlockSplitter(
-                DISTANCE_SYMBOLS, SMALLEST_DISTANCE_BLOCK,
+                DISTANCE_SYMBOLS, Math.max(DISTANCE_SYMBOLS, distances.alphabetSize()), SMALLEST_DISTANCE_BLOCK,
                 DISTANCE_SPLIT_THRESHOLD, commands.count(), built.distances);
 
         int at = from;

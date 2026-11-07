@@ -55,6 +55,14 @@ final class BrotliEncoder {
     };
     private static final int DEFAULT_COMMAND_CODE_BITS = 448;
 
+    private static byte[] defaultCommandCode() {
+        byte[] code = new byte[DEFAULT_COMMAND_CODE.length];
+        for (int each = 0; each < code.length; each++) {
+            code[each] = (byte) DEFAULT_COMMAND_CODE[each];
+        }
+        return code;
+    }
+
     private static final int[] COMMAND_HISTOGRAM_SEED = {
             0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1,
@@ -108,9 +116,51 @@ final class BrotliEncoder {
         return writer.written();
     }
 
+    static final class FastStream {
+
+        private final int quality;
+        private final BrotliBits writer = new BrotliBits(1 << 16);
+        private final Fragment onePass;
+
+        FastStream(int quality) {
+            this.quality = quality;
+            this.onePass = new Fragment(writer);
+            writer.write(4, ((WINDOW_BITS - 17) << 1) | 1);
+        }
+
+        static int largestBlock() {
+            return 1 << WINDOW_BITS;
+        }
+
+        void compressBlock(byte[] input, int at, int size, boolean isLast) {
+            if (quality == ONE_PASS_QUALITY) {
+                onePass.compressOneFragment(input, at, size, isLast);
+            } else if (size == 0) {
+                writer.write(1, 1);
+                writer.write(1, 1);
+                writer.jumpToByteBoundary();
+            } else {
+                BrotliTwoPassEncoder.writeOneFragment(input, at, size, isLast, writer);
+            }
+        }
+
+        byte[] takeCompleteBytes() {
+            return writer.takeCompleteBytes();
+        }
+
+        boolean hasBitsWaitingForAByte() {
+            return (writer.at() & 7) != 0;
+        }
+
+        void padToByteWithEmptyMetadata() {
+            writer.write(6, 0x6);
+            writer.jumpToByteBoundary();
+        }
+    }
+
     private static final class Fragment {
 
-        private final byte[] input;
+        private byte[] input;
         private final BrotliBits writer;
         private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
 
@@ -124,6 +174,8 @@ final class BrotliEncoder {
 
         private int[] table = new int[0];
         private int tableBits;
+        private byte[] commandCode = defaultCommandCode();
+        private int commandCodeBits = DEFAULT_COMMAND_CODE_BITS;
 
         private int from;
         private int fragmentEnd;
@@ -134,11 +186,15 @@ final class BrotliEncoder {
         private int mlenAt;
         private int literalRatio;
 
-        private Fragment(byte[] input) {
-            this.input = input;
-            this.writer = new BrotliBits(2 * input.length + 512);
+        private Fragment(BrotliBits writer) {
+            this.writer = writer;
             System.arraycopy(DEFAULT_COMMAND_DEPTHS, 0, commandDepth, 0, 128);
             System.arraycopy(DEFAULT_COMMAND_BITS, 0, commandBits, 0, 128);
+        }
+
+        private Fragment(byte[] input) {
+            this(new BrotliBits(2 * input.length + 512));
+            this.input = input;
         }
 
         private byte[] run() {
@@ -147,13 +203,14 @@ final class BrotliEncoder {
             do {
                 int fragmentSize = Math.min(input.length - at, 1 << WINDOW_BITS);
                 boolean isLast = at + fragmentSize == input.length;
-                compressOneFragment(at, fragmentSize, isLast);
+                compressOneFragment(input, at, fragmentSize, isLast);
                 at += fragmentSize;
             } while (at < input.length);
             return writer.written();
         }
 
-        private void compressOneFragment(int at, int size, boolean isLast) {
+        private void compressOneFragment(byte[] from, int at, int size, boolean isLast) {
+            input = from;
             int openedAt = writer.at();
             if (size == 0) {
                 writer.write(1, 1);
@@ -163,6 +220,9 @@ final class BrotliEncoder {
             }
             prepareTableRoundingEvenWidthUpBecauseOnlyOddOnesWork(size);
             compress(at, size);
+            if (!isLast) {
+                rebuildCommandCodeForNextFragment();
+            }
             if (writer.at() - openedAt > 31 + ((long) size << 3)) {
                 storeUncompressed(at, at + size, openedAt);
             }
@@ -201,11 +261,7 @@ final class BrotliEncoder {
             writer.write(13, 0);
             literalRatio = buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
                         from, blockSize);
-            for (int each = 0; each + 7 < DEFAULT_COMMAND_CODE_BITS; each += 8) {
-                writer.write(8, DEFAULT_COMMAND_CODE[each >> 3]);
-            }
-            writer.write(DEFAULT_COMMAND_CODE_BITS & 7,
-                    DEFAULT_COMMAND_CODE[DEFAULT_COMMAND_CODE_BITS >> 3]);
+            writeCommandCode();
 
             while (emitCommandsAnsweringWhetherThereIsMoreInput()) {
                 metaBlockStart = from;
@@ -584,6 +640,24 @@ final class BrotliEncoder {
         }
 
         private void buildAndStoreCommandPrefixCode() {
+            buildAndStoreCommandPrefixCode(writer);
+        }
+
+        private void rebuildCommandCodeForNextFragment() {
+            BrotliBits rebuilt = new BrotliBits(COMMAND_SYMBOLS);
+            buildAndStoreCommandPrefixCode(rebuilt);
+            commandCodeBits = rebuilt.at();
+            commandCode = rebuilt.writtenWithPartialByte();
+        }
+
+        private void writeCommandCode() {
+            for (int each = 0; each + 7 < commandCodeBits; each += 8) {
+                writer.write(8, commandCode[each >> 3] & 0xFF);
+            }
+            writer.write(commandCodeBits & 7, commandCode[commandCodeBits >> 3] & 0xFF);
+        }
+
+        private void buildAndStoreCommandPrefixCode(BrotliBits into) {
             int[] spreadDepth = new int[COMMAND_SYMBOLS];
             int[] spreadBits = new int[64];
 
@@ -618,8 +692,8 @@ final class BrotliEncoder {
                 spreadDepth[256 + 8 * each] = commandDepth[48 + each];
                 spreadDepth[448 + 8 * each] = commandDepth[56 + each];
             }
-            BrotliCodes.storeHuffmanTree(tree, spreadDepth, 0, COMMAND_SYMBOLS, writer);
-            BrotliCodes.storeHuffmanTree(tree, commandDepth, 64, 64, writer);
+            BrotliCodes.storeHuffmanTree(tree, spreadDepth, 0, COMMAND_SYMBOLS, into);
+            BrotliCodes.storeHuffmanTree(tree, commandDepth, 64, 64, into);
         }
 
     }
