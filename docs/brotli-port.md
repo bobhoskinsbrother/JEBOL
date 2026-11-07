@@ -1,6 +1,8 @@
 # The Brotli port
 
-Thirty-nine files under `org.jebol.domain.eval.compression.brotli`, one of them public.
+Forty-five files under `org.jebol.domain.eval.compression.brotli`, four of them
+public: the one-shot `Brotli`, the two streams the `brotli` module drives, and the
+error a refused stream carries.
 This note carries what the code cannot: which C file each piece came from, and
 the handful of format facts that a reader would otherwise have to derive.
 
@@ -432,8 +434,9 @@ save - so a code of fifty symbols or fewer never uses them.
 **Two departures from the C, neither of which changes an answer.** The
 multi-level lookup tables the C builds for speed are not here: a prefix code is
 decoded one bit at a time down a canonical table, which is the same code read the
-same way. And there is no ring buffer, because the whole answer is held anyway
-and a back-reference can index it directly.
+same way. And there is no ring buffer: a back-reference indexes the answer
+directly, and a stream lets go of what lies further back than its window between
+calls, which no reference can reach.
 
 **DECOMPRESS/SIZE stops reading at the limit, and that is the behaviour.** The C
 breaks out of its loop as soon as the answer passes the size asked for and cuts
@@ -462,3 +465,109 @@ length and repeats it, and then the code over code lengths has one symbol in it.
 **Room for one transformed dictionary word is 255 + 32 + 255.** The C reserves
 the widest a prefix or suffix could be, not the widest any of the built-in ones
 is, because the length of a piece is text in a byte.
+
+**A refusal carries the C's error number.** `BrotliFormatError` is the
+`IllegalArgumentException` every refusal throws, with the
+`BROTLI_DECODER_ERROR_*` the C would set at the same place: padding is
+`PADDING_1` before stored or metadata bytes and `PADDING_2` at the end of the
+stream, a metadata length's spare byte is `EXUBERANT_META_NIBBLE`, a word length
+with no words and a reach before the dictionary are both `DICTIONARY`, and a
+stream the one-shot decoder runs off the end of is 2, the `NEEDS_MORE_INPUT` the
+C stops on. The `brotli` module's `decompress 'br` needs it: R3 traps a failing
+registered method as `bad-press` with that number, and the reference records six
+of them.
+
+## Streaming
+
+The `brotli` module (goal 1b, decision 58) drives Brotli as a stream:
+`BrotliStreamEncoder` and `BrotliStreamDecoder` are the C's
+`BrotliEncoderCompressStream` and `BrotliDecoderDecompressStream` with unlimited
+output, which is how Rebol-Brotli calls them. Every call is checked against the
+C in `src/testFixtures/resources/brotli/module/stream-table.tsv`, a table
+`stream-table.c` writes by driving Brotli's own API through the same calls.
+
+### The encoder
+
+**One state machine serves the one-shot and the stream.** `BrotliGenericEncoder`
+copies input into its ring buffer up to the end of the current input block, and
+runs `EncodeData` when the block is full or the operation is not PROCESS; the
+one-shot `encode` is that loop with all the input and FINISH. Only whole bytes
+leave a call. The bits of a part byte wait in the writer, as `last_bytes_` waits
+in the C, and a FLUSH that leaves some pads them with the six-bit empty metadata
+block, `InjectBytePaddingBlock`.
+
+**The size hint is guessed at the first `EncodeData`, not at the first call.**
+`UpdateSizeHint` adds what is buffered to what is still to come in the same
+call, caps it at 1 << 30, and only if no hint was set; the hasher is chosen from
+it then, so a stream fed in small pieces gets the hashers of a small input. A
+setting after the first call is refused, as `BrotliEncoderSetParameter` refuses
+it once the encoder is initialised. A hint of -1 is 2^32 - 1, since the C takes
+it as a `uint32_t`, and is a large input.
+
+**Qualities 0 and 1 stream block by block,** `BrotliEncoderCompressStreamFast`:
+each call's input in pieces of up to the window, each piece one fragment.
+
+**Quality 0 carries its command code from fragment to fragment.** After every
+fragment that is not the last, `BrotliCompressFragmentFast` builds a command
+prefix code from that fragment's histogram, and the next fragment's first block
+stores it instead of the default. The port wrote the default every time. No
+one-shot test noticed, because a one-shot input below four megabytes is a single
+fragment; the first streamed table row past one call found it, and with it a
+one-shot `compress/level x 'br 0` of more than four megabytes that was not the
+C's.
+
+**Font mode is distance parameters, and nothing else.** `ChooseDistanceParams`
+is the only reader of `BROTLI_PARAM_MODE`: from quality 4, font mode uses one
+postfix bit and twelve direct codes. That reaches the commands at every quality
+from 4, so `BrotliBackwardReferences` now encodes with the stream's parameters
+where it assumed the plainest. The greedy meta-block's distance splitter still
+measures entropy over 64 symbols, as the C does, but holds the longer alphabet's
+counts. Qualities 10 and 11 choose their own parameters, so font mode writes the
+same bytes there, as the C does.
+
+### The decoder
+
+**It gives out, each call, everything whose bits have arrived.** With room for
+all of it, the C pushes its whole ring buffer whenever it runs short of input, so
+what a call answers is fixed by the safe decoder's units. A command with its
+extra bits, each literal, a distance with its extra bits, and each block switch
+wait whole for their bits and change nothing until they have them. Stored bytes
+come one at a time. A meta-block's header and trees give out nothing, so they are
+read again from the meta-block's start until they have all arrived, rather than
+resumed partway. The table checks that at a byte at a time.
+
+**A meta-block may not be overrun.** The C takes an insert's length from the
+meta-block's as soon as it reads the command, and refuses a meta-block left
+negative, `BLOCK_LENGTH_1` or `_2`. The one-shot decoder had let a command or a
+copy run past the end and carried on; both are refused now.
+
+### CVE-2026-111497
+
+**The fixed behaviour, not the vulnerable one.** Brotli 1.0.3 to 1.2.0 answer a
+block switch in a category with one block type as "needs more input", and the
+streaming decoder then overflows its eight-byte buffer; 1.2.1 makes it
+`BLOCK_SWITCH` (Google's commit `0ed4268`). One block type allows 2^24 symbols,
+`BROTLI_BLOCK_SIZE_CAP`, and the switch asked for after them is refused. The old
+Java decoder allowed 2^28 and never asked, so it was not affected, but it was not
+the C either.
+
+The streams that reach it are built bit by bit: dictionary words a transform
+leaves empty, each a command and a distance with no output. 2^24 of them decode
+and one more is refused, with one command type (the command switch) and with
+two (the distance switch). `stream-table.c` builds the same streams and 1.2.1
+gives the same answers. Literals cannot reach their cap, since a meta-block
+holds at most 2^24 bytes.
+
+### Where the module differs from Rebol-Brotli's C
+
+- **A level 0 or 1 encoder finished with `none` finishes as with `#{}`.** The
+  C passes `NULL` as the next input and its fast path reads through it.
+- **The block switch above is refused.** A real 3.22.5 with this extension is
+  affected; its `write` ignores its decoder's result, so the module answers
+  `#{}` there, as it does for any damaged stream, and `decompress` fails.
+- **A call that fails gives out nothing from that call.** The C writes into a
+  ring buffer and pushes it on to the output when it wraps, so a call that
+  decodes more than a ring buffer's worth before it meets damage has pushed some
+  of it, and the module's `write` keeps it. JEBOL decodes into its answer and
+  gives out a call's bytes when the call ends. Only a stream damaged after more
+  than a window of good data in one `write` tells the two apart.

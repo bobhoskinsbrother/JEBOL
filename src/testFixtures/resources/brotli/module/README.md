@@ -22,12 +22,23 @@ sources fetched by tag:
 | `module-streams.r3`, `.txt` | twelve scenarios, each in a process of its own: encoders and decoders through `write`, `/flush`, `/finish` and `read`, the handle fields, and the errors; addresses in a mold are `0#<address>` |
 | `module-stream-case.r3`, `.txt` | single streaming cases, each in a process of its own; a crash is `crashed` |
 | `stream-cases.txt` | the cases the table runs, one a line, read by `stream-table.c` and by JEBOL's tests alike |
-| `stream-table.c`, `stream-table.tsv` | each case's calls to `BrotliEncoderCompressStream` or `BrotliDecoderDecompressStream`, and each call's output length and 64-bit FNV-1a digest |
+| `stream-table.c`, `stream-table.tsv` | each case's calls to `BrotliEncoderCompressStream` or `BrotliDecoderDecompressStream`, and each call's output length and 64-bit FNV-1a digest; and each `cve` case's stream and 1.2.1's answer to it |
 
 `text` is the generator both sides share: `x` starts at 12345 and becomes
 `(x * 1103515245 + 12345) and 2147483647` for each byte, which is
 `"the quick brown fox jumps over a lazy dog "` at `(x >> 16) mod 42`; `noise`
-is `(x >> 16) and 255`.
+is `(x >> 16) and 255`. `maps` is the front of `../mapsdatazrh-first-30k.bin`,
+the slice of Brotli's own corpus already checked in for the one-shot port, so
+the streaming API meets real structured data at every level 0 to 11.
+
+A `cve` case is built bit by bit, by `stream-table.c` and by JEBOL's
+`BrotliBlockSwitchStreams` alike: one meta-block of dictionary words that
+transform 34 leaves empty, each costing a command and a distance and no output,
+then one four-letter word. With one command block type the 2^24+1st command asks
+for a switch; with two, the first command block is longer than 2^24 and the
+2^24+1st distance asks. 1.2.1 decodes 2^24 and refuses the next with
+`BLOCK_SWITCH` (-17). Literals cannot reach their cap: a meta-block holds at
+most 2^24 bytes. The streams are 30 MB, so they are made, not stored.
 
 ## What the extension's C does that JEBOL does not copy
 
@@ -73,7 +84,9 @@ same pieces of input, which is what the table records.
   and `/finish` change nothing about the decoding.
 - **Importing replaces `br`.** The extension's `compress` writes the same bytes
   as the core's at every level and sample size, so `compress 'br` after import
-  is unchanged.
+  is unchanged. A `decompress 'br` it refuses is R3's `bad-press` carrying
+  `BrotliDecoderGetErrorCode`: 2 for a stream cut short, since the C stops on
+  needing more input, and the format error's own number otherwise.
 - **`Accept-Encoding` gains a second `br`.** It is `gzip,deflate,br` before
   import, because `prot-http.reb` adds `br` when the catalog has it, and
   `gzip,deflate,br,br` after: the module's check only looks at the item after

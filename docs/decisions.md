@@ -2540,6 +2540,15 @@ difference and it is the point: there is no address to fetch.
 noise of `scripts/timing.py boot`: medians of 58.0 and 51.1 ms without it, 53.4
 and 53.7 ms with it.
 
+**Brotli comes by this route too, not as a jar of its own (goal 1b).** Decision
+63's jar is for an extension that needs a library or should not ship in every
+build. Rebol-Brotli 0.1.0 needs neither, since the Brotli port is already in
+the core, so `BrotliExtension` is bundled as bzip2 and zstd are. It is also the
+one case where serving the extension rather than fetching it changes what a
+script can reach: the C that a real 3.22.5 downloads predates the fix for
+CVE-2026-111497, and JEBOL's decoder ports the fix (`docs/brotli-port.md`,
+Streaming).
+
 **The work turned up one core defect.** `protect/hide 'm/field` hid a field of an
 object and ignored a field of a module, so a module made by IMPORT kept
 `lib-boot` among its words where R3's hides it. A path now hides a field of any
