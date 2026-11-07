@@ -94,7 +94,7 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1a. The `bzip2` module, and SQLite as an optional jar
+#### 1a. The `bzip2` module, then SQLite and Postgres as extension jars
 
 **JEBOL never fetches an extension** (decision 58). One it serves is ported to
 Java and carried in the build as a delayed entry, which IMPORT makes into a
@@ -109,28 +109,265 @@ thrown away:** whatever is compiled or scripted to learn an answer is checked
 in as a generator with the tables it writes, or becomes a test, and that test
 is what stays.
 
-Two pieces, in this order, each with its failing tests written first:
+Three pieces, in this order, each with its failing tests written first:
 
 1. **`import 'bzip2`.** Done: `docs/bzip2-port.md`. Where the C never answers,
    `write/flush` above all, it says what JEBOL does instead.
-2. **SQLite as an optional extension.** A separate jar, `jebol-sqlite`, built
-   here and over Xerial's `sqlite-jdbc`. A script gets `import 'sqlite` by adding
-   that jar and its library jars to the classpath and nothing else: no flag, no
-   configuration. JEBOL's own jar keeps its zero dependencies and never names
-   SQLite, and without the jars `import 'sqlite` fails as it does now. It is an
-   ordinary extension written to `docs/writing-an-extension.md`: `Extension`,
-   its commands and its handles are already public. Two things are missing, and
-   PDF (goal 12) needs both. The command line finds no extension on the classpath,
-   because its `Bounds` holds none unless a host adds one. And a public extension
-   exports every command to `lib` and is refused `already-used` for a name `lib`
-   holds, so one with an `open` and a `close` cannot install: the route that keeps
-   commands in the module until IMPORT, which the eight bundled extensions take,
-   is not public. Rebol-SQLite 3.46.0.0 declares fourteen commands, and its
-   `ci-test.r3` is a further source of cases.
+2. **SQLite, as one extension jar with two setups.** The full plan is below,
+   under "The SQLite plan". It was agreed on 2026-11-07.
+3. **Postgres, next, on the same pattern.** The same kind of jar with only a
+   `jvm` setup, over pgjdbc. Browsers cannot open a TCP socket, so a site build
+   that names it is refused. R3 has no Postgres extension, so no C decides its
+   answers: settle its commands in `spec/` first, shaped like SQLite's (`open`,
+   `exec`, `eval`, `prepare`, `step /rows /with`, `columns`, `finalize`, `close`,
+   `info`), with a `postgres://` scheme like SQLite's, so that a script reads the
+   same against either. pgjdbc opens its own sockets, so its `SocketFactory` is
+   JEBOL's and checks the NETWORK grant and SECURE before connecting. The tests
+   start a Postgres installed from apt by `scripts/setup-machine.sh`, as they
+   start Chrome; no Docker image.
 
-**Done when** every `bzip2` command answers as the extension's C does, and an
-end-to-end test runs the command line with and
-without the SQLite jars on the classpath and gets each answer.
+**Done when** every `bzip2` command answers as the extension's C does, SQLite's
+"Done when" below holds, and Postgres's does once its table is settled.
+
+##### The SQLite plan
+
+**What was decided, and why.** Agreed with the user on 2026-11-07, after
+weighing the alternatives below.
+
+- **One jar, `jebol-sqlite.jar`, with two setups: `jvm` and `web`.** It also
+  carries a descriptor, its configuration, that says what each setup is and
+  what it needs. The command line and the desktop app take the `jvm` setup. The
+  site build takes the `web` setup. JEBOL's own jar keeps its zero dependencies
+  and never names SQLite.
+- **`jvm` runs sqlite4j** (`io.roastedroot:sqlite4j`, Apache-2.0): Xerial's
+  sqlite-jdbc with SQLite compiled to WebAssembly, then translated to plain Java
+  bytecode at build time by Endive. It is pure Java, with no native library to
+  unpack. Xerial's own `sqlite-jdbc` was the first plan. It was dropped because
+  it unpacks a native library and could never run on the web.
+- **`web` runs sqlite.org's official WebAssembly build** (`sqlite3.wasm` and its
+  JS API) in the worker, through TeaVM's JS interop, the way `BrowserStore` calls
+  the page's store. Both files are carried inside the jar.
+- **The commands are written once, against a `SqliteEngine` interface.** Each
+  setup supplies its own engine. Rejected: one hand-written driver calling one
+  `sqlite3.wasm` through Endive on the JVM and the browser's engine on the web
+  ("stupidly complicated"). Also rejected: a pure-Java database TeaVM compiles,
+  because none exists that we know of; H2 and HSQLDB rest on `java.sql`, threads
+  and file channels.
+- **Every file goes through the host's `FilePort`.** No setup reads a path on its
+  own. Both engines hold the database in memory: on `open` its octets are read
+  through the port, and after a change, and on `close`, they are written back
+  through it. So SECURE, the grants and `what-dir` apply as they do to any file.
+  `:memory:` never touches the port.
+- **Extensions, unlike the reference, may use prebuilt libraries.** "No release
+  binary is run" is about where the reference answers come from. The
+  user, 2026-11-07: core is one jar, and an extension can do whatever it needs,
+  since core does not rely on it.
+- **A bad handle answers as the C does,** with `command-fail` carrying
+  `"Invalid SQLite DB handle!"` or `"Invalid SQLite STMT handle!"`, not with
+  `invalid-handle`.
+- **`info` and `trace` are tested by their shape.** Their pointers, memory figures
+  and nanoseconds differ from run to run, and sqlite4j cannot report SQLite's
+  memory at all.
+- **`sqlite-scheme.reb` is included,** run as the extension's own script.
+- **The version.** Pin both engines to the newest SQLite that both sqlite4j
+  (3.48.0.0 onwards on Maven Central) and sqlite.org's WebAssembly downloads
+  have, and check that the pair really exists before pinning. The reference is
+  3.46.0. The module itself keeps the header's `Version: 3.46.0.0`, and only
+  `info`'s `SQLite-version` line reports the engine's version.
+  `docs/sqlite-port.md` records every place the newer SQLite answers
+  differently from the transcripts.
+
+**The sources.** Rebol-SQLite at tag `3.46.0.0`, MIT licence:
+https://github.com/Siskin-framework/Rebol-SQLite. These files matter:
+
+| File | What it is |
+| --- | --- |
+| `src/sqlite-rebol-extension.r3` | The 14 commands' specs, and the module header (`Name: sqlite Type: module Exports: []`, version 3.46.0.0) |
+| `src/sqlite-command-*.c` | One file per command |
+| `src/sqlite-rebol-extension.c` | Registers the handles `sqlite-db` and `sqlite-stmt`, and calls `sqlite3_initialize` |
+| `sqlite/sqlite3.c` | The SQLite 3.46.0 amalgamation, public domain, which the reference build compiles |
+| `ci-test.r3` | The extension's own test script, the larger source of cases |
+| `sqlite-scheme.reb` | The `sqlite:` scheme |
+
+`rebol3-source/src/tests/test-extension-sqlite.r3` is a third source of cases.
+`f-extension.c:543` turns a command's error string into an error, which JEBOL
+already has as `command-fail` carrying the message.
+
+**What each command does, read from the C.** The reference transcripts settle
+the exact answers.
+
+| Command | Answers | Notes from the C |
+| --- | --- | --- |
+| `info /of handle` | a string | Without `/of`: needed and current Rebol version, `SQLite-version`, `SQLite-memory`, `SQLite-mem-top`. With `/of` on a db: the context and db pointers, and `sqlite-buffer-size`. With `/of` on a statement: two pointers, `last-result-code`, `bind-parameters`, `data-count`. Any other handle: an empty string |
+| `open file` | a `sqlite-db` handle | The file's text is handed to SQLite as it is. Failure: `"[SQLITE] <errstr>"` |
+| `exec db sql` | unset | Runs every statement, separated by semicolons. Prints each row as `name = value` lines, `NULL` for null, then a blank line. Failure: `"[SQLITE] <errstr> <errmsg>"` |
+| `eval db query` | a block of rows laid out flat, or the count of rows changed | `query` is a string, a statement handle, or a block. A block holds a string or a statement handle, then the parameters, either flat or as one block per row. It binds a string from the head of its series, ignoring the index. Failure: `"[SQLITE] <errstr>"` |
+| `last-insert-id db` | an integer | |
+| `prepare db sql` | a `sqlite-stmt` handle | Sets `last_result_code` to `SQLITE_ROW`. Failure: `"[SQLITE] <errstr> <errmsg>"` |
+| `step stmt /rows count /with parameters` | a block of rows laid out flat, or none | Without `/rows`, one row. A count below 1 means every row. `/with` binds by position: integer, decimal, string, none and logic, with words, get-words and get-paths resolved first. Any other type fails with `"[SQLITE] Unsupported value type!"`, and `binary!` is one of them. A string binds from the head of its series, ignoring the index (`ci-test`'s `next "xA_di"` exercises this). A read-only statement that has already answered `DONE` answers none without stepping. Other failures: `"[SQLITE] Statement is busy!"`, `"[SQLITE] Statement misuse!"`, or the bare errstr, with no prefix |
+| `columns stmt` | a block of strings, or none for no columns | |
+| `reset stmt` | unset | Sets `last_result_code` back to `SQLITE_ROW` |
+| `finalize stmt` | unset | Every later use is `"Invalid SQLite STMT handle!"` |
+| `close db` | unset | The handle still passes its check afterwards, and SQLite itself refuses what follows |
+| `trace db mask` | unset | `mask and 15`. Prints `TRACE[n] STMT: <sql>`, `PROFILE: <n>ns`, `ROW` or `CLOSE` with a raw `printf`. JEBOL prints through `call.writeLine` |
+| `initialize`, `shutdown` | `#(true)` | |
+
+Columns map INTEGER to `integer!`, FLOAT to `decimal!`, TEXT to `string!`, BLOB
+to `binary!` and NULL to `none`. A zero-length blob reaches no `memcpy`, so what
+the C answers for one is for the reference to say.
+
+The scheme's actions are `open /new`, `open?`, `close`, `write` (exec), `insert`
+(prepare, caching statements by their text), `take /part`, `read /part`, `pick`
+(read what was just inserted) and `modify 'trace-level`. A missing file without
+`/new` raises `access cannot-open`. The scheme starts with `sqlite: import
+sqlite`, which cannot run inside the module it imports: change it to use the
+module's own words, and record the change as a borrowed-file edit.
+
+**What the core lacks today.** Found by reading it on 2026-11-07:
+
+- **The command line adds no extension.** `Repl.grantEveryHostService` builds
+  `Bounds.standard()` and nothing more. Check how the desktop app builds its
+  bounds: it must get the same extensions.
+- **There is no public way to keep commands in the module.**
+  `ExtensionInstallation.install` puts every command into `lib`, so an `open` or a
+  `close` is refused as `already-used`. `installDelayed` keeps them in the module
+  but is package-private. It ignores `handleTypes` and `startWith`, and it reports
+  nothing.
+- **A command cannot reach the files.** `Command` offers no route to the host's
+  `FilePort` that applies SECURE and resolves against `what-dir`.
+- **A command cannot ask a handle's kind without raising.** `call.unwrap` raises
+  `invalid-handle`, and the C answers its own `command-fail` string instead.
+- **`java -jar` ignores `-cp`.** So the command line is run as `java -cp
+  jebol.jar:jebol-sqlite.jar org.jebol.adapter.cli.JebolLauncher`, with the
+  library jars beside `jebol-sqlite.jar`, named by its manifest's `Class-Path`.
+
+**The jar.** It is built by the Gradle subproject `extensions/sqlite`:
+
+- **The shared part:** the setup providers, the commands, the scheme, the handle
+  kinds, `SqliteEngine`, and the file round-trip. It never names either engine.
+- **`Sqlite4jEngine`.** It is reached only from the `jvm` provider. Finding how
+  octets get in and out of sqlite4j's in-memory database is the first spike.
+  Candidates: `SQLiteConnection`'s `serialize` and `deserialize`, or a path in
+  its in-memory filesystem (ZeroFs).
+- **`BrowserSqliteEngine`.** It is reached only from the `web` provider, and loads
+  octets with `sqlite3_deserialize` and saves them with `sqlite3_js_db_export`.
+  TeaVM's JS-interop types are needed when compiling the jar but are not shipped
+  in it.
+- **`sqlite3.wasm` and its JS,** about 1 MB, as resources. Fetched by Gradle,
+  pinned by version and SHA-256.
+- **The descriptor, `META-INF/jebol/extension.reb`,** written in REBOL:
+
+  ```rebol
+  name: sqlite
+  version: 3.46.0.0
+  setups: [
+      jvm [
+          provider: org.jebol.extension.sqlite.SqliteOnTheJvm
+          needs:    [%sqlite4j-<v>.jar ...]
+      ]
+      web [
+          provider: org.jebol.extension.sqlite.SqliteInTheBrowser
+          assets:   [%sqlite3.wasm %sqlite3.js]
+      ]
+  ]
+  ```
+
+  A provider builds the `Extension`, so the core never knows about engines. The
+  manifest's `Class-Path` is generated from `jvm`'s `needs`, so the two cannot
+  drift apart. Check what sqlite4j itself needs at runtime: Xerial's driver needs
+  `slf4j-api`, which warns on stderr when it finds no logging provider.
+
+**The pattern, so that Postgres and PDF repeat it.** A `buildSrc` convention
+plugin, `jebol-extension`, builds such a jar from a short declaration of the name,
+the version, and each setup's provider, libraries and assets. From that one
+declaration it writes the descriptor and the manifest. It also wires the
+extension's tests into `allTests`. The core and the site build only ever read
+the descriptor. PDF (goal 12) needs the same jar shape, plus its rule that its
+commands answer none when the jar is absent. Revisit goal 12 when this lands.
+
+**The order.** Each step's failing tests are written before its code.
+
+0. **The reference.** `extensions/sqlite/src/test/resources/reference/generate.sh`
+   fetches Rebol-SQLite at its tag. It compiles the extension's C with its
+   `sqlite3.c` and its own `rebol-extension.h` into a `.rebx` with `gcc -shared
+   -fPIC`, and runs `module-*.r3` scripts in `./r3-head` with the `.rebx` as their
+   argument, as `bzip2/README.md` describes. The scripts and their `.txt` output are
+   checked in. They cover every boundary in the list below.
+1. **The core, in `src/functionalTest`:**
+   1. Pin today's answer to `import 'sqlite` first. It is what a host without the
+      jar keeps answering.
+   2. **A public extension whose commands stay in its module.** Only the names it
+      exports reach `lib`, the seal applies only to those names, handle types and
+      `startWith` are honoured, and every refusal is reported in
+      `interpreter.extensions()`. Then move the eight bundled extensions onto this
+      route, so there is one route, and delete `installDelayed`. A new group in
+      `ExtensionsFromTheSourceTest`.
+   3. **Reading descriptors.** Read every `META-INF/jebol/extension.reb` with
+      `ClassLoader.getResources`, take the `jvm` setup, and add its provider's
+      extension to the command line's and the desktop app's `Bounds`. A jar with
+      no `jvm` setup, or with a broken descriptor, is reported as refused and
+      stops nothing else. A host embedding JEBOL is unchanged: adding an extension
+      is the grant.
+   4. **On `Command`:** read and write a file through the host's `FilePort`,
+      resolved against `what-dir` and checked by SECURE, and ask a handle's kind
+      without raising.
+2. **The `jebol-extension` plugin and the `extensions/sqlite` subproject**, with an
+   empty provider, proving the jar, its descriptor, its manifest and its tests in
+   `allTests`.
+3. **The `jvm` setup.** The spike on getting octets in and out first. Then the
+   commands, then the scheme. `TheSqliteModuleFromTheSourceTest` checks the
+   transcripts, and separate `*FromTheSourceTest`s check the same behaviour
+   without reading any `.r3` file.
+4. **The `web` setup.** `assembleSite -Pextensions=<jar>` reads the descriptor
+   and puts the jar on TeaVM's classpath. It generates a class that registers the
+   `web` provider, because TeaVM cannot look classes up by name, and adds it to
+   `ShippedPageBounds`. It copies the assets beside `jebol-web.wasm`. A jar with no
+   `web` setup fails the build, saying so.
+5. **End to end.**
+   - The shipped jar with and without `jebol-sqlite.jar` on `-cp`, checking each
+     answer and that stderr is clean.
+   - A site built with and without the extension, driven in Chrome, running the
+     same scripts as step 3, so any difference between the two engines fails.
+6. **The docs.**
+   - Decision 62: an extension jar with setups and a descriptor.
+   - `spec/embed.allium`.
+   - A section in `writing-an-extension.md` on writing an extension in its own jar.
+   - `docs/sqlite-port.md`: where JEBOL differs from the C, and how the file
+     round-trip works.
+   - `using-jebol.md`: how to run with the jar.
+   - These goals.
+
+**The boundaries.** Each is covered by the reference and by a JEBOL test:
+
+- **SQL:** empty SQL; several statements in one `exec`; a syntax error; a
+  constraint error (`ci-test`'s NOT NULL).
+- **`/rows`:** 0, -1, 1, more than there are rows, and over 1000, where the C
+  stops preallocating more.
+- **`/with`:** fewer values than placeholders, more, and none at all; each
+  bindable type; `binary!`, `block!` and an unset word.
+- **Strings:** a string not at its head, in `step/with` and in `eval`; a wide
+  string, both bound and read back; `eval` given a string query not at its head.
+- **Values:** NULL, a zero-length blob, a large blob, and a 64-bit integer at
+  each extreme.
+- **Statements:** stepping again after DONE, for a read-only statement and for a
+  write; `reset`, then stepping again; a finalized statement passed to `step`,
+  `columns`, `eval` and `finalize`.
+- **Databases:** a closed database passed to each command; one handle kind
+  where the other is expected; a handle from another extension.
+- **`eval`:** with nested blocks of rows, a short row, and a finalized
+  statement inside its block.
+- **`open`:** `:memory:`; a missing directory; whether `open` creates the file
+  before any write; a path relative to `what-dir`; a path SECURE refuses.
+- **The library:** `shutdown` twice, then `initialize`.
+- **The scheme:** `open` without `/new` on a missing file; `read /part`, `take`,
+  `pick`; `insert` of the same text twice, which reuses the cached statement; an
+  action on a closed port (`not-open`).
+
+**Done when** every command and scheme action answers as the transcripts do, with
+each exception recorded in `docs/sqlite-port.md`, on both setups. Every
+boundary above has a standalone JEBOL test. And the end-to-end tests run the
+command line and a built site, each with and without the extension, and get each
+answer.
 
 #### 1b. The `brotli` module, and the streaming encoder it needs
 
