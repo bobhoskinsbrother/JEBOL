@@ -1072,6 +1072,18 @@ rule TheCommandLineAddsEveryJarsJvmSetup {
 -- SECURE. A file the port cannot reach is an answer, not a failure. And a
 -- command may ask any value whether it is a handle, and of which kind,
 -- without raising.
+-- A context handle's fields are what its held object answers, read and set
+-- by path as R3's PD_Handle reads and sets them through an extension's
+-- get_path and set_path: a field it does not read is invalid-path, a field it
+-- will not set is bad-path-set, and a value of the wrong type is
+-- bad-field-set. /type answers the kind when the held object does not answer
+-- it first. Any context handle with no fields refuses reads and sets the same
+-- way, rc4's included.
+rule AHandlesFieldsAreItsHeldObjects {
+    when: CallCommand(command, arguments)
+    ensures: the_handle_paths_follow_pd_handle(the_calling_interpreter())
+}
+
 rule ACommandReachesFilesAsAScriptDoes {
     when: CallCommand(command, arguments)
     ensures: the_command_files_obey_the_grant_and_secure(the_calling_interpreter())

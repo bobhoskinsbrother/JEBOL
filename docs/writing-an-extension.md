@@ -207,6 +207,37 @@ If a script passes a handle of another kind, `unwrap` refuses it for you:
 == invalid-handle
 ```
 
+**Fields and mold.** What a handle holds can give it fields a script reads and
+sets by path, as an R3 extension's `get_path` and `set_path` do: implement
+`HandleFields`. `readField` answers a field's value, or empty for a field it does
+not read; `writeField` answers `WRITTEN`, `NO_SUCH_FIELD` or `WRONG_TYPE`. The
+errors are R3's own: a field it does not read is `invalid-path`, a field it will
+not set is `bad-path-set`, and a value of the wrong type is `bad-field-set`
+naming the field and the datatype. `/type` answers the handle's kind unless the
+held object answers it first. Implement `MoldedInsideHandle` as well and a
+handle molds as `#(handle! timer <its text>)`.
+
+```java
+record Timer(long startedAt) implements HandleFields {
+    public Optional<Value> readField(String field) {
+        return field.equals("started")
+                ? Optional.of(IntegerValue.of(startedAt))
+                : Optional.empty();
+    }
+
+    public FieldWriting writeField(String field, Value written) {
+        return FieldWriting.NO_SUCH_FIELD;
+    }
+}
+```
+
+```
+>> t/started
+== 1730000000000
+>> t/started: 0
+** Script error: cannot set started in path t/started:
+```
+
 ---
 
 ## 6. Work that finishes later: the postbox
@@ -693,7 +724,7 @@ checks, so a failure reads as a sentence. Run one class with, for example:
 ```
 
 **`ExtensionsFromTheSourceTest`**: the host's side, through `Bounds` and
-`Interpreter`. 55 tests in ten groups.
+`Interpreter`. 62 tests in eleven groups.
 
 | Group             | Covers                                                                                                                                                                                                                                                                                                   | Guide section |
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
@@ -705,6 +736,7 @@ checks, so a failure reads as a sentence. Run one class with, for example:
 | `Handles`         | a handle going out to the script and back; a handle of another kind refused as `invalid-handle`                                                                                                                                                                                                          | 5             |
 | `Posting`         | an event posted from another thread waking a `wait`; a callback running on the script's thread and answering; a callback that fails; `do-callback` of an ordinary event; a `wait` with nothing woken letting its time pass                                                                               | 6             |
 | `WithAHeader`     | commands kept out of `lib`, a native's name allowed; waiting in `system/modules` until `import`; the header the module carries; exports reaching `lib` on `import`, and one `lib` holds refused; a header that does not read; start and its failure; handle kinds checked                              | 10            |
+| `HandleFieldsByPath` | a field read and set through the held object; an unknown field, a refused set and a wrong type, each R3's error; rc4's handle refusing both; the held object's mold | 5 |
 | `HandleKinds`     | any handle's kind answered without raising, and empty for anything else                                                                                                                                                                                                                                 | 10            |
 | `ReachingFiles`   | `call.files()` writing and reading as READ does; a relative path from `what-dir`; what the port cannot reach; SECURE; the files grant                                                                                                                                                                   | 10            |
 

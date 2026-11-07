@@ -1359,6 +1359,10 @@ public final class Evaluator {
             GobPath.write(gob, field, written);
             return;
         }
+        if (target instanceof HandleValue handle && lastSegment instanceof AnyWordValue field) {
+            HandlePath.write(handle, field, written);
+            return;
+        }
         if (segments.size() == 3 && segments.get(1) instanceof AnyWordValue pairField
                 && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof GobValue holdingPair
@@ -1659,15 +1663,7 @@ public final class Evaluator {
             return GobPath.read(gob, selector);
         }
         if (target instanceof HandleValue handle) {
-            if (!(selector instanceof AnyWordValue field)) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH,
-                        "a handle is selected by name, not by "
-                                + selector.datatype().literalSpelling());
-            }
-            if (handle.isContext() && field.canonical().equals("type")) {
-                return WordValue.of(handle.typeName());
-            }
-            return NoneValue.none();
+            return HandlePath.read(handle, selector);
         }
         if (target instanceof EventValue event) {
             return EventPath.read(event, selector,

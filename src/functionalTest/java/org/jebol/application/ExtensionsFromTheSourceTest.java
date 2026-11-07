@@ -9,7 +9,9 @@ import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.HandleFields;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.MoldedInsideHandle;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
@@ -672,6 +674,104 @@ class ExtensionsFromTheSourceTest {
 
             assertThat(makeAnInterpreterWith(other, store()).extensions().getLast().refusal())
                     .contains("handle-exists");
+        }
+    }
+
+    @Nested
+    @DisplayName("a handle's fields are what its held object answers, read and set by path as R3's PD_Handle does")
+    class HandleFieldsByPath {
+
+        private static final class Dial implements HandleFields, MoldedInsideHandle {
+
+            private long level = 3;
+
+            @Override
+            public Optional<Value> readField(String field) {
+                return switch (field) {
+                    case "reading" -> Optional.of(IntegerValue.of(level * 10));
+                    default -> Optional.empty();
+                };
+            }
+
+            @Override
+            public FieldWriting writeField(String field, Value written) {
+                if (!field.equals("level")) {
+                    return FieldWriting.NO_SUCH_FIELD;
+                }
+                if (!(written instanceof IntegerValue(long magnitude))) {
+                    return FieldWriting.WRONG_TYPE;
+                }
+                level = magnitude;
+                return FieldWriting.WRITTEN;
+            }
+
+            @Override
+            public String moldInsideHandle() {
+                return "dial-" + level;
+            }
+        }
+
+        private Interpreter withADial() {
+            return makeAnInterpreterWith(new Extension("dials", "1.0.0", List.of(
+                    new ExtensionCommand("make-dial", "", call -> call.makeHandle("dial", new Dial()))))
+                    .withHandleType(new HandleType("dial", Dial.class)));
+        }
+
+        private String readTheFailure(Interpreter interpreter, String source) {
+            return answerTo(interpreter, """
+                    e: try [%s]
+                    either error? e [reduce [e/id e/arg1 e/arg2]] ['no-error]""".formatted(source));
+        }
+
+        @Test
+        @DisplayName("a field the held object reads answers its value, and type still answers the kind")
+        void readsAField() {
+            assertThat(answerTo(withADial(), "d: make-dial reduce [d/reading d/type]")).isEqualTo("[30 dial]");
+        }
+
+        @Test
+        @DisplayName("a field it does not read is invalid-path naming the path and the field")
+        void refusesAnUnknownField() {
+            assertThat(readTheFailure(withADial(), "d: make-dial d/level")).isEqualTo("[invalid-path d/level level]");
+        }
+
+        @Test
+        @DisplayName("a set it accepts answers the value and reaches the held object")
+        void setsAField() {
+            assertThat(answerTo(withADial(), "d: make-dial reduce [d/level: 7 d/reading]")).isEqualTo("[7 70]");
+        }
+
+        @Test
+        @DisplayName("a set of a field it has not got is bad-path-set naming the path and the field")
+        void refusesSettingAnUnknownField() {
+            assertThat(readTheFailure(withADial(), "d: make-dial d/reading: 1"))
+                    .isEqualTo("[bad-path-set d/reading: reading]");
+        }
+
+        @Test
+        @DisplayName("a value of a type the field will not hold is bad-field-set naming the field and the type")
+        void refusesAWrongType() {
+            assertThat(readTheFailure(withADial(), "d: make-dial d/level: {high}"))
+                    .isEqualTo("[bad-field-set level #(string!)]");
+        }
+
+        @Test
+        @DisplayName("a handle whose held object has no fields refuses reads and sets as R3 does, rc4's included")
+        void refusesFieldsOnAnyContextHandle() {
+            Interpreter interpreter = makeAnInterpreterWith(demo());
+
+            assertThat(readTheFailure(interpreter, "k: rc4/key #{0102} k/finished"))
+                    .isEqualTo("[invalid-path k/finished finished]");
+            assertThat(readTheFailure(interpreter, "k: rc4/key #{0102} k/finished: 1"))
+                    .isEqualTo("[bad-path-set k/finished: finished]");
+            assertThat(answerTo(interpreter, "k: rc4/key #{0102} k/type")).isEqualTo("rc4");
+        }
+
+        @Test
+        @DisplayName("its mold carries what the held object says after the kind")
+        void moldsWithTheHeldObjectsText() {
+            assertThat(answerTo(withADial(), "d: make-dial d/level: 5 {#(handle! dial dial-5)} = mold d"))
+                    .isEqualTo("#(true)");
         }
     }
 
