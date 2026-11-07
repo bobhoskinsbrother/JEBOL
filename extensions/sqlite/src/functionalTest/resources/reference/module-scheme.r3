@@ -1,7 +1,9 @@
 Rebol []
-if all [block? system/options/args 2 = length? system/options/args] [
+either all [block? system/options/args 2 = length? system/options/args] [
 	import (to-rebol-file system/options/args/1)
 	import (to-rebol-file system/options/args/2)
+][
+	import 'sqlite
 ]
 answer-of: func [r [any-type!] /local text] [
 	text: case [

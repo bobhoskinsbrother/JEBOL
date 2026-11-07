@@ -79,7 +79,7 @@ final class ExtensionInstallation {
 
     private void install(Extension extension) {
         refuseIfUnreadable(extension);
-        List<String> namesForLib = extension.waitsForImport() ? readHeaderExports(extension) : commandNames(extension);
+        List<String> namesForLib = extension.waitsForImport() ? readHeaderExports(extension) : listCommandNames(extension);
         refuseNamesLibHolds(namesForLib);
         refuseKnownHandleTypes(extension);
         start(extension);
@@ -94,7 +94,7 @@ final class ExtensionInstallation {
         extension.handleTypes().forEach(type -> knownTypes.put(type.name(), type.holds()));
     }
 
-    private List<String> commandNames(Extension extension) {
+    private List<String> listCommandNames(Extension extension) {
         return extension.commands().stream().map(ExtensionCommand::name).toList();
     }
 
