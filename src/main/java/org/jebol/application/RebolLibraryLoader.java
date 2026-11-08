@@ -58,7 +58,7 @@ final class RebolLibraryLoader {
         declareSetWordsOf(sysobjs, sysobjsContext, AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         AnyBlockValue systemObjects = rebolFiles.systemObject().readLibraryFile().body();
         Context systemObjectsContext = Context.makeChildOf(systemContext);
-        systemObjectsContext.register(DECLARATION, withoutFileLineBreaks(Binder.bind(sysobjs, sysobjsContext)));
+        systemObjectsContext.register(DECLARATION, Binder.bind(sysobjs, sysobjsContext));
         declareSetWordsOf(systemObjects, systemObjectsContext, AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         Outcome outcome = evaluator.evaluate(Binder.bind(systemObjects, systemObjectsContext), systemObjectsContext);
         if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
@@ -132,17 +132,6 @@ final class RebolLibraryLoader {
         runStep.accept(step.textSource());
     }
 
-    private AnyBlockValue withoutFileLineBreaks(AnyBlockValue block) {
-        for (int at = block.index(); at <= block.storageLength(); at++) {
-            block.storage().setLineBreakAt(at, false);
-        }
-        for (Value each : block.remaining()) {
-            if (each instanceof AnyBlockValue nested) {
-                withoutFileLineBreaks(nested);
-            }
-        }
-        return block;
-    }
 
     private AnyBlockValue readPrelude() {
         return rebolFiles.prelude().readLibraryFile().body();

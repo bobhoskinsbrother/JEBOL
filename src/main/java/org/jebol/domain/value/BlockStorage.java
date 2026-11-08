@@ -44,17 +44,17 @@ public final class BlockStorage extends ProtectableStorage {
         }
         this.items = new ArrayList<>(initialItems);
         for (int position = 1; position <= items.size(); position++) {
-            markIfItsCellIs(position);
+            markIfCellIsMarked(position);
         }
     }
 
-    private void markIfItsCellIs(int oneBasedIndex) {
+    private void markIfCellIsMarked(int oneBasedIndex) {
         if (LineMarks.isMarked(items.get(oneBasedIndex - 1))) {
             lineBreaks.add(oneBasedIndex);
         }
     }
 
-    private void takeTheMarkOfItsCell(int oneBasedIndex) {
+    private void takeMarkOfCell(int oneBasedIndex) {
         if (LineMarks.isMarked(items.get(oneBasedIndex - 1))) {
             lineBreaks.add(oneBasedIndex);
         } else {
@@ -78,7 +78,7 @@ public final class BlockStorage extends ProtectableStorage {
     public void set(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.set(oneBasedIndex - 1, value);
-        takeTheMarkOfItsCell(oneBasedIndex);
+        takeMarkOfCell(oneBasedIndex);
     }
 
     public void replaceKeepingMark(int oneBasedIndex, Value value) {
@@ -102,20 +102,20 @@ public final class BlockStorage extends ProtectableStorage {
     public void append(Value value) {
         refuseIfProtected();
         items.add(value);
-        markIfItsCellIs(items.size());
+        markIfCellIsMarked(items.size());
     }
 
     /** Appends as the runtime's own C does, which never asks whether a script protected the block. */
     public void appendBeneathAnyProtection(Value value) {
         items.add(value);
-        markIfItsCellIs(items.size());
+        markIfCellIsMarked(items.size());
     }
 
     public void insertAt(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.add(oneBasedIndex - 1, value);
         moveLineBreaksFrom(oneBasedIndex, 1);
-        markIfItsCellIs(oneBasedIndex);
+        markIfCellIsMarked(oneBasedIndex);
     }
 
     public Value removeAt(int oneBasedIndex) {
@@ -178,7 +178,7 @@ public final class BlockStorage extends ProtectableStorage {
             if (marksFrom != null && marksFrom.breaksLineAt(marksFromIndex + offset)) {
                 lineBreaks.add(oneBasedIndex + offset);
             } else {
-                markIfItsCellIs(oneBasedIndex + offset);
+                markIfCellIsMarked(oneBasedIndex + offset);
             }
         }
     }

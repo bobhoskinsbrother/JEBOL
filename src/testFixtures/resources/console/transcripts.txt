@@ -648,3 +648,23 @@ stdout: \e[?2004hK\r\n[#"a" #(false) #(false) #(false)]\r\n\e[?2004l
 stderr: 
 exit: 0
 terminal: restored
+== hide-nul
+stdout: P? \n3\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-two-lines-in-one-read
+stdout: go\nQ? "a^/b"\n
+stderr: 
+exit: 0
+terminal: pipe
+== read-port-binary
+stdout: #{68C3A9}\n
+stderr: 
+exit: 0
+terminal: pipe
+== read-port-string-at-end-of-input
+stdout: ""\n
+stderr: 
+exit: 0
+terminal: pipe

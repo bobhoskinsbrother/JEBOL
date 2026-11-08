@@ -2,12 +2,10 @@ package org.jebol.adapter.cli;
 
 import org.junit.jupiter.api.DynamicTest;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +51,7 @@ final class RecordedRebolScript {
         Files.writeString(written, script);
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         Repl.runCommandLine(new String[] {written.toString()},
-                new BufferedReader(new StringReader("")),
+                InputStream.nullInputStream(),
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
                 directory.toString());

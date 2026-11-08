@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -45,12 +46,14 @@ class TheCommandLinesPageAsksEndToEndTest {
         }
     }
 
-    private CompletableFuture<Integer> startCommandLine(String script) throws IOException {
+    private CompletableFuture<Integer> startCommandLine(String script, String typed) throws IOException {
         Path written = directory.resolve("asks.r3");
         Files.writeString(written, script);
         PrintStream out = new PrintStream(printed, true, StandardCharsets.UTF_8);
         return CompletableFuture.supplyAsync(() -> Repl.runCommandLine(
-                new String[] {"--screen=web", written.toString()}, out, out, directory.toString()));
+                new String[] {"--screen=web", written.toString()},
+                new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8)),
+                out, out, directory.toString()));
     }
 
     private String awaitAddress() {
@@ -64,7 +67,7 @@ class TheCommandLinesPageAsksEndToEndTest {
     }
 
     @Test
-    @DisplayName("with --screen=web the page's own controls answer the dialogs: a colour, a file and a password typed into JEBOL's form")
+    @DisplayName("with --screen=web the page's own controls answer a colour and a file, and the password is read from the console, as R3 reads it")
     void thePageAnswersTheDialogs() throws Exception {
         Path notes = directory.resolve("notes.txt");
         Files.writeString(notes, "picked on the page");
@@ -75,7 +78,7 @@ class TheCommandLinesPageAsksEndToEndTest {
                 print ["file" read/string chosen]
                 print ["secret" request-password]
                 print ["declined" mold request-dir]
-                """);
+                """, "s3cret\r");
 
         try (AnOperatorAtThePage operator =
                      new AnOperatorAtThePage(browsers, "chrome", awaitAddress()).opensThePage()) {
@@ -83,8 +86,6 @@ class TheCommandLinesPageAsksEndToEndTest {
             operator.choosesColour("#102030");
             operator.waitForThePromptSaying("file");
             operator.choosesFiles(notes);
-            operator.types("s3cret");
-            operator.pressesEnter();
             operator.waitForThePromptSaying("folder");
             operator.declines();
 

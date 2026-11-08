@@ -14,6 +14,7 @@ import org.jebol.application.Conclusion;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.ErrorCategory;
@@ -29,7 +30,6 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -80,37 +80,58 @@ public final class Repl {
 
     private static final String REBOL_HOME = "REBOL_HOME";
 
+    @FunctionalInterface
+    interface TypedLines {
+        String nextLine();
+    }
+
     private final Interpreter interpreter;
-    private final BufferedReader input;
+    private final TypedLines input;
     private final PrintStream output;
 
     public Repl(Interpreter interpreter, BufferedReader input, PrintStream output) {
+        this(interpreter, () -> readLineFrom(input), output);
+    }
+
+    Repl(Interpreter interpreter, TypedLines input, PrintStream output) {
         this.interpreter = interpreter;
         this.input = input;
         this.output = output;
     }
 
     static void main(String[] arguments) {
+        StreamOutput output = new StreamOutput(System.out, System.err);
+        CommandLineConsole console = CommandLineConsole.forThisProcess(
+                new FileInputStream(FileDescriptor.in), output, System.out);
+        Runtime.getRuntime().addShutdownHook(new Thread(console::close));
         int status;
         try {
-            status = runCommandLine(arguments, System.out, System.err,
-                    System.getProperty("user.dir", "."));
+            status = runCommandLine(arguments, console, output, System.out, System.err,
+                    System.getProperty("user.dir", "."), true);
         } catch (IllegalArgumentException refused) {
             System.err.println(refused.getMessage());
             status = REPORT_MISUSED_COMMAND_LINE;
         }
+        console.close();
         System.exit(status == KEEP_PROCESS ? REPORT_PRODUCED_VALUE : status);
     }
 
     static int runCommandLine(
             String[] arguments, PrintStream out, PrintStream errors, String startedIn) {
 
-        return runCommandLine(arguments, new BufferedReader(
-                new InputStreamReader(System.in, StandardCharsets.UTF_8)), out, errors, startedIn);
+        return runCommandLine(arguments, System.in, out, errors, startedIn);
     }
 
-    static int runCommandLine(String[] arguments, BufferedReader typed,
+    static int runCommandLine(String[] arguments, InputStream typed,
                               PrintStream out, PrintStream errors, String startedIn) {
+
+        StreamOutput output = new StreamOutput(out, errors);
+        return runCommandLine(arguments, CommandLineConsole.throughPipes(typed, output, out),
+                output, out, errors, startedIn, false);
+    }
+
+    private static int runCommandLine(String[] arguments, CommandLineConsole console, StreamOutput output,
+                                      PrintStream out, PrintStream errors, String startedIn, boolean trapsCtrlC) {
 
         new ChosenScreen(arguments).chooseHeadlessMode();
 
@@ -119,9 +140,14 @@ public final class Repl {
                 argumentsWithoutJebolOnlySwitches(new ChosenScreen(arguments).withoutSwitch())));
         asked.script().ifPresent(script -> asked.nameScript(findAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
-        Interpreter interpreter = buildInterpreter(arguments, out, anythingWasAsked, root);
+        Interpreter interpreter = buildInterpreter(arguments, out, output, console, anythingWasAsked, root);
+        console.whenEscaped(interpreter::escape);
+        console.askWhetherEscaped(interpreter::isEscaping);
+        if (trapsCtrlC) {
+            CtrlCTrap.onInterrupt(interpreter::escape);
+        }
         return new CommandLine(asked, startedIn, root)
-                .runThrough(interpreter, typed, out, errors);
+                .runThrough(interpreter, console, out, errors);
     }
 
     private static String findAppsEntry(String whereItPoints) {
@@ -172,22 +198,24 @@ public final class Repl {
         return "";
     }
 
-    private static Interpreter buildInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
+    private static Interpreter buildInterpreter(String[] arguments, PrintStream out, StreamOutput output,
+                                                ConsolePort console, boolean anythingWasAsked, Path root) {
         Bounds bounds = grantEveryHostService().withoutTimeLimit();
         ProcessEnvironment environment = new ProcessEnvironment();
         Interpreter interpreter = Interpreter.createOn(
-                portsFor(bounds, arguments, out, anythingWasAsked, root, environment),
-                new StreamOutput(out), bounds);
+                portsFor(bounds, arguments, out, anythingWasAsked, root, environment, console),
+                output, bounds);
         applyDataSwitch(interpreter, environment, arguments);
         return interpreter;
     }
 
     static HostPorts portsFor(
             Bounds bounds, String[] arguments, PrintStream out,
-            boolean anythingWasAsked, Path root, ProcessEnvironment environment) {
+            boolean anythingWasAsked, Path root, ProcessEnvironment environment, ConsolePort console) {
 
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
         HostPorts ports = attachJavaImagesCodec(new JavaHost().ports()
+                .withConsole(console)
                 .withTasks(new ThreadTasks(bounds))
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(environment)
@@ -227,7 +255,7 @@ public final class Repl {
 
     private record CommandLine(RebolArguments arguments, String startedIn, Path root) {
 
-        private int runThrough(Interpreter interpreter, BufferedReader typed, PrintStream out, PrintStream errors) {
+        private int runThrough(Interpreter interpreter, CommandLineConsole console, PrintStream out, PrintStream errors) {
             tellItWhatWasAsked(interpreter);
             int reported = REPORT_PRODUCED_VALUE;
             if (!bootStopsShortOfStart()) {
@@ -244,7 +272,7 @@ public final class Repl {
                 interpreter.run(REBOL_CLOSE_PRINT_COMMAND);
                 return -reported;
             }
-            new Repl(interpreter, typed, out).run();
+            new Repl(interpreter, console::nextPromptLine, out).run();
             return KEEP_PROCESS;
         }
 
@@ -399,6 +427,10 @@ public final class Repl {
     }
 
     private String readLine() {
+        return input.nextLine();
+    }
+
+    private static String readLineFrom(BufferedReader input) {
         try {
             return input.readLine();
         } catch (IOException problem) {

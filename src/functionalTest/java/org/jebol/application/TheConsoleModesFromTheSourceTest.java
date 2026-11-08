@@ -218,7 +218,7 @@ class TheConsoleModesFromTheSourceTest {
                     k: read-key
                     reduce [k system/state/control? system/state/shift? system/state/alt?]""");
 
-            assertThat(answer).isEqualTo("[" + word + " #(false) #(true) #(true)]");
+            assertThat(answer).isEqualTo("[\n    " + word + " #(false) #(true) #(true)\n]");
         }
 
         @Test

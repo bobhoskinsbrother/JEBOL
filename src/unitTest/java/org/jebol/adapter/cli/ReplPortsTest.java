@@ -5,6 +5,7 @@ import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.web.PageWindows;
 import org.jebol.adapter.web.PickedFiles;
 import org.jebol.application.Bounds;
+import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.WindowPort;
 import org.junit.jupiter.api.DisplayName;
@@ -20,10 +21,19 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class ReplPortsTest {
 
+    private static final ConsolePort GIVEN = ConsolePort.none();
+
     private static HostPorts portsFor(String... arguments) {
         return Repl.portsFor(Bounds.standard(), arguments,
                 new PrintStream(OutputStream.nullOutputStream()), false,
-                Path.of("/"), new ProcessEnvironment());
+                Path.of("/"), new ProcessEnvironment(), GIVEN);
+    }
+
+    @Test
+    @DisplayName("a script is given the console the command line was started on, with a screen or without")
+    void givesTheScriptItsConsole() {
+        assertThat(portsFor("script.r3").console()).isSameAs(GIVEN);
+        assertThat(portsFor("--screen=web").console()).isSameAs(GIVEN);
     }
 
     @Test

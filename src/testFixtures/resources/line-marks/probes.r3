@@ -103,6 +103,8 @@ b] [a]]
 	"values-of an object"       [values-of make object! [a:
 1 b:
 2]]
+	"a word of the catalogue"   [reduce [pick system/catalog/event-keys 6]]
+	"the catalogue's own marks" [copy/part system/catalog/event-types 2]
 	"spec-of a function"        [spec-of func [
 "Doc."
 a] [a]]

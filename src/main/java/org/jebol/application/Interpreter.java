@@ -242,6 +242,10 @@ public final class Interpreter {
         escapeRequested.set(true);
     }
 
+    public boolean isEscaping() {
+        return escapeRequested.get();
+    }
+
     public record Step(ScriptOutcome outcome, String rest) {
     }
 

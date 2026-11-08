@@ -69,3 +69,10 @@ directly.
   answers end of input there as it does through a pipe.
 - **R3's own prompt.** Its REPL prints a coloured `>>` and JEBOL's REPL is its
   own; the REPL reading through this console is covered by JEBOL's tests.
+- **A password past ASCII.** `request-password` makes a string of one
+  character per byte, so `aéb` is four characters, and printing it writes the
+  bytes back out. JEBOL has no string of bytes, and reads the password as
+  UTF-8: three characters.
+- **Bytes that are not UTF-8 at `ask`.** R3 reads them as binary and `input`
+  fails turning them into a string. JEBOL's console hands the interpreter
+  text, so they are replaced as they are read.

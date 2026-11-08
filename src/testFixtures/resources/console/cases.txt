@@ -131,3 +131,7 @@ key-enter	terminal	-qs	modify system/ports/input 'line false print "K" k: read-k
 key-three-byte	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xe4\xb8\xad
 key-four-byte	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xf0\x9f\x98\x80
 key-bad-continuation-then-a	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xc3Aa
+hide-nul	pipe	-qs	p: ask/hide "P? " probe length? p	>P? 	<a\x00b\r
+ask-two-lines-in-one-read	pipe	-qs	print "go" probe ask "Q? "	>go	<a\nb\n
+read-port-binary	pipe	-qs	probe read system/ports/input	<h\xc3\xa9\n
+read-port-string-at-end-of-input	pipe	-qs	probe read/string system/ports/input	.
