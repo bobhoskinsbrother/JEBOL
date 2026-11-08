@@ -23,7 +23,7 @@ Nine pieces of work, in the order to do them.
 
 **1d to 1g come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: https (1d), then what a
+either. Ordered by how much ordinary code they break: TLS (1d), then what a
 script sees when it fails (1e to 1g).
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
@@ -41,23 +41,118 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1d. TLS: an out-of-order chain, and a Unicode host name
+#### 1d. TLS is the host's, and every quirk of the handshake goes
 
-R3 trusts every server, so a script reading a server like these works there
-and fails here.
+**Owner's decision, 2026-11-08: `tls://` is a host port, done by each
+platform's own TLS** -- JSSE on the JVM, Android's own on Android, iOS's own
+when goal 3 reaches it -- because the platforms differ, and an app on a phone
+should treat a server as that phone's other apps do. The handshake in the
+borrowed `prot-tls.reb`, and the four edits decision 43 made to it, go.
+Decision 65 records this when it lands; decision 43, finding 222, ORDER.txt
+and `docs/standing.md` are corrected beside it.
 
-- **A chain sent out of order is put in order** before it is checked, as
-  browsers do. A chain missing an intermediate is still refused: fetching
-  it would be a network call per handshake.
-- **A Unicode host name is converted to its ASCII form** (`java.net.IDN`)
-  before it is matched against the certificate, so `https://bücher.de` can
-  be read.
+**Measured on 2026-11-08**, `./r3-head`, the jar and OpenSSL against
+badssl.com's servers and `münchen.de`:
 
-Both need servers the end-to-end suite spins up itself, like the expired and
-wrongly named ones it already has.
+| Server                                                          | R3                  | JEBOL now                      | After                          |
+|-----------------------------------------------------------------|---------------------|--------------------------------|--------------------------------|
+| Leaf sent twice (`xn--mnchen-3ya.de`, live)                     | reads               | `broken_chain`                 | reads                          |
+| Chain out of order                                              | reads               | `broken_chain`                 | reads                          |
+| Expired, through an old root (`extended-validation`, `superfish`, `sha1-intermediate`, `invalid-expected-sct`) | reads | `unknown_authority` | `expired`, as OpenSSL says |
+| DHE key exchange only (`dh1024`, `dh2048`)                      | fails               | fails                          | as the platform's stack does   |
+| RSA key exchange only (`static-rsa`)                            | fails               | fails                          | as the platform's stack does   |
+| Asks for a client certificate (`client`, `client-cert-missing`) | fails               | fails                          | sends none and reads on        |
+| Ed25519 certificate                                             | reads, unchecked    | refused: offered, not checked  | checked and read               |
+| Unicode host (`bücher.de`)                                      | `no-connect` at DNS | `no-connect` at DNS            | reads                          |
+| Intermediate missing (`incomplete-chain`)                       | reads               | `unknown_authority`            | unchanged                      |
+| 8192-bit RSA (`rsa8192`)                                        | hangs               | answers                        | unchanged                      |
+| TLS 1.2 elliptic curve (`ecc256`, `ecc384`)                     | fails               | reads                          | unchanged                      |
+| Revoked (`revoked`)                                             | fails               | reads                          | unchanged: 1h step 6           |
 
-**Done when** both are rules, and the command line reads a local server that
-sends its chain backwards and one named in Unicode.
+**What a script sees stays R3's.** The adapter replaces the handshake, not the
+scheme:
+
+- **`tls` stays a REBOL scheme** whose actor hands the bytes to the host.
+  `prot-smtp.reb:218` and `prot-pop3.reb:244` upgrade a connection already
+  open (`open [scheme: 'tls conn: client]`) and read `conn/extra/tls-port`, so
+  the adapter wraps a live connection, and that field stays.
+- **The same events** reach `awake`, because HTTP, SMTP and POP3 wait on the
+  TLS port. That points at `SSLEngine` over JEBOL's own socket, not a blocking
+  `SSLSocket`.
+- **Server mode stays**: `tls://:port` listening, with `certificates` and
+  `private-key` given as REBOL values (`prot-tls.reb:2244-2281`).
+- **The grant and the errors stay**: the open asks for `certificates`
+  (`ASecureConnectionAsksForTheService`), a refusal is an access `protocol`
+  error naming the reason in words, HTTP turns it into `no-connect`, and no
+  request is written.
+- **Trust stays two owners.** The adapter judges the chain against the host's
+  authorities -- the machine's and `--cafile`'s, an embedder's none by default
+  -- and `VouchedNames` in the domain still decides whether the leaf names the
+  host.
+- **The browser is unchanged**: `fetch` does its own TLS.
+
+**No test reaches a site on the internet.** Every row of the table is
+emulated by a server the end-to-end suite spins up, like the expired and
+wrongly named ones it has:
+
+- **Chains** are made by `scripts/make-test-certificates.sh` and served by
+  `LocalTlsServer`, with a fixed clock where a date matters. The leaf sent
+  twice is `münchen.de`'s shape.
+- **Key exchanges and protocol versions the JDK disables** -- RSA key
+  exchange, TLS 1.0 and 1.1, RC4, 3DES, NULL -- are served from a JVM of their
+  own with its own `java.security`, since that setting is process-wide and
+  would weaken the client under test.
+- **A client certificate request and Ed25519** are `LocalTlsServer` options.
+- **A Unicode host** resolves through a `java.net.spi.InetAddressResolverProvider`
+  on the test classpath only, mapping a `.test` name to loopback, and the
+  server records the name the handshake sent so the test asserts its ASCII
+  form.
+
+The boundaries to test, quirk by quirk:
+
+1. **A chain is a bag, and a path is built through it** -- on the JVM with
+   PKIX's `CertPathBuilder`, not by reading the list in order. The leaf stays
+   first, because the handshake's signature is checked against it. Reversed;
+   leaf sent twice; an unrelated extra certificate; an expired and a valid copy
+   of one intermediate, in both orders; two authorities that signed each other
+   (a cycle); a self-signed certificate that is not a trusted root; a path that
+   ends at a `--cafile` intermediate; a leaf alone that `--cafile` trusts; a
+   certificate with the right name and key that is no authority; a chain one
+   under and one over the length the adapter takes; an unreadable certificate
+   the path does not use (read) and an unreadable leaf (`broken_chain`); a leaf
+   not first (`broken_chain`); an intermediate missing (`unknown_authority`,
+   since fetching it is a network call per handshake, and neither JSSE nor
+   Android does it by default).
+2. **The reason is the true one.** When no path is trusted, which reason a
+   script sees is a rule in the spec, and an expired chain is `expired`.
+3. **The key exchanges the platform's stack offers.** Whether JDK 25 still
+   offers RSA key exchange, and whether the JVM's defaults stand, is read off
+   the JDK before the rule is written. TLS 1.0 and 1.1, RC4, 3DES and NULL stay
+   refused.
+4. **A request for a client certificate is answered with none**, and the
+   handshake goes on.
+5. **Ed25519 is checked**, or not offered.
+6. **A Unicode host is converted to its ASCII form** for the lookup, the
+   server name in the handshake, HTTP's `Host` and the name check, and
+   `port/spec/host` keeps it as written. `java.net.IDN` is IDNA2003 and
+   browsers use UTS #46; they disagree on names like `faß.de`, so choose
+   before the rule.
+
+**First, probe**, and check each probe in: whether `CertPathBuilder` says why
+it failed well enough to name `expired`; whether `LocalTlsServer`, being JSSE,
+sends a chain in the order it is given, and if not, a key manager that hands
+it an array it cannot reorder; JDK 25's default suites; and that the resolver
+provider loads in the end-to-end test's JVM. Then the spec: `spec/embed.allium`'s "Trusting a
+server" is rewritten for a TLS host port, and its two open questions, on the
+chain and on Unicode hosts, become rules.
+
+**Done when** every row of the table answers its "After" column, by a test
+for each boundary above; `TrustingAServerEndToEndTest`,
+`SecureConnectionsAtTheCommandLineEndToEndTest` and
+`UntrustedServersAtTheCommandLineEndToEndTest` pass unchanged; a STARTTLS
+upgrade and a listening `tls://` server work against local peers; and the
+sweep that measured the table is checked in as a probe with its transcript,
+run by hand and by no gate.
 
 #### 1e. An error a native raises carries its `near` and `where`
 
@@ -164,7 +259,7 @@ Every edit runs `allium check` clean.
      folder; no browser can name it.
 2. **Answered by the owner, with work to do: the question becomes a rule
    when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: TLS chains and Unicode hosts (1d), home and values between
+   together: TLS as a host port, its chains and Unicode hosts (1d), home and values between
    interpreters (1j), the Rebol bugs (1k), `effect` in DRAW and
    GUI-METRIC/SET (1l).
 3. **Not a question for JEBOL:** move the `open/new` question -- a real
