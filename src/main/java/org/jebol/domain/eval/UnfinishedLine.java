@@ -22,6 +22,11 @@ final class UnfinishedLine implements OutputPort {
     }
 
     @Override
+    public void writeError(String text) {
+        output.writeError(text);
+    }
+
+    @Override
     public void flush() {
         output.flush();
     }

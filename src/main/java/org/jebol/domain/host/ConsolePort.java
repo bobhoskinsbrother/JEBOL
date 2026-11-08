@@ -1,5 +1,7 @@
 package org.jebol.domain.host;
 
+import java.util.Optional;
+
 /**
  * Where a script reads a line from the operator.
  *
@@ -19,34 +21,37 @@ public interface ConsolePort {
     /**
      * One line from the operator, without the line ending.
      *
-     * <p>Null when there is nothing more to read, which a script must be
-     * able to tell from an empty line.
+     * <p>Null when there is nothing more to read. A script sees that as an
+     * empty line, as it does in the C, so a host need not invent one.
      */
     String readLine();
 
     /**
-     * One line read without showing it.
+     * One line read without showing it, for REQUEST-PASSWORD.
      *
-     * <p>For a password. A host with no way to hide the typing must
+     * <p>Null when the operator gave up, as ESC does in the C, and the
+     * script then gets none. A host with no way to hide the typing must
      * refuse rather than read it in the open.
      */
     String readHiddenLine();
 
     /**
-     * One keypress, as a codepoint, or -1 when none can be read.
+     * One key, as READ-KEY reads it, or empty when none can be read.
      *
-     * <p>What READ-KEY asks for: "Reads a single keypress from the console
-     * without echoing it." A single keypress needs the terminal in raw mode,
-     * and nothing in the JDK can put it there -- so how much of this an adapter
-     * can honour depends on the adapter, and the domain asks the question
-     * either way.
-     *
-     * <p>-1 rather than an exception, because the C answers none when the host
-     * cannot read a key, and a script that offered a menu and got nothing back
-     * should see nothing rather than a failure.
+     * <p>Empty rather than an exception, because the C answers none when the
+     * host cannot read a key, and a script that offered a menu and got nothing
+     * back should see nothing rather than a failure. A key carrying Ctrl-C is
+     * the operator's escape, taken as a key.
      */
-    default int readKey() {
-        return -1;
+    default Optional<ConsoleKey> readKey() {
+        return Optional.empty();
+    }
+
+    default boolean canRead() {
+        return !isTypedOnScreen();
+    }
+
+    default void switchMode(ConsoleMode mode, boolean on) {
     }
 
     /**
@@ -78,6 +83,11 @@ public interface ConsolePort {
             @Override
             public String readHiddenLine() {
                 throw refuse();
+            }
+
+            @Override
+            public boolean canRead() {
+                return false;
             }
 
             private FilePort.Denied refuse() {

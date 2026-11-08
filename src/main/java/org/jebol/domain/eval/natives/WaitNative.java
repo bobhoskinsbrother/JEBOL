@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.HaltRequested;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.Stopped;
 import org.jebol.domain.eval.EventPath;
@@ -36,6 +37,8 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 
 public class WaitNative extends PortWakingNative {
+
+    private static final String ESCAPE_NOTICE = "[ESC]\n";
 
     private static final long SCREEN_POLL_MILLISECONDS = 10;
 
@@ -260,6 +263,10 @@ public class WaitNative extends PortWakingNative {
     }
 
     private void stopIfRunHasBeenStopped(Evaluator evaluator) {
+        if (evaluator.takeEscape()) {
+            evaluator.findOutput().writeError(ESCAPE_NOTICE);
+            throw new HaltRequested();
+        }
         evaluator.reasonToStop().ifPresent(reason -> {
             throw new Stopped(reason);
         });

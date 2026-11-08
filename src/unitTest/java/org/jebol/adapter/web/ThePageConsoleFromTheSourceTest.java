@@ -36,7 +36,13 @@ class ThePageConsoleFromTheSourceTest {
     @Test
     @DisplayName("a page is not a terminal and reads no single keys")
     void isNotATerminal() {
-        assertThat(console.readKey()).isEqualTo(-1);
+        assertThat(console.readKey()).isEmpty();
         assertThat(console.isATerminal()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a page's console cannot read, so a password goes to the page's form")
+    void cannotRead() {
+        assertThat(console.canRead()).isFalse();
     }
 }

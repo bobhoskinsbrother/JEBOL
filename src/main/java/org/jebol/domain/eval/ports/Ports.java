@@ -204,7 +204,7 @@ public final class Ports {
 
     public Value readFrom(PortValue port, Evaluator evaluator, List<Value> arguments, PortRequest asked) {
         return switch (port.schemeName()) {
-            case "console" -> lineReadFromConsole(evaluator);
+            case "console" -> lineReadFromConsole(evaluator, asked);
             case "clipboard" -> lastCopiedText(port, evaluator, asked);
             case "bundled" -> bundledModuleSource(port, evaluator);
             case "tcp" -> readBytesFromConnection(port, evaluator);
@@ -220,15 +220,29 @@ public final class Ports {
         };
     }
 
-    private Value lineReadFromConsole(Evaluator evaluator) {
+    private Value lineReadFromConsole(Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.CONSOLE);
         if (evaluator.ports().console().isTypedOnScreen() && evaluator.ports().screen().hasDisplay()) {
-            return new ScreenForm(evaluator).askForLine().<Value>map(StringValue::of).orElseGet(NoneValue::none);
+            return new ScreenForm(evaluator).askForLine()
+                    .map(line -> shapeConsoleLine(line, asked))
+                    .orElseGet(NoneValue::none);
         }
-        return runThroughFileSystem(() -> {
+        Value answer = runThroughFileSystem(() -> {
             String line = evaluator.ports().console().readLine();
-            return line == null ? NoneValue.none() : StringValue.of(line);
+            return shapeConsoleLine(line == null ? "" : line, asked);
         });
+        evaluator.haltIfEscaped();
+        return answer;
+    }
+
+    private Value shapeConsoleLine(String line, PortRequest asked) {
+        if (asked.refinements().contains("lines")) {
+            return BlockValue.of(TextLines.of(line).stream().<Value>map(StringValue::of).toList());
+        }
+        if (asked.refinements().contains("string")) {
+            return StringValue.of(line);
+        }
+        return BinaryValue.ofBytes(line.getBytes(StandardCharsets.UTF_8));
     }
 
     private Value lastCopiedText(PortValue port, Evaluator evaluator, PortRequest asked) {

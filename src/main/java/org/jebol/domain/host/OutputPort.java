@@ -8,6 +8,10 @@ public interface OutputPort {
         write(System.lineSeparator());
     }
 
+    default void writeError(String text) {
+        write(text);
+    }
+
     default void flush() {
     }
 

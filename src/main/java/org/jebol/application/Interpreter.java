@@ -42,6 +42,7 @@ public final class Interpreter {
     private final Bounds bounds;
     private final HostPorts ports;
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
+    private final AtomicBoolean escapeRequested = new AtomicBoolean();
     private volatile long deadlineNanos = Long.MAX_VALUE;
     private final List<ExtensionReport> extensionReports;
 
@@ -68,7 +69,17 @@ public final class Interpreter {
                 boot::makeMakerFor,
                 output,
                 bounds.maximumNesting(),
-                this::reasonToStop,
+                new Interruption() {
+                    @Override
+                    public Optional<String> reasonToStop() {
+                        return Interpreter.this.reasonToStop();
+                    }
+
+                    @Override
+                    public boolean takeEscape() {
+                        return escapeRequested.getAndSet(false);
+                    }
+                },
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
         this.library = new RebolLibraryLoader(rebolFiles, systemContext, system.internals(), this::run);
@@ -196,6 +207,7 @@ public final class Interpreter {
 
     private ScriptOutcome concludeWithinBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
+        escapeRequested.set(false);
         evaluator.ports().screen().acceptPendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.computeDeadline(startedAt);
@@ -226,11 +238,16 @@ public final class Interpreter {
         cancellationRequested.set(true);
     }
 
+    public void escape() {
+        escapeRequested.set(true);
+    }
+
     public record Step(ScriptOutcome outcome, String rest) {
     }
 
     public Step runNext(String source) {
         cancellationRequested.set(false);
+        escapeRequested.set(false);
         evaluator.ports().screen().acceptPendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.computeDeadline(startedAt);

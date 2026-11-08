@@ -595,9 +595,20 @@ public final class Evaluator {
             return;
         }
         stepsSinceLastCheck = 0;
+        haltIfEscaped();
         interruption.reasonToStop().ifPresent(reason -> {
             throw new Stopped(reason);
         });
+    }
+
+    public void haltIfEscaped() {
+        if (interruption.takeEscape()) {
+            throw new HaltRequested();
+        }
+    }
+
+    public boolean takeEscape() {
+        return interruption.takeEscape();
     }
 
     private void unwindToFunction(Deque<Frame> frames, ReturnSignal returning) {

@@ -147,17 +147,25 @@ class PortDatatypeTest {
     class Reading {
 
         @Test
-        @DisplayName("READ on a port answers a line")
+        @DisplayName("READ on a port answers a line as binary, as the C's console actor does")
         void readAnswersALine() {
-            assertThat(answerFrom(makeAnInterpreterWithAConsole("hello"),
-                    "p: open [scheme: 'console] read p")).isEqualTo("\"hello\"");
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("hé"),
+                    "p: open [scheme: 'console] read p")).isEqualTo("#{68C3A9}");
         }
 
         @Test
-        @DisplayName("nothing more to read answers none, not an empty string")
-        void answersNoneWhenNothingIsLeft() {
+        @DisplayName("READ/STRING answers the line as a string, and READ/LINES as a block of its lines")
+        void readStringAnswersAString() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("hello", "a\nb"),
+                    "p: open [scheme: 'console] reduce [read/string p read/lines p]"))
+                    .isEqualTo("[\"hello\" [\"a\" \"b\"]]");
+        }
+
+        @Test
+        @DisplayName("nothing more to read answers empty binary, not none")
+        void answersEmptyBinaryWhenNothingIsLeft() {
             assertThat(answerFrom(makeAnInterpreterWithAConsole(),
-                    "p: open [scheme: 'console] none? read p")).isEqualTo(TRUE);
+                    "p: open [scheme: 'console] read p")).isEqualTo("#{}");
         }
 
         @Test
@@ -211,9 +219,9 @@ class PortDatatypeTest {
         }
 
         @Test
-        @DisplayName("nothing more to read answers none")
-        void answersNoneForInputAtTheEnd() {
-            assertThat(answerFrom(makeAnInterpreterWithAConsole(), "none? input")).isEqualTo(TRUE);
+        @DisplayName("nothing more to read answers an empty string")
+        void answersAnEmptyStringForInputAtTheEnd() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(), "input")).isEqualTo("\"\"");
         }
 
         @Test

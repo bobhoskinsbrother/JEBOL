@@ -19,6 +19,10 @@ public interface Interruption {
     /** Why the script should stop, or empty if it should carry on. */
     Optional<String> reasonToStop();
 
+    default boolean takeEscape() {
+        return false;
+    }
+
     /** An interruption that never fires, for a script nothing is watching. */
     static Interruption never() {
         return Optional::empty;

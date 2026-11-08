@@ -67,9 +67,9 @@ class ConsoleNativesTest {
     }
 
     @Test
-    @DisplayName("nothing more to read answers none")
-    void answersNoneAtTheEnd() {
-        assertThat(answerTo(makeAnInterpreterReaching(true), "none? input")).isEqualTo("#(true)");
+    @DisplayName("nothing more to read answers an empty string, as the C does")
+    void answersAnEmptyStringAtTheEnd() {
+        assertThat(answerTo(makeAnInterpreterReaching(true), "input")).isEqualTo("\"\"");
     }
 
     @Test

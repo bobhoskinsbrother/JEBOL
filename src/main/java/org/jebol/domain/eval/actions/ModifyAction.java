@@ -3,6 +3,8 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.host.ConsoleMode;
+import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
@@ -15,6 +17,7 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class ModifyAction extends PortAction {
@@ -44,10 +47,10 @@ public class ModifyAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                modify(arguments.getFirst(), arguments.get(1), arguments.get(2));
+                modify(arguments.getFirst(), arguments.get(1), arguments.get(2), evaluator.ports().console());
     }
 
-    private Value modify(Value target, Value field, Value given) {
+    private Value modify(Value target, Value field, Value given, ConsolePort console) {
         if (target instanceof PortValue port && port.schemeName().equals("crypt")) {
             ports.cryptPort().refuseWhenClosed(port);
             return field instanceof AnyWordValue setting
@@ -57,7 +60,7 @@ public class ModifyAction extends PortAction {
         if (target instanceof FileValue || target instanceof PortValue port && port.isAFile()) {
             return modifyFile(target, field);
         }
-        return setConsoleMode(target, field, given);
+        return switchConsoleMode(field, given, console);
     }
 
     private Value modifyFile(Value target, Value field) {
@@ -67,16 +70,14 @@ public class ModifyAction extends PortAction {
         return target instanceof PortValue ? LogicValue.of(true) : NoneValue.none();
     }
 
-    private Value setConsoleMode(Value target, Value field, Value given) {
+    private Value switchConsoleMode(Value field, Value given, ConsolePort console) {
         if (!(field instanceof AnyWordValue mode) || !ports.consoleModes().contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.BAD_FILE_MODE, field);
         }
-        if (!(given instanceof LogicValue)) {
+        if (!(given instanceof LogicValue setting)) {
             throw Raised.of(EvaluationFailure.INVALID_VALUE_FOR, given, mode);
         }
-        if (target instanceof PortValue port) {
-            port.setField(mode.canonical(), given);
-        }
+        console.switchMode(ConsoleMode.valueOf(mode.canonical().toUpperCase(Locale.ROOT)), setting.truth());
         return given;
     }
 }

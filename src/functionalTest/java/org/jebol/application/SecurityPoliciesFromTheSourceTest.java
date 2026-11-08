@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.*;
+import org.jebol.domain.host.ConsoleKey;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.HostPorts;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -234,13 +236,13 @@ class SecurityPoliciesFromTheSourceTest {
         }
 
         @Override
-        public int readKey() {
+        public Optional<ConsoleKey> readKey() {
             if (waiting.isEmpty()) {
-                return -1;
+                return Optional.empty();
             }
             char next = waiting.charAt(0);
             waiting.deleteCharAt(0);
-            return next;
+            return Optional.of(new ConsoleKey(next, 0, false, false, false));
         }
 
         @Override
