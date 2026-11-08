@@ -243,6 +243,6 @@ draws its glyphs with the same face, loaded from the file the build serves.
 Decisions 33 and 35.
 
 What replaced the trial's scratchpad harness: the shipped page reports its own
-boot in the output panel, and `TheExamplesWithNoServerEndToEndTest` fails if
+boot in the browser's console (decision 64), and `TheExamplesWithNoServerEndToEndTest` fails if
 that line is missing, so the shipped entry point is where the timing comes
 from.

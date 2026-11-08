@@ -19,12 +19,12 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Ten pieces of work, in the order to do them.
+Nine pieces of work, in the order to do them.
 
-**1c to 1g come first: each makes the same script answer differently on a
+**1d to 1g come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: the console and
-https (1c, 1d), then what a script sees when it fails (1e to 1g).
+either. Ordered by how much ordinary code they break: https (1d), then what a
+script sees when it fails (1e to 1g).
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
@@ -40,210 +40,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1c. The command line has a console, the three modes are honoured, and a site prints to the browser's
-
-**What is wrong, measured on 2026-11-08 against `./r3-head`:**
-
-- **The command line gives a script no console.** `Repl.portsFor` never calls
-  `withConsole`, so it keeps `ConsolePort.none()`: `ask` and `input` fail
-  with "this script was given no console to read", at the prompt and in a
-  script; `ask/hide` goes to `request-password`, which JEBOL sends to a
-  window and fails headless; `tty?` is always false and `read-key` never
-  reads. R3 answers all of them.
-- **The modes change nothing.** `ModifyAction.setConsoleMode` checks its
-  arguments as the C does and then writes the setting into a port field R3
-  has not got (`system/ports/output/echo` is `invalid-path` in R3).
-- **A site prints over its own app.** `site/jebol-runner.js` puts printed
-  text, and the page's own start-up timings, in a panel fixed over the
-  bottom 30% of the screen.
-
-**What the C does (`p-console.c` A_MODIFY, `os/posix/dev-stdio.c`
-Modify_IO and Open_IO, `os/win32/dev-stdio.c`, `host-lib.c`):**
-
-- `modify` takes `echo`, `line` or `error` on either console port, input or
-  output, and answers its third argument. The checks JEBOL has are right.
-- **echo**, on Linux and macOS: writes `ESC[8m` (off) or `ESC[28m` (on) to
-  where output goes, terminal or pipe alike. It is the conceal attribute, so
-  on a terminal what is printed after it is hidden too. On Windows it turns
-  the console's echo of typed input off or on, and writes nothing.
-- **line**: only when the setting changes. False puts the terminal in raw
-  mode -- `-icanon -echo -ixon -ixoff min 1 time 0`, with susp and quit
-  undefined -- and, unless `--cgi`, turns bracketed paste on (`ESC[?2004h`);
-  true restores the original settings and writes `ESC[?2004l`.
-- **error**: true sends output to stderr, false back to stdout.
-- **`request-password`** reads stdin byte by byte to a carriage return or
-  the end of input, ESC answering none and DEL backing up a character. On a
-  pseudo-terminal under `./r3-head`, what is typed is not shown.
-- **`call/console`** sets `FLAG_CONSOLE`, which both host-libs copy into
-  `flag_console` and never read. Unnamed streams are inherited with or
-  without it, so it changes nothing anywhere. JEBOL's `JavaProcess` ignores
-  it already.
-
-**Settled with the owner on 2026-11-08:**
-
-- The command line's console is part of 1c.
-- Echo follows each OS's C: the escapes on Linux and macOS, pipes included.
-- The terminal is driven by `stty` on `/dev/tty`, with no dependency. On
-  Windows the three modes are accepted and do nothing, and `standing.md`
-  says so.
-- A site sends what is printed to the browser's console, one `console.log`
-  per finished line, and the panel goes everywhere, a site with no window
-  included; the start-up timings go there too. `error true` switches to
-  `console.error`; echo and line are accepted and change nothing on a page.
-  This replaces `web.allium`'s `WhatAScriptPrintsStaysInView` and the reason
-  decision 49 gave for the panel: two forms in a row are told apart by
-  something other than what was printed above them.
-- `request-password` reads a console that can read before any window or
-  form, as R3 always does, so the command line asks on the terminal with a
-  display or without.
-- An embedded host's `ConsolePort` is told each mode change; the default
-  does nothing.
-
-**Widened with the owner on 2026-11-08, once the transcripts existed:**
-
-- At a terminal R3 never lets the terminal edit a line: `Init_Terminal` turns
-  echo, canonical input and CR translation off when the console opens, and
-  `host-readline.c` echoes and edits the line itself, so a typed line ends
-  `\r\r\n`. JEBOL ports that editor, its keys and its history, and keeps the
-  terminal in its mode for the whole run, as R3 does.
-- `read-key` at a terminal ports `Read_Key_Event`: escape sequences become
-  the words of `system/catalog/event-keys`, and `control?`, `shift?` and
-  `alt?` are set from the sequence.
-- Ctrl-C is R3's escape: the run halts with exit code 15 at the next step,
-  writing `[ESC]` to stderr when it lands inside `wait`; during `read-key` it
-  is the key `#"^C"`.
-- Smaller findings followed as the transcripts say: `ask` at end of input
-  answers `""`; `--cgi` does not stop the bracketed paste escapes; `read-key`
-  through a pipe reads nothing and answers from the C's union of the last
-  `modify`.
-
-**The work, in order.** Each step is its own commit once the whole gate,
-end-to-end included, is green; its failing tests come first.
-
-1. **The reference, and the spec.**
-   - **The reference**, in `src/testFixtures/resources/console/` with a
-     README, the way `brotli/module/` is laid out:
-     - `cases.txt`, one case a line, read by the generator and by JEBOL's
-       tests alike: the script, pipe or terminal, and what is typed as
-       steps of "wait for this output, then type these bytes" -- waited on,
-       never slept, because a flake is a fail.
-     - `pty-run.sh`, the one wrapper both sides run a command through: under
-       `script`, with its Linux and macOS spellings; stderr to a file of its
-       own, since a terminal would merge it into stdout; and `stty -g` taken
-       inside the terminal before and after, so leaving the terminal as found
-       is part of every answer.
-     - `generate.sh` runs every case through `./r3-head` and writes
-       `transcripts.txt`: each case's stdout and stderr with escapes shown as
-       bytes, its exit code, and whether the terminal was restored.
-     - The cases are boundaries, not samples: `tty?` both ways; `ask` and
-       `input` on an empty line, at end of input with nothing typed, at end
-       of input partway through a line, and after CR, LF and CRLF; `ask/hide`
-       at 63, 64 and 65 bytes, either side of where the C grows its buffer,
-       with ESC, with DEL backing over a two-byte UTF-8 character, and at end
-       of input; echo off and on around a print, and echo while error is on,
-       where the escape follows the output to stderr; each mode on
-       `system/ports/input` as well as `output`; line false twice, which the C
-       acts on once, and under `--cgi`; `read-key` on a multibyte character
-       after line false, and through a pipe, at end of input included;
-       `call/console` beside plain `call`.
-   - **The spec**:
-     - `natives.allium`: `ModifyingAConsoleModeSetsIt` becomes the console
-       being told, either console port, with no field on the port; delete
-       the open question beside it. `TheConsoleRefinementAsksForInheritanceOutright`
-       becomes `/console` changing no stream, the host being told; delete
-       its open question. Rules for `tty?` -- true only on a terminal -- and
-       for `read-key` on a console: one key, read raw; through a pipe the
-       next character; none at end of input.
-     - `embed.allium`: a `ConsoleMode` enum; `AConsoleModeReachesTheHostsConsole`,
-       a host that does nothing with it being a valid host; what each mode
-       means at a terminal, on a page and in an embedded host, Windows doing
-       nothing. Delete the open question on attaching to a console, and
-       reword `attached_to_the_hosts_console`.
-     - `repl.allium`: the command line gives a script the console it was
-       started on, and leaves the terminal as it found it at exit and on
-       Ctrl-C.
-     - `screen.allium`: `APasswordIsReadFromAConsoleThatReads` -- to a CR or
-       the end of input, ESC answering none, DEL backing up a character,
-       nothing typed shown, under the console grant rather than windows --
-       and the two password rules after it require a console that cannot
-       read.
-     - `web.allium`: `WhatAScriptPrintsStaysInView` becomes
-       `WhatASitePrintsGoesToTheBrowsersConsole`: one `console.log` per
-       finished line, `console.error` once error is on, an unfinished line
-       held until a line ends or the run finishes, and nothing printed on the
-       screen.
-     - `docs/rebol-findings.md`: the flag no OS reads; echo as a conceal
-       escape that hides output and lands in pipes on Linux and macOS and
-       means something else on Windows; `request-password` reading to a CR.
-   - **The tests, failing**, ahead of the code in each later step:
-     - `TheConsoleModesFromTheSourceTest` (functional), over a recording
-       `ConsolePort`: each mode on each port reaches it with its value,
-       `system/ports/output/echo` is `invalid-path`, the argument errors
-       stand, and a `/console` call reaches the process port as one without,
-       apart from the flag. `HiddenWordsAndTheConsolePortFromTheSourceTest`
-       and `CallNativeTest` change to match.
-     - `TheCommandLinesConsoleFromTheSourceTest` (unit), over a fake `stty`.
-     - `TheCommandLinesConsoleAnswersAsR3EndToEndTest`: one test per row of
-       `cases.txt`, the jar run through `pty-run.sh` and compared with
-       `transcripts.txt`.
-     - `ASitePrintsToTheBrowsersConsoleEndToEndTest`, in Chrome.
-2. **The domain, and the embedding contract.**
-   - A `ConsoleMode` enum and `ConsolePort.switchMode(mode, on)`, default
-     doing nothing. `ModifyAction` calls it for either console port and
-     stops writing the field.
-   - `request-password` reads `readHiddenLine` from a console that reads,
-     as R3 always does; the screen form and a window stay for a host whose
-     console does not.
-   - A `*FromTheSourceTest`: each mode on each port reaches the port with
-     its value, `system/ports/output/echo` is `invalid-path`, the existing
-     argument errors stand, and a call with `/console` reaches the process
-     port exactly as one without, apart from the flag.
-3. **The command line's console.**
-   - A console adapter in `adapter/cli` over the one reader the REPL
-     already reads, so nothing typed is buffered twice, wired in
-     `portsFor`. Through a pipe it reads lines, keys and passwords as the
-     transcripts say. On a terminal -- asked once at start with `test -t 0`,
-     since the jar is built for Java 21 and `Console.isTerminal` is 22 -- it
-     saves `stty -g`, applies `Init_Terminal`'s settings for the whole run,
-     the C's raw settings for line false, and restores the saved settings
-     from a shutdown hook, so exit and Ctrl-C both leave the terminal as
-     found. Lines are read through a port of `host-readline.c`, hidden
-     lines byte by byte to a CR, keys through a port of `Read_Key_Event`.
-   - Ctrl-C reaches the interpreter as an escape, which halts at the next
-     step and in `wait`, and which `read-key` answers as `#"^C"`.
-   - echo writes the escapes to where output currently goes; error moves
-     `StreamOutput` between stdout and stderr; line writes the bracketed
-     paste escapes, `--cgi` or not. On Windows all three do nothing.
-   - Unit tests over a fake `stty` and a fake terminal: which commands run
-     and when, the bytes each mode writes, the editor's keys, the key
-     decoder's sequences, the restore. End-to-end tests drive the
-     jar through pipes and under `script` and compare with the transcripts:
-     `ask`, `input`, `ask/hide` not showing what is typed, the echo
-     escapes, error on stderr, `read-key` after line false, `tty?` both
-     ways, and `stty -g` the same before a run and after it, Ctrl-C
-     included.
-4. **The site.**
-   - `jebol-runner.js` keeps an unfinished line until a line ends or the
-     script finishes, writes each finished line with `console.log`, or
-     `console.error` once error is on, and loses the panel. `WorkerSession`
-     takes the console's error mode and relays which stream the text was
-     printed on.
-   - `AnOperatorAtThePage` reads printed lines from the browser's console
-     over WebDriver BiDi, and the three test classes that read the panel
-     move to it. A Chrome test checks lines, a part-line finished by the
-     next print, the timings, `console.error` once error is on, and no
-     panel. Firefox is not added: this is JEBOL's own JavaScript.
-5. **Record it.** A decision for the command line's console and the site's
-   output, and decision 49's paragraph on the panel corrected; `standing.md` for Windows' modes; `using-jebol.md` and the site
-   docs where they mention printed output; 1c leaves this file.
-
-**Done when** a script run through the jar under a terminal and through a
-pipe answers `ask`, `input`, `ask/hide`, `tty?`, `read-key` and the three
-modes as the transcripts of `./r3-head` say; the port has no extra field;
-the terminal is left as it was found; a site's printing is in the browser's
-console and nowhere on its screen; and `call/console` is specified as
-changing nothing.
 
 #### 1d. TLS: an out-of-order chain, and a Unicode host name
 
@@ -317,7 +113,7 @@ test.
 #### 1h. Clear the spec's open questions
 
 Every open question in the spec has an answer. The work that follows from the
-answers is 1c, 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it.
+answers is 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it.
 Every edit runs `allium check` clean.
 
 1. **Already answered: the question becomes a rule, or goes.** Each of
@@ -368,11 +164,9 @@ Every edit runs `allium check` clean.
      folder; no browser can name it.
 2. **Answered by the owner, with work to do: the question becomes a rule
    when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: console echo and `call/console` (1c), TLS chains and Unicode
-   hosts (1d), home and values between interpreters (1j), the Rebol bugs
-   (1k), `effect` in DRAW and GUI-METRIC/SET (1l). The `call/console`
-   question is in `embed.allium` and `natives.allium` both; the rule goes
-   in `embed.allium` and the copy in `natives.allium` is deleted.
+   together: TLS chains and Unicode hosts (1d), home and values between
+   interpreters (1j), the Rebol bugs (1k), `effect` in DRAW and
+   GUI-METRIC/SET (1l).
 3. **Not a question for JEBOL:** move the `open/new` question -- a real
    3.22.5 answers two different ways on two identical runs -- to
    `docs/rebol-findings.md`. `change/part` on an image with a count copies

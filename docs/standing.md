@@ -64,6 +64,14 @@ a baseline from the same machine rather than against the row.
 - **No Java PDF implementation in the interpreter jar.** The borrowed codec is
   what Rebol has; more than that is a library the caller adds, which is goal 12.
 - **bzip2 answers where its C never does.** Decision 62.
+- **On Windows the console's modes change nothing, and `read-key` reads no
+  key.** R3's Windows device turns the console's own echo off and reads keys
+  through the console API; JEBOL accepts `echo`, `line` and `error` there and
+  does nothing, and answers none for a key. Linux and macOS answer as R3's
+  posix host does. Decision 64.
+- **A password past ASCII is read as UTF-8, where R3 makes one character per
+  byte.** `aéb` is three characters here and four there. Decision 64 and
+  finding 236.
 - **SQLite is a jar beside JEBOL's, not inside it.** `jebol-sqlite.jar` serves
   Rebol-SQLite 3.46.0.0 on the command line and in a site built with it; without
   it `import 'sqlite` fails. It asks SECURE where the C never does, and answers

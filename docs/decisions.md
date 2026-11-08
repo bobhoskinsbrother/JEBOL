@@ -2054,8 +2054,10 @@ The line form is headed by whatever was printed since the last line ended,
 as a terminal shows the prompt on the line being typed, so `ask "Your name? "`
 heads its form "Your name?"; the hidden input carries that heading as its
 accessible name. The first try showed why: two forms in a row with the same
-heading looked like one form that had ignored Enter. The runner keeps what a
-script prints in a panel over the foot of the screen, for the same reason.
+heading looked like one form that had ignored Enter. The runner once kept what
+a script prints in a panel over the foot of the screen for the same reason; the
+heading already tells two forms apart, and decision 64 sends what a site prints
+to the browser's console instead.
 
 **BROWSE answers unset, and a cancelled REQUEST-FILE/MULTI answers none.**
 Both are what the C answers -- `R_UNSET` from BROWSE, `R_NONE` from a chooser
@@ -2747,3 +2749,49 @@ compile under TeaVM.
 - No C decides Postgres's answers, so its commands are settled in `spec/`
   first, shaped like SQLite's, with a `postgres://` scheme.
 - The tests run a Postgres installed from apt, not a Docker image.
+
+## 64. The command line's console is R3's, and a site prints to the browser's console
+
+**Agreed on 2026-11-08, goal 1c.** The reference is
+`src/testFixtures/resources/console/`: 134 cases run through `./r3-head` at a
+terminal of its own and through pipes, and the same cases through the jar.
+
+**The command line gives a script the console it was started on.** Before
+this it had none, so `ask`, `input` and `ask/hide` failed and `tty?` was always
+false. `CommandLineConsole` is the one reader the prompt and a script share.
+- **Through pipes** a line is what one read gives, a CR kept and a final LF
+  taken off, and the end of input is an empty line; a password is read a byte
+  at a time to a CR.
+- **At a terminal** the console does what R3's posix host does: it puts the
+  terminal in `Init_Terminal`'s mode for the whole run, edits each line itself
+  with a port of `host-readline.c`, and reads keys with a port of
+  `Read_Key_Event`. The terminal is driven by `stty` on `/dev/tty`, with no
+  dependency, and put back as it was found by a shutdown hook. Whether standard
+  input is a terminal is asked once with `test -t 0`, because `tty?` asks about
+  standard input alone and `Console.isTerminal` asks about output too.
+- **The modes are the C's.** echo writes the conceal escapes, line goes raw and
+  writes the bracketed paste escapes, error moves output to stderr. On Windows
+  the three are accepted and do nothing.
+- **Ctrl-C is the escape.** A signal while the script runs halts it at its next
+  step; while a line, a password or a key is being read, signals are off and
+  Ctrl-C arrives as a byte, so the escape is raised on the reading thread. A
+  Java signal handler runs on a thread of its own, and an escape that raced a
+  line just read was a flake.
+- **`request-password` reads the console when it can,** before any screen or
+  window, as R3 always reads it, so `--screen=web` asks on the terminal too.
+
+**A site sends what it prints to the browser's console,** one `console.log`
+for each finished line, `console.error` while error is on, a part line held
+until a line ends or the run finishes. The panel over the foot of the screen is
+gone: an app owns its whole screen, and two forms are told apart by their
+headings (decision 49). The page's start-up timings go to the console too.
+
+**Rejected:** a terminal library, which would have been the jar's first
+dependency; letting the terminal echo and edit, which makes every typed line end
+`\r\n` where R3's ends `\r\r\n`; reading keys with the terminal in canonical
+mode, which cannot read one key.
+
+**Not copied, and why:** a password past ASCII, which R3 makes a string of one
+character per byte and JEBOL, having no such string, reads as UTF-8; bytes that
+are not UTF-8 typed at `ask`, which R3 fails on inside `input` and JEBOL
+replaces; end of input at a terminal, which R3 waits on for ever.

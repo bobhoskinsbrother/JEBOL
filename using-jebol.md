@@ -180,7 +180,7 @@ print get-face get-panel-var window 'entry
 
 The shipped example uses the same GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
 
-`--screen=window` is also what the dialogs need. `request-color`, `request-file`, `request-dir`, `request-password` and `browse` are refused without a screen, and a run given the native window may use them. The second shipped example opens the machine's colour chooser and prints each colour chosen; cancelling ends it.
+`--screen=window` is also what the dialogs need. `request-color`, `request-file`, `request-dir` and `browse` are refused without a screen, and a run given the native window may use them. `request-password` reads the terminal instead, as R3 does, with a screen or without. The second shipped example opens the machine's colour chooser and prints each colour chosen; cancelling ends it.
 
 ```
 ./build/install/jebol/bin/jebol --screen=window examples/choose-colour/
@@ -518,7 +518,7 @@ Security levels and actions:
 | Level | What happens                                                                                            |
 |-------|---------------------------------------------------------------------------------------------------------|
 | allow | Permits the requested operation.                                                                        |
-| ask   | Prompts interactively at the console. Without interactive console support, requests fail automatically. |
+| ask   | Prompts interactively at the console. At the command line that is the terminal or pipe it was started on, edited as R3 edits a line; on a site it is a form on the page. Without a console, requests fail automatically. |
 | throw | Raises a catchable REBOL security error identifying the target resource.                                |
 | quit  | Terminates script execution immediately with exit status 101. Cannot be caught using try.               |
 
