@@ -3530,27 +3530,61 @@ rule WritingToTheConsolePortGoesThroughTheConsole {
     ensures: the_console_shows(formed(data))
 }
 
--- MODIFY turns one of the console's three modes on or off and answers the
--- setting. Echo says whether what the operator types is written back out,
--- line says whether a whole line is gathered before it is handed over, and
--- error says whether failures go out on the error channel rather than the
--- ordinary one.
+-- MODIFY turns one of the console's three modes on or off, tells the host's
+-- console, and answers the setting. Either console port takes it, input or
+-- output: in the C both share one device request, so a mode set through one
+-- is set for both. What each mode does is the host's, and embed.allium says
+-- what it means at a terminal, on a page and in an embedded host.
+--
+-- Nothing is kept on the port. The C hands the setting to the device and
+-- the port has no field for it, so `system/ports/output/echo` is a bad path
+-- after the call as before it.
 --
 -- Those three names are not the interpreter's to choose. Rebol keeps a table
 -- of the modes a port or a console takes, and the interpreter reads the
 -- console row of that table rather than carrying its own copy of the three
 -- words -- so a mode added to the table is a mode the interpreter accepts,
 -- and there is no second list to fall out of step.
-rule ModifyingAConsoleModeSetsIt {
+rule ModifyingAConsoleModeTellsTheConsole {
     when: EvaluateCall(modify, target, field, value)
     requires: names_the_console_port(target)
     requires: field in the_modes_the_console_takes()
     requires: is_logic(value)
 
     ensures: CallResult(value: value)
+    ensures: ConsoleModeSwitched(mode: field, on: value)
+    ensures: the_port_gains_no_field(target)
 }
 
-open question "Where does a console mode live once it is set? Rebol hands it to the device and keeps nothing on the port, so reading `system/ports/output/echo` back is a bad path there; JEBOL writes the setting into a field of the port, so the same path answers TRUE and the port has gained a field that a Rebol port has not got. Nothing in JEBOL reads the field afterwards, which is the awkward part: the setting is recorded and then ignored, so a script that turns echo off still sees what it types. Three readings are open. The field could go and the console adapter could hold the three settings and honour them, which is what the modes are for and the only one that makes MODIFY do anything. The field could stay and the adapter could read it, which keeps the setting where a script can see it but leaves a port carrying a field Rebol's does not. Or the port could go on accepting the call and changing nothing, and the rule should say so plainly rather than implying a setting was made. The first is almost certainly right, but it is a console feature rather than a port one, and deciding it means saying what echo, line and error each mean for a host that is not a terminal."
+-- TTY? asks whether the console's input is a terminal: the C asks isatty of
+-- standard input and nothing else. A script asks it to decide whether to
+-- prompt, so a console that is a pipe, or that reads nothing, says false.
+rule TtyAsksWhetherTheInputIsATerminal {
+    when: EvaluateCall(tty?)
+
+    ensures: CallResult(value: the_hosts_console_input_is_a_terminal())
+}
+
+-- READ-KEY reads one key from the console. At a terminal it is one key read
+-- raw and decoded, an escape sequence becoming a word from
+-- system/catalog/event-keys, with control?, shift? and alt? in system/state
+-- set from what was pressed; Ctrl-C is the key #"^C" rather than an escape.
+--
+-- Through a pipe the C reads nothing. The key it answers is the device
+-- request's last MODIFY read back through a union: the mode's number as a
+-- character, so #"^A" after line and #"^B" after error, and after echo a
+-- word picked from event-keys by the value, page-up for true and none for
+-- false. A script that reads a key through a pipe gets that and no input is
+-- consumed. A host whose console reads nothing answers none.
+rule ReadKeyReadsOneKeyFromTheConsole {
+    when: EvaluateCall(read-key)
+    requires: console in granted_services()
+
+    ensures: CallResult(value:
+        if the_hosts_console_input_is_a_terminal(): the_next_key_decoded()
+        else if the_hosts_console_reads(): the_key_the_last_mode_leaves()
+        else: none)
+}
 
 -- A word that is not one of the three is refused, and the failure carries
 -- the word itself rather than a sentence listing what was allowed.
@@ -5326,20 +5360,17 @@ rule AStreamNobodyRedirectedIsInheritedFromTheHost {
     ensures: each_stream_nobody_named(request) = the_hosts_own
 }
 
--- /console puts the child on the host's own console, which is inheritance
--- asked for rather than fallen into.
---
--- The C passes a flag and leaves the host to act on it, so what it means is
--- as much a property of the host as of the call. On a host with a console
--- the request and the default arrive at the same place, and the refinement
--- is a way of saying it was meant. Whether it should differ on a host with
--- no console at all is an open question below, and JEBOL's common case is
--- exactly that host.
-rule TheConsoleRefinementAsksForInheritanceOutright {
+-- /console changes no stream. The C sets FLAG_CONSOLE, both host-libs copy
+-- it into flag_console, and neither ever reads it: a stream nobody
+-- redirected is inherited with the refinement or without it. So the host is
+-- told the refinement was given, and a host that does nothing with it -- every
+-- host JEBOL ships -- starts the program exactly as it would without.
+rule TheConsoleRefinementChangesNoStream {
     when: EvaluateProgramCall(request)
     requires: request.attaches_to_the_console
 
     ensures: ProgramStarted(attached_to_the_hosts_console: true)
+    ensures: each_stream_nobody_named(request) = the_hosts_own
 }
 
 -- The error stream is redirected the same four ways as the output, and
@@ -7469,8 +7500,6 @@ open question "system/options/boot has two readings in Rebol and JEBOL can only 
 open question "AnEmptyTagUnderAllMoldsAsAConstruct and AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct are two members of a set that has no stated boundary: the values whose literal form would not read back. A real R3 writes construct syntax for others too, and the guidance under MoldAllIsPlainMoldWhereThereIsNoPositionToKeep already records that the rest are not here. What is undecided is whether the set should be enumerated in this spec at all, or stated once as the property -- MOLD writes whatever reads back as the same value, and construct syntax wherever the literal form would not -- with the enumeration left to the round-trip invariant to enforce. The property reads better and is harder to test; the enumeration is testable and goes stale."
 
 open question "config.mold_indent_width is declared as configuration and is in practice a pinned constant: a saved script's header is molded and then checksummed, so changing it changes bytes something else compares. Is it configuration a caller may set, in which case the checksum guarantee has to be stated as holding only for a fixed width, or is it a named constant that happens to live in the config block? The same question applies to longest_quoted_string and newlines_forcing_braces beside it, which are equally load-bearing for a round trip."
-
-open question "Does /console on CALL differ observably from plain inheritance on a host that has no console? The C passes a flag and leaves the host to decide, so both readings are open. A console-less host could treat the request as ordinary inheritance, which keeps a script portable and gives the operator nothing it would not have had anyway; or it could refuse and say there is no console to attach to, which is honest and stops a script that would otherwise have worked. It matters more for JEBOL than for Rebol, because a server with no console is the ordinary case here and the opposite of the case the refinement was drawn for. The same question decides whether /console on a host that does have one is worth distinguishing from the default at all, or is only a way for a caller to say the inheritance was meant."
 
 -- Resolved: an object is asked only for its own fields, and a word it has
 -- not got raises not-in-context. The nesting JEBOL stores an object in is an

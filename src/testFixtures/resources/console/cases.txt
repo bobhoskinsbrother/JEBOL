@@ -1,0 +1,133 @@
+# One case a line, fields separated by tabs: name, terminal or pipe, switches, the script, then the steps.
+# A step is >text (wait until it has been printed), <bytes (type them) or . (end of input).
+# Escapes in the script and in the steps: \r \n \t \e \\ and \xHH.
+tty-at-a-terminal	terminal	-qs	print tty?
+tty-through-a-pipe	pipe	-qs	print tty?
+ask-at-a-terminal	terminal	-qs	probe ask "Q? "	>Q? 	<hello\r
+ask-through-a-pipe	pipe	-qs	probe ask "Q? "	>Q? 	<hello\n
+ask-an-empty-line-at-a-terminal	terminal	-qs	probe ask "Q? "	>Q? 	<\r
+ask-an-empty-line-through-a-pipe	pipe	-qs	probe ask "Q? "	>Q? 	<\n
+ask-at-end-of-input	pipe	-qs	probe ask "Q? " probe ask "R? "	>Q? 	.
+ask-at-end-of-input-partway	pipe	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<abc	.
+ask-after-cr	pipe	-qs	probe ask "Q? "	>Q? 	<abc\r	>abc	.
+ask-after-crlf	pipe	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<abc\r\n	>R? 	<def\n
+ask-after-cr-at-a-terminal	terminal	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<abc\r	>R? 	<def\n
+ask-after-crlf-at-a-terminal	terminal	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<abc\r\n	>R? 	<def\r
+ask-with-a-delete-at-a-terminal	terminal	-qs	probe ask "Q? "	>Q? 	<ab\x7fc\r
+input-through-a-pipe	pipe	-qs	probe input	<hello\n
+input-at-end-of-input	pipe	-qs	probe input	.
+hide-at-a-terminal	terminal	-qs	probe ask/hide "P? "	>P? 	<secret\r
+hide-through-a-pipe	pipe	-qs	probe ask/hide "P? "	>P? 	<secret\r
+hide-with-a-line-feed-through-a-pipe	pipe	-qs	probe ask/hide "P? "	>P? 	<secret\n	.
+hide-63-bytes	terminal	-qs	probe length? ask/hide "P? "	>P? 	<aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r
+hide-64-bytes	terminal	-qs	probe length? ask/hide "P? "	>P? 	<aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r
+hide-65-bytes	terminal	-qs	probe length? ask/hide "P? "	>P? 	<aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r
+hide-escape	terminal	-qs	probe ask/hide "P? "	>P? 	<ab\e
+hide-escape-through-a-pipe	pipe	-qs	probe ask/hide "P? "	>P? 	<ab\e
+hide-delete-over-two-bytes	terminal	-qs	probe ask/hide "P? "	>P? 	<a\xc3\xa9\x7fb\r
+hide-at-end-of-input	pipe	-qs	probe ask/hide "P? "	>P? 	<abc	.
+hide-nothing-at-end-of-input	pipe	-qs	probe ask/hide "P? "	>P? 	.
+echo-at-a-terminal	terminal	-qs	modify system/ports/output 'echo false print "hidden" modify system/ports/output 'echo true print "shown"
+echo-through-a-pipe	pipe	-qs	modify system/ports/output 'echo false print "hidden" modify system/ports/output 'echo true print "shown"
+echo-on-the-input-port	pipe	-qs	modify system/ports/input 'echo false print "hidden" modify system/ports/input 'echo true print "shown"
+echo-while-error-is-on	pipe	-qs	modify system/ports/output 'error true modify system/ports/output 'echo false print "x" modify system/ports/output 'echo true modify system/ports/output 'error false print "y"
+echo-while-error-is-on-at-a-terminal	terminal	-qs	modify system/ports/output 'error true modify system/ports/output 'echo false print "x" modify system/ports/output 'echo true modify system/ports/output 'error false print "y"
+error-on-the-input-port	pipe	-qs	print "a" modify system/ports/input 'error true print "b" modify system/ports/input 'error false print "c"
+line-false-at-a-terminal	terminal	-qs	modify system/ports/output 'line false print "x" modify system/ports/output 'line true print "y"
+line-false-twice	terminal	-qs	modify system/ports/input 'line false modify system/ports/input 'line false print "x" modify system/ports/input 'line true modify system/ports/input 'line true print "y"
+line-false-through-a-pipe	pipe	-qs	modify system/ports/input 'line false print "x" modify system/ports/input 'line true print "y"
+line-false-under-cgi	terminal	-qs --cgi	modify system/ports/input 'line false print "x" modify system/ports/input 'line true print "y"
+line-false-left-on-at-exit	terminal	-qs	modify system/ports/input 'line false print "x"
+read-key-at-a-terminal	terminal	-qs	modify system/ports/input 'line false print "K" probe read-key modify system/ports/input 'line true	>K	<\xc3\xa9
+read-key-ascii-at-a-terminal	terminal	-qs	modify system/ports/input 'line false print "K" probe read-key probe read-key modify system/ports/input 'line true	>K	<a	<b
+input-at-a-terminal	terminal	-qs	print "I" probe input	>I\r\n	<hello\r
+read-key-through-a-pipe	pipe	-qs	print "K" probe read-key probe read-key probe ask "Q? "	>K	<abcdef\n
+read-key-at-end-of-input	pipe	-qs	print "K" probe read-key	>K	.
+read-key-after-each-mode-through-a-pipe	pipe	-qs	probe read-key modify system/ports/input 'echo true probe read-key modify system/ports/input 'echo false probe read-key modify system/ports/output 'error false probe read-key
+ctrl-c-while-running	terminal	-qs	print "W" forever [wait 0.05]	>W\r\n	<\x03
+ctrl-c-while-raw	terminal	-qs	modify system/ports/input 'line false print "W" forever [wait 0.05]	>W\r\n	<\x03
+ctrl-c-during-read-key	terminal	-qs	modify system/ports/input 'line false print "K" probe read-key print "after"	>K\r\n	<\x03
+ctrl-c-while-computing	terminal	-qs	print "W" forever [1 + 1]	>W\r\n	<\x03
+ctrl-c-during-ask	terminal	-qs	probe ask "Q? " print "after"	>Q? 	<ab\x03	<\r
+call-console	pipe	-qs	call/shell/console/wait "echo hi" print "done"
+call-plain	pipe	-qs	call/shell/wait "echo hi" print "done"
+call-console-at-a-terminal	terminal	-qs	call/shell/console/wait "echo hi" print "done"
+call-plain-at-a-terminal	terminal	-qs	call/shell/wait "echo hi" print "done"
+editor-tab	terminal	-qs	probe ask "Q? "	>Q? 	<a\tb\r
+editor-control-character	terminal	-qs	probe ask "Q? "	>Q? 	<a\x10b\r
+editor-left-and-insert	terminal	-qs	probe ask "Q? "	>Q? 	<ac\e[Db\r
+editor-right	terminal	-qs	probe ask "Q? "	>Q? 	<abc\e[D\e[D\e[CX\r
+editor-home-and-end	terminal	-qs	probe ask "Q? "	>Q? 	<bc\e[Ha\e[Fd\r
+editor-home-and-end-tilde	terminal	-qs	probe ask "Q? "	>Q? 	<bc\e[1~a\e[4~d\r
+editor-ctrl-a-and-e	terminal	-qs	probe ask "Q? "	>Q? 	<bc\x01a\x05d\r
+editor-ctrl-b-and-f	terminal	-qs	probe ask "Q? "	>Q? 	<ac\x02b\x06d\r
+editor-ctrl-u	terminal	-qs	probe ask "Q? "	>Q? 	<abc\x15x\r
+editor-ctrl-u-mid-line	terminal	-qs	probe ask "Q? "	>Q? 	<abcd\e[D\e[D\x15x\r
+editor-ctrl-k	terminal	-qs	probe ask "Q? "	>Q? 	<abcd\e[D\e[D\x0bx\r
+editor-ctrl-d	terminal	-qs	probe ask "Q? "	>Q? 	<ab\x01\x04\r
+editor-ctrl-d-at-end	terminal	-qs	probe ask "Q? "	>Q? 	<ab\x04\r
+editor-delete-key	terminal	-qs	probe ask "Q? "	>Q? 	<ab\x01\e[3~\r
+editor-backspace-at-start	terminal	-qs	probe ask "Q? "	>Q? 	<\x7fab\r
+editor-ctrl-h	terminal	-qs	probe ask "Q? "	>Q? 	<ab\x08c\r
+editor-escape-alone	terminal	-qs	probe ask "Q? "	>Q? 	<ab\e
+editor-unknown-escape	terminal	-qs	probe ask "Q? "	>Q? 	<a\e[Zb\r
+editor-alt-b-and-f	terminal	-qs	probe ask "Q? "	>Q? 	<ab cd\eb\ebX\efY\r
+editor-alt-unknown	terminal	-qs	probe ask "Q? "	>Q? 	<a\exb\r
+editor-two-byte-character	terminal	-qs	probe ask "Q? "	>Q? 	<a\xc3\xa9b\r
+editor-delete-two-byte-character	terminal	-qs	probe ask "Q? "	>Q? 	<a\xc3\xa9\x7fb\r
+editor-wide-character	terminal	-qs	probe ask "Q? "	>Q? 	<a\xe4\xb8\xadb\e[D\e[DX\r
+editor-delete-wide-character	terminal	-qs	probe ask "Q? "	>Q? 	<a\xe4\xb8\xad\x7fb\r
+editor-typed-ahead	terminal	-qs	probe ask "Q? "	>Q? 	<one\rtwo\r
+editor-history	terminal	-qs	probe ask "Q? " probe ask "R? " probe ask "S? "	>Q? 	<one\r	>R? 	<two\r	>S? 	<\e[A\e[A\e[A\e[B\r
+editor-history-down-past-the-end	terminal	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<one\r	>R? 	<abc\e[B\e[Bx\r
+editor-history-shorter-line	terminal	-qs	probe ask "Q? " probe ask "R? "	>Q? 	<a\r	>R? 	<abcdef\e[A\r
+key-up	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[A
+key-down	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[B
+key-right	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[C
+key-left	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[D
+key-begin	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[E
+key-end	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[F
+key-home	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[H
+key-backtab	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[Z
+key-ctrl-up	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[1;5A
+key-shift-alt-home	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[1;4H
+key-ctrl-alt-shift-f4	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[1;8S
+key-f1-tilde	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[11~
+key-f8-tilde	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[19~
+key-ctrl-f6-caret	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[17^
+key-insert	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[2~
+key-f9	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[20~
+key-f12-caret	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[24^
+key-shift-f5	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[25~
+key-paste-start	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[200~
+key-paste-end	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[201~
+key-delete	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[3~
+key-ctrl-delete-caret	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[3^
+key-ctrl-delete	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[3;5~
+key-shift-f9	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[31~
+key-ctrl-f12	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[34^
+key-end-4	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[4~
+key-page-up	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[5~
+key-shift-page-up	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[5;2~
+key-page-down	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[6~
+key-shift-page-down	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[6;2~
+key-home-7	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[7~
+key-end-8	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[8~
+key-ss3-up	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\eOA
+key-ss3-f1	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\eOP
+key-ss3-keypad-enter	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\eOM
+key-ss3-keypad-9	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\eOy
+key-alt-b	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\eb
+key-alt-f	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\ef
+key-alt-printable	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\ea
+key-alt-control	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e\x01
+key-escape-alone	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e
+key-unrecognised-then-a	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\e[9~a
+key-backspace	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\x7f
+key-ctrl-h	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\x08
+key-ctrl-a	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\x01
+key-tab	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\t
+key-enter	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\r
+key-three-byte	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xe4\xb8\xad
+key-four-byte	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xf0\x9f\x98\x80
+key-bad-continuation-then-a	terminal	-qs	modify system/ports/input 'line false print "K" k: read-key probe reduce [k system/state/control? system/state/shift? system/state/alt?] modify system/ports/input 'line true	>K\r\n	<\xc3Aa

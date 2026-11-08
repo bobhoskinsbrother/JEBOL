@@ -76,6 +76,53 @@ enum ProgramOutput {
     | discarded         -- the bytes are thrown away
 }
 
+-- The three modes MODIFY sets on the console, in the order of the C's
+-- reb_console_modes, which is the order its union gives their numbers in.
+enum ConsoleMode {
+    echo                -- 0
+    | line              -- 1
+    | error             -- 2
+}
+
+-- A mode set by a script reaches the host's console, which does with it
+-- what its host means by it. A console that does nothing with a mode is a
+-- valid console: the call still answers the setting.
+--
+-- At a terminal, on Linux and macOS, as the C's posix device does:
+--   echo   writes ESC[8m for false and ESC[28m for true to wherever output
+--          is going, a pipe as much as a terminal. It is the conceal
+--          attribute, so at a terminal what is printed after it is hidden.
+--   line   acts only when the setting changes. False puts the terminal in
+--          raw mode, -ixon -ixoff with suspend and quit undefined, and
+--          writes ESC[?2004h; true puts back the mode the console opened in
+--          and writes ESC[?2004l. --cgi changes neither.
+--   error  true sends output to the error stream, false back.
+-- On Windows the C's device means something else by echo and writes no
+-- escape; JEBOL accepts all three there and does nothing.
+--
+-- On a page: error true sends what is printed to the browser's console as
+-- errors, false back; echo and line change nothing. web.allium.
+--
+-- In an embedded host: whatever its ConsolePort does when told, nothing by
+-- default.
+rule AConsoleModeReachesTheHostsConsole {
+    when: ConsoleModeSwitched(mode, on)
+
+    ensures: the_hosts_console_is_told(mode, on)
+}
+
+-- An escape is the operator's Ctrl-C. It halts the run at the next step the
+-- evaluator takes, as HALT would, and a run waiting in WAIT writes [ESC] to
+-- the error stream first. A key being read takes it as the key #"^C"
+-- instead, and nothing halts. A host raises it; the command line raises it
+-- on SIGINT.
+rule AnEscapeHaltsTheRun {
+    when: EscapeRaised(run)
+
+    ensures: if run.is_reading_a_key: the_key_read_is(ctrl_c)
+        else: run_halts_at_its_next_step(run)
+}
+
 -- Why a host service is not available. A script that asks for one it
 -- cannot have must be able to tell these apart: the first two are the
 -- host's decision and the third never changes.
@@ -260,9 +307,9 @@ value ProgramToStart {
     -- more than one thing to send.
     read_by_the_shell: Boolean
 
-    -- Whether the child is put on the host's own console. Asked for
-    -- separately from inheriting the streams, because a host may have
-    -- streams and no console to attach to.
+    -- Whether the script gave /console. The C sets a flag no host reads, so
+    -- it changes no stream: a host may act on it and the ones JEBOL ships
+    -- start the program exactly as they would without it.
     attached_to_the_hosts_console: Boolean
 
     -- Whether the interpreter waits for the child to exit before carrying
@@ -1176,6 +1223,8 @@ surface Embedding {
         Run(host, interpreter, source_text)
         RunNext(host, interpreter, source_text)
         Cancel(host, interpreter)
+        EscapeRaised(run)
+        ConsoleModeSwitched(mode, on)
         AskForExtensions(host, interpreter)
         CallCommand(command, arguments)
         ExtensionPosts(extension, interpreter, event)
@@ -1194,6 +1243,7 @@ surface Embedding {
         WindowRequest
         ProgramInput
         ProgramOutput
+        ConsoleMode
         ProgramToStart
         ProgramResult
         FileChoiceRequest
@@ -1301,8 +1351,6 @@ actor HostApplication {
 ------------------------------------------------------------
 -- Open Questions
 ------------------------------------------------------------
-
-open question "Does attaching a started program to the host's console differ observably from letting it inherit the host's streams, in a host that has no console? The C passes a flag and leaves the host to decide, so both readings are available: a console-less host could treat the request as ordinary inheritance, or it could refuse it and say the host has no console to attach to. The first keeps a script portable and gives the operator nothing; the second is honest and stops a script that would have worked. It matters for JEBOL because the common case is a server with no console at all, which is the opposite of the case the refinement was designed for."
 
 open question "Does a file feeding a started program's input cross the boundary as a path for the host to open, or as bytes the interpreter read? The C passes the path and the host opens it, which is what this spec follows and why ProgramInput has four members rather than three. Reading it in the interpreter would leave the host with one way of being fed rather than two, at the cost of holding a whole file in memory and of the host losing the chance to stream it. Nothing a script can observe separates them, so this is a question about where the work sits rather than about behaviour."
 

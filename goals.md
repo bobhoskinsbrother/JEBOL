@@ -100,6 +100,24 @@ Modify_IO and Open_IO, `os/win32/dev-stdio.c`, `host-lib.c`):**
 - An embedded host's `ConsolePort` is told each mode change; the default
   does nothing.
 
+**Widened with the owner on 2026-11-08, once the transcripts existed:**
+
+- At a terminal R3 never lets the terminal edit a line: `Init_Terminal` turns
+  echo, canonical input and CR translation off when the console opens, and
+  `host-readline.c` echoes and edits the line itself, so a typed line ends
+  `\r\r\n`. JEBOL ports that editor, its keys and its history, and keeps the
+  terminal in its mode for the whole run, as R3 does.
+- `read-key` at a terminal ports `Read_Key_Event`: escape sequences become
+  the words of `system/catalog/event-keys`, and `control?`, `shift?` and
+  `alt?` are set from the sequence.
+- Ctrl-C is R3's escape: the run halts with exit code 15 at the next step,
+  writing `[ESC]` to stderr when it lands inside `wait`; during `read-key` it
+  is the key `#"^C"`.
+- Smaller findings followed as the transcripts say: `ask` at end of input
+  answers `""`; `--cgi` does not stop the bracketed paste escapes; `read-key`
+  through a pipe reads nothing and answers from the C's union of the last
+  `modify`.
+
 **The work, in order.** Each step is its own commit once the whole gate,
 end-to-end included, is green; its failing tests come first.
 
@@ -187,15 +205,19 @@ end-to-end included, is green; its failing tests come first.
      `portsFor`. Through a pipe it reads lines, keys and passwords as the
      transcripts say. On a terminal -- asked once at start with `test -t 0`,
      since the jar is built for Java 21 and `Console.isTerminal` is 22 -- it
-     saves `stty -g`, applies the C's raw settings for line false and for
-     each key read, turns echo off for a hidden read, and restores the
-     saved settings from a shutdown hook, so exit and Ctrl-C both leave the
-     terminal as found.
+     saves `stty -g`, applies `Init_Terminal`'s settings for the whole run,
+     the C's raw settings for line false, and restores the saved settings
+     from a shutdown hook, so exit and Ctrl-C both leave the terminal as
+     found. Lines are read through a port of `host-readline.c`, hidden
+     lines byte by byte to a CR, keys through a port of `Read_Key_Event`.
+   - Ctrl-C reaches the interpreter as an escape, which halts at the next
+     step and in `wait`, and which `read-key` answers as `#"^C"`.
    - echo writes the escapes to where output currently goes; error moves
      `StreamOutput` between stdout and stderr; line writes the bracketed
-     paste escapes unless `--cgi`. On Windows all three do nothing.
-   - Unit tests over a fake `stty`: which commands run and when, the bytes
-     each mode writes, the CGI case, the restore. End-to-end tests drive the
+     paste escapes, `--cgi` or not. On Windows all three do nothing.
+   - Unit tests over a fake `stty` and a fake terminal: which commands run
+     and when, the bytes each mode writes, the editor's keys, the key
+     decoder's sequences, the restore. End-to-end tests drive the
      jar through pipes and under `script` and compare with the transcripts:
      `ask`, `input`, `ask/hide` not showing what is typed, the echo
      escapes, error on stderr, `read-key` after line false, `tty?` both

@@ -1438,11 +1438,27 @@ rule AScreenWithoutWhatTheAskNeedsIsACatchableError {
 -- and a browser has none at all -- and one form everywhere is the
 -- consistency being bought.
 --
--- A run with a screen of JEBOL's own asks through the form; a host that
--- supplies a dialog port and no screen keeps the port's own way of asking,
--- which on the desktop is Swing's.
+-- A console that reads comes first, before any form or window, because R3
+-- always reads REQUEST-PASSWORD from standard input: a byte at a time to a
+-- CR or the end of input, ESC answering none, DEL backing over a whole
+-- character, and nothing typed shown. So the command line asks on its
+-- terminal with a screen or without, and the request needs the console
+-- grant rather than windows.
+rule APasswordIsReadFromAConsoleThatReads {
+    when: script_asks_for_a_password(run)
+    requires: console_is_granted(run)
+    requires: the_console_reads(run)
+
+    ensures: the_script_gets(run, the_console_read_hidden_to_a_cr(run))
+}
+
+-- A console that cannot read -- a page's, or none -- leaves the password to
+-- the screen. A run with a screen of JEBOL's own asks through the form; a
+-- host that supplies a dialog port and no screen keeps the port's own way of
+-- asking, which on the desktop is Swing's.
 rule APasswordIsAskedThroughTheFormWhereThereIsAScreen {
     when: script_asks_for_a_password(run)
+    requires: not the_console_reads(run)
     requires: windows_are_granted(run)
     requires: the_screen_has_a_display(run)
 
@@ -1451,6 +1467,7 @@ rule APasswordIsAskedThroughTheFormWhereThereIsAScreen {
 
 rule APasswordWithNoScreenIsAskedOfTheDialogPort {
     when: script_asks_for_a_password(run)
+    requires: not the_console_reads(run)
     requires: windows_are_granted(run)
     requires: not the_screen_has_a_display(run)
 

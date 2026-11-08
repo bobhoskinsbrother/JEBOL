@@ -6960,6 +6960,71 @@ read off `./r3-head`.
 
 ---
 
+## 236. The console's modes, its terminal, and the flag nobody reads
+
+The transcripts are `src/testFixtures/resources/console/transcripts.txt`, written
+by its `generate.sh` from `./r3-head`; its README says how.
+
+**`call/console` changes nothing.** `n-io.c` sets `FLAG_CONSOLE`, both host-libs
+copy it into `flag_console`, and neither ever reads it. A stream nobody redirected
+is inherited with the refinement or without it.
+
+**Echo is a conceal escape, not echo.** On Linux and macOS, `Modify_IO` writes
+`ESC[8m` for false and `ESC[28m` for true to `Std_Out`, wherever that is: a pipe
+gets the bytes, and while `error` is on they go to stderr with everything else.
+At a terminal the attribute hides what is printed after it, so a script hiding a
+password also hides its own output. On Windows the device turns off the console's
+echo of typed input instead and writes nothing.
+
+**`line` is acted on only when it changes, and `--cgi` does not stop it.** False
+writes `ESC[?2004h` and true `ESC[?2004l`, guarded by `RDM_CGI`, but
+`OS_Open_StdIO` sets `RDM_CGI` after the device's `Open_IO`, on a request the
+console port does not use, so the escapes come under `--cgi` too. All console
+ports share one request, `Std_IO`, so a mode set on `system/ports/input` is set
+for output as well. A run that ends with `line` false leaves bracketed paste on:
+`Quit_Terminal` restores the terminal's settings and writes no escape.
+
+**At a terminal R3 edits the line.** `Init_Terminal` turns off `ECHO`, `ICANON`,
+`ICRNL` and `INLCR` when the console opens and leaves them off all run;
+`Read_Line` echoes each key and writes `\r\n` for Enter, which `ONLCR` makes
+`\r\r\n`. Ctrl-D is delete, not end of input, and a `read` of nothing is read
+again, so end of input at a terminal is a wait for ever. `settings_original`, which
+`line true` goes back to, is taken after `Init_Terminal`, so it is the editor's
+mode and not the terminal as found. A lone ESC at the end of a read answers a line
+of LF and NUL, `"^/^@"`, because `Read_Line` returns two bytes and the port strips
+only a final LF.
+
+**Through a pipe a line is one `read`.** `Read_IO` reads once into the port's
+buffer and the port strips a final LF in line mode: a CR stays (`"abc^M"`), and
+end of input is `""`, never none.
+
+**`request-password` reads standard input itself,** a byte at a time to a CR or
+the end, ESC answering none and DEL backing over a UTF-8 character. A LF through
+a pipe is part of the password. It sets no terminal mode; nothing typed shows only
+because the editor's mode is already in force.
+
+**`read-key` through a pipe reads nothing and answers a union.** With no
+`Term_IO`, `Read_IO` reads `req->length` bytes, which is 0 by then, and
+`OS_Read_Key` hands back `req->key`, which shares its memory with
+`req->modify`. So the key is the last mode set: `uchar` is its number, `#"^A"`
+after `line` (which `OS_Read_Key` itself sets on the way in) and `#"^B"` after
+`error`; after `echo` the number is 0 and `virtu` is the value, so `echo true`
+answers `page-up`, the first of `system/catalog/event-keys`, and `echo false`
+none.
+
+**At a terminal, `Read_Key_Event` decodes a key, and its numbering leaks too.**
+An `EVT_CONTROL` event's data is an `EVK_` number, so Alt with a control
+character -- `ESC ^A` -- is control and alt with `virtu` 1, which is `page-up`.
+An unknown sequence is consumed and the next key read. Ctrl-C during `read-key`
+is the key `#"^C"` with control set, and clears the escape.
+
+**Ctrl-C is an escape.** `Handle_Signal` calls `RL_Escape`, and the next
+`Do_Signals` halts: exit code 15. Inside `wait`, `Wait_Ports` checks first and
+writes `[ESC]` to stderr. During `ask` the terminal flushes what was typed with
+the signal and the halt comes once the line is entered.
+
+---
+
 ## Strings reach C as UTF-8
 
 **A series holding anything past ASCII is stored as UTF-8 and flagged `SER_UTF8`,

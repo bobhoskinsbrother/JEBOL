@@ -1,0 +1,650 @@
+== tty-at-a-terminal
+stdout: true\r\n
+stderr: 
+exit: 0
+terminal: restored
+== tty-through-a-pipe
+stdout: false\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-at-a-terminal
+stdout: Q? hello\r\r\n"hello"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== ask-through-a-pipe
+stdout: Q? "hello"\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-an-empty-line-at-a-terminal
+stdout: Q? \r\r\n""\r\n
+stderr: 
+exit: 0
+terminal: restored
+== ask-an-empty-line-through-a-pipe
+stdout: Q? ""\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-at-end-of-input
+stdout: Q? ""\nR? ""\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-at-end-of-input-partway
+stdout: Q? "abc"\nR? ""\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-after-cr
+stdout: Q? "abc^M"\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-after-crlf
+stdout: Q? "abc^M"\nR? "def"\n
+stderr: 
+exit: 0
+terminal: pipe
+== ask-after-cr-at-a-terminal
+stdout: Q? abc\r\r\n"abc"\r\nR? def\r\r\n"def"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== ask-after-crlf-at-a-terminal
+stdout: Q? abc\r\r\n"abc"\r\nR? def\r\r\n"def"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== ask-with-a-delete-at-a-terminal
+stdout: Q? ab\x08 \x08c\r\r\n"ac"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== input-through-a-pipe
+stdout: "hello"\n
+stderr: 
+exit: 0
+terminal: pipe
+== input-at-end-of-input
+stdout: ""\n
+stderr: 
+exit: 0
+terminal: pipe
+== hide-at-a-terminal
+stdout: P? \r\n"secret"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-through-a-pipe
+stdout: P? \n"secret"\n
+stderr: 
+exit: 0
+terminal: pipe
+== hide-with-a-line-feed-through-a-pipe
+stdout: P? \n"secret^/"\n
+stderr: 
+exit: 0
+terminal: pipe
+== hide-63-bytes
+stdout: P? \r\n63\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-64-bytes
+stdout: P? \r\n64\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-65-bytes
+stdout: P? \r\n65\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-escape
+stdout: P? \r\n_\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-escape-through-a-pipe
+stdout: P? \n_\n
+stderr: 
+exit: 0
+terminal: pipe
+== hide-delete-over-two-bytes
+stdout: P? \r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== hide-at-end-of-input
+stdout: P? \n"abc"\n
+stderr: 
+exit: 0
+terminal: pipe
+== hide-nothing-at-end-of-input
+stdout: P? \n""\n
+stderr: 
+exit: 0
+terminal: pipe
+== echo-at-a-terminal
+stdout: \e[8mhidden\r\n\e[28mshown\r\n
+stderr: 
+exit: 0
+terminal: restored
+== echo-through-a-pipe
+stdout: \e[8mhidden\n\e[28mshown\n
+stderr: 
+exit: 0
+terminal: pipe
+== echo-on-the-input-port
+stdout: \e[8mhidden\n\e[28mshown\n
+stderr: 
+exit: 0
+terminal: pipe
+== echo-while-error-is-on
+stdout: y\n
+stderr: \e[8mx\n\e[28m
+exit: 0
+terminal: pipe
+== echo-while-error-is-on-at-a-terminal
+stdout: y\r\n
+stderr: \e[8mx\n\e[28m
+exit: 0
+terminal: restored
+== error-on-the-input-port
+stdout: a\nc\n
+stderr: b\n
+exit: 0
+terminal: pipe
+== line-false-at-a-terminal
+stdout: \e[?2004hx\r\n\e[?2004ly\r\n
+stderr: 
+exit: 0
+terminal: restored
+== line-false-twice
+stdout: \e[?2004hx\r\n\e[?2004ly\r\n
+stderr: 
+exit: 0
+terminal: restored
+== line-false-through-a-pipe
+stdout: \e[?2004hx\n\e[?2004ly\n
+stderr: 
+exit: 0
+terminal: pipe
+== line-false-under-cgi
+stdout: \e[?2004hx\r\n\e[?2004ly\r\n
+stderr: 
+exit: 0
+terminal: restored
+== line-false-left-on-at-exit
+stdout: \e[?2004hx\r\n
+stderr: 
+exit: 0
+terminal: restored
+== read-key-at-a-terminal
+stdout: \e[?2004hK\r\n#"\xc3\xa9"\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== read-key-ascii-at-a-terminal
+stdout: \e[?2004hK\r\n#"a"\r\n#"b"\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== input-at-a-terminal
+stdout: I\r\nhello\r\r\n"hello"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== read-key-through-a-pipe
+stdout: K\n\e[?2004h#"^A"\n#"^A"\nQ? \e[?2004l"abcdef"\n
+stderr: 
+exit: 0
+terminal: pipe
+== read-key-at-end-of-input
+stdout: K\n\e[?2004h#"^A"\n
+stderr: 
+exit: 0
+terminal: pipe
+== read-key-after-each-mode-through-a-pipe
+stdout: \e[?2004h#"^A"\n\e[28mpage-up\n\e[8m_\n#"^B"\n
+stderr: 
+exit: 0
+terminal: pipe
+== ctrl-c-while-running
+stdout: W\r\n
+stderr: [ESC]\n
+exit: 15
+terminal: restored
+== ctrl-c-while-raw
+stdout: \e[?2004hW\r\n
+stderr: [ESC]\n
+exit: 15
+terminal: restored
+== ctrl-c-during-read-key
+stdout: \e[?2004hK\r\n#"^C"\r\nafter\r\n
+stderr: 
+exit: 0
+terminal: restored
+== ctrl-c-while-computing
+stdout: W\r\n
+stderr: 
+exit: 15
+terminal: restored
+== ctrl-c-during-ask
+stdout: Q? \r\r\n
+stderr: 
+exit: 15
+terminal: restored
+== call-console
+stdout: hi\ndone\n
+stderr: 
+exit: 0
+terminal: pipe
+== call-plain
+stdout: hi\ndone\n
+stderr: 
+exit: 0
+terminal: pipe
+== call-console-at-a-terminal
+stdout: hi\r\ndone\r\n
+stderr: 
+exit: 0
+terminal: restored
+== call-plain-at-a-terminal
+stdout: hi\r\ndone\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-tab
+stdout: Q? a    b\r\r\n"a    b"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-control-character
+stdout: Q? a\x07b\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-left-and-insert
+stdout: Q? ac\x08bc\x08\r\r\n"abc"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-right
+stdout: Q? abc\x08\x08bXc\x08\r\r\n"abXc"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-home-and-end
+stdout: Q? bc\x08\x08abc\x08\x08bcd\r\r\n"abcd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-home-and-end-tilde
+stdout: Q? bc\x08\x08abc\x08\x08bcd\r\r\n"abcd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-a-and-e
+stdout: Q? bc\x08\x08abc\x08\x08bcd\r\r\n"abcd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-b-and-f
+stdout: Q? ac\x08bc\x08cd\r\r\n"abcd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-u
+stdout: Q? abc\x08\x08\x08   \x08\x08\x08x\r\r\n"x"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-u-mid-line
+stdout: Q? abcd\x08\x08\x08\x08    \x08\x08\x08\x08cd\x08\x08xcd\x08\x08\r\r\n"xcd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-k
+stdout: Q? abcd\x08\x08  \x08\x08x\r\r\n"abx"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-d
+stdout: Q? ab\x08\x08b \x08\x08\r\r\n"b"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-d-at-end
+stdout: Q? ab\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-delete-key
+stdout: Q? ab\x08\x08b \x08\x08\r\r\n"b"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-backspace-at-start
+stdout: Q? ab\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-ctrl-h
+stdout: Q? ab\x08 \x08c\r\r\n"ac"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-escape-alone
+stdout: Q? ab[ESC]\r\n"^/^@"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-unknown-escape
+stdout: Q? a[ESC]Zb\r\r\n"aZb"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-alt-b-and-f
+stdout: Q? ab cd\x08\x08\x08\x08\x08Xab cd\x08\x08\x08\x08\x08abY cd\x08\x08\x08\r\r\n"XabY cd"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-alt-unknown
+stdout: Q? a\x07b\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-two-byte-character
+stdout: Q? a\xc3\xa9b\r\r\n"a\xc3\xa9b"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-delete-two-byte-character
+stdout: Q? a\xc3\xa9\x08 \x08b\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-wide-character
+stdout: Q? a\xe4\xb8\xadb\x08\x08\x08X\xe4\xb8\xadb\x08\x08\x08\r\r\n"aX\xe4\xb8\xadb"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-delete-wide-character
+stdout: Q? a\xe4\xb8\xad\x08\x08 \x08b\r\r\n"ab"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-typed-ahead
+stdout: Q? one\r\r\n"one"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-history
+stdout: Q? one\r\r\n"one"\r\nR? two\r\r\n"two"\r\nS? two \x08\x08\x08\x08one \x08\x08\x08\x08\x07    \x08\x08\x08\x08one \x08\r\r\n"one"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-history-down-past-the-end
+stdout: Q? one\r\r\n"one"\r\nR? abc\x08\x08\x08    \x08\x08\x08\x08 \x08x\r\r\n"x"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== editor-history-shorter-line
+stdout: Q? a\r\r\n"a"\r\nR? abcdef\x08\x08\x08\x08\x08\x08a      \x08\x08\x08\x08\x08\x08\r\r\n"a"\r\n
+stderr: 
+exit: 0
+terminal: restored
+== key-up
+stdout: \e[?2004hK\r\n[\r\n    up #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-down
+stdout: \e[?2004hK\r\n[\r\n    down #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-right
+stdout: \e[?2004hK\r\n[\r\n    right #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-left
+stdout: \e[?2004hK\r\n[\r\n    left #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-begin
+stdout: \e[?2004hK\r\n[\r\n    begin #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-end
+stdout: \e[?2004hK\r\n[\r\n    end #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-home
+stdout: \e[?2004hK\r\n[\r\n    home #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-backtab
+stdout: \e[?2004hK\r\n[\r\n    backtab #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-up
+stdout: \e[?2004hK\r\n[\r\n    up #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-shift-alt-home
+stdout: \e[?2004hK\r\n[\r\n    home #(false) #(true) #(true)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-alt-shift-f4
+stdout: \e[?2004hK\r\n[\r\n    f4 #(true) #(true) #(true)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-f1-tilde
+stdout: \e[?2004hK\r\n[\r\n    f1 #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-f8-tilde
+stdout: \e[?2004hK\r\n[\r\n    f8 #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-f6-caret
+stdout: \e[?2004hK\r\n[\r\n    f6 #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-insert
+stdout: \e[?2004hK\r\n[\r\n    insert #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-f9
+stdout: \e[?2004hK\r\n[\r\n    f9 #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-f12-caret
+stdout: \e[?2004hK\r\n[\r\n    f12 #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-shift-f5
+stdout: \e[?2004hK\r\n[\r\n    f5 #(false) #(true) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-paste-start
+stdout: \e[?2004hK\r\n[\r\n    paste-start #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-paste-end
+stdout: \e[?2004hK\r\n[\r\n    paste-end #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-delete
+stdout: \e[?2004hK\r\n[\r\n    delete #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-delete-caret
+stdout: \e[?2004hK\r\n[\r\n    delete #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-delete
+stdout: \e[?2004hK\r\n[\r\n    delete #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-shift-f9
+stdout: \e[?2004hK\r\n[\r\n    f9 #(false) #(true) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-f12
+stdout: \e[?2004hK\r\n[\r\n    f12 #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-end-4
+stdout: \e[?2004hK\r\n[\r\n    end #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-page-up
+stdout: \e[?2004hK\r\n[\r\n    page-up #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-shift-page-up
+stdout: \e[?2004hK\r\n[\r\n    page-up #(false) #(true) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-page-down
+stdout: \e[?2004hK\r\n[\r\n    page-down #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-shift-page-down
+stdout: \e[?2004hK\r\n[\r\n    page-down #(false) #(true) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-home-7
+stdout: \e[?2004hK\r\n[\r\n    home #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-end-8
+stdout: \e[?2004hK\r\n[\r\n    end #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ss3-up
+stdout: \e[?2004hK\r\n[\r\n    up #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ss3-f1
+stdout: \e[?2004hK\r\n[\r\n    f1 #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ss3-keypad-enter
+stdout: \e[?2004hK\r\n[#"^M" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ss3-keypad-9
+stdout: \e[?2004hK\r\n[#"9" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-alt-b
+stdout: \e[?2004hK\r\n[\r\n    left #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-alt-f
+stdout: \e[?2004hK\r\n[\r\n    right #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-alt-printable
+stdout: \e[?2004hK\r\n[#"a" #(false) #(false) #(true)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-alt-control
+stdout: \e[?2004hK\r\n[\r\n    page-up #(true) #(false) #(true)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-escape-alone
+stdout: \e[?2004hK\r\n[\r\n    escape #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-unrecognised-then-a
+stdout: \e[?2004hK\r\n[#"a" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-backspace
+stdout: \e[?2004hK\r\n[\r\n    backspace #(false) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-h
+stdout: \e[?2004hK\r\n[\r\n    backspace #(true) #(false) #(false)\r\n]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-ctrl-a
+stdout: \e[?2004hK\r\n[#"^A" #(true) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-tab
+stdout: \e[?2004hK\r\n[#"^-" #(true) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-enter
+stdout: \e[?2004hK\r\n[#"^M" #(true) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-three-byte
+stdout: \e[?2004hK\r\n[#"\xe4\xb8\xad" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-four-byte
+stdout: \e[?2004hK\r\n[#"\xf0\x9f\x98\x80" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored
+== key-bad-continuation-then-a
+stdout: \e[?2004hK\r\n[#"a" #(false) #(false) #(false)]\r\n\e[?2004l
+stderr: 
+exit: 0
+terminal: restored

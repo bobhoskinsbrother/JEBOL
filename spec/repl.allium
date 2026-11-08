@@ -524,8 +524,10 @@ rule TheCommandLineGrantsEveryService {
 -- Each screen brings its own dialogs: the machine's with `--screen=window`,
 -- the page's with `--screen=web`, and a refusal where there is no screen.
 --
--- The WINDOW service's five requests -- BROWSE, REQUEST-FILE, REQUEST-DIR,
--- REQUEST-COLOR and REQUEST-PASSWORD -- need something to put a dialog on.
+-- The WINDOW service's requests -- BROWSE, REQUEST-FILE, REQUEST-DIR,
+-- REQUEST-COLOR, and REQUEST-PASSWORD when the console cannot read -- need
+-- something to put a dialog on. The command line's console always reads, so
+-- its REQUEST-PASSWORD asks there, screen or no screen.
 -- `--screen=window` is the run that has already said it may use this
 -- machine's screen -- it is the same switch that turns the JVM's headless mode
 -- off -- so that is where the machine's own dialogs are handed over.
@@ -573,6 +575,48 @@ rule AScriptOnTheCommandLineHasNoTimeLimit {
     when: run: ScriptRun.created
 
     ensures: run.time_limit = none
+}
+
+-- The command line gives a script the console it was started on, at its
+-- prompt and in a script alike, and its prompt reads through the same
+-- console, so nothing typed is held by two readers.
+--
+-- Through a pipe a line is what one read of standard input gives, with a
+-- final LF taken off, so a CR stays and end of input is an empty line, as in
+-- the C; a hidden line is read a byte at a time to a CR or the end.
+--
+-- At a terminal, as R3's posix host does: the terminal leaves CR and LF as
+-- typed and stops echoing and gathering lines for the whole run, and the
+-- console edits each line itself -- echoing, the editing keys, the history
+-- -- as host-readline.c does. A hidden line is read a byte at a time to a CR
+-- and shown not at all; a key is read and decoded as Read_Key_Event does.
+-- Whether standard input is a terminal is asked once, at start.
+rule TheCommandLineGivesAScriptItsConsole {
+    when: line: CommandLine.created
+
+    ensures: the_console_supplied() =
+        if the_standard_input_is_a_terminal(): the_terminal_line_editor()
+        else: the_standard_streams()
+}
+
+-- The terminal is left as it was found: at exit, whether the script ended,
+-- quit, failed or halted, and after Ctrl-C. A run that leaves line false
+-- still leaves bracketed paste on, as R3 does, because the C restores the
+-- terminal's settings and writes no escape on the way out.
+rule TheCommandLineLeavesTheTerminalAsItFoundIt {
+    when: line: CommandLine.finished
+    requires: the_standard_input_is_a_terminal()
+
+    ensures: the_terminal_settings() = the_terminal_settings_at_start()
+}
+
+-- Ctrl-C at the command line is an escape, embed.allium's
+-- AnEscapeHaltsTheRun: the run halts, the exit code is 15, and nothing ends
+-- the process before the terminal is put back.
+rule CtrlCAtTheCommandLineIsAnEscape {
+    when: the_operator_presses_ctrl_c(line)
+
+    ensures: EscapeRaised(run: line.current_run)
 }
 
 -- A run its bounds stopped -- out of time, or cancelled by its host -- is

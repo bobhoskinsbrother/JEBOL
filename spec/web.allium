@@ -469,13 +469,23 @@ rule APagesConsoleReadsThroughTheLineForm {
     ensures: the_line_form_is_shown(run)
 }
 
--- What a script prints stays in view beside the screen, never below it, so
--- an operator answering a form can read what the script said before asking.
-rule WhatAScriptPrintsStaysInView {
+-- What a site prints goes to the browser's console, one console.log for each
+-- finished line, or console.error once the script has turned the error mode
+-- on. A line not yet finished is held until a line ends or the run finishes,
+-- so a PRIN followed by a PRINT is one entry. Nothing printed is drawn on the
+-- page: the app owns its whole screen, a site with no window included, and
+-- the page's own start-up timings go to the console too.
+--
+-- The panel that used to hold printed text over the bottom of the screen
+-- went with this. Two forms in a row are told apart by their headings and
+-- by the question each asks, not by what was printed above them.
+rule WhatASitePrintsGoesToTheBrowsersConsole {
     when: script_prints(run, text)
     requires: the_screen_is_a_page(run)
 
-    ensures: the_printed_text_is_visible_with_the_screen(run, text)
+    ensures: each_finished_line_is_logged_to_the_browsers_console(run, text,
+        as_an_error: the_console_error_mode_is_on(run))
+    ensures: nothing_printed_is_drawn_on_the_page(run)
 }
 
 -- While a form is open the page holds the focus in a hidden text input
