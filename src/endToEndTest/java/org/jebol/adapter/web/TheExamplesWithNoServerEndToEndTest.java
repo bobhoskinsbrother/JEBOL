@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -65,7 +66,9 @@ class TheExamplesWithNoServerEndToEndTest {
     }
 
     private List<String> readTheLinesSoFar() {
-        return browser.findElement(By.id("out")).getDomProperty("textContent").lines().toList();
+        List<String> lines = new ArrayList<>(operator.readOutput());
+        lines.addAll(operator.readErrorOutput());
+        return lines;
     }
 
     private boolean hasTheWorkerGivenUp(List<String> lines) {

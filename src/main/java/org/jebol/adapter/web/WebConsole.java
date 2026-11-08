@@ -1,9 +1,12 @@
 package org.jebol.adapter.web;
 
+import org.jebol.domain.host.ConsoleMode;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.FilePort;
 
 public final class WebConsole implements ConsolePort {
+
+    private boolean printsToErrors;
 
     @Override
     public String readLine() {
@@ -20,5 +23,16 @@ public final class WebConsole implements ConsolePort {
     @Override
     public boolean isTypedOnScreen() {
         return true;
+    }
+
+    @Override
+    public void switchMode(ConsoleMode mode, boolean on) {
+        if (mode == ConsoleMode.ERROR) {
+            printsToErrors = on;
+        }
+    }
+
+    public boolean printsToErrors() {
+        return printsToErrors;
     }
 }

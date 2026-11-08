@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.domain.host.ConsoleMode;
 import org.jebol.domain.host.FilePort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,18 @@ class ThePageConsoleFromTheSourceTest {
     void isNotATerminal() {
         assertThat(console.readKey()).isEmpty();
         assertThat(console.isATerminal()).isFalse();
+    }
+
+    @Test
+    @DisplayName("error sends what is printed to the browser's errors and back; echo and line change nothing")
+    void remembersTheErrorMode() {
+        console.switchMode(ConsoleMode.ERROR, true);
+        console.switchMode(ConsoleMode.ECHO, false);
+        console.switchMode(ConsoleMode.LINE, false);
+        assertThat(console.printsToErrors()).isTrue();
+
+        console.switchMode(ConsoleMode.ERROR, false);
+        assertThat(console.printsToErrors()).isFalse();
     }
 
     @Test

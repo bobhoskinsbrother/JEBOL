@@ -48,7 +48,7 @@ class TheLineFormOnThePageEndToEndTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"chrome"})
-    @DisplayName("ASK prints its question to the page's output and reads the answer through the form")
+    @DisplayName("ASK heads the form with its question, and the question and what follows it are one line in the console")
     void askReadsThroughTheForm(String browserName) throws IOException {
         try (ShippedRunner runner = new ShippedRunner().running("""
                 name: ask "Name? "
@@ -57,14 +57,13 @@ class TheLineFormOnThePageEndToEndTest {
                 """);
              AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers,browserName, runner).opensThePage()) {
 
-            operator.waitUntilOutputHas("Name?");
             operator.waitUntilTypingIsNamed("Name?");
-            assertThat(operator.isOutputInView()).isTrue();
+            assertThat(operator.readOutput()).noneMatch(line -> line.contains("Name?"));
             operator.types("Ada");
             operator.pressesEnter();
 
             operator.waitUntilOutputContains("done");
-            assertThat(operator.readOutput()).anyMatch(line -> line.endsWith("hello Ada"));
+            assertThat(operator.readOutput()).contains("Name? hello Ada");
         }
     }
 

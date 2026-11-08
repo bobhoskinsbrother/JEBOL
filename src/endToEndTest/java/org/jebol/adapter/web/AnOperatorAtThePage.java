@@ -1,9 +1,10 @@
 package org.jebol.adapter.web;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptException;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -14,6 +15,7 @@ import org.openqa.selenium.bidi.browsingcontext.UserPromptOpened;
 import org.openqa.selenium.bidi.browsingcontext.UserPromptType;
 import org.openqa.selenium.bidi.module.Browser;
 import org.openqa.selenium.bidi.module.BrowsingContextInspector;
+import org.openqa.selenium.bidi.module.Script;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
 
@@ -47,6 +49,24 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     private final BlockingQueue<UserPromptOpened> leavePrompts = new LinkedBlockingQueue<>();
     private Optional<UserPromptOpened> openLeavePrompt = Optional.empty();
     private Optional<BrowsingContextInspector> watchingForLeavePrompts = Optional.empty();
+    private Optional<String> consoleRecorder = Optional.empty();
+
+    private static final String RECORD_THE_CONSOLE = """
+            () => {
+              const kept = [];
+              window.jebolConsoleRecord = kept;
+              for (const method of ['log', 'error']) {
+                const original = console[method].bind(console);
+                console[method] = (...said) => {
+                  kept.push({ method: method, text: said.map(String).join(' ') });
+                  original(...said);
+                };
+              }
+            }""";
+
+    private static final String READ_THE_CONSOLE = """
+            return (window.jebolConsoleRecord || [])
+                .filter(each => each.method === arguments[0]).map(each => each.text);""";
     private boolean everyPopupBlocked;
     private boolean leavingWatched;
     private PageBrowsers.AStartedBrowser started;
@@ -99,6 +119,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     }
 
     private void openInAContextOfItsOwn(String hash) {
+        startReadingTheConsole();
         userContext = new Browser(browser).createUserContext();
         if (leavingWatched) {
             watchForLeavePrompts();
@@ -246,14 +267,28 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     }
 
     public List<String> readOutput() {
+        return readConsoleLines("log");
+    }
+
+    public List<String> readErrorOutput() {
+        return readConsoleLines("error");
+    }
+
+    public boolean showsAnOutputPanel() {
+        return !browser.findElements(By.id("out")).isEmpty();
+    }
+
+    private List<String> readConsoleLines(String method) {
         try {
-            List<WebElement> shown = browser.findElements(By.id("out"));
-            return shown.isEmpty()
-                    ? List.of()
-                    : shown.getFirst().getDomProperty("textContent").lines().toList();
-        } catch (StaleElementReferenceException pageWasReplaced) {
+            Object read = ((JavascriptExecutor) browser).executeScript(READ_THE_CONSOLE, method);
+            return read instanceof List<?> lines ? lines.stream().map(String::valueOf).toList() : List.of();
+        } catch (JavascriptException | StaleElementReferenceException pageWasReplaced) {
             return List.of();
         }
+    }
+
+    private void startReadingTheConsole() {
+        consoleRecorder = Optional.of(new Script(browser).addPreloadScript(RECORD_THE_CONSOLE));
     }
 
     public void waitUntilOutputContains(String line) {
@@ -268,12 +303,6 @@ public final class AnOperatorAtThePage implements AutoCloseable {
     public void waitUntilTypingIsNamed(String heading) {
         waitUntil("the form's typing was named " + heading, () -> !browser.findElements(By.id("jebol-typing")).isEmpty()
                 && heading.equals(browser.findElement(By.id("jebol-typing")).getDomAttribute("aria-label")));
-    }
-
-    public boolean isOutputInView() {
-        return Boolean.TRUE.equals(((JavascriptExecutor) browser).executeScript("""
-                const shown = document.getElementById('out').getBoundingClientRect();
-                return shown.height > 0 && shown.top >= 0 && shown.bottom <= window.innerHeight;"""));
     }
 
     public void waitForThePromptSaying(String fragment) {
@@ -362,6 +391,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         }
         try {
             watchingForLeavePrompts.ifPresent(BrowsingContextInspector::close);
+            consoleRecorder.ifPresent(new Script(browser)::removePreloadScript);
             if (userContext != null) {
                 new Browser(browser).removeUserContext(userContext);
             }
@@ -400,16 +430,16 @@ public final class AnOperatorAtThePage implements AutoCloseable {
             new PageWait(browser, PATIENCE).until(anything -> hasGivenUp() || condition.get());
         } catch (TimeoutException late) {
             throw new AssertionError("in " + browserName + " " + hoped + " never happened; the page said: "
-                    + readOutput(), late);
+                    + readOutput() + " and complained: " + readErrorOutput(), late);
         }
         if (hasGivenUp()) {
             throw new AssertionError("in " + browserName + " the worker gave up before " + hoped
-                    + "; the page said: " + readOutput());
+                    + "; the page complained: " + readErrorOutput());
         }
     }
 
     private boolean hasGivenUp() {
-        return readOutput().stream().anyMatch(line ->
+        return readErrorOutput().stream().anyMatch(line ->
                 line.startsWith("failed ") || line.startsWith("worker error"));
     }
 

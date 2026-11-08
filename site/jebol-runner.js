@@ -5,15 +5,19 @@
   const pageOpenedAt = performance.now();
   const app = fetch('app.json').then(response => response.json());
 
-  const printed = [];
-  const output = document.createElement('pre');
-  output.id = 'out';
-  output.textContent = '';
+  let unfinished = '';
 
-  function print(text) {
-    printed.push(text);
-    output.textContent = printed.join('');
-    output.scrollTop = output.scrollHeight;
+  function print(text, toErrors) {
+    const lines = (unfinished + text).split('\n');
+    unfinished = lines.pop();
+    lines.forEach(line => toErrors ? console.error(line) : console.log(line));
+  }
+
+  function finishTheLine() {
+    if (unfinished !== '') {
+      console.log(unfinished);
+      unfinished = '';
+    }
   }
 
   const worker = new Worker('jebol-worker.js');
@@ -54,7 +58,7 @@
     } else if (said.type === 'navigate' || said.type === 'guard' || said.type === 'title') {
       navigation.take(said);
     } else if (said.type === 'printed') {
-      print(said.text);
+      print(said.text, said.stream === 'error');
     } else if (said.type === 'booted') {
       print('booted in ' + Math.round(performance.now() - pageOpenedAt) + ' ms\n');
       loading.say('Starting the app');
@@ -65,18 +69,20 @@
     } else if (said.type === 'finished') {
       loading.finish();
       print(said.text);
+      finishTheLine();
     } else if (said.type === 'failed') {
       loading.fail('JEBOL could not start: ' + said.text);
-      print('failed ' + said.text);
+      finishTheLine();
+      console.error('failed ' + said.text);
     }
   }
 
   worker.onmessage = hearWorker;
   worker.onerror = problem => {
     loading.fail('JEBOL could not start: ' + problem.message);
-    print('worker error ' + problem.message);
+    finishTheLine();
+    console.error('worker error ' + problem.message);
   };
-  document.body.appendChild(output);
   navigation.arrive();
 
   const input = new JebolInput(canvas, postToWorker);

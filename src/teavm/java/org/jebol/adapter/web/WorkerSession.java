@@ -27,6 +27,7 @@ final class WorkerSession implements BrowserScreen.Viewer {
     private final BrowserScreen screen;
     private final Interpreter interpreter;
     private final HistoryMessage history = new HistoryMessage();
+    private final WebConsole console = new WebConsole();
     private Optional<ScriptHandOver> waitingForScript = Optional.empty();
     private boolean pageHasSpoken;
 
@@ -36,7 +37,7 @@ final class WorkerSession implements BrowserScreen.Viewer {
         midi = new PageMidiDevices(page, this::takePostedLines);
         HostPorts ports = new JavaHost().ports()
                 .withDigests(new BrowserDigests())
-                .withConsole(new WebConsole())
+                .withConsole(console)
                 .withFiles(files)
                 .withHttp(new WebHttp())
                 .withWindows(new PageWindows(page, files))
@@ -169,7 +170,8 @@ final class WorkerSession implements BrowserScreen.Viewer {
     }
 
     private void relayPrinted(String text) {
-        say("printed", text);
+        postToPage("{" + field("type", "printed") + "," + field("text", text) + ","
+                + field("stream", console.printsToErrors() ? "error" : "output") + "}");
     }
 
     private void say(String kind, String text) {
