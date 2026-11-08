@@ -88,7 +88,7 @@ public final class Binder {
             if (bound instanceof AnyWordValue word) {
                 block.storage().rebindAt(where, word);
             } else {
-                block.storage().set(where, bound);
+                block.storage().replaceKeepingMark(where, bound);
             }
         }
         return block;

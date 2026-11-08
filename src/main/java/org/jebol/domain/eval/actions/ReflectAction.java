@@ -35,8 +35,17 @@ public class ReflectAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) ->
-                reflect(arguments.getFirst(), (AnyWordValue) arguments.get(1));
+        return (arguments, evaluator, context, refinements) -> {
+            AnyWordValue field = (AnyWordValue) arguments.get(1);
+            Value reflected = reflect(arguments.getFirst(), field);
+            return field.canonical().equals("words") && reflected instanceof AnyBlockValue words
+                    ? withFreshWords(words)
+                    : reflected;
+        };
+    }
+
+    private static Value withFreshWords(AnyBlockValue words) {
+        return BlockValue.of(words.remaining().stream().map(LineMarks::unmarked).toList());
     }
 
     private Value reflect(Value subject, AnyWordValue field) {

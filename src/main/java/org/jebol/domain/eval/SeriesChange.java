@@ -124,11 +124,6 @@ public final class SeriesChange {
             } else {
                 block.storage().insertAt(where, replacements.get(at));
             }
-            int fromWithinSpread = at;
-            block.storage().setLineBreakAt(where, spread
-                    .map(several -> several.storage()
-                            .breaksLineAt(several.index() + fromWithinSpread))
-                    .orElse(false));
         }
         return block.atIndex(block.index() + replacements.size());
     }

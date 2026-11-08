@@ -1995,7 +1995,7 @@ final class SourceScanner {
 
     private AnyBlockValue withItsLineStarts(AnyBlockValue block, Set<Integer> starts) {
         for (int position : starts) {
-            block.storage().setLineBreakAt(position, true);
+            block.storage().markFreshlyReadAt(position);
         }
         return block;
     }

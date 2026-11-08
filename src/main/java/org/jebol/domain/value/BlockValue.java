@@ -30,6 +30,12 @@ public final class BlockValue extends AnyBlockValue {
         return new BlockValue(new BlockStorage(items), 1);
     }
 
+    public static BlockValue ofLines(List<Value> lines) {
+        BlockValue block = of(lines);
+        block.putEachItemOnLine();
+        return block;
+    }
+
     public static BlockValue wrapStorage(BlockStorage storage) {
         return new BlockValue(storage, 1);
     }

@@ -158,7 +158,11 @@ class PortDatatypeTest {
         void readStringAnswersAString() {
             assertThat(answerFrom(makeAnInterpreterWithAConsole("hello", "a\nb"),
                     "p: open [scheme: 'console] reduce [read/string p read/lines p]"))
-                    .isEqualTo("[\"hello\" [\"a\" \"b\"]]");
+                    .isEqualTo("""
+                            ["hello" [
+                                "a"
+                                "b"
+                            ]]""");
         }
 
         @Test

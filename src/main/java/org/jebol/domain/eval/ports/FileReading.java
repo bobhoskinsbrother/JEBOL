@@ -114,7 +114,7 @@ final class FileReading {
         if (!line.isEmpty()) {
             lines.add(StringValue.of(line.toString()));
         }
-        return BlockValue.of(lines);
+        return BlockValue.ofLines(lines);
     }
 
     static final class Wildcard {

@@ -6,10 +6,33 @@ import java.util.OptionalDouble;
 import java.util.function.ToLongFunction;
 import java.util.regex.Pattern;
 
-public abstract sealed class AnyDecimalValue implements Value, RebolNumber
+public abstract sealed class AnyDecimalValue implements Value, RebolNumber, CopiesItsCell, Cloneable
         permits DecimalValue, PercentValue {
 
     private final double quantity;
+
+    private boolean lineMarked;
+
+    @Override
+    public Value copyCell(boolean marked) {
+        try {
+            AnyDecimalValue copy = (AnyDecimalValue) clone();
+            copy.lineMarked = marked;
+            return copy;
+        } catch (CloneNotSupportedException unreachable) {
+            throw new IllegalStateException(unreachable);
+        }
+    }
+
+    @Override
+    public boolean isLineMarked() {
+        return lineMarked;
+    }
+
+    @Override
+    public void markInPlace() {
+        lineMarked = true;
+    }
 
     AnyDecimalValue(double quantity) {
         this.quantity = quantity;

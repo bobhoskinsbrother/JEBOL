@@ -40,7 +40,7 @@ public class CopyAction extends PortAction {
         return (arguments, evaluator, context, refinements) ->
                 arguments.getFirst() instanceof PortValue port && port.isAFile()
                         ? ports.readFromFileBehind(port, evaluator, copyRequest(arguments, refinements))
-                        : copy(arguments, refinements);
+                        : LineMarks.withMark(copy(arguments, refinements), LineMarks.isMarked(arguments.getFirst()));
     }
 
     private PortRequest copyRequest(List<Value> arguments, Set<String> refinements) {

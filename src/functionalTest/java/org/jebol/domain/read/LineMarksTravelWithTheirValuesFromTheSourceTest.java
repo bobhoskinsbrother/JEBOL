@@ -7,11 +7,18 @@ import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -144,6 +151,138 @@ class LineMarksTravelWithTheirValuesFromTheSourceTest {
                     b: transcode {1^/2 3^/4} remove-each n b [odd? n]
                     reduce [length? b new-line? b new-line? next b]""")).isEqualTo("""
                     [2 #(true) #(true)]""");
+        }
+    }
+
+    @Nested
+    @DisplayName("a mark is in the value's cell, so it goes wherever the value goes")
+    class TheMarkTravels {
+
+        @Test
+        @DisplayName("through a variable into a new block")
+        void throughAVariable() {
+            assertThat(answerTo("""
+                    b: [a
+                    b] x: second b c: reduce [x]
+                    new-line? c""")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("through an argument and out as a function's result")
+        void throughAFunction() {
+            assertThat(answerTo("""
+                    b: [a
+                    b] f: func [v] [v] c: reduce [f second b]
+                    new-line? c""")).isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("into APPEND, INSERT and COMPOSE")
+        void intoWhatBuildsABlock() {
+            assertThat(answerTo("""
+                    b: [a
+                    b] x: second b
+                    reduce [
+                        new-line? append copy [] x
+                        new-line? head insert copy [] x
+                        new-line? compose [(x)]
+                    ]""")).isEqualTo("[#(true) #(true) #(true)]");
+        }
+
+        @Test
+        @DisplayName("an integer, a string, a block and a none carry it too")
+        void whateverTheDatatype() {
+            assertThat(answerTo("""
+                    reduce [
+                        new-line? reduce [second [1
+                            2]]
+                        new-line? reduce [second ["s"
+                            "t"]]
+                        new-line? reduce [second [[1]
+                            [2]]]
+                        new-line? reduce [second [#(none)
+                            #(none)]]
+                    ]""")).isEqualTo("[#(true) #(true) #(true) #(true)]");
+        }
+
+        @Test
+        @DisplayName("POKE puts the new value's mark there: an unmarked value takes the mark away, a marked one brings it")
+        void pokePutsTheNewCellsMark() {
+            assertThat(answerTo("""
+                    c: [p
+                    q] poke c 2 'z
+                    d: [p q] poke d 1 second [a
+                    b]
+                    reduce [new-line? next c new-line? d]""")).isEqualTo("[#(false) #(true)]");
+        }
+
+        @Test
+        @DisplayName("a value made afresh has no mark: TO WORD!, arithmetic, an evaluated lit-word")
+        void notOnAFreshValue() {
+            assertThat(answerTo("""
+                    b: [a
+                    b] x: second b
+                    reduce [
+                        new-line? reduce [to word! x]
+                        new-line? reduce [
+                            1 + 2]
+                        new-line? next reduce ['a
+                            'b]
+                    ]""")).isEqualTo("[#(false) #(false) #(false)]");
+        }
+
+        @Test
+        @DisplayName("NEW-LINE on one block leaves the same value in another as it was")
+        void newLineChangesOnlyItsOwnBlock() {
+            assertThat(answerTo("""
+                    b: [a b] c: reduce [second b] new-line c true
+                    d: [p
+                    q] e: reduce [second d] new-line e false
+                    reduce [new-line? next b new-line? c new-line? next d new-line? e]"""))
+                    .isEqualTo("[#(false) #(true) #(true) #(false)]");
+        }
+
+        @Test
+        @DisplayName("a map moved to a marked position is still the same map")
+        void aMapIsStillTheSameMap() {
+            assertThat(answerTo("""
+                    m: make map! [k 1] c: reduce [1 m] new-line next c true
+                    reduce [same? m second c new-line? next c]""")).isEqualTo("[#(true) #(true)]");
+        }
+
+        @Test
+        @DisplayName("a bitset and a word stay the same value at a marked position")
+        void stayTheSameValue() {
+            assertThat(answerTo("""
+                    s: charset "a" c: reduce [1 s] new-line next c true
+                    w: 'x d: reduce [1 w] new-line next d true
+                    reduce [same? s second c same? w second d]""")).isEqualTo("[#(true) #(true)]");
+        }
+    }
+
+    @Nested
+    @DisplayName("each probe in line-marks/probes.r3 answers as ./r3-head did")
+    class TheProbes {
+
+        @TestFactory
+        Stream<DynamicTest> answerAsRebolDid() throws IOException {
+            List<String> recorded = readResource("/line-marks/probes.txt").lines().toList();
+            StringBuilder printed = new StringBuilder();
+            Interpreter interpreter = Interpreter.createOn(
+                    AnInterpreter.standardPorts(), printed::append, Bounds.standard());
+            String probes = readResource("/line-marks/probes.r3");
+            interpreter.defineNewWordsIn(probes);
+            interpreter.run(probes);
+            List<String> answered = printed.toString().lines().toList();
+            return recorded.stream().map(line -> DynamicTest.dynamicTest(line.substring(0, line.indexOf(" |")), () ->
+                    assertThat(answered).contains(line)));
+        }
+
+        private String readResource(String named) throws IOException {
+            try (InputStream carried = getClass().getResourceAsStream(named)) {
+                assertThat(carried).as("%s is not on the test classpath", named).isNotNull();
+                return new String(carried.readAllBytes(), StandardCharsets.UTF_8);
+            }
         }
     }
 }

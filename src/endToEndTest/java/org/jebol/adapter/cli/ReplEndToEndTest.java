@@ -279,8 +279,14 @@ class ReplEndToEndTest {
 
             assertThat(session)
                     .contains("== [first 1]")
-                    .contains("== [second 2]")
-                    .contains("== [third 3]");
+                    .contains("""
+                            == [
+                                second 2
+                            ]""")
+                    .contains("""
+                            == [
+                                third 3
+                            ]""");
         }
 
         @Test

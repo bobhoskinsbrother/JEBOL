@@ -43,6 +43,23 @@ public final class BlockStorage extends ProtectableStorage {
             at++;
         }
         this.items = new ArrayList<>(initialItems);
+        for (int position = 1; position <= items.size(); position++) {
+            markIfItsCellIs(position);
+        }
+    }
+
+    private void markIfItsCellIs(int oneBasedIndex) {
+        if (LineMarks.isMarked(items.get(oneBasedIndex - 1))) {
+            lineBreaks.add(oneBasedIndex);
+        }
+    }
+
+    private void takeTheMarkOfItsCell(int oneBasedIndex) {
+        if (LineMarks.isMarked(items.get(oneBasedIndex - 1))) {
+            lineBreaks.add(oneBasedIndex);
+        } else {
+            lineBreaks.remove(oneBasedIndex);
+        }
     }
 
     public static BlockStorage of(Value... initialItems) {
@@ -61,6 +78,12 @@ public final class BlockStorage extends ProtectableStorage {
     public void set(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.set(oneBasedIndex - 1, value);
+        takeTheMarkOfItsCell(oneBasedIndex);
+    }
+
+    public void replaceKeepingMark(int oneBasedIndex, Value value) {
+        refuseIfProtected();
+        items.set(oneBasedIndex - 1, LineMarks.withMark(value, breaksLineAt(oneBasedIndex)));
     }
 
     /**
@@ -73,23 +96,26 @@ public final class BlockStorage extends ProtectableStorage {
      * block unbinds as any other does.
      */
     public void rebindAt(int oneBasedIndex, AnyWordValue word) {
-        items.set(oneBasedIndex - 1, word);
+        items.set(oneBasedIndex - 1, LineMarks.withMark(word, breaksLineAt(oneBasedIndex)));
     }
 
     public void append(Value value) {
         refuseIfProtected();
         items.add(value);
+        markIfItsCellIs(items.size());
     }
 
     /** Appends as the runtime's own C does, which never asks whether a script protected the block. */
     public void appendBeneathAnyProtection(Value value) {
         items.add(value);
+        markIfItsCellIs(items.size());
     }
 
     public void insertAt(int oneBasedIndex, Value value) {
         refuseIfProtected();
         items.add(oneBasedIndex - 1, value);
         moveLineBreaksFrom(oneBasedIndex, 1);
+        markIfItsCellIs(oneBasedIndex);
     }
 
     public Value removeAt(int oneBasedIndex) {
@@ -116,11 +142,11 @@ public final class BlockStorage extends ProtectableStorage {
     /**
      * The line-start flags of another storage, counted from a position in it.
      *
-     * <p>A flag belongs to a position rather than to a value, so anything
-     * that builds a new storage out of an old one has to carry them across or
-     * they are gone. Binding is where that first mattered: it copies the
-     * block, and a bound block molded on one line however its author had laid
-     * it out, which is every block a script runs.
+     * <p>A marked position holds a marked value, so values carried across
+     * carry their marks; this also carries the mark on the tail, which no
+     * value holds. Binding is where that first mattered: it copies the block,
+     * and a bound block molded on one line however its author had laid it
+     * out, which is every block a script runs.
      */
     public void takeLineBreaksFrom(BlockStorage older, int startingAt) {
         for (int at = startingAt; at <= older.length() + 1; at++) {
@@ -151,6 +177,8 @@ public final class BlockStorage extends ProtectableStorage {
             items.add(oneBasedIndex - 1 + offset, incoming.get(offset));
             if (marksFrom != null && marksFrom.breaksLineAt(marksFromIndex + offset)) {
                 lineBreaks.add(oneBasedIndex + offset);
+            } else {
+                markIfItsCellIs(oneBasedIndex + offset);
             }
         }
     }
@@ -171,11 +199,24 @@ public final class BlockStorage extends ProtectableStorage {
         }
     }
 
+    public void markFreshlyReadAt(int oneBasedIndex) {
+        if (oneBasedIndex >= 1 && oneBasedIndex <= items.size()
+                && items.get(oneBasedIndex - 1) instanceof CopiesItsCell fresh) {
+            fresh.markInPlace();
+            lineBreaks.add(oneBasedIndex);
+            return;
+        }
+        setLineBreakAt(oneBasedIndex, true);
+    }
+
     public void setLineBreakAt(int oneBasedIndex, boolean breaks) {
         if (breaks) {
             lineBreaks.add(oneBasedIndex);
         } else {
             lineBreaks.remove(oneBasedIndex);
+        }
+        if (oneBasedIndex >= 1 && oneBasedIndex <= items.size()) {
+            items.set(oneBasedIndex - 1, LineMarks.withMark(items.get(oneBasedIndex - 1), breaks));
         }
     }
 

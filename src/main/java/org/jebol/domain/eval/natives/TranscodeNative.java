@@ -92,7 +92,7 @@ public class TranscodeNative extends DefaultNative {
             }
             case AnyBlockValue block -> {
                 for (int at = 1; at <= block.storageLength(); at++) {
-                    block.storage().set(at, bindCallLocations(block.storage().at(at), evaluator));
+                    block.storage().replaceKeepingMark(at, bindCallLocations(block.storage().at(at), evaluator));
                 }
                 return block;
             }

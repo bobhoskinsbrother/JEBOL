@@ -237,7 +237,7 @@ public final class Ports {
 
     private Value shapeConsoleLine(String line, PortRequest asked) {
         if (asked.refinements().contains("lines")) {
-            return BlockValue.of(TextLines.of(line).stream().<Value>map(StringValue::of).toList());
+            return BlockValue.ofLines(TextLines.of(line).stream().<Value>map(StringValue::of).toList());
         }
         if (asked.refinements().contains("string")) {
             return StringValue.of(line);
@@ -259,7 +259,7 @@ public final class Ports {
                 .orElse(whole);
         port.setField("data", StringValue.of(copied));
         if (asked.refinements().contains("lines")) {
-            return BlockValue.of(TextLines.of(copied).stream().<Value>map(StringValue::of).toList());
+            return BlockValue.ofLines(TextLines.of(copied).stream().<Value>map(StringValue::of).toList());
         }
         return StringValue.of(copied);
     }
@@ -393,7 +393,7 @@ public final class Ports {
             return read;
         }
         return refinements.contains("lines")
-                ? BlockValue.of(StringValue.of(text.orElseThrow()).linesDroppingOneTrailingEmptyLine())
+                ? BlockValue.ofLines(StringValue.of(text.orElseThrow()).linesDroppingOneTrailingEmptyLine())
                 : StringValue.of(text.orElseThrow());
     }
 

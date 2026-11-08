@@ -109,7 +109,11 @@ class TheHostsOwnHttpFromTheSourceTest {
     void linesAnswersABlock() {
         assertThat(answerTo(makeAHostThatFetches(new ACannedHost().makeOneAnswering(200, "one\ntwo\n")),
                 "read/lines http://example.com/a"))
-                .isEqualTo("[\"one\" \"two\"]");
+                .isEqualTo("""
+                        [
+                            "one"
+                            "two"
+                        ]""");
     }
 
     @Test
@@ -323,6 +327,10 @@ class TheHostsOwnHttpFromTheSourceTest {
         assertThat(answerTo(makeAHostThatFetches(new ACannedHost()
                 .makeOneAnswering(200, "application/octet-stream", "one\ntwo".getBytes(StandardCharsets.UTF_8))),
                 "read/lines http://example.com/blob"))
-                .isEqualTo("[\"one\" \"two\"]");
+                .isEqualTo("""
+                        [
+                            "one"
+                            "two"
+                        ]""");
     }
 }

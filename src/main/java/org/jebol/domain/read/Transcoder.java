@@ -95,7 +95,7 @@ public final class Transcoder {
          */
         public AnyBlockValue markWhereLinesStart(AnyBlockValue block) {
             for (int position : lineStartPositions) {
-                block.storage().setLineBreakAt(position, true);
+                block.storage().markFreshlyReadAt(position);
             }
             return block;
         }

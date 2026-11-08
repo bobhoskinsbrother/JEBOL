@@ -28,7 +28,7 @@ public class DelineNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyStringValue text = (AnyStringValue) arguments.getFirst();
             return refinements.contains("lines")
-                    ? BlockValue.of(text.linesDroppingOneTrailingEmptyLine())
+                    ? BlockValue.ofLines(text.linesDroppingOneTrailingEmptyLine())
                     : text.withOneLineFeedPerEnding();
         };
     }

@@ -10,10 +10,33 @@ import java.util.Set;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
-public abstract sealed class AnyStringValue implements RebolSeries
+public abstract sealed class AnyStringValue implements RebolSeries, CopiesItsCell, Cloneable
         permits StringValue, FileValue, EmailValue, RefValue, UrlValue, TagValue {
 
     private final StringStorage storage;
+
+    private boolean lineMarked;
+
+    @Override
+    public Value copyCell(boolean marked) {
+        try {
+            AnyStringValue copy = (AnyStringValue) clone();
+            copy.lineMarked = marked;
+            return copy;
+        } catch (CloneNotSupportedException unreachable) {
+            throw new IllegalStateException(unreachable);
+        }
+    }
+
+    @Override
+    public boolean isLineMarked() {
+        return lineMarked;
+    }
+
+    @Override
+    public void markInPlace() {
+        lineMarked = true;
+    }
     private final int index;
 
     AnyStringValue(StringStorage storage, int index) {

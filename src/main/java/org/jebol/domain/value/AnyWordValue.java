@@ -3,10 +3,33 @@ package org.jebol.domain.value;
 import java.util.List;
 import java.util.Optional;
 
-public abstract sealed class AnyWordValue implements Value
+public abstract sealed class AnyWordValue implements Value, CopiesItsCell, Cloneable
         permits WordValue, SetWordValue, GetWordValue, LitWordValue, RefinementValue, IssueValue {
 
     private final String spelling;
+
+    private boolean lineMarked;
+
+    @Override
+    public Value copyCell(boolean marked) {
+        try {
+            AnyWordValue copy = (AnyWordValue) clone();
+            copy.lineMarked = marked;
+            return copy;
+        } catch (CloneNotSupportedException unreachable) {
+            throw new IllegalStateException(unreachable);
+        }
+    }
+
+    @Override
+    public boolean isLineMarked() {
+        return lineMarked;
+    }
+
+    @Override
+    public void markInPlace() {
+        lineMarked = true;
+    }
     private final String canonical;
     private final Context binding;
 

@@ -87,7 +87,8 @@ class TheGuiTheBuildCarriesFromTheSourceTest {
                     gui-view: load-gui
                     reduce [function? :gui-view value? 'guie first spec-of :gui-view]"""))
                     .isEqualTo("""
-                            [#(true) #(true) {Displays a window view from a layout block, face (panel), or low level graphics object (gob).}]""");
+                            [#(true) #(true)
+                            {Displays a window view from a layout block, face (panel), or low level graphics object (gob).}]""");
         }
 
         @Test
@@ -118,7 +119,8 @@ class TheGuiTheBuildCarriesFromTheSourceTest {
                         first spec-of :rebols-view
                     ]"""))
                     .isEqualTo("""
-                            [#(true) #(false) #(false) "Displays a window view."]""");
+                            [#(true) #(false) #(false)
+                            "Displays a window view."]""");
         }
 
         @Test

@@ -6908,8 +6908,16 @@ in `spec/load.allium`. This is what happens to it afterwards.
 The mark is a flag in the value's own cell, so it travels with the value.
 INSERT pushes it along, REMOVE takes it out with the value, and TRIM
 (`Trim_Block`, `s-trim.c:347`) copies whole cells, so what is kept keeps its
-mark. JEBOL keeps marks beside the values by position, in `BlockStorage`, and
-`insertAt` and `removeAt` move them to match.
+mark. And because every copy of a cell copies the flag, a value read out of a
+block keeps its mark through a variable, an argument, a function's result and
+COPY, and lands marked wherever it is put; POKE and CHANGE over a marked
+position put the new cell's flag there. `src/testFixtures/resources/line-marks/`
+records 69 such moves off `./r3-head`. JEBOL keeps the marks by position in
+`BlockStorage` and stores a marked copy of the value at each marked position,
+which `LineMarks` remembers, so a value read out is a marked value and putting
+it anywhere marks its new position. Datatypes, functions, maps and bitsets are
+compared by identity and are not copied, so their marks stay where they are and
+do not travel.
 
 **A script's first value is never marked by the line its header ends on.**
 `load-header` steps over one CR and one LF after the header
@@ -7000,8 +7008,10 @@ end of input is `""`, never none.
 
 **`request-password` reads standard input itself,** a byte at a time to a CR or
 the end, ESC answering none and DEL backing over a UTF-8 character. A LF through
-a pipe is part of the password. It sets no terminal mode; nothing typed shows only
-because the editor's mode is already in force.
+a pipe is part of the password, and so is a NUL. It sets no terminal mode; nothing
+typed shows only because the editor's mode is already in force. `Copy_Bytes` makes
+a string of one character per byte, so `aéb` is four characters long; JEBOL, with
+no such string, reads the password as UTF-8.
 
 **`read-key` through a pipe reads nothing and answers a union.** With no
 `Term_IO`, `Read_IO` reads `req->length` bytes, which is 0 by then, and

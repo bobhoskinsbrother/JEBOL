@@ -71,7 +71,11 @@ class ReadRefinementsFromTheSourceTest {
         void linesAnswersABlock(@TempDir Path directory) throws Exception {
             writeAFile(directory, "a.txt", "a\n\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
             assertThat(answerTo(makeAnInterpreterReadingUnder(directory), """
-                    read/lines %a.txt""")).isEqualTo("[\"a\" \"\"]");
+                    read/lines %a.txt""")).isEqualTo("""
+                    [
+                        "a"
+                        ""
+                    ]""");
         }
 
         @Test
@@ -87,7 +91,11 @@ class ReadRefinementsFromTheSourceTest {
         void splitsAtALoneCarriageReturn(@TempDir Path directory) throws Exception {
             writeAFile(directory, "a.txt", new byte[] {0x61, 0x0D, 0x62});
             assertThat(answerTo(makeAnInterpreterReadingUnder(directory), """
-                    read/lines %a.txt""")).isEqualTo("[\"a\" \"b\"]");
+                    read/lines %a.txt""")).isEqualTo("""
+                    [
+                        "a"
+                        "b"
+                    ]""");
         }
 
         @Test

@@ -93,12 +93,15 @@ class ReadingHttpFromALocalServerFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("/lines answers the body's lines")
+    @DisplayName("/lines answers the body's lines, each marked to start a line as a real 3.22.5 marks them")
     void linesAnswersTheBodysLines() {
         assertThat(answerTo("""
                 l: read/lines %s
                 reduce [length? l l/1 l/2]""".formatted(urlFor("/lines"))))
-                .isEqualTo("[2 \"one\" \"two\"]");
+                .isEqualTo("""
+                        [2
+                        "one"
+                        "two"]""");
     }
 
     @Test

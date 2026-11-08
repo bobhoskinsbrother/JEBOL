@@ -256,7 +256,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
             body = StringValue.of(asTextOf(body));
         }
         if (asked.lines()) {
-            return BlockValue.of(((StringValue) body).linesDroppingOneTrailingEmptyLine());
+            return BlockValue.ofLines(((StringValue) body).linesDroppingOneTrailingEmptyLine());
         }
         return trimOf(body, asked, answer);
     }

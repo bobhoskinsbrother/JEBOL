@@ -26,9 +26,7 @@ public class SplitLinesNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            AnyBlockValue lines = BlockValue.of(linesOf((AnyStringValue) arguments.getFirst()));
-            lines.putEachItemOnLine();
-            return lines;
+            return BlockValue.ofLines(linesOf((AnyStringValue) arguments.getFirst()));
         };
     }
 

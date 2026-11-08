@@ -10,10 +10,33 @@ import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
-public abstract sealed class AnyBlockValue implements RebolSeries
+public abstract sealed class AnyBlockValue implements RebolSeries, CopiesItsCell, Cloneable
         permits BlockValue, ParenValue, HashValue, AnyPathValue {
 
     private final BlockStorage storage;
+
+    private boolean lineMarked;
+
+    @Override
+    public Value copyCell(boolean marked) {
+        try {
+            AnyBlockValue copy = (AnyBlockValue) clone();
+            copy.lineMarked = marked;
+            return copy;
+        } catch (CloneNotSupportedException unreachable) {
+            throw new IllegalStateException(unreachable);
+        }
+    }
+
+    @Override
+    public boolean isLineMarked() {
+        return lineMarked;
+    }
+
+    @Override
+    public void markInPlace() {
+        lineMarked = true;
+    }
     private final int index;
 
     AnyBlockValue(BlockStorage storage, int index) {

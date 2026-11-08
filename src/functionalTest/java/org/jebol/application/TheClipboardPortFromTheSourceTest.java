@@ -120,14 +120,22 @@ class TheClipboardPortFromTheSourceTest {
         void givesOneEntryPerLine() {
             assertThat(answerWith(new ARememberedClipboard("first\nsecond\nthird"),
                     "read/lines clipboard://"))
-                    .isEqualTo("[\"first\" \"second\" \"third\"]");
+                    .isEqualTo("""
+                            [
+                                "first"
+                                "second"
+                                "third"
+                            ]""");
         }
 
         @Test
         @DisplayName("text with no line break at all is one line")
         void textWithNoBreak() {
             assertThat(answerWith(new ARememberedClipboard("alone"),
-                    "read/lines clipboard://")).isEqualTo("[\"alone\"]");
+                    "read/lines clipboard://")).isEqualTo("""
+                    [
+                        "alone"
+                    ]""");
         }
 
         @Test
