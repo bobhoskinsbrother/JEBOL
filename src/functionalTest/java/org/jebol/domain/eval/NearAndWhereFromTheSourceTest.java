@@ -110,6 +110,20 @@ class NearAndWhereFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("a raise inside a port's awake is located like any other")
+    void locatesARaiseInsideAPortsAwake() {
+        ErrorValue failure = failureOf("""
+                p: to port! system/standard/port
+                p/awake: func [event] [1 / 0]
+                try [wake-up p make event! [type: 'read]]
+                """);
+
+        assertThat(failure.errorId()).isEqualTo("zero-divide");
+        assertThat(molded(failure.near())).isEqualTo("[/ 0]");
+        assertThat(molded(failure.whereChain())).isEqualTo("[/ -apply- wake-up try]");
+    }
+
+    @Test
     @DisplayName("at the top of a console line a refusal carries no near and no where")
     void saysNothingAtTheTopOfAConsoleLine() {
         ErrorValue failure = failureOf("(mold/part {abc} 2.5)\n");
