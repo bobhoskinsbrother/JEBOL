@@ -19,16 +19,27 @@ Two things it will not tell you:
     assertions, N differ", fix the first one and sweep again.
 """
 import collections
+import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRATCH = os.path.join(REPO, "build", "sweep")
 os.makedirs(SCRATCH, exist_ok=True)
-JAVA = os.path.expanduser(
-    "~/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4+7/Contents/Home/bin/java")
+
+
+def java():
+    from_environment = os.environ.get("JAVA_HOME")
+    if from_environment and os.path.exists(os.path.join(from_environment, "bin", "java")):
+        return os.path.join(from_environment, "bin", "java")
+    downloaded = sorted(glob.glob(os.path.expanduser(
+        "~/.gradle/jdks/eclipse_adoptium-25*/jdk-*/Contents/Home/bin/java")))
+    if downloaded:
+        return downloaded[-1]
+    return shutil.which("java") or "java"
 
 
 def balance(text, state):
@@ -151,7 +162,7 @@ def main():
         script_file = os.path.join(SCRATCH, "sweep-script.r3")
         with open(script_file, "w") as handle:
             handle.write(script)
-        subprocess.run([JAVA, "-cp",
+        subprocess.run([java(), "-cp",
                         "build/classes/java/main:build/classes/java/testFixtures:"
                         "build/resources/main:build/resources/testFixtures",
                         "org.jebol.suite.SweepRunner", script_file],

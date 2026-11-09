@@ -16,10 +16,11 @@ to fifty or eighty characters. So the file is directly the test's expected
 answers, and regenerating it is how a difference is seen.
 """
 import argparse
+import os
 import subprocess
 import sys
 
-REPO = "/Users/benhoskins/Code/personal/JEBOL"
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TARGETS = [
     "end!", "unset!", "none!", "logic!", "integer!", "decimal!", "percent!",
