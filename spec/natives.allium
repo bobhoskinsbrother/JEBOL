@@ -6993,21 +6993,37 @@ rule AnIdOnlyJebolRaisesIsWordedByItsOwnSentence {
     ensures: the_message = the_sentence_it_was_raised_with(subject)
 }
 
--- WHERE is the chain of calls the failure came up through, innermost first,
--- and it does not stop at the user's functions.
+-- An error is located when it is made, not when it is caught.
 --
--- Every call pushes and the error collects them all, so `try [1 / 0]` inside
--- a script answers `[/ try do either either if -apply-]`: the native that
--- raised, the native that caught, and the rest of whatever was running. A
--- chain that records only the functions a script defined is a different
--- answer and says less -- a failure inside a native called from a native
--- looks as though it happened nowhere.
-rule TheWhereChainRecordsEveryCallAndNotOnlyTheDefinedOnes {
+-- WHERE is every call open at the moment the failure is raised, innermost
+-- first, and it does not stop at the user's functions: `try [1 / 0]` inside
+-- a script answers `[/ try do either either if -apply-]`, the native that
+-- raised, the calls it was made under, and the boot's own walk. A chain that
+-- records only the functions a script defined is a different answer and says
+-- less -- a failure inside a native called from a native looks as though it
+-- happened nowhere.
+--
+-- NEAR is the block at the position the innermost call started, and it is
+-- always a block! over the same series. `try [compress "a" 'brotli]` answers
+-- NEAR `[compress "a" 'brotli]`; a call written over a paren answers a block
+-- over the paren's series, never a paren!.
+--
+-- Make_Error (`c-error.c:458`) sets where from every frame on the stack and
+-- near from `DSF_BACK(DSF)`, the block position the innermost running call
+-- started at. Do_Next (`c-do.c:953`) pushes a call's frame but makes it the
+-- running one only after its arguments are gathered and checked
+-- (`c-do.c:966`), which is why a refusal and a missing argument name the
+-- caller and never the call they refused or left short.
+rule AnErrorIsLocatedWhenItIsRaised {
     when: an_error_is_raised(request)
 
     ensures: request.error_value.where =
         the_calls_open_at_the_time(innermost_first)
     ensures: a_native_that_evaluates_a_block_is_among_them()
+    ensures: request.error_value.near =
+        the_block_at_the_innermost_call_start(request)
+    ensures: is_a_block(request.error_value.near)
+    ensures: the_near_is_over_the_same_series(request.error_value.near)
 }
 
 -- An argument refused for its type is refused before the call it was meant
@@ -7033,6 +7049,44 @@ rule ARefusedArgumentIsLocatedAtTheCallAlreadyRunning {
     ensures: request.error_value.near = the_near_of_the_call_already_running(request)
     ensures: request.error_value.where = the_calls_already_running(innermost_first)
     ensures: not the_refusing_call_is_among(request.error_value.where)
+}
+
+-- A call that still wants an argument and reaches the end of its block is
+-- located exactly as a refusal is: the call that wanted the argument has not
+-- begun, so the error carries the NEAR and the WHERE of whatever call was
+-- already running.
+--
+-- `try [compress]` and `try [f]` both answer no-arg and take the NEAR of the
+-- TRY call. A quoted argument is the same location under a different id:
+-- `u: func ['x [integer!]]` makes `try [u]` expect-arg, because the unset
+-- handed to the unevaluated argument is what the type check refuses.
+--
+-- The C makes no distinction between this and a refusal. Do_Next reaches the
+-- end of the block with a frame still gathering, and the missing argument is
+-- made by the same Make_Error that locates everything else.
+rule AMissingArgumentIsLocatedAtTheCallAlreadyRunning {
+    when: an_argument_is_missing_at_the_end_of_the_block(request)
+
+    ensures: request.error_value.near = the_near_of_the_call_already_running(request)
+    ensures: request.error_value.where = the_calls_already_running(innermost_first)
+    ensures: not the_call_still_wanting_the_argument_is_among(request.error_value.where)
+}
+
+-- The location does not depend on how the failing call's last argument was
+-- produced. The same call, refused or raised with its last argument written
+-- by hand, made by a paren, answered by a function, read through a get-word,
+-- produced by an operator, taken unevaluated, or left unset by the end of the
+-- block, carries the same NEAR and the same WHERE.
+--
+-- JEBOL used to stamp the location only when the last step of the walk's loop
+-- raised. A paren, a finished function body, an unevaluated argument and the
+-- end of a block are delivered by statements of that loop outside the one
+-- catch, so an error from any of them left the walk unlocated and the next
+-- walk out -- the boot's own -- stamped its own location on it, and `e/near`
+-- and `e/where` answered none.
+invariant TheLastArgumentsSourceDoesNotDecideTheLocation {
+    for value in values/Values:
+        is_error(value) implies the_location_is_that_of_the_call_already_running(value)
 }
 
 -- NEAR is the code around the failure, molded, and cut at sixty characters

@@ -668,46 +668,47 @@ public final class Evaluator {
 
     private Value walkFramesUntilDone(Deque<Frame> frames) {
         while (true) {
-            stopIfAsked();
-            Frame frame = frames.peek();
-            trace.moveToDepth(frames.size() - 1);
-            if (frame.expressionStartedAt < 0) {
-                frame.expressionStartedAt = frame.position;
-            }
-
-            if (frame.stopped || frame.atEnd()) {
-                if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
-                    PendingCall gathering = frame.pendingCalls.peek();
-                    if (gathering.takesNextValueAsWritten()) {
-                        deliver(frame, UnsetValue.unset(), frames);
-                        continue;
-                    }
-                    throw Raised.of(EvaluationFailure.NO_ARG,
-                            WordValue.of(gathering.nameInArgumentError()),
-                            gathering.describeArgumentStillWanted());
-                }
-                Value finished = frame.lastResult;
-                if (frame.functionBody && !functionsBeingRun.isEmpty()) {
-                    handBackFrameTakenOverBy(functionsBeingRun.pop());
-                }
-                frames.pop();
-                framesOpen = frames.size();
-                if (frames.isEmpty()) {
-                    return finished;
-                }
-                deliver(frames.peek(), finished, frames);
-                continue;
-            }
-
-            PendingCall gathering = frame.pendingCalls.peek();
-            if (gathering != null && gathering.wantsUnevaluated(frame.current())) {
-                Value unevaluated = frame.current();
-                frame.advance();
-                deliver(frame, unevaluated, frames);
-                continue;
-            }
-
             try {
+                stopIfAsked();
+                Frame frame = frames.peek();
+                trace.moveToDepth(frames.size() - 1);
+                if (frame.expressionStartedAt < 0) {
+                    frame.expressionStartedAt = frame.position;
+                }
+
+                if (frame.stopped || frame.atEnd()) {
+                    if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
+                        PendingCall gathering = frame.pendingCalls.peek();
+                        if (gathering.takesNextValueAsWritten()) {
+                            deliver(frame, UnsetValue.unset(), frames);
+                            continue;
+                        }
+                        throw Raised.of(EvaluationFailure.NO_ARG,
+                                WordValue.of(gathering.nameInArgumentError()),
+                                gathering.describeArgumentStillWanted());
+                    }
+                    Value finished = frame.lastResult;
+                    if (frame.functionBody && !functionsBeingRun.isEmpty()) {
+                        handBackFrameTakenOverBy(functionsBeingRun.pop());
+                    }
+                    frames.pop();
+                    framesOpen = frames.size();
+                    if (frames.isEmpty()) {
+                        return finished;
+                    }
+                    frames.peek().callBeingMade = null;
+                    deliver(frames.peek(), finished, frames);
+                    continue;
+                }
+
+                PendingCall gathering = frame.pendingCalls.peek();
+                if (gathering != null && gathering.wantsUnevaluated(frame.current())) {
+                    Value unevaluated = frame.current();
+                    frame.advance();
+                    deliver(frame, unevaluated, frames);
+                    continue;
+                }
+
                 if (takeOneStep(frame, frames) instanceof StepOutcome.Produced(Value value)) {
                     deliver(frame, value, frames);
                 }
@@ -731,7 +732,7 @@ public final class Evaluator {
         for (Frame open : listEveryCallOpenInnermostFirst(frames)) {
             PendingCall running = open.callBeingMade;
             if (nearest == null && running != null && running.startedAt() >= 0) {
-                nearest = open.code.atIndex(running.startedAt());
+                nearest = open.code.atIndex(running.startedAt()).asBlock();
             }
         }
         ErrorValue said = raised.error();

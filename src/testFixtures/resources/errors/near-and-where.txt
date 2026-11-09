@@ -1,11 +1,59 @@
-# 2026-11-09, ./r3-head and the jar at c3eb8891 with goal 1d's changes
+# 2026-11-09, ./r3-head and the jar at goal 1e, both answer the same
 
 ## r3-head
-raised inside the native -> invalid-arg | near: [compress "a" 'brotli] | where: [compress try do either either if -apply-]
-refused before the native runs -> expect-arg | near: [try [if false log-trace 'SMTP ["x"] 5] show "refused before the native runs, unset from a paren" try [if false () 6]] | where: [try do either either if -apply-]
-refused before the native runs, unset from a paren -> expect-arg | near: [try [if false () 6]] | where: [try do either either if -apply-]
+written: refused -> expect-arg | near: [try [f 6] show "written: operator refused" try [1 + "a"] sh #(block!) | where: [try do either either if -apply-] #(block!)
+written: operator refused -> expect-arg | near: [try [1 + "a"] show "written: refinement refused" try [appen #(block!) | where: [try do either either if -apply-] #(block!)
+written: refinement refused -> expect-arg | near: [try [append/only 6 7] show "written: native raises" try [co #(block!) | where: [try do either either if -apply-] #(block!)
+written: native raises -> invalid-arg | near: [compress "a" 'brotli] #(block!) | where: [compress try do either either if -apply-] #(block!)
+written: no-arg native -> no-arg | near: [try [compress] show "written: no-arg function" try [f] show #(block!) | where: [try do either either if -apply-] #(block!)
+written: no-arg function -> no-arg | near: [try [f] show "written: unevaluated missing" try [u] show "p #(block!) | where: [try do either either if -apply-] #(block!)
+written: unevaluated missing -> expect-arg | near: [try [u] show "paren: native raises" try [compress "a" (quot #(block!) | where: [try do either either if -apply-] #(block!)
+paren: native raises -> invalid-arg | near: [compress "a" (quote brotli)] #(block!) | where: [compress try do either either if -apply-] #(block!)
+paren: refused -> expect-arg | near: [try [f (6)] show "paren: operator refused" try [1 + ("a")]  #(block!) | where: [try do either either if -apply-] #(block!)
+paren: operator refused -> expect-arg | near: [try [1 + ("a")] show "paren: unset at end of block" try [if #(block!) | where: [try do either either if -apply-] #(block!)
+paren: unset at end of block -> expect-arg | near: [try [if false () 6] show "paren: a paren DO evaluates" try  #(block!) | where: [try do either either if -apply-] #(block!)
+paren: a paren DO evaluates -> zero-divide | near: [/ 0] #(block!) | where: [/ do try do either either if -apply-] #(block!)
+function: refused -> expect-arg | near: [try [f h] show "get-word: refused" try [f :h] show "unevalu #(block!) | where: [try do either either if -apply-] #(block!)
+get-word: refused -> expect-arg | near: [try [f :h] show "unevaluated: refused" try [q 6] show "insi #(block!) | where: [try do either either if -apply-] #(block!)
+unevaluated: refused -> expect-arg | near: [try [q 6] show "inside a function" try [z] show "inside rep #(block!) | where: [try do either either if -apply-] #(block!)
+inside a function -> zero-divide | near: [/ 0] #(block!) | where: [/ z try do either either if -apply-] #(block!)
+inside repeat -> zero-divide | near: [/ 0] #(block!) | where: [/ repeat try do either either if -apply-] #(block!)
+inside foreach -> zero-divide | near: [/ 0] #(block!) | where: [/ foreach try do either either if -apply-] #(block!)
+inside reduce -> zero-divide | near: [/ 0] #(block!) | where: [/ reduce try do either either if -apply-] #(block!)
+inside parse -> zero-divide | near: [/ 0] #(block!) | where: [/ parse try do either either if -apply-] #(block!)
+inside make object! -> zero-divide | near: [/ 0] #(block!) | where: [/ make try do either either if -apply-] #(block!)
+either's condition -> zero-divide | near: [/ 0 [1] [2]] #(block!) | where: [/ try do either either if -apply-] #(block!)
+cause-error -> message | near: _ #(none!) | where: _ #(none!)
+do make error! -> message | near: _ #(none!) | where: _ #(none!)
+copy/part -> invalid-part | near: [copy/part "abc" "x"] #(block!) | where: [copy try do either either if -apply-] #(block!)
+apply -> expect-arg | near: [apply :f [6]] #(block!) | where: [apply try do either either if -apply-] #(block!)
+nested do -> zero-divide | near: [/ 0] #(block!) | where: [/ do try do either either if -apply-] #(block!)
 
 ## jebol
-raised inside the native -> invalid-arg | near: [compress "a" 'brotli] | where: [compress try do either either if -apply-]
-refused before the native runs -> expect-arg | near: _ | where: _
-refused before the native runs, unset from a paren -> expect-arg | near: _ | where: _
+written: refused -> expect-arg | near: [try [f 6] show "written: operator refused" try [1 + "a"] sh #(block!) | where: [try do either either if -apply-] #(block!)
+written: operator refused -> expect-arg | near: [try [1 + "a"] show "written: refinement refused" try [appen #(block!) | where: [try do either either if -apply-] #(block!)
+written: refinement refused -> expect-arg | near: [try [append/only 6 7] show "written: native raises" try [co #(block!) | where: [try do either either if -apply-] #(block!)
+written: native raises -> invalid-arg | near: [compress "a" 'brotli] #(block!) | where: [compress try do either either if -apply-] #(block!)
+written: no-arg native -> no-arg | near: [try [compress] show "written: no-arg function" try [f] show #(block!) | where: [try do either either if -apply-] #(block!)
+written: no-arg function -> no-arg | near: [try [f] show "written: unevaluated missing" try [u] show "p #(block!) | where: [try do either either if -apply-] #(block!)
+written: unevaluated missing -> expect-arg | near: [try [u] show "paren: native raises" try [compress "a" (quot #(block!) | where: [try do either either if -apply-] #(block!)
+paren: native raises -> invalid-arg | near: [compress "a" (quote brotli)] #(block!) | where: [compress try do either either if -apply-] #(block!)
+paren: refused -> expect-arg | near: [try [f (6)] show "paren: operator refused" try [1 + ("a")]  #(block!) | where: [try do either either if -apply-] #(block!)
+paren: operator refused -> expect-arg | near: [try [1 + ("a")] show "paren: unset at end of block" try [if #(block!) | where: [try do either either if -apply-] #(block!)
+paren: unset at end of block -> expect-arg | near: [try [if false () 6] show "paren: a paren DO evaluates" try  #(block!) | where: [try do either either if -apply-] #(block!)
+paren: a paren DO evaluates -> zero-divide | near: [/ 0] #(block!) | where: [/ do try do either either if -apply-] #(block!)
+function: refused -> expect-arg | near: [try [f h] show "get-word: refused" try [f :h] show "unevalu #(block!) | where: [try do either either if -apply-] #(block!)
+get-word: refused -> expect-arg | near: [try [f :h] show "unevaluated: refused" try [q 6] show "insi #(block!) | where: [try do either either if -apply-] #(block!)
+unevaluated: refused -> expect-arg | near: [try [q 6] show "inside a function" try [z] show "inside rep #(block!) | where: [try do either either if -apply-] #(block!)
+inside a function -> zero-divide | near: [/ 0] #(block!) | where: [/ z try do either either if -apply-] #(block!)
+inside repeat -> zero-divide | near: [/ 0] #(block!) | where: [/ repeat try do either either if -apply-] #(block!)
+inside foreach -> zero-divide | near: [/ 0] #(block!) | where: [/ foreach try do either either if -apply-] #(block!)
+inside reduce -> zero-divide | near: [/ 0] #(block!) | where: [/ reduce try do either either if -apply-] #(block!)
+inside parse -> zero-divide | near: [/ 0] #(block!) | where: [/ parse try do either either if -apply-] #(block!)
+inside make object! -> zero-divide | near: [/ 0] #(block!) | where: [/ make try do either either if -apply-] #(block!)
+either's condition -> zero-divide | near: [/ 0 [1] [2]] #(block!) | where: [/ try do either either if -apply-] #(block!)
+cause-error -> message | near: _ #(none!) | where: _ #(none!)
+do make error! -> message | near: _ #(none!) | where: _ #(none!)
+copy/part -> invalid-part | near: [copy/part "abc" "x"] #(block!) | where: [copy try do either either if -apply-] #(block!)
+apply -> expect-arg | near: [apply :f [6]] #(block!) | where: [apply try do either either if -apply-] #(block!)
+nested do -> zero-divide | near: [/ 0] #(block!) | where: [/ do try do either either if -apply-] #(block!)

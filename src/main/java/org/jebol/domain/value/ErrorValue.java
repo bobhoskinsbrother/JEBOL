@@ -466,9 +466,7 @@ public record ErrorValue(
      * The same error, carrying the chain of names it was raised through.
      *
      * <p>A block, innermost first, as R3 answers: {@code 1 / 0} inside a
-     * function F gives {@code [/ f try ...]}. The tail differs from R3's,
-     * whose frames run down into the console's own evaluation; what matches
-     * is the part that is about the script.
+     * function F gives {@code [/ f try ...]}.
      */
     public ErrorValue traceThrough(Value chain) {
         return new ErrorValue(category, errorId, message, subject,
