@@ -40,36 +40,106 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1e. An error a native raises carries its `near` and `where`
+#### 1e. An error carries its `near` and `where` however its call was finished
 
-For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
-and `where: [compress try ...]`; JEBOL gives none for both. Errors from
-evaluated code, paths, PARSE and CAUSE-ERROR already agree with R3. A script
-that stops on such an error prints a different `** Near:` and `** Where:`.
-
-**Measured again on 2026-11-09, from a script file**
-(`src/testFixtures/resources/errors/near-and-where.r3`, transcript beside it):
-COMPRESS now agrees with R3 there, so either it was fixed since or the
-difference shows only through `Interpreter.run` or the console, and the sweep
-should run every case all three ways. What does differ is a second kind: an
-argument a native refuses **before it runs**. `try [if false () 6]` is
-`expect-arg` on IF's `true-branch` in both, but R3 gives `near: [try [if false
-() 6]]` and `where: [try do either either if -apply-]` and JEBOL gives none for
-either. R3's shape differs from the COMPRESS case: there is no `if` frame in
-`where`, and `near` starts at the enclosing `try`, because the check fails
-before IF's frame exists. This is the type check every typed argument of every
-native passes through, so it is likely far commoner than an error from a
-native's body, and it may be a separate path from the one COMPRESS takes. It
+A script that stops on one of these prints a different `** Near:` and
+`** Where:` from R3's, and one that reads `e/near` or `e/where` gets none. It
 was found as SMTP's `if parse response [...] log-trace ...` (finding 238).
 
-1. Sweep: raise an error from every native that can raise one -- from its body,
-   and by giving each typed argument a type it refuses -- in both interpreters,
-   from a file, through `Interpreter.run` and at the console, and diff `near`
-   and `where`. Start from the probe above.
-2. Fix the paths they share, not each native: at least the native's own raise
-   and the argument check before the call, each with R3's shape.
+**Measured on 2026-11-09**, `./r3-head` and the jar at 9b7eacdd, from a file
+and at the console; `f` is `func [x [block!]] [x]`:
 
-**Done when** the sweep shows no difference, and is a test.
+| Source                                  | R3 `near` / `where`                           | JEBOL now                |
+|-----------------------------------------|-----------------------------------------------|--------------------------|
+| `try [compress "a" 'brotli]`            | `[compress "a" 'brotli]` / `[compress try ...]` | agrees                 |
+| `try [compress "a" (quote brotli)]`     | `[compress "a" (quote brotli)]` / `[compress try ...]` | none / none     |
+| `try [compress "a" quote brotli]`       | `[compress "a" quote brotli]` / `[compress try ...]` | none / none       |
+| `try [f 6]`, `try [1 + "a"]`, `try [append/only 6 7]` | `[try [f 6] ...]` / `[try ...]`  | agrees                   |
+| `try [f (6)]`, `try [1 + ("a")]`, `try [if false () 6]` | `[try [f (6)] ...]` / `[try ...]` | none / none        |
+| `try [f h]`, `h` a function answering 6 | `[try [f h] ...]` / `[try ...]`               | none / none              |
+| `try [q 6]`, `q: func ['x [block!]]`    | `[try [q 6] ...]` / `[try ...]`               | none / none              |
+| `try [u]`, `u: func ['x [integer!]]`    | `[try [u] ...]` / `[try ...]` (`expect-arg`)  | none / none              |
+| `try [compress]`, `try [f]` (`no-arg`)  | `[try [compress] ...]` / `[try ...]`          | none / none              |
+| `try [do (quote (1 / 0))]`              | `[/ 0]`, a `block!` / `[/ do try ...]`        | `(/ 0)`, a `paren!`      |
+| `compress "a..." (quote brotli)`, uncaught, from a file | `** Where: compress do either either if -apply-`, `** Near: compress {aaa...` | `** Where: either either if -apply-`, `** Near:` a line of `sys-start` |
+
+Already agreeing, and to stay so: `near`'s type, index and head; an error
+inside a function (`[/ f try ...]`); inside REPEAT, FOREACH, REDUCE, PARSE,
+MAKE OBJECT! and EITHER's condition; CAUSE-ERROR and `do make error!` (none
+for both, in both); `copy/part "abc" "x"`; APPLY; nested DO; a get-word
+argument; a refusal at the top of a console line (none, in both).
+
+**The cause is one, and it is not the line the old reading drew.** It is not
+"before the native runs" against "inside it": COMPRESS's own raise is lost
+through a paren too, and a refused literal is already right. Nor is the
+console a path of its own: the original case was measured as `quote brotli`.
+What decides it is how the call's last argument arrived:
+
+- **R3 locates an error when it is made.** `Make_Error` (`c-error.c:458`) sets
+  `where` from every frame on the stack and `near` from `DSF_BACK(DSF)`, the
+  block position the innermost running call started at. `Do_Next` pushes a
+  frame (`c-do.c:953`) but makes it the running one only after its arguments
+  are gathered and checked (`c-do.c:966`), which is why a refusal or a missing
+  argument names the caller and never the refusing function.
+- **JEBOL locates an error when the walk catches it**:
+  `Evaluator.sayWhereItCameFrom` runs only around `takeOneStep`. Four
+  statements of the same loop raise outside it: delivering the value of a
+  frame that has just ended (a paren, a function body), delivering an
+  unevaluated argument, delivering unset at the end of a block, and raising
+  `no-arg` there. An error from any of them leaves the walk unlocated, and the
+  next walk out that catches it -- the boot's own, when a script stops --
+  stamps its own location on it. That is the last row.
+- **A paren DO evaluates is its own code**, and `near` is cut from it as it
+  stands; R3's is always a `block!` over the same series.
+
+The plan, in order:
+
+1. **Check the probe in.** The three probe files behind the table go into
+   `src/testFixtures/resources/errors/near-and-where.r3` with the transcript
+   beside it regenerated from both, replacing the three cases it holds now.
+2. **The spec.** `ARefusedArgumentIsLocatedAtTheCallAlreadyRunning`
+   (`spec/natives.allium`) is right and stays. Beside it:
+   - `AMissingArgumentIsLocatedAtTheCallAlreadyRunning`: `no-arg` takes the
+     same location as a refusal.
+   - `AnErrorIsLocatedWhenItIsRaised`: `where` is every call open, innermost
+     first, the raising one included; `near` is the block at the position the
+     innermost one started, always a `block!`, over the same series.
+   - An invariant: the location does not depend on how an argument was
+     produced -- written, from a paren, from a function, from a get-word or an
+     operator, taken unevaluated, or unset at the end of a block.
+   The C reading above goes in the rules' comments, and `allium check` runs
+   clean.
+3. **Failing tests**, in `NearAndWhereFromTheSourceTest`: every row of the
+   table and every "already agreeing" case, as a grid of argument source
+   (written, paren, function, get-word, operator, unevaluated, end of block)
+   by failure (a refusal, a raise from the body, `no-arg`), through
+   `Interpreter.run`; a paren DO evaluates; and the three routes -- a file at
+   the command line that stops prints R3's `** Where:` and `** Near:`, and the
+   console prints them for `compress "a" quote brotli`.
+4. **The fix is in the walk, not in any native.** Every statement of the
+   loop's iteration raises inside the one catch that locates, so no error
+   leaves a walk unlocated; `near` is made a `block!` over the code's series.
+   Then check the other walks that evaluate (DO, REDUCE, PARSE's parens, a
+   port's `awake`) by the same test, rather than assuming they agree.
+5. **The sweep, generated, as `make-to-sweep.py` does MAKE and TO.**
+   `scripts/near-and-where-sweep.py` asks `./r3-head`, one process a case, for
+   every native, action and op in `lib`, each typed argument in turn given a
+   type it refuses, written and from a paren, with valid values before it; and
+   writes `id`, `near` molded flat and `where` up to its `try` to
+   `src/testFixtures/resources/org/jebol/near-and-where-as-r3-answers.tsv`.
+   `NearAndWhereAnswerAsR3DoesTest` runs each through JEBOL. A refusal never
+   runs the native, so no case writes, waits or quits; a raise from a body is
+   not generated, because its path is the walk's and the grid in step 3 covers
+   it. `sweep.py` and `make-to-sweep.py` name a macOS repository and JDK that
+   no longer exist; the new script finds both from where it stands, and the two
+   old ones are fixed the same way.
+6. **The record.** `ErrorValue.traceThrough`'s javadoc says the tail of
+   `where` differs from R3's; measured, it is the same
+   (`try do either either if -apply-` in both), so it goes.
+
+**Done when** every row of the table answers R3's, the grid and the generated
+sweep are green, and a script that stops on any of them prints what R3
+prints.
 
 #### 1f. An operator with nothing on its left raises what R3 raises
 
