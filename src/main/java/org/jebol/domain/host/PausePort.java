@@ -29,6 +29,14 @@ public interface PausePort {
     boolean pauseFor(long milliseconds);
 
     /**
+     * Ends the slice in progress early, from any thread, because something has
+     * arrived for the script; that slice still counts as passed. A pause that
+     * cannot be woken lets its slice run out, which costs only the slice.
+     */
+    default void wake() {
+    }
+
+    /**
      * A pause that cannot happen, which is what a bare evaluator gets.
      *
      * <p>Not a stand-in that answers yes: a wait that quietly did nothing

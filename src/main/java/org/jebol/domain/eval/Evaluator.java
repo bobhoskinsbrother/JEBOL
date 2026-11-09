@@ -417,9 +417,12 @@ public final class Evaluator {
     }
 
     public void deliverWhatWasPosted() {
-        postbox.deliverEachEvent(posted -> EventCatalogue.findTypeIndexOf(posted.eventType())
-                .ifPresent(type -> queueOnSystemPort(
-                        new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port()))));
+        postbox.deliverEachEvent(posted -> {
+            posted.beforeQueueing().run();
+            EventCatalogue.findTypeIndexOf(posted.eventType())
+                    .ifPresent(type -> queueOnSystemPort(
+                            new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port())));
+        });
         postbox.deliverEachCallback(callback -> EventCatalogue.findTypeIndexOf(EVENT_CALLBACK_IS)
                 .ifPresent(type -> queueOnSystemPort(new EventValue(type, Set.of(),
                         EventValue.Model.CALLBACK, 0, JavaObjectValue.of(callback)))));

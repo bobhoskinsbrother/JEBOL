@@ -1,0 +1,18 @@
+java 25.0.4.1
+in order: built, length 2, anchor CN=test-root
+reversed: built, length 2, anchor CN=test-root
+leaf twice: built, length 2, anchor CN=test-root
+unrelated extra: built, length 2, anchor CN=test-root
+cross-signed root after: built, length 2, anchor CN=test-root
+expired leaf: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: expired (CN=localhost)
+not yet valid leaf: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: not_yet_valid (CN=localhost)
+intermediate missing: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: unknown_authority
+self-signed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: unknown_authority
+from a stranger: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: unknown_authority
+authorities expired: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+    again inside the leaf's validity: expired (CN=localhost)

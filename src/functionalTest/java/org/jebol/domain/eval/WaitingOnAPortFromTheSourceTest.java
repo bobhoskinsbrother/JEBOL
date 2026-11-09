@@ -1,250 +1,120 @@
 package org.jebol.domain.eval;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Optional;
-
-import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.host.NetworkPort;
-import org.jebol.domain.host.OutputPort;
+import org.jebol.tcp.ACannedPeer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class WaitingOnAPortFromTheSourceTest {
 
-    private static final class ACannedServer implements NetworkPort {
+    private static final String SCENARIO_ARROW = " -> ";
 
-        private final Deque<byte[]> replies = new ArrayDeque<>();
-        private final List<String> whatItWasSent = new ArrayList<>();
-        private final List<String> whatItWasAskedFor = new ArrayList<>();
-
-        private ACannedServer willReply(String text) {
-            replies.add(text.getBytes(StandardCharsets.ISO_8859_1));
-            return this;
-        }
-
-        @Override
-        public Optional<String> resolveFirstIpv4Address(String hostName) {
-            return Optional.of("203.0.113.1");
-        }
-
-        @Override
-        public Optional<String> resolveHostName(String ipv4Address) {
-            return Optional.empty();
-        }
-
-        @Override
-        public String hostName() {
-            return "a-canned-server";
-        }
-
-        @Override
-        public Datagrams bindTo(int portNumber) {
-            throw new Refused("no-connect", "this server carries no datagrams",
-                    String.valueOf(portNumber));
-        }
-
-        @Override
-        public Connection connectTo(String hostName, int portNumber) {
-            whatItWasAskedFor.add(hostName + ":" + portNumber);
-            return new Connection() {
-
-                private boolean open = true;
-
-                @Override
-                public byte[] read() {
-                    return replies.isEmpty() ? new byte[0] : replies.removeFirst();
-                }
-
-                @Override
-                public void write(byte[] bytes) {
-                    whatItWasSent.add(new String(bytes, StandardCharsets.ISO_8859_1));
-                }
-
-                @Override
-                public boolean isOpen() {
-                    return open;
-                }
-
-                @Override
-                public void close() {
-                    open = false;
-                }
-            };
-        }
-    }
-
-    private static Interpreter reaching(ACannedServer server) {
+    private static Interpreter reaching(ACannedPeer peer, StringBuilder printed) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(server),
-                OutputPort.discard(),
+                AnInterpreter.standardPorts().withNetwork(peer),
+                printed::append,
                 Bounds.standard()
+                        .withTimeLimit(Duration.ofSeconds(30))
                         .grant(HostService.NETWORK)
                         .grant(HostService.CLOCK));
     }
 
-    private static String answerFrom(ACannedServer server, String source) {
-        Interpreter interpreter = reaching(server);
+    private static String answerFrom(ACannedPeer peer, String source) {
+        Interpreter interpreter = reaching(peer, new StringBuilder());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String answerTo(String source) {
-        return answerFrom(new ACannedServer(), source);
+    private static String readResource(String path) throws IOException {
+        try (InputStream in = WaitingOnAPortFromTheSourceTest.class.getResourceAsStream(path)) {
+            assertThat(in).as(path).isNotNull();
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
-    private static String afterThreeThingsHappened(String awakeBody, String waiting) {
-        return answerFrom(new ACannedServer().willReply("some bytes back"), """
-                seen: copy []
-                c: open tcp://example.com:80
-                c/awake: func [event] [append seen event/type
-                """
-                + awakeBody
-                + """
-                ]
-                write c "hello"
-                read c
-                """
-                + waiting);
+    static Stream<Arguments> whatARealRebolAnswered() throws IOException {
+        return readResource("/tcp/waiting.txt").lines()
+                .filter(line -> line.contains(SCENARIO_ARROW))
+                .map(line -> Arguments.of(line.substring(0, line.indexOf(SCENARIO_ARROW)), line));
     }
 
-    @Test
-    @DisplayName("the wait ends where the awake function says true")
-    void theWaitEndsWhereTheAwakeFunctionSaysTrue() {
-        assertThat(afterThreeThingsHappened(
-                "event/type = 'wrote",
-                "reduce [port? wait [c 1] seen]"))
-                .isEqualTo("[#(true) [connect wrote read]]");
+    private static ACannedPeer playingThePeerOf(String scenario) {
+        return switch (scenario) {
+            case "bytes-add-to-the-data" -> new ACannedPeer().willReply("one").willReply("two").closingOnceAllIsSaid();
+            case "a-close-when-nothing-more-arrives" -> new ACannedPeer().closingOnceAllIsSaid();
+            default -> new ACannedPeer().willReply("some bytes back");
+        };
     }
 
-    @Test
-    @DisplayName("the wait keeps going while the awake function says false")
-    void theWaitKeepsGoingWhileTheAwakeFunctionSaysFalse() {
-        assertThat(afterThreeThingsHappened(
-                "false",
-                "reduce [port? wait [c 0] seen]"))
-                .isEqualTo("[#(false) [connect wrote read]]");
-    }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("whatARealRebolAnswered")
+    @DisplayName("a tcp port reports what a real 3.22.5 reported, scenario by scenario, from Rebol's own probe")
+    void reportsAsARealRebolDoes(String scenario, String whatRebolPrinted) throws IOException {
+        StringBuilder printed = new StringBuilder();
+        Interpreter interpreter = reaching(playingThePeerOf(scenario), printed);
+        String source = "system/script/args: {" + scenario + " 80}\n" + readResource("/tcp/waiting.r3");
 
-    @Test
-    @DisplayName("a truthy answer that is not a logic does not end the wait")
-    void aTruthyAnswerThatIsNotALogicDoesNotEndTheWait() {
-        assertThat(afterThreeThingsHappened(
-                "\"yes\"",
-                "reduce [port? wait [c 0] seen]"))
-                .isEqualTo("[#(false) [connect wrote read]]");
+        interpreter.defineNewWordsIn(source);
+        interpreter.run(source);
+
+        assertThat(printed.toString().strip()).isEqualTo(whatRebolPrinted);
     }
 
     @Test
-    @DisplayName("the things are reported in the order they happened, once each")
-    void theThingsAreReportedInTheOrderTheyHappenedOnceEach() {
-        assertThat(afterThreeThingsHappened(
-                "false",
-                """
-                        wait [c 0]
-                        wait [c 0]
-                        seen"""))
-                .isEqualTo("[connect wrote read]");
-    }
+    @DisplayName("the probe's transcript holds every scenario the probe runs")
+    void theTranscriptIsWhole() throws IOException {
+        List<String> answered = whatARealRebolAnswered().map(arguments -> (String) arguments.get()[0]).toList();
 
-    @Test
-    @DisplayName("a port with no awake function ends the wait at once")
-    void aPortWithNoAwakeFunctionEndsTheWaitAtOnce() {
-        assertThat(answerTo("""
-                c: open tcp://example.com:80
-                c/awake: none
-                port? wait [c 1]"""))
-                .isEqualTo("#(true)");
-    }
-
-    @Test
-    @DisplayName("waiting on a quiet port answers none")
-    void waitingOnAQuietPortAnswersNone() {
-        assertThat(afterThreeThingsHappened(
-                "false",
-                """
-                        wait [c 0]
-                        wait [c 0]"""))
-                .isEqualTo("_");
-    }
-
-    @Test
-    @DisplayName("the timeout is found wherever it sits in the block")
-    void theTimeoutIsFoundWhereverItSitsInTheBlock() {
-        assertThat(afterThreeThingsHappened(
-                "false",
-                """
-                        wait [c 0]
-                        reduce [wait [0 c] wait [0:00:00 c]]"""))
-                .isEqualTo("[_ _]");
-    }
-
-    @Test
-    @DisplayName("bytes that arrive are added to what the data already held")
-    void bytesThatArriveAreAddedToWhatTheDataAlreadyHeld() {
-        ACannedServer server = new ACannedServer().willReply("one").willReply("two");
-        assertThat(answerFrom(server, """
-                c: open tcp://example.com:80
-                read c
-                read c
-                to string! c/data"""))
-                .isEqualTo("\"onetwo\"");
-    }
-
-    @Test
-    @DisplayName("a connection reports a close when nothing more arrives")
-    void aConnectionReportsACloseWhenNothingMoreArrives() {
-        assertThat(answerTo("""
-                seen: copy []
-                c: open tcp://example.com:80
-                c/awake: func [event] [append seen event/type  event/type = 'close]
-                read c
-                reduce [port? wait [c 1] seen]"""))
-                .isEqualTo("[#(true) [connect close]]");
+        assertThat(answered).hasSize(13);
+        assertThat(readResource("/tcp/waiting.r3")).contains(answered.stream().map(name -> name + " [").toList());
     }
 
     @Test
     @DisplayName("waiting on something that is not a port answers none")
     void waitingOnSomethingThatIsNotAPortAnswersNone() {
-        assertThat(answerTo("""
-                wait [0]"""))
-                .isEqualTo("_");
+        assertThat(answerFrom(new ACannedPeer(), "wait [0]")).isEqualTo("_");
     }
 
     @Test
-    @DisplayName("a whole request runs Rebol's own HTTP over the connection")
+    @DisplayName("a whole request runs Rebol's own HTTP over the connection, through the lookup R3 makes first")
     void aWholeRequestRunsRebolsOwnHttpOverTheConnection() {
-        ACannedServer server = new ACannedServer().willReply("""
+        ACannedPeer peer = new ACannedPeer().willReply("""
                 HTTP/1.1 200 OK\r
                 Content-Type: text/plain\r
                 Content-Length: 5\r
                 \r
                 hello""");
-        assertThat(answerFrom(server, """
-                read http://example.com"""))
-                .isEqualTo("\"hello\"");
-        assertThat(server.whatItWasAskedFor).containsExactly("example.com:80");
-        assertThat(server.whatItWasSent.getFirst()).startsWith("GET / HTTP/1.1");
+        assertThat(answerFrom(peer, "read http://example.com")).isEqualTo("\"hello\"");
+        assertThat(peer.namesLookedUp()).containsExactly("example.com");
+        assertThat(peer.addressesReached()).containsExactly(ACannedPeer.ITS_ADDRESS + ":80");
+        assertThat(peer.whatItWasSent().getFirst()).startsWith("GET / HTTP/1.1");
     }
 
     @Test
     @DisplayName("the request names the host it was addressed to")
     void theRequestNamesTheHostItWasAddressedTo() {
-        ACannedServer server = new ACannedServer().willReply("""
+        ACannedPeer peer = new ACannedPeer().willReply("""
                 HTTP/1.1 200 OK\r
                 Content-Length: 2\r
                 \r
                 hi""");
-        answerFrom(server, "read http://example.com/some/path");
-        assertThat(server.whatItWasSent.getFirst())
+        answerFrom(peer, "read http://example.com/some/path");
+        assertThat(peer.whatItWasSent().getFirst())
                 .contains("GET /some/path HTTP/1.1")
                 .contains("Host: example.com");
     }
@@ -252,13 +122,11 @@ class WaitingOnAPortFromTheSourceTest {
     @Test
     @DisplayName("a status the server refuses with is raised")
     void aStatusTheServerRefusesWithIsRaised() {
-        ACannedServer server = new ACannedServer().willReply("""
+        ACannedPeer peer = new ACannedPeer().willReply("""
                 HTTP/1.1 404 Not Found\r
                 Content-Length: 0\r
                 \r
                 """);
-        assertThat(answerFrom(server, """
-                error? try [read http://example.com]"""))
-                .isEqualTo("#(true)");
+        assertThat(answerFrom(peer, "error? try [read http://example.com]")).isEqualTo("#(true)");
     }
 }

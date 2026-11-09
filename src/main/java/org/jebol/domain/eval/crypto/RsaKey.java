@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.crypto;
 
+import org.jebol.domain.host.RsaServerKey;
+
 import javax.crypto.Cipher;
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -14,6 +16,7 @@ public final class RsaKey {
 
     private final PublicKey publicHalf;
     private final PrivateKey privateHalf;
+    private RsaServerKey servingParts;
 
     private RsaKey(PublicKey publicHalf, PrivateKey privateHalf) {
         this.publicHalf = publicHalf;
@@ -69,11 +72,17 @@ public final class RsaKey {
                     d.mod(p.subtract(one)),
                     d.mod(q.subtract(one)),
                     q.modInverse(p)));
-            return Optional.of(new RsaKey(
-                    factory.generatePublic(new RSAPublicKeySpec(n, e)), privateHalf));
+            RsaKey made = new RsaKey(factory.generatePublic(new RSAPublicKeySpec(n, e)), privateHalf);
+            made.servingParts = new RsaServerKey(modulus.clone(), publicExponent.clone(), privateExponent.clone(),
+                    firstPrime.clone(), secondPrime.clone());
+            return Optional.of(made);
         } catch (java.security.GeneralSecurityException | RuntimeException notKey) {
             return Optional.empty();
         }
+    }
+
+    public Optional<RsaServerKey> servingParts() {
+        return Optional.ofNullable(servingParts);
     }
 
     private static boolean doExponentsAgree(

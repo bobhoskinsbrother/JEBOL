@@ -405,8 +405,10 @@ public final class LibContext {
         registerExtension(new CaretToOffsetNative(grantedServices));
         registerExtension(new OffsetToCaretNative(grantedServices));
         registerExtension(new SizeTextNative(grantedServices));
-        registerExtension(new RequireCertificateChecksNative(grantedServices));
-        registerExtension(new CheckCertificatesNative(grantedServices));
+        registerExtension(new TlsClientNative(grantedServices));
+        registerExtension(new TlsServerNative());
+        registerExtension(new TlsExchangeNative());
+        registerExtension(new AsciiHostNative(grantedServices));
         registerExtension(new GoNative(grantedServices));
         registerExtension(new GoBackNative(grantedServices));
         registerExtension(new GoForwardNative(grantedServices));

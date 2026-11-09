@@ -1,0 +1,7 @@
+java 25.0.4.1
+bücher.test -> 127.0.0.1
+xn--bcher-kva.test -> 127.0.0.1
+localhost -> 127.0.0.1
+asked of the provider: [bücher.test, xn--bcher-kva.test, localhost]
+IDN.toASCII(faß.de) = fass.de
+IDN.toASCII(BÜCHER.de) = xn--bcher-kva.de

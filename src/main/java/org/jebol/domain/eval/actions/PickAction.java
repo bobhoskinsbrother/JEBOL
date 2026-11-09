@@ -6,6 +6,7 @@ import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.eval.ports.TcpPort;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Value;
 
@@ -35,6 +36,9 @@ public class PickAction extends PickingNative implements ActionValue {
     }
 
     private Value pick(Value subject, Value selector) {
+        if (TcpPort.isTcp(subject)) {
+            return TcpPort.takeAccepted((PortValue) subject, selector);
+        }
         if (subject instanceof PortValue port && port.findEventQueue().isPresent()) {
             return pickBy(port.findEventQueue().orElseThrow(), selector);
         }

@@ -3,11 +3,23 @@ package org.jebol.adapter.host;
 import org.jebol.domain.host.NetworkPort;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 /** The network as the JDK already provides it, with nothing cached. */
 public final class JavaSocket implements NetworkPort {
@@ -15,6 +27,8 @@ public final class JavaSocket implements NetworkPort {
     private static final int TIMEOUT_IN_MILLISECONDS = 30_000;
 
     private static final int MAX_BYTES = 65_536;
+
+    private static final int LAST_ASCII_PLUS_ONE = 0x80;
 
     @Override
     public Optional<String> resolveFirstIpv4Address(String hostName) {
@@ -48,24 +62,61 @@ public final class JavaSocket implements NetworkPort {
     }
 
     @Override
-    public Connection connectTo(String hostName, int portNumber) {
-        Socket socket = new Socket();
+    public Optional<String> asciiHostName(String hostName) {
+        return hostName.chars().allMatch(each -> each < LAST_ASCII_PLUS_ONE)
+                ? Optional.of(hostName)
+                : Uts46.toAsciiHostName(hostName);
+    }
+
+    @Override
+    public void lookUp(String hostName, Lookup answer) {
+        Thread.ofVirtual().start(() -> resolveFirstIpv4Address(hostName).ifPresentOrElse(
+                answer::found, () -> answer.missing("no host of that name")));
+    }
+
+    @Override
+    public Connection connect(String address, int portNumber, ConnectionEvents events) {
+        SocketConnection connection = new SocketConnection(new Socket(), events);
+        connection.connectTo(new InetSocketAddress(address, portNumber));
+        return connection;
+    }
+
+    @Override
+    public Listener listen(int portNumber, Accepting accepting) {
         try {
-            socket.connect(new InetSocketAddress(hostName, portNumber), TIMEOUT_IN_MILLISECONDS);
-            socket.setSoTimeout(TIMEOUT_IN_MILLISECONDS);
-            return new SocketConnection(socket);
-        } catch (UnknownHostException noSuchHost) {
-            close(socket);
-            throw new Refused("no-connect", "no host of that name", hostName);
-        } catch (SocketTimeoutException tookTooLong) {
-            close(socket);
-            throw new Refused("no-connect", "the host did not answer in time", hostName);
-        } catch (IOException refused) {
-            close(socket);
+            ServerSocket listening = new ServerSocket(portNumber);
+            Thread.ofVirtual().start(() -> acceptEachClient(listening, accepting));
+            return new Listener() {
+
+                @Override
+                public int localPort() {
+                    return listening.getLocalPort();
+                }
+
+                @Override
+                public void close() {
+                    try {
+                        listening.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+            };
+        } catch (IOException cannotListen) {
             throw new Refused("no-connect",
-                    refused.getMessage() == null ? "the connection failed"
-                            : refused.getMessage(),
-                    hostName + ":" + portNumber);
+                    cannotListen.getMessage() == null ? "that port number could not be listened on" : cannotListen.getMessage(),
+                    String.valueOf(portNumber));
+        }
+    }
+
+    private void acceptEachClient(ServerSocket listening, Accepting accepting) {
+        while (!listening.isClosed()) {
+            try {
+                Socket client = listening.accept();
+                SocketConnection accepted = new SocketConnection(client, null);
+                accepted.startWorkingAsConnected(accepting.accepted(accepted));
+            } catch (IOException closedOrFailed) {
+                return;
+            }
         }
     }
 
@@ -141,54 +192,100 @@ public final class JavaSocket implements NetworkPort {
     private final class SocketConnection implements Connection {
 
         private final Socket socket;
-        private final InputStream input;
-        private final OutputStream output;
+        private final ExecutorService connectingThenWriting = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
+        private final ExecutorService reading = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
+        private final CompletableFuture<Boolean> connected = new CompletableFuture<>();
+        private volatile ConnectionEvents events;
+        private volatile boolean closedByScript;
 
-        private SocketConnection(Socket socket) throws IOException {
+        private SocketConnection(Socket socket, ConnectionEvents events) {
             this.socket = socket;
-            this.input = socket.getInputStream();
-            this.output = socket.getOutputStream();
+            this.events = events;
+        }
+
+        private void connectTo(InetSocketAddress address) {
+            connectingThenWriting.execute(() -> {
+                try {
+                    socket.connect(address, TIMEOUT_IN_MILLISECONDS);
+                    connected.complete(true);
+                    report(ConnectionEvents::connected);
+                } catch (IOException refused) {
+                    connected.complete(false);
+                    report(happened -> happened.failed(explain(refused, "the connection failed")));
+                }
+            });
+        }
+
+        private void startWorkingAsConnected(ConnectionEvents accepted) {
+            events = accepted;
+            connected.complete(true);
         }
 
         @Override
-        public byte[] read() {
-            try {
-                byte[] room = new byte[MAX_BYTES];
-                int arrived = input.read(room);
-                return arrived <= 0 ? new byte[0] : Arrays.copyOf(room, arrived);
-            } catch (SocketTimeoutException nothingCame) {
-                return new byte[0];
-            } catch (IOException broken) {
-                throw new Refused("no-connect",
-                        "the connection broke while reading", describe());
-            }
+        public void read() {
+            reading.execute(() -> {
+                if (!connected.join()) {
+                    return;
+                }
+                try {
+                    byte[] room = new byte[MAX_BYTES];
+                    int arrived = socket.getInputStream().read(room);
+                    if (arrived < 0) {
+                        report(ConnectionEvents::closed);
+                    } else {
+                        byte[] bytes = Arrays.copyOf(room, arrived);
+                        report(happened -> happened.arrived(bytes));
+                    }
+                } catch (IOException broken) {
+                    report(happened -> happened.failed(explain(broken, "the connection broke while reading")));
+                }
+            });
         }
 
         @Override
         public void write(byte[] bytes) {
-            try {
-                output.write(bytes);
-                output.flush();
-            } catch (IOException broken) {
-                throw new Refused("no-connect",
-                        "the connection broke while writing", describe());
-            }
-        }
-
-        @Override
-        public boolean isOpen() {
-            return !socket.isClosed() && socket.isConnected();
+            byte[] sending = bytes.clone();
+            connectingThenWriting.execute(() -> {
+                if (!connected.join()) {
+                    return;
+                }
+                try {
+                    OutputStream output = socket.getOutputStream();
+                    output.write(sending);
+                    output.flush();
+                    report(ConnectionEvents::wrote);
+                } catch (IOException broken) {
+                    report(happened -> happened.failed(explain(broken, "the connection broke while writing")));
+                }
+            });
         }
 
         @Override
         public void close() {
+            closedByScript = true;
             JavaSocket.this.close(socket);
+            connectingThenWriting.shutdownNow();
+            reading.shutdownNow();
         }
 
-        private String describe() {
-            return socket.getInetAddress() == null
-                    ? "the connection"
-                    : socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
+        @Override
+        public Endpoints endpoints() {
+            return new Endpoints(
+                    socket.getLocalAddress() == null ? "0.0.0.0" : socket.getLocalAddress().getHostAddress(),
+                    Math.max(socket.getLocalPort(), 0),
+                    socket.getInetAddress() == null ? "0.0.0.0" : socket.getInetAddress().getHostAddress(),
+                    socket.getPort());
+        }
+
+        private void report(Consumer<ConnectionEvents> happened) {
+            ConnectionEvents listening = events;
+            if (!closedByScript && listening != null) {
+                happened.accept(listening);
+            }
+        }
+
+        private String explain(IOException failure, String otherwise) {
+            return failure.getMessage() == null ? otherwise : failure.getMessage();
         }
     }
 }

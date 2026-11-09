@@ -6,9 +6,11 @@ import org.jebol.adapter.host.JavaImage;
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaHost;
+import org.jebol.adapter.host.JavaSecureTransport;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.host.ThreadTasks;
+import org.jebol.adapter.host.WakeablePause;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.adapter.host.FileSystemPort;
@@ -222,6 +224,8 @@ public final class Repl {
                 .withProcesses(new JavaProcess())
                 .withClipboard(new JavaClipboard())
                 .withNetwork(new JavaSocket())
+                .withSecureTransport(new JavaSecureTransport())
+                .withPause(new WakeablePause())
                 .withCertificateAuthority(cafile.isEmpty()
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));

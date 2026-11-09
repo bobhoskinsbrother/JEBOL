@@ -1,11 +1,15 @@
 package org.jebol.tls;
 
+import javax.net.ssl.ExtendedSSLSession;
 import javax.net.ssl.KeyManager;
+import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509ExtendedKeyManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,8 +21,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.security.PrivateKey;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -35,8 +41,28 @@ public final class LocalTlsServer implements AutoCloseable {
     private int connectionsAccepted;
     private int connectionsClosed;
     private int requestsReceived;
+    private final List<String> serverNamesSent = new ArrayList<>();
+    private final List<String> hostsAskedFor = new ArrayList<>();
+    private final List<String> handshakeFailures = new ArrayList<>();
 
     public record Identity(List<X509Certificate> chain, PrivateKey key) {
+    }
+
+    public enum ClientCertificate { NOT_ASKED, WANTED, NEEDED }
+
+    public record Settings(List<String> protocols, List<String> cipherSuites, ClientCertificate clientCertificate) {
+
+        public static Settings speaking(String protocol) {
+            return new Settings(List.of(protocol), List.of(), ClientCertificate.NOT_ASKED);
+        }
+
+        public Settings offeringOnly(String... suites) {
+            return new Settings(protocols, List.of(suites), clientCertificate);
+        }
+
+        public Settings asking(ClientCertificate asked) {
+            return new Settings(protocols, cipherSuites, asked);
+        }
     }
 
     public LocalTlsServer(Identity identity, String protocol) {
@@ -44,13 +70,28 @@ public final class LocalTlsServer implements AutoCloseable {
     }
 
     public LocalTlsServer(Identity identity, String protocol, Function<String, String> bodyForPath) {
+        this(identity, Settings.speaking(protocol), bodyForPath);
+    }
+
+    public LocalTlsServer(Identity identity, Settings settings) {
+        this(identity, settings, path -> PAGE_BODY);
+    }
+
+    public LocalTlsServer(Identity identity, Settings settings, Function<String, String> bodyForPath) {
         this.bodyForPath = bodyForPath;
         try {
             SSLContext context = SSLContext.getInstance("TLS");
-            context.init(new KeyManager[] {new FixedKeyManager(identity)}, null, null);
+            context.init(new KeyManager[] {new FixedKeyManager(identity)}, new TrustManager[] {new TrustingNoClient()}, null);
             listening = (SSLServerSocket) context.getServerSocketFactory()
                     .createServerSocket(0, 50, InetAddress.getLoopbackAddress());
-            listening.setEnabledProtocols(new String[] {protocol});
+            listening.setEnabledProtocols(settings.protocols().toArray(String[]::new));
+            if (!settings.cipherSuites().isEmpty()) {
+                listening.setEnabledCipherSuites(settings.cipherSuites().toArray(String[]::new));
+            }
+            listening.setWantClientAuth(settings.clientCertificate() == ClientCertificate.WANTED);
+            if (settings.clientCertificate() == ClientCertificate.NEEDED) {
+                listening.setNeedClientAuth(true);
+            }
         } catch (IOException | GeneralSecurityException cannotListen) {
             throw new IllegalStateException(cannotListen);
         }
@@ -67,6 +108,18 @@ public final class LocalTlsServer implements AutoCloseable {
 
     public synchronized int requestsReceived() {
         return requestsReceived;
+    }
+
+    public synchronized List<String> serverNamesSent() {
+        return List.copyOf(serverNamesSent);
+    }
+
+    public synchronized List<String> hostsAskedFor() {
+        return List.copyOf(hostsAskedFor);
+    }
+
+    public synchronized List<String> handshakeFailures() {
+        return List.copyOf(handshakeFailures);
     }
 
     public synchronized void awaitAllConnectionsClosed(Duration timeout) throws InterruptedException {
@@ -108,7 +161,13 @@ public final class LocalTlsServer implements AutoCloseable {
     private void serve(SSLSocket connection) {
         try (connection) {
             connection.setSoTimeout(READ_TIMEOUT_MILLISECONDS);
-            connection.startHandshake();
+            try {
+                connection.startHandshake();
+            } catch (IOException failed) {
+                recordHandshakeFailure(failed);
+                return;
+            }
+            recordServerNames(connection);
             String path = readRequest(connection.getInputStream());
             if (path != null) {
                 countRequest();
@@ -117,6 +176,22 @@ public final class LocalTlsServer implements AutoCloseable {
         } catch (IOException ignored) {
         } finally {
             countClosed();
+        }
+    }
+
+    private synchronized void recordHandshakeFailure(IOException failed) {
+        handshakeFailures.add(String.valueOf(failed.getMessage()));
+    }
+
+    private void recordServerNames(SSLSocket connection) {
+        if (connection.getSession() instanceof ExtendedSSLSession session) {
+            List<String> named = session.getRequestedServerNames().stream()
+                    .filter(SNIHostName.class::isInstance)
+                    .map(name -> ((SNIHostName) name).getAsciiName())
+                    .toList();
+            synchronized (this) {
+                serverNamesSent.addAll(named);
+            }
         }
     }
 
@@ -132,9 +207,22 @@ public final class LocalTlsServer implements AutoCloseable {
         if (head.isEmpty()) {
             return null;
         }
+        recordHostAskedFor(head.toString());
         String requestLine = head.toString().lines().findFirst().orElse("");
         String[] parts = requestLine.split(" ");
         return parts.length > 1 ? parts[1] : "/";
+    }
+
+    private void recordHostAskedFor(String head) {
+        head.lines()
+                .filter(line -> line.regionMatches(true, 0, "Host:", 0, 5))
+                .map(line -> line.substring(5).strip())
+                .findFirst()
+                .ifPresent(host -> {
+                    synchronized (this) {
+                        hostsAskedFor.add(host);
+                    }
+                });
     }
 
     private void writePage(OutputStream out, String page) throws IOException {
@@ -157,6 +245,24 @@ public final class LocalTlsServer implements AutoCloseable {
     private synchronized void countClosed() {
         connectionsClosed++;
         notifyAll();
+    }
+
+    private static final class TrustingNoClient implements X509TrustManager {
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            throw new CertificateException("no client certificate is trusted here");
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+            throw new CertificateException("this is a server");
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
+        }
     }
 
     private static final class FixedKeyManager extends X509ExtendedKeyManager {

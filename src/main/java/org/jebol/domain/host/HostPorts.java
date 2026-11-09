@@ -16,6 +16,7 @@ public record HostPorts(
         MachinePort machine,
         NetworkPort network,
         CertificateAuthority certificateAuthority,
+        SecureTransport secureTransport,
         Optional<HttpPort> http,
         ClipboardPort clipboard,
         MidiDevices midiDevices,
@@ -35,6 +36,7 @@ public record HostPorts(
         checkNotNull(machine, "machine");
         checkNotNull(network, "network");
         checkNotNull(certificateAuthority, "certificate authority");
+        checkNotNull(secureTransport, "secure transport");
         checkNotNull(http, "http");
         checkNotNull(clipboard, "clipboard");
         checkNotNull(midiDevices, "midi devices");
@@ -56,6 +58,7 @@ public record HostPorts(
                 MachinePort.none(),
                 NetworkPort.none(),
                 new ZeroTrustAuthority(),
+                SecureTransport.none(),
                 Optional.empty(),
                 ClipboardPort.none(),
                 new NoMidiDevices(),
@@ -64,104 +67,110 @@ public record HostPorts(
 
     public HostPorts withFiles(FilePort port) {
         return new HostPorts(port, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withCarriedFiles(FilePort port) {
         return new HostPorts(files, port, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withDigests(DigestPort port) {
         return new HostPorts(files, carriedFiles, port, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withEnvironment(EnvironmentPort port) {
         return new HostPorts(files, carriedFiles, digests, port, images, console, windows, screen,
-                pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withImages(ImagePort port) {
         return new HostPorts(files, carriedFiles, digests, environment, port, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withConsole(ConsolePort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, port, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withWindows(WindowPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, port,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withScreen(ScreenPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                port, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                port, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withPause(PausePort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, port, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, port, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withProcesses(ProcessPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, port, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, port, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withMachine(MachinePort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, port, network, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, port, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withNetwork(NetworkPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, port, certificateAuthority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, port, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withCertificateAuthority(CertificateAuthority authority) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, authority, http, clipboard,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, authority, secureTransport, http,
+                clipboard, midiDevices, tasks);
+    }
+
+    public HostPorts withSecureTransport(SecureTransport transport) {
+        return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
+                screen, pause, processes, machine, network, certificateAuthority, transport, http,
+                clipboard, midiDevices, tasks);
     }
 
     public HostPorts withHttp(HttpPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, Optional.of(port),
-                clipboard, midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport,
+                Optional.of(port), clipboard, midiDevices, tasks);
     }
 
     public HostPorts withClipboard(ClipboardPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, port,
-                midiDevices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                port, midiDevices, tasks);
     }
 
     public HostPorts withMidiDevices(MidiDevices devices) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                devices, tasks);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, devices, tasks);
     }
 
     public HostPorts withTasks(TaskPort port) {
         return new HostPorts(files, carriedFiles, digests, environment, images, console, windows,
-                screen, pause, processes, machine, network, certificateAuthority, http, clipboard,
-                midiDevices, port);
+                screen, pause, processes, machine, network, certificateAuthority, secureTransport, http,
+                clipboard, midiDevices, port);
     }
 
     private <T> void checkNotNull(T port, String which) {

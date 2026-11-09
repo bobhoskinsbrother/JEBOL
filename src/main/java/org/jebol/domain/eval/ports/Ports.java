@@ -39,7 +39,6 @@ import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.eval.security.PolicyClass;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -71,6 +70,8 @@ public final class Ports {
     private final ChecksumPort checksumPort;
 
     private final CryptPort cryptPort = new CryptPort();
+
+    private final TcpPort tcpPort = new TcpPort();
 
     private final FileSystemCalls fileSystem = new FileSystemCalls();
 
@@ -207,7 +208,7 @@ public final class Ports {
             case "console" -> lineReadFromConsole(evaluator, asked);
             case "clipboard" -> lastCopiedText(port, evaluator, asked);
             case "bundled" -> bundledModuleSource(port, evaluator);
-            case "tcp" -> readBytesFromConnection(port, evaluator);
+            case "tcp" -> tcpPort.read(port);
             case "udp" -> readOneDatagramInto(port, evaluator);
             case "dns" -> resolveDnsQuery(port, evaluator);
             case "checksum" -> checksumPort.digestSoFarLeftInDataFieldAsWell(port);
@@ -293,27 +294,6 @@ public final class Ports {
             return Optional.empty();
         }
         return host.text().isEmpty() ? Optional.empty() : Optional.of(host.text());
-    }
-
-    private Value readBytesFromConnection(PortValue port, Evaluator evaluator) {
-        granted.require(HostService.NETWORK);
-        NetworkPort.Connection connection = findConnectionBehind(port);
-        return runThroughNetwork(() -> {
-            BinaryValue arrived = BinaryValue.ofBytes(connection.read());
-            addToPortsData(port, arrived);
-            queueWhatHappenedTo(port, arrived.lengthFromHere() == 0 ? "close" : "read", evaluator);
-            return arrived;
-        });
-    }
-
-    private void addToPortsData(PortValue port, BinaryValue arrived) {
-        if (!(port.readFieldValue("data") instanceof BinaryValue held)) {
-            port.setField("data", arrived);
-            return;
-        }
-        for (int at = arrived.index(); at <= arrived.storageLength(); at++) {
-            held.storage().append(arrived.storage().at(at));
-        }
     }
 
     private Value resolveDnsQuery(PortValue port, Evaluator evaluator) {
@@ -464,7 +444,7 @@ public final class Ports {
         return switch (port.schemeName()) {
             case "console" -> writeToConsole(port, data, evaluator);
             case "clipboard" -> putOnClipboard(port, data, evaluator);
-            case "tcp" -> sendDownConnection(port, data, evaluator);
+            case "tcp" -> tcpPort.write(port, data);
             case "udp" -> sendOneDatagramFrom(port, data, evaluator);
             case "checksum" -> sumIntoPort(port, data, asked);
             case "crypt" -> encipherIntoPort(port, data);
@@ -504,16 +484,6 @@ public final class Ports {
         }
     }
 
-    private Value sendDownConnection(PortValue port, Value data, Evaluator evaluator) {
-        granted.require(HostService.NETWORK);
-        NetworkPort.Connection connection = findConnectionBehind(port);
-        return runThroughNetwork(() -> {
-            connection.write(data.asOctets());
-            queueWhatHappenedTo(port, "wrote", evaluator);
-            return port;
-        });
-    }
-
     private Value sumIntoPort(PortValue port, Value data, PortRequest asked) {
         if (!(data instanceof BinaryValue || data instanceof AnyStringValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(data));
@@ -551,7 +521,7 @@ public final class Ports {
             evaluator.policies().require(PolicyClass.NET, PolicyAccess.EXECUTE, Optional.of(portReference(port)));
         }
         if (port.schemeName().equals("tcp")) {
-            return connectOrLeaveClosed(port, evaluator);
+            return tcpPort.open(port, evaluator);
         }
         switch (port.schemeName()) {
             case "udp" -> bindDatagramPort(port, evaluator);
@@ -571,19 +541,6 @@ public final class Ports {
             port.markOpen(true);
         }
         return port;
-    }
-
-    private PortValue connectOrLeaveClosed(PortValue port, Evaluator evaluator) {
-        try {
-            NetworkPort.Connection made = evaluator.ports().network().connectTo(readHostNamedBy(port), portNumber(port));
-            port.setField("state", JavaObjectValue.of(made));
-            queueWhatHappenedTo(port, "connect", evaluator);
-            return markOpen(port);
-        } catch (NetworkPort.Refused refused) {
-            port.findEventQueue();
-            queueWhatHappenedTo(port, "error", evaluator);
-            return port;
-        }
     }
 
     private void openFileBehind(PortValue port, Evaluator evaluator, Set<String> refinements) {
@@ -681,7 +638,14 @@ public final class Ports {
         if (port.schemeName().equals("crypt")) {
             cryptPort.refuseWhenClosed(port);
         }
+        if (port.schemeName().equals("tcp")) {
+            return LogicValue.of(tcpPort.isConnectedOrListening(port));
+        }
         return LogicValue.of(port.isOpen());
+    }
+
+    public TcpPort tcpPort() {
+        return tcpPort;
     }
 
     public Value close(PortValue port, Evaluator evaluator) {
@@ -689,7 +653,9 @@ public final class Ports {
             cryptPort.refuseWhenClosed(port);
             cryptPort.stop(port);
         }
-        handBackConnectionBehind(port);
+        if (port.schemeName().equals("tcp")) {
+            return tcpPort.close(port);
+        }
         boolean wasWrittenThrough = isFileOpenToWrite(port);
         port.markOpen(false);
         if (wasWrittenThrough) {
@@ -727,6 +693,16 @@ public final class Ports {
             return bound;
         }
         throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
+    }
+
+    private void addToPortsData(PortValue port, BinaryValue arrived) {
+        if (!(port.readFieldValue("data") instanceof BinaryValue held)) {
+            port.setField("data", arrived);
+            return;
+        }
+        for (int at = arrived.index(); at <= arrived.storageLength(); at++) {
+            held.storage().append(arrived.storage().at(at));
+        }
     }
 
     private Value readOneDatagramInto(PortValue port, Evaluator evaluator) {
@@ -774,21 +750,6 @@ public final class Ports {
                     StringValue.of(refused.subject()),
                     IntegerValue.of(OPEN_FAILED)));
         }
-    }
-
-    private void handBackConnectionBehind(PortValue port) {
-        if (port.readFieldValue("state") instanceof JavaObjectValue carried
-                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
-            open.close();
-        }
-    }
-
-    private NetworkPort.Connection findConnectionBehind(PortValue port) {
-        if (port.readFieldValue("state") instanceof JavaObjectValue carried
-                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
-            return open;
-        }
-        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
     }
 
     private String readHostNamedBy(PortValue port) {

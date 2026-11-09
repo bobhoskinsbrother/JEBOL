@@ -85,18 +85,27 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Value waitForFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
+        boolean untilWoken = milliseconds.isEmpty() && waitedOn.stream().anyMatch(PortValue.class::isInstance);
         long left = milliseconds.map(asked -> Math.max(0, asked)).orElse(0L);
         while (true) {
             evaluator.deliverWhatWasPosted();
             if (findWhicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
                 return woken;
             }
-            long slice = Math.min(PAUSE_SLICE_MILLISECONDS, left);
-            if (left <= 0 || !sleepWithoutBeingInterrupted(slice, evaluator)) {
+            long slice = untilWoken ? PAUSE_SLICE_MILLISECONDS : Math.min(PAUSE_SLICE_MILLISECONDS, left);
+            long started = System.nanoTime();
+            if ((!untilWoken && left <= 0) || !sleepWithoutBeingInterrupted(slice, evaluator)) {
                 return NoneValue.none();
             }
-            left -= slice;
+            left -= countTimePassedIn(slice, started, evaluator);
         }
+    }
+
+    private long countTimePassedIn(long slice, long started, Evaluator evaluator) {
+        if (!evaluator.postbox().isHoldingAnything()) {
+            return slice;
+        }
+        return Math.min(slice, (System.nanoTime() - started) / NANOSECONDS_IN_MILLISECOND);
     }
 
     private Optional<Long> findHowLongToWaitAmong(List<Value> waitedOn) {

@@ -1,0 +1,89 @@
+# 2026-11-08T17:47Z
+
+## r3-head
+https://xn--mnchen-3ya.de/ -> read 64 bytes
+https://münchen.de/ -> no-connect: https://münchen.de/
+https://bücher.de/ -> no-connect: https://bücher.de/
+https://expired.badssl.com/ -> read 64 bytes
+https://wrong.host.badssl.com/ -> read 64 bytes
+https://self-signed.badssl.com/ -> read 64 bytes
+https://untrusted-root.badssl.com/ -> read 64 bytes
+https://incomplete-chain.badssl.com/ -> read 64 bytes
+https://extended-validation.badssl.com/ -> read 64 bytes
+https://superfish.badssl.com/ -> read 64 bytes
+https://sha1-intermediate.badssl.com/ -> read 64 bytes
+https://invalid-expected-sct.badssl.com/ -> read 64 bytes
+https://dh1024.badssl.com/ -> no-connect: https://dh1024.badssl.com/
+https://dh2048.badssl.com/ -> no-connect: https://dh2048.badssl.com/
+https://static-rsa.badssl.com/ -> no-connect: https://static-rsa.badssl.com/
+https://client.badssl.com/ -> no-connect: https://client.badssl.com/
+https://client-cert-missing.badssl.com/ -> no-connect: https://client-cert-missing.badssl.com/
+Aborted (core dumped)
+rsa8192.badssl.com -> no answer in 60 seconds, or the process died
+https://ecc256.badssl.com/ -> no-connect: https://ecc256.badssl.com/
+https://ecc384.badssl.com/ -> no-connect: https://ecc384.badssl.com/
+https://revoked.badssl.com/ -> no-connect: https://revoked.badssl.com/
+https://tls-v1-0.badssl.com:1010/ -> no-connect: https://tls-v1-0.badssl.com:1010/
+https://tls-v1-1.badssl.com:1011/ -> no-connect: https://tls-v1-1.badssl.com:1011/
+https://tls-v1-2.badssl.com:1012/ -> read 64 bytes
+https://rc4.badssl.com/ -> no-connect: https://rc4.badssl.com/
+https://3des.badssl.com/ -> no-connect: https://3des.badssl.com/
+https://null.badssl.com/ -> no-connect: https://null.badssl.com/
+
+## jebol c3eb8891
+https://xn--mnchen-3ya.de/ -> no-connect: https://xn--mnchen-3ya.de/
+https://münchen.de/ -> no-connect: https://münchen.de/
+https://bücher.de/ -> no-connect: https://bücher.de/
+https://expired.badssl.com/ -> no-connect: https://expired.badssl.com/
+https://wrong.host.badssl.com/ -> no-connect: https://wrong.host.badssl.com/
+https://self-signed.badssl.com/ -> no-connect: https://self-signed.badssl.com/
+https://untrusted-root.badssl.com/ -> no-connect: https://untrusted-root.badssl.com/
+https://incomplete-chain.badssl.com/ -> no-connect: https://incomplete-chain.badssl.com/
+https://extended-validation.badssl.com/ -> no-connect: https://extended-validation.badssl.com/
+https://superfish.badssl.com/ -> no-connect: https://superfish.badssl.com/
+https://sha1-intermediate.badssl.com/ -> no-connect: https://sha1-intermediate.badssl.com/
+https://invalid-expected-sct.badssl.com/ -> no-connect: https://invalid-expected-sct.badssl.com/
+https://dh1024.badssl.com/ -> no-connect: https://dh1024.badssl.com/
+https://dh2048.badssl.com/ -> no-connect: https://dh2048.badssl.com/
+https://static-rsa.badssl.com/ -> no-connect: https://static-rsa.badssl.com/
+https://client.badssl.com/ -> no-connect: https://client.badssl.com/
+https://client-cert-missing.badssl.com/ -> no-connect: https://client-cert-missing.badssl.com/
+https://rsa8192.badssl.com/ -> no-connect: https://rsa8192.badssl.com/
+https://ecc256.badssl.com/ -> read 64 bytes
+https://ecc384.badssl.com/ -> read 64 bytes
+https://revoked.badssl.com/ -> read 64 bytes
+https://tls-v1-0.badssl.com:1010/ -> no-connect: https://tls-v1-0.badssl.com:1010/
+https://tls-v1-1.badssl.com:1011/ -> no-connect: https://tls-v1-1.badssl.com:1011/
+https://tls-v1-2.badssl.com:1012/ -> read 64 bytes
+https://rc4.badssl.com/ -> no-connect: https://rc4.badssl.com/
+https://3des.badssl.com/ -> no-connect: https://3des.badssl.com/
+https://null.badssl.com/ -> no-connect: https://null.badssl.com/
+
+## openssl 3.5.5, the last verify error, as s_client reports it
+xn--mnchen-3ya.de -> Verify return code: 0 (ok)
+münchen.de -> Verify return code: 0 (ok)
+bücher.de -> Verify return code: 0 (ok)
+expired.badssl.com -> Verify return code: 10 (certificate has expired)
+wrong.host.badssl.com -> Verify return code: 62 (hostname mismatch)
+self-signed.badssl.com -> Verify return code: 18 (self-signed certificate)
+untrusted-root.badssl.com -> Verify return code: 19 (self-signed certificate in certificate chain)
+incomplete-chain.badssl.com -> Verify return code: 21 (unable to verify the first certificate)
+extended-validation.badssl.com -> Verify return code: 10 (certificate has expired)
+superfish.badssl.com -> Verify return code: 10 (certificate has expired)
+sha1-intermediate.badssl.com -> Verify return code: 10 (certificate has expired)
+invalid-expected-sct.badssl.com -> Verify return code: 10 (certificate has expired)
+dh1024.badssl.com -> Verify return code: 0 (ok)
+dh2048.badssl.com -> Verify return code: 0 (ok)
+static-rsa.badssl.com -> Verify return code: 0 (ok)
+client.badssl.com -> Verify return code: 0 (ok)
+client-cert-missing.badssl.com -> Verify return code: 0 (ok)
+rsa8192.badssl.com -> Verify return code: 10 (certificate has expired)
+ecc256.badssl.com -> Verify return code: 0 (ok)
+ecc384.badssl.com -> Verify return code: 0 (ok)
+revoked.badssl.com -> Verify return code: 0 (ok)
+tls-v1-0.badssl.com:1010 -> Verify return code: 0 (ok)
+tls-v1-1.badssl.com:1011 -> Verify return code: 0 (ok)
+tls-v1-2.badssl.com:1012 -> Verify return code: 0 (ok)
+rc4.badssl.com -> Verify return code: 0 (ok)
+3des.badssl.com -> Verify return code: 0 (ok)
+null.badssl.com -> Verify return code: 0 (ok)

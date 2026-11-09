@@ -18,8 +18,11 @@ public final class Postbox {
         void fail(RuntimeException failure);
     }
 
-    public record PortEvent(PortValue port, String eventType) {
+    public record PortEvent(PortValue port, String eventType, Runnable beforeQueueing) {
     }
+
+    private static final Runnable NOTHING_BEFORE_QUEUEING = () -> {
+    };
 
     public record Callback(ObjectValue target, String word, List<Value> arguments, CallbackAnswer answer) {
     }
@@ -29,11 +32,19 @@ public final class Postbox {
     private final Queue<Callback> callbacks = new ConcurrentLinkedQueue<>();
 
     public void post(PortValue port, String eventType) {
-        events.add(new PortEvent(port, eventType));
+        events.add(new PortEvent(port, eventType, NOTHING_BEFORE_QUEUEING));
+    }
+
+    public void post(PortValue port, String eventType, Runnable beforeQueueing) {
+        events.add(new PortEvent(port, eventType, beforeQueueing));
     }
 
     public void callBack(ObjectValue target, String word, List<Value> arguments, CallbackAnswer answer) {
         callbacks.add(new Callback(target, word, List.copyOf(arguments), answer));
+    }
+
+    public boolean isHoldingAnything() {
+        return !events.isEmpty() || !callbacks.isEmpty();
     }
 
     void deliverEachEvent(Consumer<PortEvent> delivering) {

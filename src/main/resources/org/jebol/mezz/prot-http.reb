@@ -323,9 +323,9 @@ do-request: func [
 	unless spec/headers/host [
 		spec/headers/host: either find [80 443] spec/port [
 			; default http/https scheme port ids
-			form spec/host
+			ascii-host form spec/host
 		][	; custom port id
-			ajoin [spec/host #":" spec/port]
+			ajoin [ascii-host form spec/host #":" spec/port]
 		]
 	]
 	port/state/state: 'doing-request

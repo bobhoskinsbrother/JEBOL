@@ -45,8 +45,23 @@ class ReadingADnsUrlFromTheSourceTest {
         }
 
         @Override
-        public Connection connectTo(String hostName, int portNumber) {
-            throw new Refused("no-connect", "this directory carries no connections", hostName);
+        public Optional<String> asciiHostName(String hostName) {
+            return Optional.of(hostName);
+        }
+
+        @Override
+        public void lookUp(String hostName, Lookup answer) {
+            resolveFirstIpv4Address(hostName).ifPresentOrElse(answer::found, () -> answer.missing("unknown"));
+        }
+
+        @Override
+        public Connection connect(String address, int portNumber, ConnectionEvents events) {
+            throw new Refused("no-connect", "this directory carries no connections", address);
+        }
+
+        @Override
+        public Listener listen(int portNumber, Accepting accepting) {
+            throw new Refused("no-connect", "this directory takes no clients", String.valueOf(portNumber));
         }
 
         @Override

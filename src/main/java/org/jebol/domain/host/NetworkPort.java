@@ -35,14 +35,31 @@ public interface NetworkPort {
     String hostName();
 
     /**
-     * A connection to a host and port, or a refusal saying why it could not
-     * be made.
-     *
-     * <p>Unlike a name lookup, a connection that was refused, timed out or
-     * was reset is a failure of the thing the script asked for rather than an
-     * answer to it.
+     * The name a host written in Unicode is registered as, by UTS #46 without
+     * transitional processing, or empty when UTS #46 refuses it. A name
+     * already in ASCII answers itself.
      */
-    Connection connectTo(String hostName, int portNumber);
+    Optional<String> asciiHostName(String hostName);
+
+    /**
+     * Starts looking a name up and returns at once. The answer arrives on a
+     * thread of the host's, through the lookup given.
+     */
+    void lookUp(String hostName, Lookup answer);
+
+    /**
+     * Starts connecting to an address and returns at once. Everything that
+     * happens to the connection arrives on threads of the host's, through the
+     * events given, each once and in the order it happened.
+     */
+    Connection connect(String address, int portNumber, ConnectionEvents events);
+
+    /**
+     * Listens on a port number, zero asking for any free one, or refuses
+     * saying why it could not. Each client that reaches it is handed to the
+     * accepting given, which answers where that client's events go.
+     */
+    Listener listen(int portNumber, Accepting accepting);
 
     Datagrams bindTo(int portNumber);
 
@@ -57,20 +74,53 @@ public interface NetworkPort {
         void close();
     }
 
-    /** One open connection, which a script drives through an ordinary port. */
+    interface Lookup {
+
+        void found(String ipv4Address);
+
+        void missing(String why);
+    }
+
+    interface ConnectionEvents {
+
+        void connected();
+
+        void arrived(byte[] bytes);
+
+        void wrote();
+
+        void closed();
+
+        void failed(String why);
+    }
+
+    /**
+     * One connection, connecting or connected. Each call starts something and
+     * returns at once: a read reports once, through the events, what arrived
+     * or that the far end closed, and a write reports once that it has gone.
+     */
     interface Connection {
 
-        /**
-         * The bytes that have arrived, waiting until some have.
-         *
-         * <p>An empty answer means the other end has finished and closed,
-         * which is how a reader knows to stop rather than waiting for ever.
-         */
-        byte[] read();
+        void read();
 
         void write(byte[] bytes);
 
-        boolean isOpen();
+        void close();
+
+        Endpoints endpoints();
+    }
+
+    record Endpoints(String localAddress, int localPort, String remoteAddress, int remotePort) {
+    }
+
+    interface Accepting {
+
+        ConnectionEvents accepted(Connection client);
+    }
+
+    interface Listener {
+
+        int localPort();
 
         void close();
     }
@@ -118,8 +168,23 @@ public interface NetworkPort {
             }
 
             @Override
-            public Connection connectTo(String hostName, int portNumber) {
+            public Optional<String> asciiHostName(String hostName) {
                 throw refuse(hostName);
+            }
+
+            @Override
+            public void lookUp(String hostName, Lookup answer) {
+                throw refuse(hostName);
+            }
+
+            @Override
+            public Connection connect(String address, int portNumber, ConnectionEvents events) {
+                throw refuse(address);
+            }
+
+            @Override
+            public Listener listen(int portNumber, Accepting accepting) {
+                throw refuse(String.valueOf(portNumber));
             }
 
             @Override

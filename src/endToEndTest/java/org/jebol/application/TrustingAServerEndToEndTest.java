@@ -266,14 +266,6 @@ class TrustingAServerEndToEndTest {
                     fixtures.chain("localhost-ec", "test-intermediate"),
                     fixtures.readTheKey("impostor-ec-key", "EC")), protocol);
         }
-
-        @Test
-        @DisplayName("is refused even holding the key, when it signs with Ed25519, which nothing here can check")
-        void uncheckableSignature() throws Exception {
-            assertRefused(new Identity(
-                    fixtures.chain("localhost-ed25519", "test-intermediate"),
-                    fixtures.readTheKey("localhost-ed25519-key", "Ed25519")), TLS_1_3);
-        }
     }
 
     @Nested

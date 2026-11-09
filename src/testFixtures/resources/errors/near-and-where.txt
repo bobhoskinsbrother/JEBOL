@@ -1,0 +1,11 @@
+# 2026-11-09, ./r3-head and the jar at c3eb8891 with goal 1d's changes
+
+## r3-head
+raised inside the native -> invalid-arg | near: [compress "a" 'brotli] | where: [compress try do either either if -apply-]
+refused before the native runs -> expect-arg | near: [try [if false log-trace 'SMTP ["x"] 5] show "refused before the native runs, unset from a paren" try [if false () 6]] | where: [try do either either if -apply-]
+refused before the native runs, unset from a paren -> expect-arg | near: [try [if false () 6]] | where: [try do either either if -apply-]
+
+## jebol
+raised inside the native -> invalid-arg | near: [compress "a" 'brotli] | where: [compress try do either either if -apply-]
+refused before the native runs -> expect-arg | near: _ | where: _
+refused before the native runs, unset from a paren -> expect-arg | near: _ | where: _

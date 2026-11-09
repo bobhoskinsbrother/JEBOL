@@ -1,15 +1,8 @@
 package org.jebol.domain.eval;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Optional;
-
-import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.domain.host.HostService;
-import org.jebol.domain.host.NetworkPort;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,117 +11,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class APortsStorageFromTheSourceTest {
 
-    private static final class ACannedServer implements NetworkPort {
-
-        private final Deque<byte[]> replies = new ArrayDeque<>();
-
-        private ACannedServer reply(String text) {
-            replies.add(text.getBytes(StandardCharsets.ISO_8859_1));
-            return this;
-        }
-
-        @Override
-        public Optional<String> resolveFirstIpv4Address(String hostName) {
-            return Optional.of("203.0.113.1");
-        }
-
-        @Override
-        public Optional<String> resolveHostName(String ipv4Address) {
-            return Optional.empty();
-        }
-
-        @Override
-        public String hostName() {
-            return "a-canned-server";
-        }
-
-        @Override
-        public Datagrams bindTo(int portNumber) {
-            throw new Refused("no-connect", "this server carries no datagrams",
-                    String.valueOf(portNumber));
-        }
-
-        @Override
-        public Connection connectTo(String hostName, int portNumber) {
-            return new Connection() {
-
-                private boolean open = true;
-
-                @Override
-                public byte[] read() {
-                    return replies.isEmpty() ? new byte[0] : replies.removeFirst();
-                }
-
-                @Override
-                public void write(byte[] bytes) {
-                }
-
-                @Override
-                public boolean isOpen() {
-                    return open;
-                }
-
-                @Override
-                public void close() {
-                    open = false;
-                }
-            };
-        }
-    }
-
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(new ACannedServer().reply("what came back")),
-                OutputPort.discard(),
-                Bounds.standard()
-                        .grant(HostService.NETWORK)
-                        .grant(HostService.CLOCK));
+        Interpreter interpreter = Interpreter.createOn(AnInterpreter.standardPorts(), OutputPort.discard(), Bounds.standard());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
-    @DisplayName("a connection is the port's state, and its extra is left empty")
-    void keepsTheConnectionInStateAndLeavesExtraEmpty() {
-        assertThat(answerTo("""
-                c: open tcp://example.com:80
-                reduce [true? c/state  none? c/extra]""")).isEqualTo("[#(true) #(true)]");
-    }
-
-    @Test
-    @DisplayName("and a script may write extra without disturbing the connection")
-    void letsAScriptWriteExtraWithoutDisturbingTheConnection() {
-        assertThat(answerTo("""
-                c: open tcp://example.com:80
-                c/extra: make object! [mine: "the script's own"]
-                write c "a request"
-                reduce [to string! read c  c/extra/mine]"""))
-                .isEqualTo("""
-                        ["what came back" "the script's own"]""");
-    }
-
-    @Test
-    @DisplayName("a port is open while its actor has storage, and closing takes it away")
-    void staysOpenWhileItsActorHasStorage() {
-        assertThat(answerTo("""
-                c: open tcp://example.com:80
-                was-open: open? c
-                close c
-                reduce [was-open  open? c  true? c/state]"""))
-                .isEqualTo("[#(true) #(false) #(false)]");
-    }
-
-    @Test
-    @DisplayName("and something else written into state does not make it open")
-    void staysClosedWithSomethingElseWrittenIntoState() {
-        assertThat(answerTo("""
-                c: make port! [scheme: 'tcp host: "example.com" port: 80]
-                c/state: make object! [borrowed: "somebody else's"]
-                open? c""")).isEqualTo("#(false)");
-    }
-
-    @Test
-    @DisplayName("and a cipher port does the same")
+    @DisplayName("a cipher port keeps its working in state and leaves extra to the script")
     void behavesTheSameOnACipherPort() {
         assertThat(answerTo("""
                 k: open [

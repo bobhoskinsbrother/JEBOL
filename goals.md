@@ -19,12 +19,11 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Nine pieces of work, in the order to do them.
+Eight pieces of work, in the order to do them.
 
-**1d to 1g come first: each makes the same script answer differently on a
+**1e to 1g come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. Ordered by how much ordinary code they break: TLS (1d), then what a
-script sees when it fails (1e to 1g).
+either. They are all what a script sees when it fails.
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
@@ -41,119 +40,6 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1d. TLS is the host's, and every quirk of the handshake goes
-
-**Owner's decision, 2026-11-08: `tls://` is a host port, done by each
-platform's own TLS** -- JSSE on the JVM, Android's own on Android, iOS's own
-when goal 3 reaches it -- because the platforms differ, and an app on a phone
-should treat a server as that phone's other apps do. The handshake in the
-borrowed `prot-tls.reb`, and the four edits decision 43 made to it, go.
-Decision 65 records this when it lands; decision 43, finding 222, ORDER.txt
-and `docs/standing.md` are corrected beside it.
-
-**Measured on 2026-11-08**, `./r3-head`, the jar and OpenSSL against
-badssl.com's servers and `münchen.de`:
-
-| Server                                                          | R3                  | JEBOL now                      | After                          |
-|-----------------------------------------------------------------|---------------------|--------------------------------|--------------------------------|
-| Leaf sent twice (`xn--mnchen-3ya.de`, live)                     | reads               | `broken_chain`                 | reads                          |
-| Chain out of order                                              | reads               | `broken_chain`                 | reads                          |
-| Expired, through an old root (`extended-validation`, `superfish`, `sha1-intermediate`, `invalid-expected-sct`) | reads | `unknown_authority` | `expired`, as OpenSSL says |
-| DHE key exchange only (`dh1024`, `dh2048`)                      | fails               | fails                          | as the platform's stack does   |
-| RSA key exchange only (`static-rsa`)                            | fails               | fails                          | as the platform's stack does   |
-| Asks for a client certificate (`client`, `client-cert-missing`) | fails               | fails                          | sends none and reads on        |
-| Ed25519 certificate                                             | reads, unchecked    | refused: offered, not checked  | checked and read               |
-| Unicode host (`bücher.de`)                                      | `no-connect` at DNS | `no-connect` at DNS            | reads                          |
-| Intermediate missing (`incomplete-chain`)                       | reads               | `unknown_authority`            | unchanged                      |
-| 8192-bit RSA (`rsa8192`)                                        | hangs               | answers                        | unchanged                      |
-| TLS 1.2 elliptic curve (`ecc256`, `ecc384`)                     | fails               | reads                          | unchanged                      |
-| Revoked (`revoked`)                                             | fails               | reads                          | unchanged: 1h step 6           |
-
-**What a script sees stays R3's.** The adapter replaces the handshake, not the
-scheme:
-
-- **`tls` stays a REBOL scheme** whose actor hands the bytes to the host.
-  `prot-smtp.reb:218` and `prot-pop3.reb:244` upgrade a connection already
-  open (`open [scheme: 'tls conn: client]`) and read `conn/extra/tls-port`, so
-  the adapter wraps a live connection, and that field stays.
-- **The same events** reach `awake`, because HTTP, SMTP and POP3 wait on the
-  TLS port. That points at `SSLEngine` over JEBOL's own socket, not a blocking
-  `SSLSocket`.
-- **Server mode stays**: `tls://:port` listening, with `certificates` and
-  `private-key` given as REBOL values (`prot-tls.reb:2244-2281`).
-- **The grant and the errors stay**: the open asks for `certificates`
-  (`ASecureConnectionAsksForTheService`), a refusal is an access `protocol`
-  error naming the reason in words, HTTP turns it into `no-connect`, and no
-  request is written.
-- **Trust stays two owners.** The adapter judges the chain against the host's
-  authorities -- the machine's and `--cafile`'s, an embedder's none by default
-  -- and `VouchedNames` in the domain still decides whether the leaf names the
-  host.
-- **The browser is unchanged**: `fetch` does its own TLS.
-
-**No test reaches a site on the internet.** Every row of the table is
-emulated by a server the end-to-end suite spins up, like the expired and
-wrongly named ones it has:
-
-- **Chains** are made by `scripts/make-test-certificates.sh` and served by
-  `LocalTlsServer`, with a fixed clock where a date matters. The leaf sent
-  twice is `münchen.de`'s shape.
-- **Key exchanges and protocol versions the JDK disables** -- RSA key
-  exchange, TLS 1.0 and 1.1, RC4, 3DES, NULL -- are served from a JVM of their
-  own with its own `java.security`, since that setting is process-wide and
-  would weaken the client under test.
-- **A client certificate request and Ed25519** are `LocalTlsServer` options.
-- **A Unicode host** resolves through a `java.net.spi.InetAddressResolverProvider`
-  on the test classpath only, mapping a `.test` name to loopback, and the
-  server records the name the handshake sent so the test asserts its ASCII
-  form.
-
-The boundaries to test, quirk by quirk:
-
-1. **A chain is a bag, and a path is built through it** -- on the JVM with
-   PKIX's `CertPathBuilder`, not by reading the list in order. The leaf stays
-   first, because the handshake's signature is checked against it. Reversed;
-   leaf sent twice; an unrelated extra certificate; an expired and a valid copy
-   of one intermediate, in both orders; two authorities that signed each other
-   (a cycle); a self-signed certificate that is not a trusted root; a path that
-   ends at a `--cafile` intermediate; a leaf alone that `--cafile` trusts; a
-   certificate with the right name and key that is no authority; a chain one
-   under and one over the length the adapter takes; an unreadable certificate
-   the path does not use (read) and an unreadable leaf (`broken_chain`); a leaf
-   not first (`broken_chain`); an intermediate missing (`unknown_authority`,
-   since fetching it is a network call per handshake, and neither JSSE nor
-   Android does it by default).
-2. **The reason is the true one.** When no path is trusted, which reason a
-   script sees is a rule in the spec, and an expired chain is `expired`.
-3. **The key exchanges the platform's stack offers.** Whether JDK 25 still
-   offers RSA key exchange, and whether the JVM's defaults stand, is read off
-   the JDK before the rule is written. TLS 1.0 and 1.1, RC4, 3DES and NULL stay
-   refused.
-4. **A request for a client certificate is answered with none**, and the
-   handshake goes on.
-5. **Ed25519 is checked**, or not offered.
-6. **A Unicode host is converted to its ASCII form** for the lookup, the
-   server name in the handshake, HTTP's `Host` and the name check, and
-   `port/spec/host` keeps it as written. `java.net.IDN` is IDNA2003 and
-   browsers use UTS #46; they disagree on names like `faß.de`, so choose
-   before the rule.
-
-**First, probe**, and check each probe in: whether `CertPathBuilder` says why
-it failed well enough to name `expired`; whether `LocalTlsServer`, being JSSE,
-sends a chain in the order it is given, and if not, a key manager that hands
-it an array it cannot reorder; JDK 25's default suites; and that the resolver
-provider loads in the end-to-end test's JVM. Then the spec: `spec/embed.allium`'s "Trusting a
-server" is rewritten for a TLS host port, and its two open questions, on the
-chain and on Unicode hosts, become rules.
-
-**Done when** every row of the table answers its "After" column, by a test
-for each boundary above; `TrustingAServerEndToEndTest`,
-`SecureConnectionsAtTheCommandLineEndToEndTest` and
-`UntrustedServersAtTheCommandLineEndToEndTest` pass unchanged; a STARTTLS
-upgrade and a listening `tls://` server work against local peers; and the
-sweep that measured the table is checked in as a probe with its transcript,
-run by hand and by no gate.
-
 #### 1e. An error a native raises carries its `near` and `where`
 
 For `try [compress "a" 'brotli]` R3 gives `near: [compress "a" quote brotli]`
@@ -161,10 +47,27 @@ and `where: [compress try ...]`; JEBOL gives none for both. Errors from
 evaluated code, paths, PARSE and CAUSE-ERROR already agree with R3. A script
 that stops on such an error prints a different `** Near:` and `** Where:`.
 
-1. Sweep: raise an error from every native that can raise one, in both
-   interpreters, and diff `near` and `where`. COMPRESS is the one found so
-   far; how many others share it is not known.
-2. Fix the path they share, not each native.
+**Measured again on 2026-11-09, from a script file**
+(`src/testFixtures/resources/errors/near-and-where.r3`, transcript beside it):
+COMPRESS now agrees with R3 there, so either it was fixed since or the
+difference shows only through `Interpreter.run` or the console, and the sweep
+should run every case all three ways. What does differ is a second kind: an
+argument a native refuses **before it runs**. `try [if false () 6]` is
+`expect-arg` on IF's `true-branch` in both, but R3 gives `near: [try [if false
+() 6]]` and `where: [try do either either if -apply-]` and JEBOL gives none for
+either. R3's shape differs from the COMPRESS case: there is no `if` frame in
+`where`, and `near` starts at the enclosing `try`, because the check fails
+before IF's frame exists. This is the type check every typed argument of every
+native passes through, so it is likely far commoner than an error from a
+native's body, and it may be a separate path from the one COMPRESS takes. It
+was found as SMTP's `if parse response [...] log-trace ...` (finding 238).
+
+1. Sweep: raise an error from every native that can raise one -- from its body,
+   and by giving each typed argument a type it refuses -- in both interpreters,
+   from a file, through `Interpreter.run` and at the console, and diff `near`
+   and `where`. Start from the probe above.
+2. Fix the paths they share, not each native: at least the native's own raise
+   and the argument check before the call, each with R3's shape.
 
 **Done when** the sweep shows no difference, and is a test.
 
@@ -208,7 +111,7 @@ test.
 #### 1h. Clear the spec's open questions
 
 Every open question in the spec has an answer. The work that follows from the
-answers is 1d, 1j, 1k and 1l; this sub-goal is the spec's side of it.
+answers is 1j, 1k and 1l; this sub-goal is the spec's side of it.
 Every edit runs `allium check` clean.
 
 1. **Already answered: the question becomes a rule, or goes.** Each of
@@ -237,8 +140,7 @@ Every edit runs `allium check` clean.
      `CompressedBytesAreTheOnesARealRebolWrites` now holds for all nine
      methods (zlib, gzip and deflate write R3's bytes at levels 0, 1, 6 and
      9; LZ4 and LZAV were ported byte for byte), so the libdeflate question goes and the invariant loses its
-     exception; a wait on a connection with no timeout answers none until
-     connections are read on their own thread (a rule, not a question);
+     exception;
      `system/options/boot` serves children only, which is enough (owner's
      answer); a byte-exact CHECK over a vector is dropped.
    - `screen.allium`: VIEW waits until a deadline ends it, built; a draw
@@ -259,8 +161,7 @@ Every edit runs `allium check` clean.
      folder; no browser can name it.
 2. **Answered by the owner, with work to do: the question becomes a rule
    when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: TLS as a host port, its chains and Unicode hosts (1d), home and values between
-   interpreters (1j), the Rebol bugs (1k), `effect` in DRAW and
+   together: home and values between interpreters (1j), the Rebol bugs (1k), `effect` in DRAW and
    GUI-METRIC/SET (1l).
 3. **Not a question for JEBOL:** move the `open/new` question -- a real
    3.22.5 answers two different ways on two identical runs -- to

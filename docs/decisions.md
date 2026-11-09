@@ -1733,6 +1733,13 @@ of its own.
 
 ## 43. JEBOL checks TLS certificates, and differs from R3 on purpose to do it
 
+**Superseded in part by decision 65.** The trust it describes stands: the
+host's authority judges the chain and `VouchedNames` the name, with the grant
+and the errors as below. What went is the hook: the borrowed handshake and its
+four edits, the natives `require-certificate-checks` and `check-certificates`,
+and the chain judged in the order it was sent. The TLS is now the host's, and a
+chain is a bag a path is built through.
+
 **A secure connection is refused unless the host's authority trusts the chain
 and the certificate names the host.** That is `spec/embed.allium`'s "Trusting
 a server" section, and the R3 behaviour it replaces is finding 222. It is the
@@ -2795,3 +2802,68 @@ mode, which cannot read one key.
 character per byte and JEBOL, having no such string, reads as UTF-8; bytes that
 are not UTF-8 typed at `ask`, which R3 fails on inside `input` and JEBOL
 replaces; end of input at a terminal, which R3 waits on for ever.
+
+## 65. TLS is the host's, and a connection is asynchronous as R3's is
+
+**Owner's decision, 2026-11-08: `tls://` is a host port, done by each
+platform's own TLS** -- JSSE on the JVM, Android's own on Android, Apple's when
+goal 3 reaches it -- because the platforms differ, and an app on a phone should
+treat a server as that phone's other apps do. It replaces the handshake decision
+43 kept in the borrowed `prot-tls.reb`, with its four edits.
+
+**The split.** `SecureTransport` is the port and `SecureSession` one connection
+through it, shaped like `SSLEngine`: bytes from the network go in, and what to
+send, what arrived for the script, the state and the reason it ended come back.
+`JavaSecureTransport` is the JVM's, with the JDK's own suites, versions and
+signature schemes and no client key. Trust stays two owners: the session's
+trust manager hands the chain to a `ServerCheck` the domain builds, which asks
+the host's `CertificateAuthority` and then `VouchedNames`, so a mistrust reaches
+the script as the reason the domain names. A host that supplied none refuses a
+secure connection with `no-port`; a browser supplies none, since fetch does its
+own TLS. `JavaHost` does not carry it either: the web build reaches `JavaHost`
+through `ThreadTasks`, and JSSE does not compile for the web. The command line's
+`portsFor` and the test fixtures' standard ports add it.
+
+**The scheme stays R3's.** `prot-tls.reb` is now JEBOL's own file, a few hundred
+lines where R3's is 2,500. It keeps what a script and Rebol's protocols see: the
+open with or without `conn:` (SMTP's STARTTLS and POP3's STLS upgrade a live
+connection that way), `port/extra/tcp-port` and `tls-port`, the events through
+R3's `dispatch-event`, the grant asked at the open, the listening server with
+R3's `config` and its demo actor, `set-verbose` and `config`. Four natives carry
+the bytes: `tls-client`, `tls-server`, `tls-exchange`, and `ascii-host` for
+HTTP's `Host` line. A read is started only while nothing is being written,
+because R3's tcp port shares `data` between a write in flight and arriving
+bytes; R3's own TLS never overlapped the two either.
+
+**Chains are bags.** `JavaCertificateAuthority` builds a path with PKIX's
+`CertPathBuilder` through whatever the server sent, the leaf first, at most five
+authorities deep. The builder gives one message for every failure, so the
+reason is found apart from it: the leaf's dates first, then a rebuild at moments
+inside the leaf's validity to find which certificate on a path is out of date,
+then unknown authority. That is OpenSSL's final answer for badssl.com's expired
+chains through retired roots. `src/testFixtures/resources/tls/probe/` holds the
+probes and the live sweep that measured all of this, run by hand.
+
+**Unicode hosts are the host's too.** `asciiHostName` on the network port
+converts by UTS #46 without transitional processing, as browsers do, so
+`faß.de` is `xn--fa-hia.de`. The JVM has none, so the command line's host
+carries one: `Uts46` over tables `scripts/make-uts46-tables.py` writes from
+Unicode 16.0.0, the JDK 25's version, checked against all 6,389 cases of
+Unicode's `IdnaTestV2.txt`. Android has `android.icu.text.IDNA`.
+
+**And `tcp` is asynchronous, owner's decision, 2026-11-08.** Listening was
+needed for a TLS server, and measuring it showed JEBOL's tcp blocking where R3's
+is not: R3 sets every socket non-blocking, OPEN on a name only looks it up and
+answers `lookup`, the second OPEN connects, READ and WRITE before `connect`
+raise `not-connected`, and everything arrives as an event inside WAIT. JEBOL now
+does the same. `NetworkPort` starts lookups, connections and listeners and
+reports back through events on threads of the host's; the domain posts each to
+the `Postbox` with a step that runs on the interpreter's thread when it is
+delivered, and the pause wakes so a WAIT does not sleep through it. That pause
+is `WakeablePause`, installed beside the network by the command line and the
+test hosts; `ThreadPause` stays `Thread.sleep`, because the browser's worker
+builds on `JavaHost` and a monitor wait there stopped every page's WAIT. A WAIT
+on a port with no length waits as the C does, until woken or the run's deadline.
+`src/testFixtures/resources/tcp/waiting.r3` runs thirteen scenarios on
+`./r3-head` against `nc`, and `WaitingOnAPortFromTheSourceTest` asserts R3's
+transcript line for line.

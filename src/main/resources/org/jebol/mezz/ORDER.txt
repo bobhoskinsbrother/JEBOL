@@ -44,9 +44,14 @@
 #
 # What is changed from Rebol's copy:
 #
-#   prot-tls.reb         four edits that make a server's certificate and
-#                        signature count. Read decision 43 before taking a
-#                        newer copy, or the checks silently go.
+#   prot-tls.reb         JEBOL's own, not Rebol's: R3's tls scheme as a script
+#                        sees it, with the handshake done by the host's TLS
+#                        through four natives. Do not take Rebol's copy over
+#                        it. Decision 65.
+#   prot-http.reb        the Host line is written from ASCII-HOST of the host,
+#                        so a host written in Unicode is asked for by the name
+#                        it is registered as. Keep the edit when taking a
+#                        newer copy. Decision 65.
 #   mezz-banner.reb      the banner's title line says "(JEBOL port)" where
 #                        Rebol's says "(Oldes branch)". Keep the edit when
 #                        taking a newer copy.

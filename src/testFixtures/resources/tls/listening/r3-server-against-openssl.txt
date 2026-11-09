@@ -1,0 +1,22 @@
+# 2026-11-08, ./r3-head serving tls://:18435 with localhost-rsa.pem, test-intermediate.pem
+# and localhost-rsa.key, as rebol3-source/src/tests/test-tls-server.r3 configures one,
+# and OpenSSL 3.5.5's client put to it once per run:
+#
+#   printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -tls1_3 (or -tls1_2) \
+#       -connect localhost:18435 -CAfile test-root.pem -servername localhost -quiet
+
+== -tls1_3, OpenSSL
+Connecting to 127.0.0.1
+error:0A00006E:SSL routines:tls_collect_extensions:bad extension
+
+== -tls1_2, OpenSSL
+Connecting to 127.0.0.1
+error:0A000126:SSL routines::unexpected eof while reading
+
+== -tls1_2, the server's own log
+** Script error: prf does not allow #(none!) for its secret argument
+** Where: either with TLS-key-expansion unless switch either try switch -apply- wake-up ...
+
+# The server stops after the first connection fails, so each protocol needs a run of its own.
+# With secure-hello.txt beside it: a real 3.22.5's listening TLS server answers no client,
+# its own included.

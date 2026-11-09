@@ -97,6 +97,132 @@ class JavaCertificateAuthorityTest {
     }
 
     @Nested
+    @DisplayName("a chain sent as a bag, its leaf first, through which a path is built")
+    class ABagOfCertificates {
+
+        private final ChainVerdict trustedForLocalhost = expectTrustFor(Set.of("localhost"), Set.of("127.0.0.1"));
+
+        @Test
+        @DisplayName("is trusted with its authorities in reverse")
+        void reversed() {
+            assertThat(judge("localhost-rsa", "test-root", "test-intermediate")).isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted with its leaf sent twice, as münchen.de sends it")
+        void leafTwice() {
+            assertThat(judge("localhost-rsa", "localhost-rsa", "test-intermediate")).isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted carrying a certificate that belongs to nobody in it")
+        void unrelatedExtra() {
+            assertThat(judge("localhost-rsa", "stranger-root", "test-intermediate")).isEqualTo(trustedForLocalhost);
+        }
+
+        @ParameterizedTest(name = "{0} then {1}")
+        @CsvSource({
+                "test-intermediate-expired, test-intermediate",
+                "test-intermediate, test-intermediate-expired",
+        })
+        @DisplayName("is trusted carrying an expired and a valid copy of one intermediate, in either order")
+        void twoCopiesOfAnIntermediate(String first, String second) {
+            assertThat(judge("localhost-rsa", first, second)).isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted five authorities deep, as many as a path may hold")
+        void fiveDeep() {
+            assertThat(judge("five-deep", "deep-5", "deep-4", "deep-3", "deep-2", "deep-1"))
+                    .isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted five authorities deep sent in reverse")
+        void fiveDeepReversed() {
+            assertThat(judge("five-deep", "deep-1", "deep-2", "deep-3", "deep-4", "deep-5"))
+                    .isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted carrying bytes that are no certificate, which the path never uses")
+        void unreadableExtra() {
+            List<byte[]> chain = List.of(
+                    fixtures.readTheDer("localhost-rsa"),
+                    new byte[] {0x30, 0x03, 0x02, 0x01, 0x05},
+                    fixtures.readTheDer("test-intermediate"));
+
+            assertThat(authorityAt(FIXTURE_TIME).judge(chain)).isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted when its path ends at an intermediate the host was given as an authority")
+        void endsAtASuppliedIntermediate() {
+            JavaCertificateAuthority trustingTheIntermediate = new JavaCertificateAuthority(
+                    fixtures.trustOnly("test-intermediate"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC));
+
+            assertThat(trustingTheIntermediate.judge(fixtures.readTheDers("localhost-rsa")))
+                    .isEqualTo(trustedForLocalhost);
+        }
+
+        @Test
+        @DisplayName("is trusted as a leaf alone that the host was given as an authority")
+        void aLeafTheHostTrusts() {
+            JavaCertificateAuthority trustingTheLeaf = new JavaCertificateAuthority(
+                    fixtures.trustOnly("self-signed"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC));
+
+            assertThat(trustingTheLeaf.judge(fixtures.readTheDers("self-signed")))
+                    .isEqualTo(trustedForLocalhost);
+        }
+    }
+
+    @Nested
+    @DisplayName("the reason given when no path is trusted, the dates first")
+    class TheReason {
+
+        @Test
+        @DisplayName("is expired for an expired leaf whose authority the host does not trust, as OpenSSL ends")
+        void expiredLeafUnknownAuthority() {
+            JavaCertificateAuthority trustingAStranger = new JavaCertificateAuthority(
+                    fixtures.trustOnly("stranger-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC));
+
+            assertThat(trustingAStranger.judge(fixtures.readTheDers("one-day", "test-intermediate")))
+                    .isEqualTo(expectMistrust(CertificateMistrust.EXPIRED));
+        }
+
+        @Test
+        @DisplayName("is expired for an expired self-signed leaf")
+        void expiredSelfSigned() {
+            assertThat(authorityAt(Instant.parse("2040-01-01T00:00:00Z")).judge(fixtures.readTheDers("self-signed")))
+                    .isEqualTo(expectMistrust(CertificateMistrust.EXPIRED));
+        }
+
+        @Test
+        @DisplayName("is expired for a leaf in date whose only intermediate has expired")
+        void expiredIntermediate() {
+            assertThat(judge("through-an-expired-intermediate", "test-intermediate-expired"))
+                    .isEqualTo(expectMistrust(CertificateMistrust.EXPIRED));
+        }
+
+        @Test
+        @DisplayName("is not yet valid for a leaf that has not begun, whose authority the host does not trust")
+        void notYetValidLeafUnknownAuthority() {
+            JavaCertificateAuthority trustingAStranger = new JavaCertificateAuthority(
+                    fixtures.trustOnly("stranger-root"), Clock.fixed(Instant.parse("2026-06-01T00:00:00Z"), ZoneOffset.UTC));
+
+            assertThat(trustingAStranger.judge(fixtures.readTheDers("one-day", "test-intermediate")))
+                    .isEqualTo(expectMistrust(CertificateMistrust.NOT_YET_VALID));
+        }
+
+        @Test
+        @DisplayName("is no authority for a leaf in date that no trusted root vouches for at any moment")
+        void unknownAuthorityInDate() {
+            assertThat(judge("from-a-stranger", "stranger-root"))
+                    .isEqualTo(expectMistrust(CertificateMistrust.UNKNOWN_AUTHORITY));
+        }
+    }
+
+    @Nested
     @DisplayName("the moment of judgement, either side of a certificate's one day")
     class TheMoment {
 
@@ -160,17 +286,38 @@ class JavaCertificateAuthorityTest {
         }
 
         @Test
-        @DisplayName("sent out of order is broken")
-        void outOfOrder() {
+        @DisplayName("whose first certificate is an authority rather than a leaf is broken")
+        void leafNotFirst() {
             assertThat(judge("test-intermediate", "localhost-rsa"))
                     .isEqualTo(expectMistrust(CertificateMistrust.BROKEN_CHAIN));
         }
 
         @Test
-        @DisplayName("with an intermediate that did not sign the certificate before it is broken")
+        @DisplayName("carrying an intermediate that signed nothing in it leads to no authority, the intermediate being an unused extra")
         void wrongIntermediate() {
             assertThat(judge("from-a-stranger", "test-intermediate"))
-                    .isEqualTo(expectMistrust(CertificateMistrust.BROKEN_CHAIN));
+                    .isEqualTo(expectMistrust(CertificateMistrust.UNKNOWN_AUTHORITY));
+        }
+
+        @Test
+        @DisplayName("through a certificate with the intermediate's name and key that is no authority leads to no authority")
+        void throughACertificateThatIsNoAuthority() {
+            assertThat(judge("localhost-rsa", "not-an-authority"))
+                    .isEqualTo(expectMistrust(CertificateMistrust.UNKNOWN_AUTHORITY));
+        }
+
+        @Test
+        @DisplayName("through two authorities that signed each other, neither trusted, leads to no authority and ends")
+        void throughACycle() {
+            assertThat(judge("in-a-cycle", "cycle-a-by-b", "cycle-b"))
+                    .isEqualTo(expectMistrust(CertificateMistrust.UNKNOWN_AUTHORITY));
+        }
+
+        @Test
+        @DisplayName("six authorities deep, one more than a path may hold, leads to no authority")
+        void sixDeep() {
+            assertThat(judge("six-deep", "deep-6", "deep-5", "deep-4", "deep-3", "deep-2", "deep-1"))
+                    .isEqualTo(expectMistrust(CertificateMistrust.UNKNOWN_AUTHORITY));
         }
 
         @Test

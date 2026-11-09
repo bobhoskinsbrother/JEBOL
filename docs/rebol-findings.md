@@ -6677,8 +6677,14 @@ Four separate defects in `prot-tls.reb` make that table:
    `log-error` prints it. JEBOL keeps this: a script sees `no-connect`, as it
    does in R3, and the printed line names the reason.
 
-The fixes are decision 43. The vendored `prot-tls.reb` is edited in four
-places, and the CRT codec is untouched. One thing the Brotli rule predicted
+The fixes were decision 43, four edits to the vendored `prot-tls.reb`; since
+decision 65 the handshake is the host's and none of R3's handshake is carried.
+The 2026-11-08 sweep in `src/testFixtures/resources/tls/probe/live-sweep.txt`
+adds to the list: a real 3.22.5 also fails every server offering only
+finite-field Diffie-Hellman or only RSA key exchange, every server asking for a
+client certificate, and dies with a double free on an 8192-bit RSA server; it
+looks a Unicode host up as written and finds nothing; and it reads an Ed25519
+certificate without checking its signature. One thing the Brotli rule predicted
 held here too: the
 public badssl.com corpus found a fault the project's own fixtures did not. Its expired
 host ends its chain in a cross-signed copy of a root the JDK trusts, and
@@ -7060,3 +7066,25 @@ COMPRESS and CHECKSUM show both. `APartOfAStringFromTheSourceTest` and
 natives' expectations were read off `./r3-head`. Rebol-Zstd, Rebol-Deflate and
 Rebol-Zlib-ng were not run: their `*-commands.c` take the same
 `BIN_SKIP(data, index)` for `SERIES_TAIL(data) - index`, and that is the evidence.
+
+## 237. A real 3.22.5's listening TLS server answers no client
+
+`src/testFixtures/resources/tls/listening/` holds the transcripts, from
+2026-11-08. Configured as `rebol3-source/src/tests/test-tls-server.r3`
+configures one, R3's server fails R3's own client (`value out of range:
+UI24BYTES` in `decode-certificates`), fails OpenSSL's over TLS 1.3 (`bad
+extension`) and over TLS 1.2 (`prf does not allow #(none!)` in its own key
+expansion), and stops listening after the first failure. Its private key must
+be given as a `.key` file: the same bytes named `.pem` reach the certificate
+codec and load as a block. JEBOL's server, the host's TLS under R3's demo actor,
+answers a JVM client and its own; `ListeningForConnectionsFromTheSourceTest`.
+
+## 238. R3's SMTP fails once upgraded to TLS if the server offers no AUTH
+
+`sync-smtp-handler` answers the EHLO reply with `if parse response [... STARTTLS
+... | ... AUTH ...]` and writes the next line, `log-trace ...`, where IF expects
+its branch. When neither matches -- a server that, after STARTTLS, offers no
+AUTH -- IF is given LOG-TRACE's unset answer and raises `expect-arg if
+true-branch #(unset!)`, as `./r3-head` does for `if false log-trace 'SMTP
+["x"]`. Real mail servers offer AUTH once the connection is encrypted, so the
+local peer in `UpgradingAConnectionToTlsFromTheSourceTest` does too.

@@ -1,0 +1,14 @@
+# 2026-11-08T18:30Z, ./r3-head against nc on 127.0.0.1:18611
+ends-where-awake-says-true -> [#(true) [lookup connect wrote]]
+keeps-going-while-false -> [#(false) [lookup connect wrote read]]
+a-truthy-non-logic-does-not-end-it -> [#(false) [lookup connect wrote read]]
+reported-once-each -> [lookup connect wrote read]
+a-settled-port-answers-none -> [_ _ _]
+no-awake-ends-at-once -> #(true)
+not-connected-before-connect -> [not-connected not-connected]
+bytes-add-to-the-data -> "onetwo"
+state-and-extra-after-open -> [#(true) #(true)]
+open-only-while-connected -> [#(false) #(true) #(false) #(true)]
+extra-is-the-scripts-own -> ["some bytes back" "the script's own"]
+something-else-in-state-is-not-open -> #(false)
+a-close-when-nothing-more-arrives -> [#(true) [lookup connect close]]

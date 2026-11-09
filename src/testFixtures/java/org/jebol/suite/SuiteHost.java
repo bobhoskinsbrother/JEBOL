@@ -15,7 +15,9 @@ import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaHost;
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.adapter.host.JavaProcess;
+import org.jebol.adapter.host.JavaSecureTransport;
 import org.jebol.adapter.host.JavaSocket;
+import org.jebol.adapter.host.WakeablePause;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.FileSystemPort;
@@ -79,6 +81,8 @@ final class SuiteHost {
                 .withProcesses(new JavaProcess())
                 .withImages(new JavaImage())
                 .withNetwork(new JavaSocket())
+                .withSecureTransport(new JavaSecureTransport())
+                .withPause(new WakeablePause())
                 .withCertificateAuthority(new JavaCertificateAuthority());
         Interpreter interpreter = Interpreter.createOn(ports, output, bounds);
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);

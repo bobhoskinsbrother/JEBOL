@@ -54,6 +54,8 @@ public enum EvaluationFailure {
             "a port asked to open when it was open already"),
     NO_CONNECT(ErrorCategory.ACCESS, "no-connect",
             "a connection that could not be made or that broke"),
+    NOT_CONNECTED(ErrorCategory.ACCESS, "not-connected",
+            "a connection asked to carry something before it had connected"),
     ALREADY_USED(ErrorCategory.SCRIPT, "already-used",
             "a name that something else in the same catalogue already holds"),
     BAD_MEDIA(ErrorCategory.ACCESS, "bad-media",

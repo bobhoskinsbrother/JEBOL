@@ -417,6 +417,10 @@ entity Interpreter {
     -- of certificates on its own never lets an unchecked server through.
     certificate_authority: CertificateAuthority
 
+    -- Whose TLS runs a secure connection's handshake. Absent on a host that
+    -- supplies none, which refuses every secure connection.
+    secure_transport: SecureTransport?
+
     -- Where a script's HTTP goes on a host that fetches for it. Absent on
     -- a host that leaves HTTP to Rebol's own protocol, which is every JVM
     -- host until one says otherwise.
@@ -1490,7 +1494,7 @@ rule ABrowserWithTheWebServiceAnswersHttpItself {
 -- for another host and one from an authority nobody trusts all read as
 -- though nothing were wrong. A connection that anyone between the two ends
 -- can read and rewrite is what that buys, and on a phone, where the app's
--- traffic is JEBOL's own TLS rather than a browser's, that is every
+-- traffic is the interpreter's rather than a browser's, that is every
 -- connection the app makes. This is the one place JEBOL deliberately
 -- answers differently from the C.
 --
@@ -1500,6 +1504,41 @@ rule ABrowserWithTheWebServiceAnswersHttpItself {
 -- company issues. Whether the certificate names the server the script
 -- asked for is the domain's, because the answer is the same on every host
 -- and a host that got it wrong would be wrong silently.
+--
+-- The handshake itself is the host's too. Each platform has a TLS of its
+-- own -- the JVM's, Android's, Apple's -- which its other programs use, and
+-- they do not agree on which key exchanges, versions and signatures they
+-- will take. An app on a phone should treat a server as that phone's other
+-- apps do, so the interpreter carries no handshake of its own: what a
+-- script sees is R3's tls scheme, and the bytes underneath are the host's.
+
+-- The host's TLS. It is handed the bytes a connection carries and hands back
+-- what to send, what arrived for the script, and whether the handshake is
+-- done or has ended. It asks the interpreter whether to trust the server, so
+-- both owners still decide. A host that supplied none refuses every secure
+-- connection, as a host that supplied no network refuses every connection;
+-- a browser supplies none, because fetch does its own TLS.
+entity SecureTransport {
+    starts_a_client: SecureSession
+    starts_a_server: SecureSession
+}
+
+entity SecureSession {
+    handshake_done: Boolean
+    ended: Boolean
+}
+
+-- What a script opens is R3's tls scheme: the same port, the same fields a
+-- protocol reads (`port/extra/tcp-port`, `port/extra/tls-port`), the same
+-- events to its awake handler, and the same upgrade of a connection already
+-- open, which SMTP's STARTTLS and POP3's STLS make. Only the bytes under it
+-- are the host's.
+rule TheTlsSchemeIsRsAndTheHandshakeTheHosts {
+    when: script_opens_a_secure_connection(run, host)
+    requires: run.interpreter.secure_transport != null
+    ensures: the_handshake_is_run_by(run.interpreter.secure_transport)
+    ensures: the_port_the_script_holds_is_rs_tls_port(run)
+}
 
 -- Why a server is not trusted. The script sees which one, so an operator
 -- can tell a clock that is wrong from a server that is.
@@ -1546,18 +1585,32 @@ rule ASecureConnectionAsksForTheService {
     ensures: script_asks_for(run, certificates)
 }
 
--- Two owners decide trust. The chain is judged in the order the server sent
--- it, first certificate first. Each certificate must be issued by the one after
--- it, or the chain is broken before any authority is asked about it. Whether
--- the chain leads to an authority worth trusting is the host's, because the
--- list of authorities is the host's; whether the certificate names the server
--- the script asked for is the domain's.
+-- Two owners decide trust. Whether the chain leads to an authority worth
+-- trusting is the host's, because the list of authorities is the host's;
+-- whether the certificate names the server the script asked for is the
+-- domain's.
 --
--- The chain ends at the first certificate carrying the name and key of a
+-- What a server sends is a bag with its leaf on top. The first certificate
+-- is the leaf, because the handshake's signature is checked against it, and
+-- one that is itself an authority is broken_chain. The rest are only
+-- candidates: a path is built from the leaf through whichever of them lead
+-- to a root the host trusts, so a chain sent out of order, with the leaf
+-- twice, with a certificate that belongs to nobody, or with an expired and a
+-- valid copy of one intermediate reads as a browser reads it. A certificate
+-- the path does not use is never read for anything, so one that cannot be
+-- parsed costs nothing; a leaf that cannot be parsed is broken_chain.
+--
+-- The path ends at the first certificate carrying the name and key of a
 -- root the host trusts, whatever follows it and whoever signed that copy.
 -- Servers still send an old copy of a trusted root signed by a root since
 -- retired, and a browser stops at the root it trusts; judging past it would
 -- blame the retired root for a certificate that is, say, merely expired.
+--
+-- A path holds at most five authorities between the leaf and the root, the
+-- JVM's own default. An intermediate the server left out is not fetched
+-- from the address the leaf names, so that chain is unknown_authority: a
+-- fetch would be a network call per handshake, and neither the JVM's TLS nor
+-- Android's makes it.
 --
 -- A host that supplied no authority has one that trusts nothing, so every
 -- chain is unknown_authority.
@@ -1598,6 +1651,27 @@ rule ASuppliedAuthorityIsTrusted {
     requires: the_command_lines_host_is_running(run)
     requires: the_supplied_authorities_vouch_for(chain)
     ensures: run.interpreter.certificate_authority.judge(chain).trusted
+}
+
+-- When no path is trusted, the reason is the one a person would act on, and
+-- OpenSSL's answer for the same chain. Dates come first: a leaf that is past
+-- its end is expired, and one not yet begun is not_yet_valid, whether or not
+-- any authority vouches for it, because a certificate that has run out is
+-- what an operator has to replace. Otherwise, if a path to a trusted root can
+-- be built at a moment inside the leaf's own validity, a certificate on that
+-- path is out of date now, and the first such one gives the reason.
+-- Otherwise no authority the host trusts vouches for it, and the reason is
+-- unknown_authority.
+rule TheReasonIsTheOneToActOn {
+    when: server_sends_its_certificates(run, host, chain)
+    requires: chain.count > 0
+    requires: not run.interpreter.certificate_authority.judge(chain).trusted
+    let mistrust = run.interpreter.certificate_authority.judge(chain).mistrust
+    ensures: if the_leaf_has_ended(chain): mistrust = expired
+    ensures: if the_leaf_has_not_begun(chain): mistrust = not_yet_valid
+    ensures: if the_leaf_is_in_date(chain)
+        and a_path_is_trusted_inside_the_leafs_validity(chain):
+        mistrust in {expired, not_yet_valid}
 }
 
 rule NoCertificateIsNoTrust {
@@ -1651,25 +1725,74 @@ rule TheNamesCoverTheHost {
 -- key its first certificate is for. Without that check the chain proves
 -- nothing, because a chain is public: anyone can send a real server's
 -- certificates. A real 3.22.5 checks the TLS 1.3 signature only for one RSA
--- scheme and logs a failure instead of stopping, and its TLS 1.2 elliptic
--- curve check never records its own answer, so every such server fails.
+-- scheme and logs a failure instead of stopping, its TLS 1.2 elliptic curve
+-- check never records its own answer, so every such server fails, and it
+-- reads an Ed25519 certificate without checking its signature at all.
 --
--- Every scheme the client can check is checked, and a signature that does
--- not verify ends the handshake. A scheme it cannot check ends it too --
--- one it never offered, or Ed25519, which it offers and has no native to
--- verify -- because a signature nobody checked proves nothing.
+-- The host's TLS checks every signature scheme it offers, Ed25519 among
+-- them, and offers none it cannot check. A signature that does not verify
+-- ends the handshake, because a signature nobody checked proves nothing.
 rule TheServerProvesItHoldsTheKey {
     when: server_signs_the_handshake(run, scheme, signature)
-    ensures: if not scheme in the_schemes_the_client_can_check(run)
-        or not signature_verifies(run, scheme, signature):
+    ensures: scheme in the_schemes_the_hosts_tls_offers(run)
+    ensures: if not signature_verifies(run, scheme, signature):
         CallFails(error: protocol, about: signature)
-    ensures: if not scheme in the_schemes_the_client_can_check(run)
-        or not signature_verifies(run, scheme, signature):
+    ensures: if not signature_verifies(run, scheme, signature):
         no_request_was_written(run)
 }
 
+-- Which key exchanges, versions and ciphers a handshake may use is the
+-- host's TLS's own list, as its other programs have it: on the JVM that
+-- reads a server that offers only finite-field Diffie-Hellman and refuses
+-- one that offers only RSA key exchange, which a real 3.22.5 refuses both
+-- of. Whatever the host, a handshake never settles on TLS 1.0 or 1.1, RC4,
+-- triple DES or a NULL cipher; a server that offers nothing else is refused.
+rule TheHostsTlsChoosesTheKeyExchange {
+    when: server_offers(run, version, cipher)
+    requires: version in {tls_1_0, tls_1_1}
+        or cipher in {rc4, triple_des, null_cipher}
+    ensures: CallFails(error: protocol, about: handshake)
+}
+
+-- A server may ask the client for a certificate of its own. The client has
+-- none to give, and says so, and the handshake goes on; a server that
+-- insists ends it, which is the server's choice. A real 3.22.5 cannot read
+-- the request and fails every such server.
+rule AServerAskingForACertificateIsSentNone {
+    when: server_asks_for_a_client_certificate(run)
+    ensures: the_client_sends_no_certificate(run)
+}
+
+-- A host name a script writes in Unicode, `https://bücher.de/`, is the name
+-- its owner registered in ASCII, `xn--bcher-kva.de`, and only that form is
+-- known to the name service, the server and the certificate. The conversion
+-- is the host's, as the handshake is: a phone already converts names for its
+-- other apps, and a script should reach the server they reach. Every host
+-- converts by UTS #46 without transitional processing, as browsers do, so
+-- `faß.de` is `xn--fa-hia.de`, not the different domain `fass.de` that the
+-- older IDNA 2003 makes of it. The JVM has no UTS #46 of its own, so the
+-- command line's host carries one, checked against Unicode's own
+-- conformance file; a browser is never asked, since fetch converts for
+-- itself.
+--
+-- The converted name is the one looked up, the one named to the server in
+-- the handshake, the one HTTP sends as Host, and the one the certificate
+-- must cover. What the script wrote stays in the port's spec, so a script
+-- that reads `port/spec/host` back reads its own name. A name UTS #46
+-- refuses is no host at all, and opening it fails as a name nothing answers
+-- to fails. A real 3.22.5 looks the Unicode name up as written and fails at
+-- the lookup.
+rule AUnicodeHostIsReachedByItsAsciiName {
+    when: script_opens_a_connection(run, host)
+    requires: not host.is_ascii
+    let ascii = uts46_to_ascii(host)
+    ensures: if ascii != null:
+        the_name_looked_up_is(run, ascii)
+        and the_server_name_sent_is(run, ascii)
+        and the_name_the_certificate_must_cover_is(run, ascii)
+        and the_port_spec_host_is(run, host)
+    ensures: if ascii = null:
+        CallFails(error: cannot_connect)
+}
+
 open question "Revocation is not checked. A browser asks an authority whether a certificate has been withdrawn, or reads a list it was stapled, and fails open when it cannot find out; JEBOL does neither. Is a withdrawn certificate worth a network round trip per handshake, and which way should it fail?"
-
-open question "A server that sends its chain out of order is broken_chain here, and one that leaves out an intermediate authority a browser would fetch from the address the certificate names is unknown_authority. Browsers repair both. Is that repair JEBOL's to make?"
-
-open question "A host name in Unicode is compared as written. A certificate names such a host in its ASCII form, so the two never match until the url is converted first. Where should that conversion live?"

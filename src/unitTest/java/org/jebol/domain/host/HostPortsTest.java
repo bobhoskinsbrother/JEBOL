@@ -30,6 +30,7 @@ class HostPortsTest {
             HostPorts::machine,
             HostPorts::network,
             HostPorts::certificateAuthority,
+            HostPorts::secureTransport,
             HostPorts::http,
             HostPorts::clipboard,
             HostPorts::midiDevices,
@@ -37,8 +38,8 @@ class HostPortsTest {
 
     private static final List<String> EVERY_PORT_NAME = List.of(
             "files", "carriedFiles", "digests", "environment", "images", "console", "windows",
-            "screen", "pause", "processes", "machine", "network", "certificateAuthority", "http",
-            "clipboard", "midiDevices", "tasks");
+            "screen", "pause", "processes", "machine", "network", "certificateAuthority", "secureTransport",
+            "http", "clipboard", "midiDevices", "tasks");
 
     @Test
     @DisplayName("an interpreter given no ports reaches nothing through any of them")
@@ -77,8 +78,15 @@ class HostPortsTest {
         assertThatThrownBy(() -> none.machine().operatingSystem())
                 .isInstanceOfSatisfying(FilePort.Denied.class,
                         refused -> assertThat(refused.errorId()).isEqualTo("no-port"));
-        assertThatThrownBy(() -> none.network().connectTo("example.com", 80))
+        assertThatThrownBy(() -> none.network().lookUp("example.com", null))
                 .isInstanceOf(NetworkPort.Refused.class);
+        assertThatThrownBy(() -> none.network().connect("192.0.2.1", 80, null))
+                .isInstanceOf(NetworkPort.Refused.class);
+        assertThatThrownBy(() -> none.network().listen(0, null))
+                .isInstanceOf(NetworkPort.Refused.class);
+        assertThatThrownBy(() -> none.secureTransport().startClient("example.com", 443, chain -> Optional.empty()))
+                .isInstanceOfSatisfying(NetworkPort.Refused.class,
+                        refused -> assertThat(refused.errorId()).isEqualTo("no-port"));
         assertThat(none.certificateAuthority().judge(List.of()))
                 .isInstanceOfSatisfying(ChainVerdict.Mistrusted.class,
                         mistrusted -> assertThat(mistrusted.why())
@@ -116,6 +124,7 @@ class HostPortsTest {
         MachinePort machine = MachinePort.none();
         NetworkPort network = NetworkPort.none();
         CertificateAuthority authority = new ZeroTrustAuthority();
+        SecureTransport transport = SecureTransport.none();
         HttpPort http = HttpPort.none();
         ClipboardPort clipboard = ClipboardPort.none();
         MidiDevices midiDevices = new NoMidiDevices();
@@ -138,6 +147,7 @@ class HostPortsTest {
                 new Replacement("network", network, none.withNetwork(network)),
                 new Replacement("certificateAuthority", authority,
                         none.withCertificateAuthority(authority)),
+                new Replacement("secureTransport", transport, none.withSecureTransport(transport)),
                 new Replacement("http", Optional.of(http), none.withHttp(http)),
                 new Replacement("clipboard", clipboard, none.withClipboard(clipboard)),
                 new Replacement("midiDevices", midiDevices, none.withMidiDevices(midiDevices)),

@@ -1,0 +1,51 @@
+java 25.0.4.1
+in order over TLSv1.2
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    same order: true
+reversed over TLSv1.2
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=test-root by CN=test-root | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=test-root by CN=test-root | CN=test-intermediate by CN=test-root
+    same order: true
+leaf twice over TLSv1.2
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    same order: true
+unrelated extra over TLSv1.2
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=stranger-root by CN=stranger-root | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=stranger-root by CN=stranger-root | CN=test-intermediate by CN=test-root
+    same order: true
+leaf not first over TLSv1.2
+    handshake: failed: (handshake_failure) Invalid ECDH ServerKeyExchange signature
+    given:    CN=test-intermediate by CN=test-root | CN=localhost by CN=test-intermediate
+    received: CN=test-intermediate by CN=test-root | CN=localhost by CN=test-intermediate
+    same order: true
+in order over TLSv1.3
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    same order: true
+reversed over TLSv1.3
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=test-root by CN=test-root | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=test-root by CN=test-root | CN=test-intermediate by CN=test-root
+    same order: true
+leaf twice over TLSv1.3
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=localhost by CN=test-intermediate | CN=test-intermediate by CN=test-root
+    same order: true
+unrelated extra over TLSv1.3
+    handshake: completed
+    given:    CN=localhost by CN=test-intermediate | CN=stranger-root by CN=stranger-root | CN=test-intermediate by CN=test-root
+    received: CN=localhost by CN=test-intermediate | CN=stranger-root by CN=stranger-root | CN=test-intermediate by CN=test-root
+    same order: true
+leaf not first over TLSv1.3
+    handshake: failed: (handshake_failure) Invalid CertificateVerify signature
+    given:    CN=test-intermediate by CN=test-root | CN=localhost by CN=test-intermediate
+    received: CN=test-intermediate by CN=test-root | CN=localhost by CN=test-intermediate
+    same order: true

@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaHost;
+import org.jebol.adapter.host.JavaSecureTransport;
+import org.jebol.adapter.host.WakeablePause;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.OutputPort;
 
@@ -28,6 +30,6 @@ public final class AnInterpreter {
     }
 
     public static HostPorts standardPorts() {
-        return THE_JVM_HOST.ports();
+        return THE_JVM_HOST.ports().withSecureTransport(new JavaSecureTransport()).withPause(new WakeablePause());
     }
 }

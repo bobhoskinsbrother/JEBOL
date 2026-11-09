@@ -3680,15 +3680,49 @@ rule ASpecificationWhoseSchemeNobodyServesNamesTheScheme {
 -- on `connect` and `close`, `http-awake` on `read`, `wrote`, `connect` and
 -- `close`, and a spelling that is nearly right is a branch that never fires.
 --
--- Four of the connection's own. A protocol adds more of its own making for the
--- ports above it -- HTTP's awake answers `ready`, `done`, `custom` and `error`
--- as well -- and those are put on the queue by the protocol rather than by
--- anything here.
+-- Seven of the connection's own. A protocol adds more of its own making for
+-- the ports above it -- HTTP's awake answers `ready`, `done`, `custom` and
+-- `error` as well -- and those are put on the queue by the protocol rather than
+-- by anything here.
 enum WhatHappenedToAConnection {
-    connect             -- the far end accepted, so a request may be sent
+    lookup              -- the host's name was found, so the port may connect
+    | connect           -- the far end accepted, so a request may be sent
+    | accept            -- a listening port was reached by a client
     | wrote             -- what was sent has gone
     | read              -- bytes came back, and are in the port's DATA
     | close             -- the far end finished
+    | error             -- the lookup or the connection failed
+}
+
+-- A connection is asynchronous, as the C's is: every socket is put in
+-- non-blocking mode (`Nonblocking_Mode` in dev-net.c), and each action starts
+-- something and returns before it is done. What it started reports back as an
+-- event, which the script sees inside WAIT. The host does the waiting on
+-- threads of its own; the interpreter takes each event on its own thread.
+--
+-- So a script follows the C's steps, which Rebol's own protocols are written
+-- for: OPEN on a port naming a host by name only looks the name up, and the
+-- lookup event is the script's cue to OPEN again, which connects. A host
+-- written as an address skips the lookup. A port naming no host listens on its
+-- port number, and each client that reaches it is an accept event; FIRST on
+-- the listening port takes that client as a port of its own. READ and WRITE
+-- before the connect event raise not-connected, as the C's `RSM_CONNECT` check
+-- does, rather than waiting for a connection the script has not finished
+-- asking for.
+rule AConnectionFollowsTheCsSteps {
+    when: EvaluateCall(action, a_tcp_port)
+    ensures: if action = open and names_a_host_by_name(a_tcp_port):
+        the_host_looks_the_name_up_then_queues(lookup)
+    ensures: if action = open and the_name_was_looked_up(a_tcp_port):
+        the_host_connects_then_queues(connect)
+    ensures: if action = open and names_no_host(a_tcp_port):
+        the_host_listens_and_queues_each(accept)
+    ensures: if action in {read, write} and not connected(a_tcp_port):
+        CallFails(error: not_connected)
+    ensures: if action = read and connected(a_tcp_port):
+        the_host_reads_once_then_queues(read)
+    ensures: if action = write and connected(a_tcp_port):
+        the_host_writes_then_queues(wrote)
 }
 
 -- Everything that happens goes on one queue, and that queue is a port.
@@ -4099,7 +4133,16 @@ rule AnActorThatIsNeitherIsAnInvalidActor {
 
 open question "BIND with a bound word as its target walks up from that word's context; BIND with a block does not. So `bind 'outer 'local` binds OUTER and `bind [outer] 'local` leaves it alone, which is one native disagreeing with itself. The block form matches `Bind_Block` and the C has no parent chain to walk, so the word form is the one to change -- but it is the older of the two and something may be relying on it. It wants measuring against a real 3.22.5 on a word target before either is moved."
 
-open question "`wait [connection]` with no timeout in the block answers none at once, where the C waits for ever. Nothing here can arrive during that wait -- a connection is read on the thread that asked for it, so an empty queue cannot fill while WAIT spins -- which makes answering none the honest end of a wait that could never finish. Whether that is right depends on whether a connection will ever be read on a thread of its own, and until it is, waiting for ever would be a hang rather than a wait."
+-- With no length among what it waits on, a WAIT on a port waits as the C
+-- does, until an awake function says to stop. A connection is read on a thread
+-- of the host's, so the queue can fill while the wait goes on; the run's own
+-- deadline is what ends a wait nothing will ever wake.
+rule WaitingOnAPortWithNoLengthWaitsUntilWoken {
+    when: EvaluateCall(wait, waited_on)
+    requires: names_a_port(waited_on)
+    requires: not there_is_a_length_among(waited_on)
+    ensures: CallResult(value: the_first_port_an_awake_function_woke())
+}
 
 open question "Where home is does not come from the filesystem a script was given. `system/options/home` is what the host's machine says (ScriptSeesHostMachine in spec/embed.allium), so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
 

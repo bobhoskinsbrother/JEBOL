@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.actions;
 
+import org.jebol.domain.eval.ports.TcpPort;
+
 import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.QueriedFields;
@@ -87,6 +89,8 @@ public class QueryAction extends PortAction {
                         new ConsoleMeasurements().answer(field, evaluator);
                 case FileValue file when !(field instanceof NoneValue) ->
                         askFile(file.text(), field, evaluator);
+                case PortValue tcp when TcpPort.isTcp(tcp) && !(field instanceof NoneValue) ->
+                        ports.tcpPort().query(tcp, field);
                 case PortValue port -> field instanceof NoneValue
                         ? portFieldNames(port, evaluator)
                         : askNativelyServedPort(port, field, evaluator);
