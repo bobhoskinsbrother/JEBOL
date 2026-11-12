@@ -22,15 +22,21 @@ class ErrorArgumentsAnswerAsR3DoesTest {
 
     private static final String R3_ANSWERS = "/org/jebol/error-arguments-as-r3-answers.tsv";
 
-    private static final int EXPECTED_CASES = 869;
+    private static final int EXPECTED_CASES = 1175;
 
     private static final String PROBE = """
             e: try [%s]
             either error? :e [
+                molded: func [field /local m] [
+                    m: try [mold/flat get/any in e field]
+                    either error? m [
+                        either all [m/id = 'expect-arg m/arg3 = end!] ["#(end)"] ["<unmoldable>"]
+                    ] [m]
+                ]
                 print e/id
-                print any [attempt [mold/flat get/any in e 'arg1] "<unmoldable>"]
-                print any [attempt [mold/flat get/any in e 'arg2] "<unmoldable>"]
-                print any [attempt [mold/flat get/any in e 'arg3] "<unmoldable>"]
+                print molded 'arg1
+                print molded 'arg2
+                print molded 'arg3
             ] [
                 print "no-error"
                 print ""

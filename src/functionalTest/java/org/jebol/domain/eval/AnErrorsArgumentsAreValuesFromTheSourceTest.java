@@ -421,18 +421,62 @@ class AnErrorsArgumentsAreValuesFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("set and copy with nothing after are parse-variable, naming the keyword where R3 holds #(end)")
-        void setWithNothingAfter() {
-            assertThat(raised("parse {a} [set]")).isEqualTo("[parse-variable #(word!) #(none!) #(none!)]");
-            assertThat(arguments("parse {a} [copy]")).isEqualTo("[copy _ _]");
-        }
-
-        @Test
         @DisplayName("change matches first and only then wants a replacement")
         void changeMatchesFirst() {
             assertThat(answerTo("parse {a} [change {b}]")).isEqualTo("#(false)");
-            assertThat(raised("parse {a} [change {a}]")).isEqualTo("[parse-end #(word!) #(none!) #(none!)]");
-            assertThat(raised("parse [a] [change 'a]")).isEqualTo("[parse-end #(word!) #(none!) #(none!)]");
+            assertThat(answerTo("parse {a} [change]")).isEqualTo("#(false)");
+            assertThat(carriesEndMarker("parse {a} [change {a}]")).isEqualTo("[parse-end #(true)]");
+        }
+
+        @Test
+        @DisplayName("a repeat count with no rule after it names the last count")
+        void aCountNamesTheLastCount() {
+            assertThat(arguments("parse {a} [1]")).isEqualTo("[1 _ _]");
+            assertThat(arguments("parse [a] [1 2]")).isEqualTo("[2 _ _]");
+            assertThat(arguments("parse {a} [x: 3 4]")).isEqualTo("[4 _ _]");
+        }
+
+        @Test
+        @DisplayName("if wants a paren, and names whatever stands there instead")
+        void ifWantsAParen() {
+            assertThat(raised("parse {a} [if {a}]")).isEqualTo("[parse-rule #(string!) #(none!) #(none!)]");
+            assertThat(arguments("parse [a] [if x]")).isEqualTo("[x _ _]");
+            assertThat(answerTo("parse {a} [if (true) skip]")).isEqualTo("#(true)");
+            assertThat(answerTo("parse {a} [if (false) skip]")).isEqualTo("#(false)");
+        }
+
+        @Test
+        @DisplayName("into over text still wants a block, naming itself")
+        void intoOverTextWantsABlock() {
+            assertThat(arguments("parse {a} [into {a}]")).isEqualTo("[into _ _]");
+            assertThat(answerTo("parse {a} [into [skip]]")).isEqualTo("#(false)");
+        }
+
+        @Test
+        @DisplayName("insert and change refuse a rule word for their value, and only with nothing after it")
+        void insertAndChangeRefuseARuleWord() {
+            assertThat(arguments("parse [a] [insert skip]")).isEqualTo("[skip _ _]");
+            assertThat(arguments("parse [a] [change skip skip]")).isEqualTo("[skip _ _]");
+            assertThat(carriesEndMarker("parse [a] [insert only]")).isEqualTo("[parse-end #(true)]");
+            assertThat(carriesEndMarker("parse {a} [change skip only]")).isEqualTo("[parse-end #(true)]");
+        }
+
+        @Test
+        @DisplayName("insert puts in what a word holds, without calling it, and a rule word as itself")
+        void insertPutsInWhatAWordHolds() {
+            assertThat(answerTo("f: func [] [7] b: [a] parse b [insert f to end] function? first b"))
+                    .isEqualTo("#(true)");
+            assertThat(textOf("f: func [] [7] s: copy {a} parse s [insert f to end] s"))
+                    .isEqualTo("make function! [[][7]]a");
+            assertThat(answerTo("b: [a] parse b [insert only skip to end] b")).isEqualTo("[skip a]");
+            assertThat(raised("parse {a} [insert x]")).isEqualTo("[no-value #(word!) #(none!) #(none!)]");
+        }
+
+        @Test
+        @DisplayName("keep pick with nothing after is parse-end, before any want of a collect")
+        void keepPickWithNothingAfter() {
+            assertThat(arguments("parse {a} [keep pick]")).isEqualTo("[keep _ _]");
+            assertThat(arguments("parse [a] [collect [keep pick]]")).isEqualTo("[keep _ _]");
         }
 
         @Test
@@ -441,6 +485,170 @@ class AnErrorsArgumentsAreValuesFromTheSourceTest {
             assertThat(raised("parse {a} [to none]")).isEqualTo("[parse-rule #(none!) #(none!) #(none!)]");
             assertThat(raised("parse {a} [thru zork]")).isEqualTo("[parse-rule #(unset!) #(none!) #(none!)]");
             assertThat(answerTo("parse [a] [to none]")).isEqualTo("#(false)");
+        }
+    }
+
+    private static final String HOLDING = "p: try [parse {a} [set]] ";
+
+    private static String textOf(String source) {
+        String quoted = answerTo(source);
+        return quoted.substring(1, quoted.length() - 1);
+    }
+
+    private static String carriesEndMarker(String source) {
+        return answerTo("e: try [" + source + "] r: try [type? get/any in e 'arg1] "
+                + "reduce [e/id all [error? r r/id = 'expect-arg r/arg3 = end!]]");
+    }
+
+    @Nested
+    @DisplayName("the end marker R3 leaves in a parse error is a value a script can take hold of")
+    class TheEndMarker {
+
+        @Test
+        @DisplayName("set, copy, if, insert and change with nothing to work on carry it")
+        void theParseErrorsCarryIt() {
+            assertThat(carriesEndMarker("parse {a} [set]")).isEqualTo("[parse-variable #(true)]");
+            assertThat(carriesEndMarker("parse [a] [copy]")).isEqualTo("[parse-variable #(true)]");
+            assertThat(carriesEndMarker("parse {a} [if]")).isEqualTo("[parse-end #(true)]");
+            assertThat(carriesEndMarker("parse [a] [insert]")).isEqualTo("[parse-end #(true)]");
+            assertThat(carriesEndMarker("parse [a] [change 'a]")).isEqualTo("[parse-end #(true)]");
+            assertThat(carriesEndMarker("parse {a} [x: change x]")).isEqualTo("[parse-end #(true)]");
+            assertThat(carriesEndMarker("parse {a} [collect set]")).isEqualTo("[parse-variable #(true)]");
+            assertThat(carriesEndMarker("parse {a} [collect into]")).isEqualTo("[parse-variable #(true)]");
+        }
+
+        @Test
+        @DisplayName("but the keywords that check before stepping on still name themselves")
+        void theOthersNameThemselves() {
+            assertThat(arguments("parse [a] [into]")).isEqualTo("[into _ _]");
+            assertThat(arguments("parse {a} [keep]")).isEqualTo("[keep _ _]");
+            assertThat(arguments("parse {a} [thru]")).isEqualTo("[thru _ _]");
+            assertThat(arguments("parse {a} [quote]")).isEqualTo("[quote _ _]");
+            assertThat(arguments("parse {a} [collect]")).isEqualTo("[collect _ _]");
+        }
+
+        @Test
+        @DisplayName("its datatype is end!, which is outside any-type!, so every function refuses it")
+        void everyFunctionRefusesIt() {
+            assertThat(arguments(HOLDING + "type? p/arg1")).isEqualTo("[type? value #(end!)]");
+            assertThat(arguments(HOLDING + "f: func [x [any-type!]] [x] f p/arg1")).isEqualTo("[f x #(end!)]");
+            assertThat(arguments(HOLDING + "set/any 'v p/arg1")).isEqualTo("[set value #(end!)]");
+            assertThat(arguments(HOLDING + "1 + p/arg1")).isEqualTo("[+ value2 #(end!)]");
+            assertThat(answerTo("find any-type! end!")).isEqualTo("#(false)");
+        }
+
+        @Test
+        @DisplayName("with it on an operator's left, the action cannot use it")
+        void anOperatorCannotUseIt() {
+            assertThat(arguments(HOLDING + "p/arg1 + 1")).isEqualTo("[add: #(end!) _]");
+        }
+
+        @Test
+        @DisplayName("a set-word, a set-path and an object's spec refuse to be given it")
+        void assigningItNeedsAValue() {
+            assertThat(arguments(HOLDING + "v: p/arg1")).isEqualTo("[v: _ _]");
+            assertThat(arguments(HOLDING + "p/arg1: p/arg1")).isEqualTo("[p/arg1: _ _]");
+            assertThat(arguments(HOLDING + "make object! [z: p/arg1]")).isEqualTo("[z: _ _]");
+        }
+
+        @Test
+        @DisplayName("get through a path to it, or to an unset field, has no value, naming the path")
+        void getThroughAPathHasNoValue() {
+            assertThat(raised(HOLDING + "get 'p/arg1")).isEqualTo("[no-value #(path!) #(none!) #(none!)]");
+            assertThat(arguments("o: make object! [a: 1] set/any in o 'a () get 'o/a")).isEqualTo("[o/a _ _]");
+            assertThat(answerTo("o: make object! [a: 1] set/any in o 'a () type? get/any 'o/a"))
+                    .isEqualTo("#(unset!)");
+        }
+
+        @Test
+        @DisplayName("make and to refuse to build one, and the construction syntax does not load")
+        void nothingBuildsOne() {
+            assertThat(arguments("make end! none")).isEqualTo("[#(end!) _ _]");
+            assertThat(arguments("to end! 1")).isEqualTo("[#(end!) 1 _]");
+            assertThat(arguments("load {#(end)}")).isEqualTo("[[end] _ _]");
+        }
+
+        @Test
+        @DisplayName("mold writes it in the error as #(end), and the message names it")
+        void moldWritesItInTheError() {
+            assertThat(textOf("p: try [parse [a] [set]] p/where: none mold/flat p")).isEqualTo(
+                    "make error! [code: 356 type: 'Script id: 'parse-variable arg1: #(end) "
+                            + "arg2: _ arg3: _ near: [parse [a] [set]] where: _]");
+            assertThat(messageOf("parse {a} [set]"))
+                    .isEqualTo("** Script error: PARSE - expected a variable, not: #(end)");
+        }
+
+        @Test
+        @DisplayName("a block holding one molds only as far as it, but counts and walks every item")
+        void aBlockMoldsOnlyAsFarAsIt() {
+            assertThat(textOf(HOLDING + "mold compose [a (p/arg1) b]")).isEqualTo("[a]");
+            assertThat(textOf(HOLDING + "mold compose/deep [x [a (p/arg1) b] y]")).isEqualTo("[x [a] y]");
+            assertThat(textOf(HOLDING + "mold/only compose [a (p/arg1) b]")).isEqualTo("a");
+            assertThat(answerTo(HOLDING + "length? compose [a (p/arg1) b]")).isEqualTo("3");
+            assertThat(answerTo(HOLDING + "n: 0 foreach x compose [a (p/arg1) b] [n: n + 1] n")).isEqualTo("3");
+            assertThat(answerTo(HOLDING + "index? find compose [a (p/arg1) b] 'b")).isEqualTo("3");
+            assertThat(textOf(HOLDING + "mold next next compose [a (p/arg1) b]")).isEqualTo("[b]");
+            assertThat(textOf(HOLDING + "mold values-of p")).isEqualTo("[356 Script parse-variable]");
+            assertThat(answerTo(HOLDING + "length? values-of p")).isEqualTo("8");
+        }
+
+        @Test
+        @DisplayName("but form writes it as nothing and carries on")
+        void formCarriesOn() {
+            assertThat(textOf(HOLDING + "form compose [a (p/arg1) b]")).isEqualTo("a  b");
+            assertThat(textOf(HOLDING + "to string! compose [1 (p/arg1) 2]")).isEqualTo("12");
+        }
+
+        @Test
+        @DisplayName("evaluating a block stops at it: reduce keeps what came before, and do is missing-arg")
+        void evaluationStopsAtIt() {
+            assertThat(answerTo(HOLDING + "length? reduce compose [1 (p/arg1) 2]")).isEqualTo("1");
+            assertThat(textOf(HOLDING + "reform compose [1 (p/arg1) 2]")).isEqualTo("1");
+            assertThat(raised(HOLDING + "do compose [1 (p/arg1) 2]"))
+                    .isEqualTo("[missing-arg #(none!) #(none!) #(none!)]");
+            assertThat(raised(HOLDING + "if true compose [1 (p/arg1)]"))
+                    .isEqualTo("[missing-arg #(none!) #(none!) #(none!)]");
+            assertThat(arguments(HOLDING + "do compose [type? (p/arg1)]")).isEqualTo("[type? value _]");
+            assertThat(arguments(HOLDING + "do compose [x: (p/arg1)]")).isEqualTo("[x: _ _]");
+        }
+
+        @Test
+        @DisplayName("try answers none, all and any hand back their block, and case answers none")
+        void theControlNativesAtIt() {
+            assertThat(answerTo(HOLDING + "try compose [1 (p/arg1)]")).isEqualTo("_");
+            assertThat(answerTo(HOLDING + "length? all compose [1 (p/arg1) 2]")).isEqualTo("3");
+            assertThat(answerTo(HOLDING + "all compose [false (p/arg1) 2]")).isEqualTo("_");
+            assertThat(answerTo(HOLDING + "length? any compose [false (p/arg1) 2]")).isEqualTo("3");
+            assertThat(answerTo(HOLDING + "case compose [false [1] (p/arg1) true [2]]")).isEqualTo("_");
+            assertThat(answerTo(HOLDING + "case compose [true [1] (p/arg1)]")).isEqualTo("1");
+        }
+
+        @Test
+        @DisplayName("do/next over it answers unset and steps to the tail")
+        void doNextStepsToTheTail() {
+            assertThat(answerTo(HOLDING + "unset? do/next next compose [1 (p/arg1) 2] 'r")).isEqualTo("#(true)");
+            assertThat(answerTo(HOLDING + "do/next next compose [1 (p/arg1) 2] 'r index? r")).isEqualTo("4");
+        }
+
+        @Test
+        @DisplayName("appending fields to an object stops at it, leaving that field unset")
+        void appendingFieldsStopsAtIt() {
+            assertThat(answerTo(HOLDING
+                    + "o: append make object! [x: 1] compose [y: (p/arg1) z: 3] words-of o"))
+                    .isEqualTo("[x y]");
+            assertThat(answerTo(HOLDING
+                    + "o: append make object! [x: 1] compose [y: (p/arg1)] unset? get/any in o 'y"))
+                    .isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("an error's body is its words and values, as to block! gives")
+        void anErrorsBody() {
+            assertThat(textOf("z: try [1 / 0] z/where: none mold/flat body-of z")).isEqualTo(
+                    "[code: 400 type: Math id: zero-divide arg1: _ arg2: _ arg3: _ near: [/ 0] where: _]");
+            assertThat(answerTo("z: try [1 / 0] equal? body-of z to block! z")).isEqualTo("#(true)");
+            assertThat(textOf(HOLDING + "mold/flat body-of p"))
+                    .isEqualTo("[code: 356 type: Script id: parse-variable arg1:]");
         }
     }
 

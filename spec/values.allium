@@ -13,6 +13,10 @@
 -- specify beyond the name and the refusal. Four of them: end!, frame!,
 -- rebcode! and library!. The refusals are rules in natives.allium.
 --
+-- end! is the one of the four a script can still hold: no script builds one,
+-- but the marker that ends a block is one, and a parse error that runs off its
+-- rule block carries it in arg1. EndMarker below says what it does then.
+--
 -- utype! was the fifth and moved out of that group when it turned out a real
 -- R3 does build one: `make utype! [[spec] [body]]` answers a value that
 -- moulds, compares and refuses every action, and UtypeValue below says what
@@ -309,7 +313,7 @@ entity ContextSlot {
 -- The value itself. Every REBOL datatype is one variant of this sum type.
 
 entity Value {
-    kind: UnsetValue | NoneValue | LogicValue | IntegerValue | DecimalValue
+    kind: UnsetValue | EndMarker | NoneValue | LogicValue | IntegerValue | DecimalValue
         | MoneyValue | CharValue | PairValue | TupleValue | TimeValue | DateValue
         | AnyStringValue | BinaryValue | AnyBlockValue | AnyWordValue
         | DatatypeValue | NativeValue | FunctionValue | OpValue | ObjectValue
@@ -390,6 +394,16 @@ variant UnsetValue : Value {
     -- The absence of a value. Distinct from NONE, which is a value that
     -- means "nothing". UNSET is what an unset word holds and what a
     -- function returns when it returns nothing.
+}
+
+variant EndMarker : Value {
+    -- The single value of end!, the marker that ends a block, which a parse
+    -- error that runs off its rule block carries in arg1. No script builds
+    -- one. It is outside any-type!, so every function refuses it as an
+    -- argument, and every assignment refuses it as need-value. A block that
+    -- holds one counts it and walks it, but molds only as far as it, and
+    -- evaluating the block ends there: reduce keeps what came before and do
+    -- is missing-arg. Finding 245 has the whole list.
 }
 
 variant NoneValue : Value {

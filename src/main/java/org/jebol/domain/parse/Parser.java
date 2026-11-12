@@ -144,8 +144,8 @@ public final class Parser implements ParseWalk {
             case DOES_NOT_MATCH -> NO_MATCH;
             case RAISES_PARSE_END -> throw Raised.of(EvaluationFailure.PARSE_END,
                     WordValue.of(keyword.spelling()));
-            case RAISES_PARSE_VARIABLE -> throw Raised.of(EvaluationFailure.PARSE_VARIABLE,
-                    WordValue.of(keyword.spelling()));
+            case RAISES_PARSE_END_AT_END -> throw Raised.of(EvaluationFailure.PARSE_END, EndValue.end());
+            case RAISES_PARSE_VARIABLE -> throw Raised.of(EvaluationFailure.PARSE_VARIABLE, EndValue.end());
         };
     }
 
@@ -594,7 +594,7 @@ public final class Parser implements ParseWalk {
             countItems = 2;
         }
         if (at + countItems >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at + countItems - 1));
         }
 
         int matched = 0;
@@ -617,15 +617,8 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value chooseValueToInsert(Value written) {
-        if (written instanceof ParenValue paren) {
-            return evaluator.evaluateOrRaise(paren.asBlock(), context);
-        }
-        if (written instanceof AnyWordValue word) {
-            return switch (word) {
-                case LitWordValue quoted -> quoted.asWord();
-                case WordValue plain -> evaluator.evaluateOrRaise(BlockValue.of(List.of(plain)), context);
-                default -> word;
-            };
+        if (written instanceof ParenValue || written instanceof LitWordValue || written instanceof WordValue) {
+            return replacementFor(written);
         }
         if (written instanceof PathValue path) {
             return evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
@@ -679,13 +672,6 @@ public final class Parser implements ParseWalk {
         }
         ContextSlot slot = target.contains(word.canonical()) ? target.findSlotFor(word.canonical()) : target.register(word.spelling());
         slot.setValue(value);
-    }
-
-    Value readFollowing(List<Value> rules, int at, String keyword) {
-        if (at + 1 >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
-        }
-        return rules.get(at + 1);
     }
 
     boolean matchValueOverBlock(Value rule) {
@@ -817,7 +803,7 @@ public final class Parser implements ParseWalk {
         if (replacement instanceof LitWordValue word) {
             return word.asWord();
         }
-        if (replacement instanceof WordValue word) {
+        if (replacement instanceof WordValue word && !ParseTargets.WORDS_DIALECT_RESERVES.contains(word.canonical())) {
             Context holder = word.isBound() ? word.binding() : context;
             if (!holder.contains(word.canonical()) || holder.findSlotFor(word.canonical()).value() instanceof UnsetValue) {
                 throw Raised.wordHasNoValue(word);
@@ -892,7 +878,7 @@ public final class Parser implements ParseWalk {
     private int repeatCount(List<Value> rules, int ruleAt, int least, int most, int countWidth) {
 
         if (ruleAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(ruleAt - countWidth));
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(ruleAt - 1));
         }
         int startedAt = position;
         int matched = 0;

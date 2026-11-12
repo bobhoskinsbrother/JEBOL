@@ -75,8 +75,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     }
 
     @ParameterizedTest
-    @ValueSource(classes = {EndValue.class, FrameValue.class, RebcodeValue.class,
-            LibraryValue.class})
+    @ValueSource(classes = {FrameValue.class, RebcodeValue.class, LibraryValue.class})
     @DisplayName("the class that holds the datatype offers no way to make an instance")
     void hasNoInstantiableClass(Class<?> holder) {
         assertThat(holder.getDeclaredConstructors())
@@ -92,8 +91,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     }
 
     @ParameterizedTest
-    @ValueSource(classes = {EndValue.class, FrameValue.class, RebcodeValue.class,
-            LibraryValue.class})
+    @ValueSource(classes = {FrameValue.class, RebcodeValue.class, LibraryValue.class})
     @DisplayName("and is not a value, so nothing could ever hold one")
     void hasAClassThatIsNotAValue(Class<?> holder) {
         assertThat(Value.class.isAssignableFrom(holder)).isFalse();

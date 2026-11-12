@@ -30,6 +30,9 @@ final class Into extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
+        if (!(walk.resolveWord(rules.get(at + 1)) instanceof AnyBlockValue)) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, rules.get(at));
+        }
         return ParseWalk.NO_MATCH;
     }
 }

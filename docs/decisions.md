@@ -2958,11 +2958,19 @@ host cannot reach is `read-error` or `write-error` carrying `clipboard` and the
 host's reason as a string. A host's reason, a host name, or the text an http
 server answered stays a string, as R3's own schemes carry it.
 
-**One difference stays.** `parse "a" [set]`, `[copy]` and `[change "a"]`
-carry R3's end marker `#(end)` in `arg1` (finding 243). JEBOL has no end value
-a script can hold: adding one would make a new member of the sealed `Value`
-interface that every exhaustive switch over a value would have to place, for a
-value no native accepts. These carry the keyword instead, so `e/arg1` reads
-and the message names the rule word. Rebol's suite asserts only the ids of
-these errors (`parse-test.r3`), and JEBOL's are R3's.
-`AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.
+**The end marker is carried too.** `parse "a" [set]`, `[copy]`, `[if]`,
+`[insert]`, `[change "a"]` and their kin carry R3's end marker `#(end)` in
+`arg1` (finding 243). It was first carried as the keyword, on the grounds that
+a new member of the sealed `Value` interface was a cost for a value no native
+accepts. That was wrong: the marker is not inert once a script holds it. It
+is refused as every argument, refused by every assignment, stops `mold`,
+`reduce` and every evaluation of the block it sits in, and makes `do` raise
+`missing-arg` (finding 245), so a keyword in its place changes what the
+script does next, not only what `e/arg1` prints. `EndValue` is a value of
+`end!`, outside `any-type!`, that no `make`, `to` or construction syntax
+builds; it costs one case in `Molder`, which is the only exhaustive switch
+over a value. The evaluator treats an end cell as the end of its block and
+answers there as R3's C does, including the answers that come from its data
+stack being one short (`missing-arg` from `do`, the block itself from `all`
+and `any`, `none` from `try` and `case`), because those are what a script on
+3.22.5 sees. `AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.

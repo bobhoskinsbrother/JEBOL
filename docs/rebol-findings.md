@@ -7180,11 +7180,10 @@ unsigned as the C does. `AnErrorsArgumentsAreValuesFromTheSourceTest`.
 
 ## 243. Two parse errors carry a cell the error was not about
 
-**`#(end)`.** `parse "a" [set]`, `[copy]` and `[change "a"]` raise
-`parse-variable` and `parse-end` with arg1 the end marker of the rule block.
-`mold`, `type?` and every other native refuse it, so a script that reads
-`e/arg1` fails. JEBOL has no end value a script can hold (decision 67), and
-carries the keyword instead.
+**`#(end)`.** `parse "a" [set]`, `[copy]`, `[if]`, `[insert]`, `[change
+"a"]`, `[collect set]` and their kin raise `parse-variable` and `parse-end`
+with arg1 the end marker of the rule block. Finding 245 is what a script that
+takes hold of it then meets; JEBOL carries it too.
 
 **`item - 1`.** `To_Thru` (`u-parse.c`) refuses text input it cannot search
 for with `Trap1(RE_PARSE_RULE, item - 1)`. By then `item` has been replaced
@@ -7207,3 +7206,42 @@ is a word character the decoder then refuses: `load #{41F642}` and `load
 #{41C342}` are `invalid-chars`. Inside a string the four bytes hang
 `./r3-head` (`load #{2241FF4222}` never returns), which JEBOL does not copy:
 it reads each as `^A` there too. `AnErrorsArgumentsAreValuesFromTheSourceTest`.
+
+## 245. The end marker is a value a script can hold, and every block walk stops at it
+
+R3 terminates a block with a cell of type `end!` (type 0, `ET_END`), and the
+parse errors of finding 243 copy that cell into arg1. From there a script can
+carry it anywhere `e/arg1`, `get/any in e 'arg1`, `values-of e`, `to block!
+e`, `compose` and `reduce` take it. `./r3-head` answers, all in
+`error-arguments-as-r3-answers.tsv`:
+
+- **No function takes it.** `any-type!` leaves out `end!`, so every native,
+  action and function refuses it as an argument with `expect-arg`, `[any-type!]`
+  and `[unset!]` specs included: `type? e/arg1` is `expect-arg type? value
+  #(end!)`. With it on an operator's left, where nothing is type-checked
+  (finding 240), the action refuses it: `cannot-use add: #(end!)`.
+- **Nothing assigns it.** A set-word, a set-path and an object spec refuse it
+  with `need-value` (`c-do.c` tests `VAL_TYPE(DS_TOP) <= REB_UNSET`, and end
+  is below unset). `get 'e/arg1` is `no-value e/arg1`, as `get` of a path to an
+  unset field is.
+- **Nothing builds it.** `make end!` and `to end!` are `bad-make-arg`, and
+  `#(end)` is `malconstruct`.
+- **Mold stops at it.** `Mold_Block` walks with `NOT_END`, so `compose [a
+  (e/arg1) b]` molds as `[a]` while `length?` says 3 and `foreach`, `find`,
+  `copy` and `at` see all three. `values-of e` molds as `[356 Script
+  parse-variable]`, `to block! e` and `body-of e` as `[code: 356 ... arg1:]`.
+  Inside the error itself, `Mold_Object` writes `arg1: #(end)`. `form` writes
+  it as nothing and goes on: `"a  b"`.
+- **Evaluation stops at it.** `Do_Next` returns `END_FLAG` on an end cell
+  without pushing a value. `Reduce_Block` keeps what came before it, so
+  `reduce`, `reform` and `rejoin` end there. `Do_Blk` and
+  `Do_Block_Value_Throw` find the stack one short and raise `missing-arg`:
+  `do`, `if`, `loop`, a function body and an object spec. `Try_Block` makes no
+  such check and answers `none`. `all` and `any` return the block they were
+  given; `case` answers `none`; `do/next` answers unset and leaves the
+  position at the tail; `assert` fails naming its block.
+- **Appending fields stops at it.** `append object [y: <end> z: 3]` adds `y`,
+  unset, and not `z`.
+
+JEBOL carries it as `EndValue` and does each of these; decision 67 says why.
+`AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.

@@ -2,50 +2,34 @@ package org.jebol.domain.parse.keyword;
 
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ParenValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 
 final class Insert extends DeclaredKeyword {
 
-    private static final String WHOLE = "only";
-
     Insert() {
-        super("insert", 0, true, WhenNothingFollowsIt.RAISES_PARSE_END);
+        super("insert", 0, true, WhenNothingFollowsIt.RAISES_PARSE_END_AT_END);
     }
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        int valueAt = at + 1;
-        boolean wholeBlock = saysToPutBlockInWhole(rules, valueAt);
-        if (wholeBlock) {
-            valueAt++;
-        }
-        Value added = walk.chooseValueToInsert(rules.get(valueAt));
-        List<Value> putting = !wholeBlock && added instanceof BlockValue spread
+        ValueToPutIn written = ValueToPutIn.readFrom(rules, at + 1);
+        Value added = walk.chooseValueToInsert(rules.get(written.slot()));
+        List<Value> putting = !written.whole() && added instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(added);
         walk.putItemsIntoBlockAt(walk.position(), putting);
         walk.moveTo(walk.position() + putting.size());
-        return valueAt + 1 - at;
+        return written.slot() + 1 - at;
     }
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        Value added = rules.get(at + 1);
-        if (added instanceof ParenValue paren) {
-            added = walk.evaluateParen(paren);
-        }
+        ValueToPutIn written = ValueToPutIn.readFrom(rules, at + 1);
+        Value added = walk.replacementFor(rules.get(written.slot()));
         int laidIn = walk.putValueIntoTextAt(walk.position(), added);
         walk.moveTo(walk.position() + laidIn);
-        return 2;
-    }
-
-    private static boolean saysToPutBlockInWhole(List<Value> rules, int valueAt) {
-        return rules.get(valueAt) instanceof WordValue modifier
-                && modifier.canonical().equals(WHOLE)
-                && valueAt + 1 < rules.size();
+        return written.slot() + 1 - at;
     }
 }

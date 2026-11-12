@@ -1194,8 +1194,10 @@ rule MakingFromAnOperatorPrototypeIsRefused {
     ensures: CallFails(error: cannot_use, about: definition)
 }
 
--- Four datatypes have no values: end!, frame!, rebcode! and library!. Every
--- way of building one is refused, and a real R3 refuses them the same way.
+-- Four datatypes have no values a script can build: end!, frame!, rebcode!
+-- and library!. Every way of building one is refused, and a real R3 refuses
+-- them the same way. end! still has one value, the end marker a parse error
+-- carries (values.allium, EndMarker), which only R3 itself ever makes.
 -- command! was the fifth until extensions existed;
 -- MakingACommandChecksItsDefinition is what it does now. MAKE and TO answer
 -- bad-make-arg naming the datatype and what was offered, whether the offer is

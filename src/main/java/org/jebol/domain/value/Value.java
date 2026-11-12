@@ -11,6 +11,7 @@ import java.util.function.ToLongFunction;
 public sealed interface Value permits
         RebolNumber,
         UnsetValue,
+        EndValue,
         NoneValue,
         LogicValue,
         IntegerValue,

@@ -320,6 +320,9 @@ public final class Evaluator {
                 }
             }
             Step step = evaluateNextOrRaise(at, systemContext());
+            if (step.metEndMarker()) {
+                break;
+            }
             results.add(step.value());
             at = at.atIndex(step.nextIndex());
         }
@@ -565,12 +568,19 @@ public final class Evaluator {
         return stopped.isEmpty() ? last : stopped.get(0);
     }
 
-    public record Step(Value value, int nextIndex) {
+    public record Step(Value value, int nextIndex, boolean metEndMarker) {
+
+        Step(Value value, int nextIndex) {
+            this(value, nextIndex, false);
+        }
     }
 
     public Step evaluateNextOrRaise(AnyBlockValue code, Context context) {
         if (code.atTail()) {
             return new Step(UnsetValue.unset(), code.index());
+        }
+        if (code.storage().at(code.index()) instanceof EndValue) {
+            return new Step(UnsetValue.unset(), code.storageLength() + 1, true);
         }
         Frame frame = new Frame(code, context, 1);
         Deque<Frame> frames = new ArrayDeque<>();
@@ -718,7 +728,9 @@ public final class Evaluator {
                     if (!frame.stopped) {
                         refuseStrandedOperator(frame);
                     }
-                    Value finished = frame.lastResult;
+                    Value finished = !frame.stopped && frame.standsOnEndMarker()
+                            ? answerAtEndMarker(frame)
+                            : frame.lastResult;
                     if (frame.functionBody && !functionsBeingRun.isEmpty()) {
                         handBackFrameTakenOverBy(functionsBeingRun.pop());
                     }
@@ -749,6 +761,16 @@ public final class Evaluator {
                 throw sayWhereItCameFrom(raised, frames);
             }
         }
+    }
+
+    private static Value answerAtEndMarker(Frame frame) {
+        if (frame.sink != null) {
+            return frame.lastResult;
+        }
+        if (frame.forgivesStrandedOperator) {
+            return NoneValue.none();
+        }
+        throw Raised.of(EvaluationFailure.MISSING_ARG);
     }
 
     private Raised sayWhereItCameFrom(Raised escaping, Deque<Frame> frames) {
@@ -1094,10 +1116,14 @@ public final class Evaluator {
         return null;
     }
 
+    private static boolean isUnsetOrEnd(Value given) {
+        return given instanceof UnsetValue || given instanceof EndValue;
+    }
+
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
             Value given = call.takeOnlyArgument();
-            if (call.slot() != null && given instanceof UnsetValue) {
+            if (call.slot() != null && isUnsetOrEnd(given)) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
                         SetWordValue.of(call.slot().spelling()));
             }
@@ -1392,7 +1418,7 @@ public final class Evaluator {
     }
 
     private void writeThroughPath(Frame frame, AnyBlockValue path, Value written) {
-        if (written instanceof UnsetValue) {
+        if (isUnsetOrEnd(written)) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
         List<Value> segments = path.remaining();
@@ -1858,7 +1884,11 @@ public final class Evaluator {
         }
 
         boolean atEnd() {
-            return position > code.storageLength();
+            return position > code.storageLength() || standsOnEndMarker();
+        }
+
+        boolean standsOnEndMarker() {
+            return position <= code.storageLength() && current() instanceof EndValue;
         }
 
         Value current() {

@@ -64,7 +64,7 @@ public class AssertNative extends DefaultNative {
         while (!at.atTail()) {
             Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);
             at = at.atIndex(step.nextIndex());
-            if (!step.value().isTruthy()) {
+            if (step.metEndMarker() || !step.value().isTruthy()) {
                 throw Raised.of(EvaluationFailure.ASSERT_FAILED,
                         BlockValue.of(conditions.remaining()));
             }

@@ -134,7 +134,7 @@ public final class Molder {
     }
 
     private static String writeHashAsConstruct(HashValue hash) {
-        String items = hash.remaining().stream()
+        String items = itemsBeforeEnd(hash.remaining()).stream()
                 .map(Molder::mold)
                 .collect(Collectors.joining(" "));
         int position = standsWithinNeverPastEndForBlockOrPath(hash);
@@ -157,7 +157,7 @@ public final class Molder {
     private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
             case AnyStringValue text -> moldText(text.head().text());
-            case AnyBlockValue block -> "[" + block.head().remaining().stream()
+            case AnyBlockValue block -> "[" + itemsBeforeEnd(block.head().remaining()).stream()
                     .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
             default -> mold(series.head());
         };
@@ -230,6 +230,7 @@ public final class Molder {
     private static String renderOne(Value value, boolean forReading) {
         return switch (value) {
             case UnsetValue ignored -> forReading ? "#(unset)" : "";
+            case EndValue ignored -> forReading ? "#(end)" : "";
             case NoneValue ignored -> forReading ? "_" : "none";
             case LogicValue logic -> forReading
                     ? (logic.truth() ? "#(true)" : "#(false)")
@@ -277,7 +278,8 @@ public final class Molder {
             case ModuleValue module -> renderObject(
                     new ObjectValue(module.context()), ModuleValue.TYPE, forReading);
             case TaskValue task -> renderObject(
-                    new ObjectValue(task.context()), TaskValue.TYPE, ALWAYS_MOLDED);            case ErrorValue error -> renderError(error, forReading);
+                    new ObjectValue(task.context()), TaskValue.TYPE, ALWAYS_MOLDED);
+            case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
             case UtypeValue ignored -> forReading
                     ? (WRITING_EVERYTHING_OUT.get() ? "#(utype!)" : "utype!")
@@ -775,7 +777,7 @@ public final class Molder {
         boolean steppedIn = false;
         boolean somethingWritten = false;
         try {
-            List<Value> items = block.remaining();
+            List<Value> items = itemsBeforeEnd(block.remaining());
             for (int at = 0; at < items.size(); at++) {
                 if (block.storage().breaksLineAt(block.index() + at)
                         && canBreakLines && (betweenBrackets || somethingWritten)) {
@@ -800,6 +802,14 @@ public final class Molder {
             out.append('\n').append(ONE_INDENT.repeat(outer));
         }
         return out.append(block.closesWith()).toString();
+    }
+
+    private static List<Value> itemsBeforeEnd(List<Value> items) {
+        int end = 0;
+        while (end < items.size() && !(items.get(end) instanceof EndValue)) {
+            end++;
+        }
+        return items.subList(0, end);
     }
 
     private static String renderBlock(AnyBlockValue block, boolean forReading) {

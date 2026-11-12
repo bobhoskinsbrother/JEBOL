@@ -204,6 +204,7 @@ public record ErrorValue(
     @Override
     public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
+            case "body" -> fieldsAsContext().orElseThrow().setWordsAndValuesOnLines();
             case "words" -> BlockValue.of(FIELDS.stream()
                     .<Value>map(WordValue::of).toList());
             case "values" -> BlockValue.of(FIELDS.stream()

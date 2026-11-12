@@ -32,6 +32,9 @@ public class CaseNative extends DefaultNative {
             while (!at.atTail()) {
                 Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
                 AnyBlockValue afterCondition = at.atIndex(condition.nextIndex());
+                if (condition.metEndMarker()) {
+                    return NoneValue.none();
+                }
                 if (!condition.value().isTruthy()) {
                     at = skipPastBranch(afterCondition);
                     continue;
@@ -40,6 +43,9 @@ public class CaseNative extends DefaultNative {
                     return LogicValue.of(true);
                 }
                 Evaluator.Step branch = evaluator.evaluateNextOrRaise(afterCondition, context);
+                if (branch.metEndMarker()) {
+                    return NoneValue.none();
+                }
                 Value taken = branch.value() instanceof AnyBlockValue block
                         ? evaluator.evaluateOrRaise(block, context)
                         : branch.value();

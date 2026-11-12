@@ -27,6 +27,9 @@ public class AllNative extends DefaultNative {
             while (!at.atTail()) {
                 Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);
                 at = at.atIndex(step.nextIndex());
+                if (step.metEndMarker()) {
+                    return arguments.getFirst();
+                }
                 if (step.value() instanceof UnsetValue) {
                     continue;
                 }

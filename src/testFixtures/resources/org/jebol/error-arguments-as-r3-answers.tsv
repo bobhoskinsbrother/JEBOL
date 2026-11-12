@@ -867,3 +867,309 @@ load #{41F542}	no-error
 for i 1 3 0 []	no-error			
 foreach [a b c] make map! [] []	no-error			
 foreach [a b c] make object! [] []	no-error			
+parse {a} [any]	no-error			
+parse [a] [any]	no-error			
+parse {a} [any {a}]	no-error			
+parse [a] [any 'a]	no-error			
+parse {a} [while]	no-error			
+parse [a] [while]	no-error			
+parse {a} [while {a}]	no-error			
+parse [a] [while 'a]	no-error			
+parse {a} [some]	no-error			
+parse [a] [some]	no-error			
+parse {a} [some {a}]	no-error			
+parse [a] [some 'a]	no-error			
+parse {a} [opt]	no-error			
+parse [a] [opt]	no-error			
+parse {a} [opt {a}]	no-error			
+parse [a] [opt 'a]	no-error			
+parse [a] [to]	parse-end	to	_	_
+parse {a} [to {a}]	no-error			
+parse [a] [to 'a]	no-error			
+parse {a} [thru]	parse-end	thru	_	_
+parse [a] [thru]	parse-end	thru	_	_
+parse {a} [thru {a}]	no-error			
+parse [a] [thru 'a]	no-error			
+parse {a} [end]	no-error			
+parse [a] [end]	no-error			
+parse {a} [end {a}]	no-error			
+parse [a] [end 'a]	no-error			
+parse {a} [skip]	no-error			
+parse [a] [skip]	no-error			
+parse {a} [skip {a}]	no-error			
+parse [a] [skip 'a]	no-error			
+parse [a] [into]	parse-end	into	_	_
+parse {a} [into {a}]	parse-rule	into	_	_
+parse [a] [into 'a]	parse-rule	into	_	_
+parse {a} [quote]	parse-end	quote	_	_
+parse [a] [quote]	parse-end	quote	_	_
+parse {a} [quote {a}]	no-error			
+parse [a] [quote 'a]	no-error			
+parse {a} [set]	parse-variable	#(end)	_	_
+parse [a] [set]	parse-variable	#(end)	_	_
+parse {a} [set {a}]	parse-variable	"a"	_	_
+parse [a] [set 'a]	parse-variable	'a	_	_
+parse {a} [copy]	parse-variable	#(end)	_	_
+parse [a] [copy]	parse-variable	#(end)	_	_
+parse {a} [copy {a}]	parse-variable	"a"	_	_
+parse [a] [copy 'a]	parse-variable	'a	_	_
+parse {a} [collect]	parse-end	collect	_	_
+parse [a] [collect]	parse-end	collect	_	_
+parse {a} [collect {a}]	no-error			
+parse [a] [collect 'a]	no-error			
+parse [a] [keep]	parse-end	keep	_	_
+parse {a} [keep {a}]	parse-no-collect	_	_	_
+parse [a] [keep 'a]	parse-no-collect	_	_	_
+parse {a} [and]	no-error			
+parse [a] [and]	no-error			
+parse {a} [and {a}]	no-error			
+parse [a] [and 'a]	no-error			
+parse {a} [ahead]	no-error			
+parse [a] [ahead]	no-error			
+parse {a} [ahead {a}]	no-error			
+parse [a] [ahead 'a]	no-error			
+parse {a} [not]	no-error			
+parse [a] [not]	no-error			
+parse {a} [not {a}]	no-error			
+parse [a] [not 'a]	no-error			
+parse {a} [reject]	no-error			
+parse [a] [reject]	no-error			
+parse {a} [reject {a}]	no-error			
+parse [a] [reject 'a]	no-error			
+parse {a} [break]	no-error			
+parse [a] [break]	no-error			
+parse {a} [break {a}]	no-error			
+parse [a] [break 'a]	no-error			
+parse {a} [accept]	no-error			
+parse [a] [accept]	no-error			
+parse {a} [accept {a}]	no-error			
+parse [a] [accept 'a]	no-error			
+parse {a} [return]	no-error			
+parse [a] [return]	no-error			
+parse {a} [return {a}]	no-error			
+parse [a] [return 'a]	no-error			
+parse {a} [then]	no-error			
+parse [a] [then]	no-error			
+parse {a} [then {a}]	no-error			
+parse [a] [then 'a]	no-error			
+parse {a} [if]	parse-end	#(end)	_	_
+parse [a] [if]	parse-end	#(end)	_	_
+parse {a} [if {a}]	parse-rule	"a"	_	_
+parse [a] [if 'a]	parse-rule	'a	_	_
+parse {a} [remove]	no-error			
+parse [a] [remove]	no-error			
+parse {a} [remove {a}]	no-error			
+parse [a] [remove 'a]	no-error			
+parse {a} [change]	no-error			
+parse [a] [change]	no-error			
+parse {a} [change {a}]	parse-end	#(end)	_	_
+parse [a] [change 'a]	parse-end	#(end)	_	_
+parse {a} [insert]	parse-end	#(end)	_	_
+parse [a] [insert]	parse-end	#(end)	_	_
+parse {a} [insert {a}]	no-error			
+parse [a] [insert 'a]	no-error			
+parse {a} [case]	no-error			
+parse [a] [case]	no-error			
+parse {a} [case {a}]	no-error			
+parse [a] [case 'a]	no-error			
+parse {a} [no-case]	no-error			
+parse [a] [no-case]	no-error			
+parse {a} [no-case {a}]	no-error			
+parse [a] [no-case 'a]	no-error			
+parse {a} [fail]	no-error			
+parse [a] [fail]	no-error			
+parse {a} [fail {a}]	no-error			
+parse [a] [fail 'a]	no-error			
+parse [a] [limit]	not-done	_	_	_
+parse {a} [limit {a}]	not-done	_	_	_
+parse [a] [limit 'a]	not-done	_	_	_
+parse {a} [1]	parse-end	1	_	_
+parse [a] [1]	parse-end	1	_	_
+parse {a} [1 2]	parse-end	2	_	_
+parse [a] [1 2]	parse-end	2	_	_
+parse {a} [x: 1]	parse-end	1	_	_
+parse {a} [into [skip]]	no-error			
+parse {a} [if x]	parse-rule	x	_	_
+parse {a} [if (true)]	no-error			
+parse {a} [if (false)]	no-error			
+parse {a} [insert x]	no-value	x	_	_
+parse {a} [insert only]	parse-end	#(end)	_	_
+parse [a] [insert only]	parse-end	#(end)	_	_
+parse [a] [insert skip]	parse-rule	skip	_	_
+parse [a] [insert only skip]	no-error			
+parse {a} [change skip]	parse-end	#(end)	_	_
+parse [a] [change skip]	parse-end	#(end)	_	_
+parse [a] [change skip skip]	parse-rule	skip	_	_
+parse [a] [change skip only]	parse-end	#(end)	_	_
+parse {a} [change skip only]	parse-end	#(end)	_	_
+parse [a] [change skip x]	no-value	x	_	_
+parse {a} [collect set]	parse-variable	#(end)	_	_
+parse [a] [collect set]	parse-variable	#(end)	_	_
+parse {a} [collect into]	parse-variable	#(end)	_	_
+parse {a} [collect after]	parse-variable	#(end)	_	_
+parse {a} [collect set 1]	parse-variable	1	_	_
+parse {a} [keep pick]	parse-end	keep	_	_
+parse [a] [collect [keep pick]]	parse-end	keep	_	_
+parse {a} [x: change x {b}]	no-error			
+parse {a} [remove x]	parse-rule	x	_	_
+parse {a} [x: change x]	parse-end	#(end)	_	_
+parse [a] [x: change x]	parse-end	#(end)	_	_
+load {#(end)}	malconstruct	[end]	_	_
+make end! none	bad-make-arg	#(end!)	_	_
+to end! 1	bad-make-arg	#(end!)	1	_
+make end! 1	bad-make-arg	#(end!)	1	_
+p: try [parse {a} [set]] type? p/arg1	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? get/any in p 'arg1	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? select p 'arg1	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] v: p/arg1	need-value	v:	_	_
+p: try [parse {a} [set]] set/any 'v p/arg1	expect-arg	set	value	#(end!)
+p: try [parse {a} [set]] set 'v p/arg1	expect-arg	set	value	#(end!)
+p: try [parse {a} [set]] p/arg1: p/arg1	need-value	p/arg1:	_	_
+p: try [parse {a} [set]] make object! [z: p/arg1]	need-value	z:	_	_
+p: try [parse {a} [set]] make error! compose [type: 'Script id: 'parse-end arg1: (p/arg1)]	need-value	arg1:	_	_
+p: try [parse {a} [set]] get 'p/arg1	no-value	p/arg1	_	_
+o: make object! [a: 1] set/any in o 'a () get 'o/a	no-value	o/a	_	_
+o: make object! [a: 1] set/any in o 'a () type? get/any 'o/a	no-error			
+o: make object! [a: 1] get 'o/b	invalid-path	o/b	b	_
+p: try [parse {a} [set]] type? get/any 'p/arg1	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] p/arg1 + 1	cannot-use	add:	#(end!)	_
+p: try [parse {a} [set]] 1 + p/arg1	expect-arg	+	value2	#(end!)
+p: try [parse {a} [set]] p/arg1 = p/arg1	expect-arg	=	value2	#(end!)
+p: try [parse {a} [set]] f: func [x [any-type!]] [x] f p/arg1	expect-arg	f	x	#(end!)
+p: try [parse {a} [set]] f: func [x [unset!]] [x] f p/arg1	expect-arg	f	x	#(end!)
+p: try [parse {a} [set]] f: func ['x] [x] f p/arg1	no-error			
+p: try [parse {a} [set]] unset? get/any in p 'arg1	expect-arg	unset?	value	#(end!)
+p: try [parse {a} [set]] value? get/any in p 'arg1	expect-arg	value?	value	#(end!)
+p: try [parse {a} [set]] print p/arg1	expect-arg	print	value	#(end!)
+p: try [parse {a} [set]] probe p/arg1	expect-arg	probe	value	#(end!)
+p: try [parse {a} [set]] either p/arg1 [1] [2]	expect-arg	either	condition	#(end!)
+p: try [parse {a} [set]] type? if true [p/arg1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? do [p/arg1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? (p/arg1)	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? catch [p/arg1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? try [p/arg1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? any [p/arg1 1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? all [p/arg1]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] mold p/arg1	expect-arg	mold	value	#(end!)
+p: try [parse {a} [set]] form p/arg1	expect-arg	form	value	#(end!)
+p: try [parse {a} [set]] type? pick values-of p 4	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? first at to block! p 8	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] type? second compose [a (p/arg1) b]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] foreach x reduce [p/arg1] [type? x]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] append [] p/arg1	expect-arg	append	value	#(end!)
+p: try [parse {a} [set]] append o: make object! [x: 1] compose [y: (p/arg1)] type? get/any in o 'y	no-error			
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(p/where: none mold/flat p)]	message	{make error! [code: 356 type: 'Script id: 'parse-variable arg1: #(end) arg2: _ arg3: _ near: [parse "a" [set]] where: _]}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(p/where: none mold/flat/all p)]	message	{#(error! [code: 356 type: Script id: parse-variable arg1: #(end) arg2: _ arg3: _ near: [parse "a" [set]] where: _])}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(p/where: none replace/all form p newline {|})]	message	{|** Script error: PARSE - expected a variable, not: #(end)|** Near: parse "a" [set]|}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold compose [a (p/arg1) b])]	message	"[a]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/all compose [a (p/arg1) b])]	message	"[a]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/only compose [a (p/arg1) b])]	message	"a"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(form compose [a (p/arg1) b])]	message	"a  b"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold compose/deep [x [a (p/arg1) b] y])]	message	"[x [a] y]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold compose [(p/arg1) a])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? compose [a (p/arg1) b])]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold copy compose [a (p/arg1) b])]	message	"[a]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold reverse compose [a (p/arg1) b])]	message	"[b]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold find compose [a (p/arg1) b] 'b)]	message	"[b]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold next next compose [a (p/arg1) b])]	message	"[b]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(index? find compose [a (p/arg1) b] 'b)]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(n: 0 foreach x compose [a (p/arg1) b] [n: n + 1] n)]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold values-of p)]	message	"[356 Script parse-variable]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? values-of p)]	message	8	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat to block! p)]	message	"[code: 356 type: Script id: parse-variable arg1:]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? to block! p)]	message	16	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat body-of p)]	message	"[code: 356 type: Script id: parse-variable arg1:]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold words-of p)]	message	"[code type id arg1 arg2 arg3 near where]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold reduce [p/arg1])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? reduce [p/arg1])]	message	1	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(equal? compose [a (p/arg1)] compose [a (p/arg1)])]	message	#(true)	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(z: try [1 / 0] z/where: none mold/flat body-of z)]	message	{[code: 400 type: Math id: zero-divide arg1: _ arg2: _ arg3: _ near: [/ 0] where: _]}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat append o: make object! [x: 1] compose [y: (p/arg1)])]	message	"make object! [x: 1 y: #(unset)]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat append o: make object! [x: 1] compose [y: (p/arg1) z: 3])]	message	"make object! [x: 1 y: #(unset)]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat append o: make object! [x: 1] compose [(p/arg1) 2 z: 3])]	message	"make object! [x: 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat append o: make object! [x: 1] [a 1 b])]	message	"make object! [x: 1 a: 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold reduce compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do compose [1 (p/arg1) 2])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold compose compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold unique compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? unique compose [1 (p/arg1) 2])]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold sort compose [1 (p/arg1) 2])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold sort compose [2 (p/arg1) 1])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(index? find compose [1 (p/arg1) 2] 2)]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold to paren! compose [1 (p/arg1) 2])]	message	"(1)"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? to paren! compose [1 (p/arg1) 2])]	message	3	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold append copy [x] compose [1 (p/arg1) 2])]	message	"[x 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? append copy [x] compose [1 (p/arg1) 2])]	message	4	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold head insert copy compose [1 (p/arg1) 2] 0)]	message	"[0 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold remove copy compose [1 (p/arg1) 2])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold head remove next copy compose [1 (p/arg1) 2])]	message	"[1 2]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold copy/part compose [1 (p/arg1) 2] 2)]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold head change copy compose [1 (p/arg1) 2] 9)]	message	"[9]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(equal? compose [1 (p/arg1) 2] copy compose [1 (p/arg1) 2])]	message	#(true)	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold to block! compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(length? difference compose [1 (p/arg1) 2] [1])]	message	2	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold rejoin compose [1 (p/arg1) 2])]	message	{"1"}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold load mold compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(set [x y z] compose [1 (p/arg1) 2] mold reduce [x])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(n: 0 foreach [x y] compose [1 (p/arg1) 2] [n: n + 1] n)]	message	2	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold collect [foreach x compose [1 (p/arg1) 2] [keep 1]])]	message	"[1 1 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold extract compose [1 (p/arg1) 2] 2)]	message	"[1 2]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold skip compose [1 (p/arg1) 2] 2)]	message	"[2]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold back tail compose [1 (p/arg1) 2])]	message	"[2]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold take/last copy compose [1 (p/arg1) 2])]	message	"2"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat new-line/all compose [1 (p/arg1) 2] true)]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold union compose [1 (p/arg1) 2] [3])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold intersect compose [1 (p/arg1) 2] [1 2])]	message	"[1 2]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold replace copy compose [1 (p/arg1) 2] 2 3)]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold make block! compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold to string! compose [1 (p/arg1) 2])]	message	{"12"}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold form compose [1 (p/arg1) 2])]	message	{"1  2"}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold reform compose [1 (p/arg1) 2])]	message	{"1"}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold remold compose [1 (p/arg1) 2])]	message	{"[1]"}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/only compose [1 (p/arg1) 2])]	message	"1"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold array/initial 2 compose [1 (p/arg1) 2])]	message	"[[1] [1]]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold copy/deep reduce [compose [1 (p/arg1) 2]])]	message	"[[1]]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(b: compose [1 (p/arg1) 2] type? b/2)]	expect-arg	type?	value	#(end!)
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(b: compose [1 (p/arg1) 2] mold b/3)]	message	"2"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold select compose [1 (p/arg1) 2] 2)]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold pick compose [1 (p/arg1) 2] 3)]	message	"2"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold last compose [1 (p/arg1) 2])]	message	"2"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold first compose [1 (p/arg1) 2])]	message	"1"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold max 1 length? compose [1 (p/arg1) 2])]	message	"3"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold map-each x compose [1 (p/arg1) 2] [1])]	message	"[1 1 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold remove-each x copy compose [1 (p/arg1) 2] [false])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold apply :reduce [compose [1 (p/arg1) 2]])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold to map! [a 1])]	message	"#[^/    a: 1^/]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold any compose [1 (p/arg1) 2])]	message	"1"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold all compose [1 (p/arg1) 2])]	message	"[1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold case compose [1 (p/arg1) 2])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold switch 1 compose [1 (p/arg1) 2])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold all compose [(p/arg1) 2])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold all compose [false (p/arg1) 2])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold any compose [false (p/arg1) 2])]	message	"[false]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold any compose [(p/arg1) 2])]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold case compose [false [1] (p/arg1) true [2]])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold case compose [true [1] (p/arg1)])]	message	"1"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold try compose [1 (p/arg1)])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold try compose [(p/arg1) 1])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold attempt compose [1 (p/arg1)])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(z: try [if true compose [1 (p/arg1)]] z/id)]	message	missing-arg	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold reduce/no-set compose [a: 1 (p/arg1) 2])]	message	"[a: 1]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do/next compose [1 (p/arg1) 2] 'r)]	message	"1"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do/next next compose [1 (p/arg1) 2] 'r)]	message	"#(unset)"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(do/next next compose [1 (p/arg1) 2] 'r mold r)]	message	"[]"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(do/next next compose [1 (p/arg1) 2] 'r index? r)]	message	4	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold assert compose [true (p/arg1)])]	assert-failed	[true]	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold assert compose [(p/arg1) true])]	assert-failed	[]	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do compose [type? (p/arg1)])]	no-arg	type?	value	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do compose [x: (p/arg1)])]	need-value	x:	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do compose [1 + (p/arg1)])]	no-arg	+	value2	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold do compose [(p/arg1)])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold if true compose [1 (p/arg1)])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold loop 1 compose [1 (p/arg1)])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold while [false] compose [1 (p/arg1)])]	message	"_"	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(f: func [] compose [1 (p/arg1)] mold f)]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold make object! compose [a: 1 (p/arg1) b: 2])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(mold/flat context compose [a: 1 (p/arg1) b: 2])]	missing-arg	_	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(z: try [parse {a} [if]] z/where: none mold/flat z)]	message	{make error! [code: 355 type: 'Script id: 'parse-end arg1: #(end) arg2: _ arg3: _ near: [parse "a" [if]] where: _]}	_	_
+p: try [parse {a} [set]] cause-error 'user 'message reduce [(z: try [parse [a] [insert]] z/where: none mold/flat z)]	message	{make error! [code: 355 type: 'Script id: 'parse-end arg1: #(end) arg2: _ arg3: _ near: [parse [a] [insert]] where: _]}	_	_

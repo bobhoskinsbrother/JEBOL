@@ -48,9 +48,14 @@ public final class ObjectActions implements Actions {
         for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {
             object.context().refuseFieldSpeltLikeItsOwnSelf(pairs.get(at1));
         }
-        for (int at = 0; at + 1 < pairs.size(); at += 2) {
+        for (int at = 0; at + 1 < pairs.size() && !(pairs.get(at) instanceof EndValue); at += 2) {
+            Value assigned = pairs.get(at + 1);
             if (pairs.get(at) instanceof AnyWordValue field) {
-                object.context().register(field.canonical(), pairs.get(at + 1));
+                object.context().register(field.canonical(),
+                        assigned instanceof EndValue ? UnsetValue.unset() : assigned);
+            }
+            if (assigned instanceof EndValue) {
+                break;
             }
         }
         return object;

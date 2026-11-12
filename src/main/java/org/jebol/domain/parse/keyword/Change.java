@@ -27,20 +27,13 @@ final class Change extends DeclaredKeyword {
         refuseModifierBeforeRule(rules.get(at + 1));
         Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
-            if (at + 2 >= rules.size()) {
-                throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
-            }
             return putBlockIn(walk, rules, at, at + 2,
                     Math.min(walk.position(), markOffset),
                     Math.abs(walk.position() - markOffset));
         }
         int replacementAt = at + 1 + walk.ruleSpan(rules, at + 1);
         int before = walk.position();
-        boolean matched = walk.matchOne(rules, at + 1) != ParseWalk.NO_MATCH;
-        if (matched && replacementAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
-        }
-        if (!matched) {
+        if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
@@ -52,57 +45,43 @@ final class Change extends DeclaredKeyword {
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
         Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
-            if (at + 2 >= rules.size()) {
-                return ParseWalk.NO_MATCH;
-            }
-            putTextIn(walk, rules.get(at + 2),
+            return putTextIn(walk, rules, at, at + 2,
                     Math.min(walk.position(), markOffset),
                     Math.abs(walk.position() - markOffset));
-            return 3;
         }
-        int span = walk.ruleSpan(rules, at + 1);
-        int replacementAt = at + 1 + span;
+        int replacementAt = at + 1 + walk.ruleSpan(rules, at + 1);
         int before = walk.position();
         if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
-        if (replacementAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
-        }
-        putTextIn(walk, rules.get(replacementAt),
+        return putTextIn(walk, rules, at, replacementAt,
                 before, walk.position() - before);
-        return 1 + span + 1;
     }
 
     private static int putBlockIn(ParseWalk walk, List<Value> rules, int at,
                                   int replacementSlot, int begin, int howMany) {
 
-        boolean wholeBlock = saysToPutBlockInWhole(rules, replacementSlot);
-        int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
-        Value replacement = walk.chooseValueToInsert(rules.get(lastRuleAt));
-        List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
+        ValueToPutIn written = ValueToPutIn.readFrom(rules, replacementSlot);
+        Value replacement = walk.chooseValueToInsert(rules.get(written.slot()));
+        List<Value> putting = !written.whole() && replacement instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(replacement);
         walk.removeBetween(begin, howMany);
         walk.putItemsIntoBlockAt(begin, putting);
         walk.moveTo(begin + putting.size());
-        return lastRuleAt + 1 - at;
+        return written.slot() + 1 - at;
     }
 
-    private static void putTextIn(
-            ParseWalk walk, Value replacement, int begin, int howMany) {
+    private static int putTextIn(ParseWalk walk, List<Value> rules, int at,
+                                 int replacementSlot, int begin, int howMany) {
 
+        ValueToPutIn written = ValueToPutIn.readFrom(rules, replacementSlot);
+        Value replacement = walk.replacementFor(rules.get(written.slot()));
         walk.removeBetween(begin, howMany);
-        int laidIn = walk.putValueIntoTextAt(
-                begin, walk.replacementFor(replacement));
+        int laidIn = walk.putValueIntoTextAt(begin, replacement);
         walk.moveTo(begin + laidIn);
-    }
-
-    private static boolean saysToPutBlockInWhole(List<Value> rules, int slot) {
-        return rules.get(slot) instanceof WordValue modifier
-                && modifier.canonical().equals(WHOLE)
-                && slot + 1 < rules.size();
+        return written.slot() + 1 - at;
     }
 
     private static void refuseModifierBeforeRule(Value rule) {

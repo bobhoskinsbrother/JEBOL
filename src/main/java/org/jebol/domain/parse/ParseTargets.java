@@ -2,6 +2,7 @@ package org.jebol.domain.parse;
 
 import java.util.Set;
 
+import org.jebol.domain.value.EndValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
@@ -55,8 +56,7 @@ public final class ParseTargets {
     }
 
     private static Raised refuseNonVariable(Value written) {
-        return written == null
-                ? Raised.of(EvaluationFailure.PARSE_VARIABLE)
-                : Raised.of(EvaluationFailure.PARSE_VARIABLE, written);
+        return Raised.of(EvaluationFailure.PARSE_VARIABLE,
+                written == null ? EndValue.end() : written);
     }
 }

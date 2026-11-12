@@ -26,12 +26,20 @@ public class GetNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case PathValue path ->
-                    evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
+            case PathValue path -> readThrough(path,
+                    evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context),
+                    refinements.contains("any"));
             case ObjectValue object -> object.refuseWhenAnyFieldIsHidden().context().valuesExcludingSelf();
             case AnyWordValue word -> readWhatIsHeldBy(word, refinements.contains("any"));
             case Value anythingElse -> anythingElse;
         };
+    }
+
+    private static Value readThrough(PathValue path, Value held, boolean unsetIsAnswer) {
+        if ((held instanceof UnsetValue || held instanceof EndValue) && !unsetIsAnswer) {
+            throw Raised.of(EvaluationFailure.NO_VALUE, path);
+        }
+        return held;
     }
 
     private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnswer) {
