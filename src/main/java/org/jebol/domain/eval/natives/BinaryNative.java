@@ -179,8 +179,7 @@ public class BinaryNative extends DefaultNative {
                                      Bincode.Cursor cursor, IntegerValue howMany, Optional<Value> into) {
 
         if (into.isPresent()) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    "reading a count of bytes into a block");
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
         List<Value> read = Bincode.read(cursor,
                 new Bincode.Script(List.of(WordValue.of("bytes"), howMany),
@@ -208,11 +207,11 @@ public class BinaryNative extends DefaultNative {
 
     private void nameValueRead(AnyWordValue word, Value read) {
         if (!word.isBound() || !word.binding().contains(word.canonical())) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
+            throw Raised.wordNotBound(word);
         }
         ContextSlot slot = word.binding().findSlotFor(word.canonical());
         if (slot.isProtected()) {
-            throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
+            throw Raised.of(EvaluationFailure.LOCKED_WORD, word);
         }
         slot.setValue(read);
     }
@@ -238,7 +237,7 @@ public class BinaryNative extends DefaultNative {
 
     private Value layInto(Value target, List<Value> read) {
         if (!(target instanceof AnyBlockValue into)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(target));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, target);
         }
         int at = into.index();
         for (Value value : read) {

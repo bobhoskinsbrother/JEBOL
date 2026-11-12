@@ -15,7 +15,6 @@ final class Limit extends SameForBlockAndString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        throw Raised.of(EvaluationFailure.NOT_DONE,
-                "limit is a parse command reserved for future use");
+        throw Raised.of(EvaluationFailure.NOT_DONE);
     }
 }

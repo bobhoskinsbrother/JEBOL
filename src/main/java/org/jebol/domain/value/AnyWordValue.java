@@ -184,7 +184,7 @@ public abstract sealed class AnyWordValue implements Value, CopiesItsCell, Clone
     public ContextSlot findBoundSlot() {
         ContextSlot slot = binding.findSlotOrNone(canonical);
         if (slot == null) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
+            throw Raised.wordNotBound(this);
         }
         return slot;
     }

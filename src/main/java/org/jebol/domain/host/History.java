@@ -1,6 +1,7 @@
 package org.jebol.domain.host;
 
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
 
 import java.util.ArrayDeque;
@@ -14,9 +15,6 @@ public final class History {
     public static final int MOST_CHANGES_PER_WINDOW = 100;
 
     public static final long CHANGE_WINDOW_MILLISECONDS = 30_000;
-
-    private static final String RATE_EXCEEDED =
-            MOST_CHANGES_PER_WINDOW + " changes to the history in " + CHANGE_WINDOW_MILLISECONDS / 1_000 + " seconds";
 
     private final LongSupplier millisecondsNow;
     private final TreeMap<Integer, Place> entries = new TreeMap<>();
@@ -125,7 +123,7 @@ public final class History {
             changedAt.pollFirst();
         }
         if (changedAt.size() >= MOST_CHANGES_PER_WINDOW) {
-            throw Raised.of(EvaluationFailure.SIZE_LIMIT, RATE_EXCEEDED);
+            throw Raised.of(EvaluationFailure.SIZE_LIMIT, IntegerValue.of(MOST_CHANGES_PER_WINDOW));
         }
         changedAt.addLast(now);
     }

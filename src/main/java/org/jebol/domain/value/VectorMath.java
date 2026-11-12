@@ -40,9 +40,11 @@ public final class VectorMath {
 
         VectorKind kind = vector.kind();
         refuseBitwiseOnDecimals(kind, operation);
-        double asDecimal = number instanceof AnyDecimalValue fraction
-                ? fraction.quantity()
-                : ((IntegerValue) number).magnitude();
+        double asDecimal = switch (number) {
+            case AnyDecimalValue fraction -> fraction.quantity();
+            case IntegerValue(long magnitude) -> magnitude;
+            default -> throw Raised.cannotUseAction(vector, actionNamed(operation));
+        };
         long asWholeNumber = (long) asDecimal;
         refuseDivisionByZero(kind, operation, asWholeNumber);
 
@@ -61,8 +63,7 @@ public final class VectorMath {
 
         VectorKind kind = left.kind();
         if (kind != right.kind()) {
-            throw Raised.of(EvaluationFailure.VECTOR_NOT_COMPATIBLE,
-                    kind.spelling() + " and " + right.kind().spelling());
+            throw Raised.of(EvaluationFailure.VECTOR_NOT_COMPATIBLE);
         }
         refuseBitwiseOnDecimals(kind, operation);
         int shared = Math.min(left.lengthFromHere(), right.lengthFromHere());
@@ -86,16 +87,22 @@ public final class VectorMath {
     private static void refuseBitwiseOnDecimals(VectorKind kind, ValueOperation operation) {
         if (kind.measures() && operation.isBitwise()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.spelling()),
-                    WordValue.of(kind.spelling()));
+                    SetWordValue.of(actionNamed(operation)),
+                    DecimalValue.TYPE);
         }
+    }
+
+    private static String actionNamed(ValueOperation operation) {
+        return operation instanceof BitwiseOperation bitwise
+                ? bitwise.actionName()
+                : operation.spelling();
     }
 
     private static void refuseElementByZero(ValueOperation operation, boolean isZero) {
         boolean guarded = operation.needsNonZeroDivisor()
                 && !operation.isBitwise();
         if (guarded && isZero) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 
@@ -105,7 +112,7 @@ public final class VectorMath {
         boolean guarded = operation.keepsDividendSign()
                 || (operation.divides() && !kind.measures());
         if (guarded && truncatedDivisor == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "");
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 

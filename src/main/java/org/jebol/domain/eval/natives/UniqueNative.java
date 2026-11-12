@@ -8,8 +8,10 @@ import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.sets.SetOperation;
 
 import java.util.List;
@@ -42,12 +44,18 @@ public class UniqueNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             int stride = refinementArgument("skip", 0, arguments, refinements)
                     .filter(IntegerValue.class::isInstance)
-                    .map(size -> (int) Math.max(EVERY_MEMBER_ON_ITS_OWN,
-                            ((IntegerValue) size).magnitude()))
+                    .map(size -> recordWidthAtLeastOne((IntegerValue) size))
                     .orElse(EVERY_MEMBER_ON_ITS_OWN);
             return Combining.sets(arguments.getFirst(), arguments.getFirst(),
                     SetOperation.findOperationNamed("union").orElseThrow(),
                     refinements.contains("case"), stride);
         };
+    }
+
+    private static int recordWidthAtLeastOne(IntegerValue size) {
+        if (size.magnitude() < EVERY_MEMBER_ON_ITS_OWN || size.magnitude() > Integer.MAX_VALUE) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, size);
+        }
+        return (int) size.magnitude();
     }
 }

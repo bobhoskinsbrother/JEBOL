@@ -378,8 +378,7 @@ public final class Evaluator {
             }
             case NativeValue built -> runNative(built, arguments, systemContext);
             case OperatorValue operator -> invokeUnderlying(operator, arguments, systemContext);
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    callee.datatype().literalSpelling() + " is not callable");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, callee);
         };
     }
 
@@ -980,7 +979,7 @@ public final class Evaluator {
         ContextSlot slot = resolve(word);
         Value bound = slot.value();
         if (bound instanceof UnsetValue) {
-            throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
+            throw Raised.wordHasNoValue(word);
         }
         if (bound instanceof OperatorValue operator) {
             if (frame.startedThisValueAt <= 1) {
@@ -1013,7 +1012,7 @@ public final class Evaluator {
     private StepOutcome evaluateSetWord(Frame frame, AnyWordValue word) {
         ContextSlot slot = word.binding().findSlotOrNone(word.canonical());
         if (slot == null) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
+            throw Raised.wordNotBound(word);
         }
         if (frame.atEnd()) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, word);
@@ -1042,7 +1041,7 @@ public final class Evaluator {
     private ContextSlot resolve(AnyWordValue word) {
         ContextSlot slot = word.binding().findSlotOrNone(word.canonical());
         if (slot == null) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
+            throw Raised.wordNotBound(word);
         }
         return slot;
     }
@@ -1146,8 +1145,7 @@ public final class Evaluator {
                 }
                 yield runFunction(frames, function, call, ordered);
             }
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    call.callee().datatype().literalSpelling() + " is not callable");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, call.callee());
         };
     }
 
@@ -1174,8 +1172,7 @@ public final class Evaluator {
                 onceArgumentsPass.run();
                 yield applyFunction(function, arguments);
             }
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "operator " + operator.operatorName() + " has no runnable body");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, operator);
         };
     }
 
@@ -1205,7 +1202,7 @@ public final class Evaluator {
         } catch (ProtectedFromChange refused) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         } catch (SlotIsProtected refused) {
-            throw Raised.of(EvaluationFailure.LOCKED_WORD, refused.spelling());
+            throw Raised.of(EvaluationFailure.LOCKED_WORD, WordValue.of(refused.spelling()));
         } catch (StackOverflowError structureWithNoEnd) {
             throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
         } catch (OutOfMemoryError exhausted) {
@@ -1386,10 +1383,10 @@ public final class Evaluator {
         int chosen = (int) which.magnitude();
         if (chosen < 1 || chosen > each.size()
                 || !(each.get(chosen - 1) instanceof StructValue slot)) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(which));
+            throw Raised.cannotSet(which);
         }
         if (slot.size() != given.size()) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
         slot.changeFrom(given.octets());
     }
@@ -1427,8 +1424,7 @@ public final class Evaluator {
 
         if (target instanceof EventValue event && lastSegment instanceof AnyWordValue field) {
             place.setValue(EventPath.write(event, field.canonical(), written)
-                    .orElseThrow(() -> Raised.of(
-                            EvaluationFailure.BAD_PATH_SET, field.spelling())));
+                    .orElseThrow(() -> Raised.cannotSet(field)));
             return;
         }
         if (target instanceof GobValue gob && lastSegment instanceof AnyWordValue field) {
@@ -1466,15 +1462,12 @@ public final class Evaluator {
                 return;
             }
             int at = BlockPath.findPositionIn(block, selector)
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                            Molder.mold(selector)));
+                    .orElseThrow(() -> Raised.cannotSelect(selector));
             SeriesSlot.write(block, at, written);
             return;
         }
         if (target instanceof AnyStringValue joining && joining.isALocation()) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a path on a " + joining.datatype().literalSpelling()
-                            + " names another one rather than a place to write");
+            throw Raised.cannotSet(lastSegment);
         }
         if (target instanceof VectorValue vector) {
             VectorPath.write(vector, makeSelectorFor(lastSegment, frame.context), written);
@@ -1491,7 +1484,7 @@ public final class Evaluator {
         }
         if (target instanceof TimeValue time) {
             place.setValue(new WritingIntoTime().write(
-                    time, makeSelectorFor(lastSegment, frame.context), written));
+                    time, resolveSegment(lastSegment, frame.context), written));
             return;
         }
         if ((target instanceof AnyStringValue || target instanceof BinaryValue)
@@ -1522,7 +1515,7 @@ public final class Evaluator {
         }
         if (target instanceof ErrorValue raised && lastSegment instanceof AnyWordValue field) {
             if (!ErrorValue.FIELDS.contains(field.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+                throw Raised.cannotSelect(field);
             }
             raised.write(field.canonical(), written);
             return;
@@ -1579,7 +1572,7 @@ public final class Evaluator {
     private Selection select(AnyBlockValue path, AnyBlockValue asWritten, Context context) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty()) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, "an empty path selects nothing");
+            throw Raised.of(EvaluationFailure.INVALID_PATH, asWritten);
         }
         Slot current = selectFirst(segments.get(0), context);
         Value calledBy = segments.get(0);
@@ -1665,7 +1658,7 @@ public final class Evaluator {
             AnyWordValue bound = word.isBound() ? word : word.bindTo(context);
             ContextSlot slot = resolve(bound);
             if (slot.value() instanceof UnsetValue) {
-                throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
+                throw Raised.wordHasNoValue(word);
             }
             return slot;
         }
@@ -1696,8 +1689,7 @@ public final class Evaluator {
         if (segment instanceof AnyWordValue word) {
             return word;
         }
-        throw Raised.of(EvaluationFailure.INVALID_PATH,
-                "a refinement must be a word, not " + segment.datatype().literalSpelling());
+        throw Raised.of(EvaluationFailure.BAD_REFINE, segment);
     }
 
     private Value selectWith(Value target, Value selector) {
@@ -1712,7 +1704,7 @@ public final class Evaluator {
         }
         if (target instanceof ErrorValue raised && selector instanceof AnyWordValue field) {
             return raised.readField(field.canonical()).orElseThrow(() ->
-                    Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
+                    Raised.cannotSelect(field));
         }
         if (target instanceof AnyStringValue path && path.isALocation()) {
             return joinOntoPath(path, selector);
@@ -1725,8 +1717,7 @@ public final class Evaluator {
                 case "width" -> IntegerValue.of(terminalWidth(text.text()));
                 case "user" -> findEmailNamedBy(text, field).user();
                 case "host" -> findEmailNamedBy(text, field).host();
-                default -> throw Raised.of(
-                        EvaluationFailure.INVALID_PATH, field.spelling());
+                default -> throw Raised.cannotSelect(field);
             };
         }
         if (target instanceof AnyBlockValue block) {
@@ -1785,9 +1776,7 @@ public final class Evaluator {
                 default -> { }
             }
         }
-        throw Raised.of(EvaluationFailure.INVALID_PATH,
-                "cannot select " + selector.datatype().literalSpelling()
-                        + " from " + target.datatype().literalSpelling());
+        throw Raised.cannotSelect(selector);
     }
 
     private Value pickFromBitsetForPath(BitsetValue members, Value selector) {
@@ -1818,11 +1807,9 @@ public final class Evaluator {
                 case "hour" -> 1;
                 case "minute" -> 2;
                 case "second" -> 3;
-                default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
-                        field.spelling());
+                default -> throw Raised.cannotSelect(field);
             };
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    Molder.mold(selector));
+            default -> throw Raised.cannotSelect(selector);
         };
         return switch (which) {
             case 1 -> IntegerValue.of(seconds / 3600);
@@ -1907,7 +1894,7 @@ public final class Evaluator {
 
     private static EmailValue findEmailNamedBy(AnyStringValue text, AnyWordValue half) {
         if (!(text instanceof EmailValue email)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, half.canonical());
+            throw Raised.cannotSelect(half);
         }
         return email;
     }

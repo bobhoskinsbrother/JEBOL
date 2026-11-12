@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * An error, which in REBOL is a value like any other.
@@ -42,7 +43,25 @@ public record ErrorValue(
         if (wording == null) {
             throw new IllegalArgumentException("an error with no catalogue has ErrorWording.none()");
         }
+        Stream.of(subject, secondArgument, thirdArgument)
+                .flatMap(Optional::stream)
+                .forEach(ErrorValue::refuseUnscannableWord);
     }
+
+    private static void refuseUnscannableWord(Value argument) {
+        if (argument instanceof AnyWordValue word && !isOneWordSpelling(word.spelling())) {
+            throw new IllegalArgumentException(
+                    "an error's argument is a value, and no word is spelt '" + word.spelling() + "'");
+        }
+    }
+
+    private static boolean isOneWordSpelling(String spelling) {
+        return !spelling.isEmpty()
+                && spelling.codePoints().noneMatch(
+                        point -> Character.isWhitespace(point) || CANNOT_SIT_IN_A_WORD.indexOf(point) >= 0);
+    }
+
+    private static final String CANNOT_SIT_IN_A_WORD = "[](){}\";:";
 
     public ErrorValue(
             ErrorCategory category,

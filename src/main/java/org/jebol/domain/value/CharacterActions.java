@@ -11,7 +11,7 @@ public final class CharacterActions {
     private static final long PAST_WIDEST_CODEPOINT_COUNT = 1L << 32;
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
-        long other = offeredCodepoint(right);
+        long other = offeredCodepoint(right, operation);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
         if (operation.canSubtractOneFromOther() && right instanceof CharacterValue) {
@@ -26,13 +26,13 @@ public final class CharacterActions {
                 : answered;
     }
 
-    private long offeredCodepoint(Value right) {
+    private long offeredCodepoint(Value right, ArithmeticOperation operation) {
         return switch (right) {
             case CharacterValue another -> another.codepoint();
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) fraction.quantity();
-            default -> throw Raised.ofUnrelated(letter, right);
+            default -> throw Raised.notRelatedToAction(letter, operation.spelling());
         };
     }
 

@@ -41,7 +41,7 @@ final class SecureDrawing extends RandomDrawing {
         try {
             return digests.digestOf("sha1", octets);
         } catch (DigestPort.Refused refused) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, "sha1");
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
     }
 

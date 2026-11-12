@@ -116,7 +116,7 @@ public final class TimeActions {
 
     private static Raised refuseAsNotRelatedToTime(ArithmeticOperation operation) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(operation.spelling()),
+                SetWordValue.of(operation.spelling()),
                 TimeValue.TYPE);
     }
 

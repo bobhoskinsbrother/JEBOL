@@ -36,8 +36,7 @@ public class DhNative extends CipherNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("public") && refinements.contains("secret")) {
-                throw Raised.of(EvaluationFailure.BAD_REFINES,
-                        "dh publishes or agrees, not both");
+                throw Raised.of(EvaluationFailure.BAD_REFINES);
             }
             Optional<DiffieHellmanKey> key = readKeyHeldBy(
                     arguments.getFirst(), DHM_HANDLE_TYPE, DiffieHellmanKey.class)

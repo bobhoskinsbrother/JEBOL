@@ -186,8 +186,7 @@ public final class DateFactory {
         long minutes = nanoseconds
                 / (SECONDS_IN_MINUTE * TimeValue.NANOSECONDS_PER_SECOND);
         if (Math.abs(minutes) > FURTHEST_ZONE_MINUTES) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a zone reaches fifteen hours either side of UTC");
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, left.getFirst());
         }
         return Optional.of((int) minutes);
     }

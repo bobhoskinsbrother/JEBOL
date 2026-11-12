@@ -60,8 +60,6 @@ public interface Actions {
     }
 
     default Value complement() {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                "complement wanted a logic or integer, not a "
-                        + subject().datatype().literalSpelling());
+        throw Raised.cannotUseAction(subject(), "complement");
     }
 }

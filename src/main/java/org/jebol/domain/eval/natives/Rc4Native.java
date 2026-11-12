@@ -54,7 +54,7 @@ public class Rc4Native extends CipherNative {
 
     private Value encipherThroughStreamInPlace(HandleValue held, BinaryValue data) {
         StreamCipher cipher = readKeyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
-                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName()));
+                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE));
         data.requireChangeable();
         for (int at = data.index(); at <= data.storageLength(); at++) {
             data.storage().set(at, data.storage().at(at)

@@ -31,14 +31,11 @@ public class ClampNative extends ArithmeticNative {
     private void requireSameDatatype(
             Value value, Value lowest, Value highest) {
 
-        if (value.datatype() == lowest.datatype()
-                && value.datatype() == highest.datatype()) {
-            return;
+        if (value.datatype() != lowest.datatype()) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, value, lowest);
         }
-        throw Raised.of(EvaluationFailure.TYPE_MISMATCH,
-                value.datatype().literalSpelling()
-                        + " cannot be clamped between "
-                        + lowest.datatype().literalSpelling() + " and "
-                        + highest.datatype().literalSpelling());
+        if (value.datatype() != highest.datatype()) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, value, highest);
+        }
     }
 }

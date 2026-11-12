@@ -42,6 +42,7 @@ public class TakeAction extends DefaultNative implements ActionValue {
                 cryptPort.update(port);
                 yield cryptPort.read(port);
             }
+            case ImageValue picture -> refuseDatatype(picture);
             case RebolSeries series -> takeFrom(series, arguments, refinements);
             case Value anythingElse -> refuseDatatype(anythingElse);
         };

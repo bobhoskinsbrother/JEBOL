@@ -2928,3 +2928,41 @@ whatever the cell holds as a decimal, which is 0 for NONE and 2 for `1x2`.
 is that operand's cell. The actions dispatch on the left's datatype and refuse
 with `cannot-use` where that datatype has no handler.
 `AnOperatorsUncheckedLeftOperandFromTheSourceTest` holds those cases.
+
+## 67. An error's arguments are values, and an argument R3 cannot reach is the value the error is about
+
+An error carries in `arg1` to `arg3` what R3 carries there, as values: a word,
+a set-word, a datatype, the offending value. It never carries prose.
+`Raised.of(EvaluationFailure, String)`, which turned any text into a word, is
+gone, and `ErrorValue` refuses an any-word argument whose spelling no scanner
+would read as one word (empty, or holding whitespace, a colon, a bracket or a
+quote). R3 cannot make such a word, so the guard is R3's own invariant, and a
+raise that slips back into prose fails in the gate rather than printing the
+catalogue's template around a sentence.
+
+Where R3 raises the same error from the same source, the arguments are read
+from `./r3-head` (`scripts/error-arguments-sweep.py`; finding 241). Where the
+catalogue entry takes no argument (`bad-refines`, `feature-na`, `overflow`,
+`zero-divide`, `not-done`, `hidden`), none is carried.
+
+**Where R3 cannot reach the raise** -- JEBOL's own hosts, displays and ports,
+and checks the type checks before them make unreachable -- the argument is
+the value the error is about, and the id is one whose template reads right
+with it: a value no rule fits is `invalid-arg` naming it. `no-service`, which
+the catalogue does not name and which is worded by its own sentence (decision
+in `spec/natives.allium`, `AnIdOnlyJebolRaisesIsWordedByItsOwnSentence`),
+keeps the sentence as its message and carries in `arg1` what was refused: the
+service or the scheme as a word where a grant or a route refused it, or the
+host's own reason as a string where a window or a page did. A clipboard the
+host cannot reach is `read-error` or `write-error` carrying `clipboard` and the
+host's reason as a string. A host's reason, a host name, or the text an http
+server answered stays a string, as R3's own schemes carry it.
+
+**One difference stays.** `parse "a" [set]`, `[copy]` and `[change "a"]`
+carry R3's end marker `#(end)` in `arg1` (finding 243). JEBOL has no end value
+a script can hold: adding one would make a new member of the sealed `Value`
+interface that every exhaustive switch over a value would have to place, for a
+value no native accepts. These carry the keyword instead, so `e/arg1` reads
+and the message names the rule word. Rebol's suite asserts only the ids of
+these errors (`parse-test.r3`), and JEBOL's are R3's.
+`AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.

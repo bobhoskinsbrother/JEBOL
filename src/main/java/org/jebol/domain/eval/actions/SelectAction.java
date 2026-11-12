@@ -4,6 +4,8 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesSearch;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Raised;
@@ -39,6 +41,7 @@ public class SelectAction extends SeriesSearchAction {
         return switch (subject) {
             case MapValue map -> map.select(wanted, refinements.contains("case"));
             case VectorValue numbers -> refuseDatatype(numbers);
+            case ImageValue picture -> refuseDatatype(picture);
             case NoneValue nothing -> nothing;
             case Value object when object.isAnyObject() -> readFieldWanted(object, wanted);
             case RebolSeries series -> {
@@ -77,8 +80,7 @@ public class SelectAction extends SeriesSearchAction {
 
     private Value refuseRecordWidthBelowOne(RebolSeries series, long stride) {
         if (series instanceof AnyBlockValue) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "select/skip needs a record width of at least one, not " + stride);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(stride));
         }
         return NoneValue.none();
     }

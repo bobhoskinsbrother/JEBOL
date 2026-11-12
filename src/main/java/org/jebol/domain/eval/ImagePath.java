@@ -2,12 +2,12 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.*;
 
-final class ImagePath {
+public final class ImagePath {
 
     private ImagePath() {
     }
 
-    static Value read(ImageValue image, Value selector) {
+    public static Value read(ImageValue image, Value selector) {
         if (selector instanceof AnyWordValue field) {
             return describeImage(image, field);
         }
@@ -26,8 +26,7 @@ final class ImagePath {
     static void write(ImageValue image, int pixelFromHead, Value written) {
         ImageStorage storage = image.storage();
         if (pixelFromHead < 1 || pixelFromHead > storage.length()) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "pixel " + pixelFromHead + " is outside the image");
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         if (written instanceof TupleValue colour) {
             int[] parts = colour.segments();
@@ -47,8 +46,7 @@ final class ImagePath {
         }
         int pixel = findPixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "pixel " + pixel + " is outside the image");
+            throw Raised.cannotSet(selector);
         }
         write(image, image.index() + pixel - 1, written);
     }
@@ -69,14 +67,13 @@ final class ImagePath {
             case "red" -> fillOneChannel(image, written, 1);
             case "green" -> fillOneChannel(image, written, 2);
             case "blue" -> fillOneChannel(image, written, 3);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            default -> throw Raised.cannotSelect(field);
         }
     }
 
     private static void reshapeTo(ImageValue image, Value written) {
         if (!(written instanceof PairValue asked) || (int) asked.x() == 0) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "an image is sized by a pair with a width");
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         int across = (int) asked.x();
         image.storage().reshape(across, countWholeRowsPixelsMake(image, asked, across));
@@ -198,12 +195,10 @@ final class ImagePath {
 
     private static int readByteOrRefuse(Value written) {
         if (!(written instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a whole picture is filled from a tuple or a number");
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         if (magnitude < 0 || magnitude > 255) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a colour byte holds 0 to 255");
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE);
         }
         return (int) magnitude;
     }
@@ -211,18 +206,15 @@ final class ImagePath {
     static void writeOneChannel(
             ImageValue image, Value pixelSegment, int channel, Value written) {
         if (channel < 1 || channel > 4) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a pixel has four bytes, so " + channel + " names none of them");
+            throw Raised.cannotSet(IntegerValue.of(channel));
         }
         if (!(written instanceof IntegerValue(long magnitude))
                 || magnitude < 0 || magnitude > 255) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "one byte of a pixel holds 0 to 255");
+            throw Raised.cannotSet(IntegerValue.of(channel));
         }
         int pixel = findPixelNamedBy(image, pixelSegment);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "pixel " + pixel + " is outside the image");
+            throw Raised.cannotSet(pixelSegment);
         }
         image.storage().setChannelAt(image.index() + pixel - 1, channel,
                 (int) magnitude);
@@ -249,9 +241,7 @@ final class ImagePath {
             default -> -1;
         };
         if (octet < 0 || octet > 255) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a pixel takes a colour tuple or an alpha byte, not "
-                            + written.datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.INVALID_ARG, written);
         }
         return (int) octet;
     }
@@ -275,7 +265,7 @@ final class ImagePath {
             case "color" -> averageColour(image);
             case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::luminosity);
             case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::greyLevel);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            default -> throw Raised.cannotSelect(field);
         };
     }
 

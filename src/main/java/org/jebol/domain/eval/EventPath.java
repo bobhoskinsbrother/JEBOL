@@ -14,9 +14,7 @@ public final class EventPath {
             Value callbackPort, Value consolePort) {
 
         if (!(selector instanceof AnyWordValue asked)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "an event's fields are named, and "
-                            + selector.datatype().literalSpelling() + " is not a name");
+            throw Raised.cannotSelect(selector);
         }
         return switch (asked.canonical()) {
             case "type" -> event.typeIndex() == 0
@@ -35,8 +33,7 @@ public final class EventPath {
                     ? IntegerValue.of(event.data())
                     : NoneValue.none();
             case "data" -> heldData(event);
-            default -> throw Raised.of(
-                    EvaluationFailure.INVALID_PATH, asked.spelling());
+            default -> throw Raised.cannotSelect(asked);
         };
     }
 
@@ -112,9 +109,7 @@ public final class EventPath {
         }
         return java.util.Optional.of(event.withType(
                 EventCatalogue.findTypeIndexOf(eventType.canonical())
-                        .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG,
-                                eventType.spelling()
-                                        + " is not in system/catalog/event-types"))));
+                        .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, eventType))));
     }
 
     private static java.util.Optional<EventValue> writePort(
@@ -149,8 +144,7 @@ public final class EventPath {
 
     private static int asShortRaisingRatherThanTruncating(double half) {
         if (Math.abs(half) > EventValue.WIDEST_OFFSET_HALF) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "an event's offset holds -32767 to 32767, not " + (long) half);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, DecimalValue.of(half));
         }
         return (int) half;
     }

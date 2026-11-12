@@ -19,11 +19,7 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Six pieces of work, in the order to do them.
-
-**1g comes first: it makes the same script answer differently on a real
-3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. It is what a script sees when it fails.
+Five pieces of work, in the order to do them.
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
@@ -39,113 +35,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1g. An error's arguments are values, not sentences
-
-JEBOL has put an English sentence where R3 puts a value more than once:
-arg1 of the operator error (fixed under decision 66), and arg1 of
-`no-value`, which for `get first [zork]` is a `word!` spelt `zork has no
-value` where R3's is `zork`. A script that reads `e/arg1` gets prose, and
-a script that prints the error gets the sentence fed through the
-catalogue's template a second time:
-
-| Source | R3 | JEBOL |
-| --- | --- | --- |
-| `get first [zork]` | `zork has no value` | `zork has no value has no value` |
-| `1x2 + 1.2.3` | `incompatible argument for add: of #(pair!)` | `incompatible argument for tuple! does not go with pair arithmetic of _` |
-| `1 and true` | `incompatible argument for and~: of #(integer!)` | `incompatible argument for integer! of logic!` |
-
-All three were measured on `./r3-head` and on `build/libs/jebol-3.22.5.jar`
-on 2026-11-12. `1 < none` (`invalid-compare`) and `round/to 1 none`
-(`expect-arg round scale`) already agree.
-
-**Where the sentences come from.** `Raised.of(EvaluationFailure, String
-detail)` puts its text into arg1 as a `word!`, whatever the text says. A
-read-only scan on 2026-11-12 found 130 calls handing it a string literal,
-118 of them prose: invalid-arg 20, expect-arg 13, out-of-range 12,
-invalid-path 9, bad-path-set 9, bad-refines 9, feature-na 7, cannot-use 6,
-overflow 5, parse-end 4, parse-rule 4, and 17 other ids with one or two
-each. Another 32 hand it a `spelling()` or `name()`, which usually is the
-word R3 names. Callers passing a `String` variable were not counted. Ask
-the IDE for the usages of that overload before starting; the scan was a
-regular expression and undercounts.
-
-Known cases beyond those:
-
-- **`not-related` names two datatypes as words, where R3 names the action
-  and one datatype.** `1 and true` is R3 `not-related and~: integer!` (a
-  set-word and a datatype) and JEBOL `not-related integer! logic!` (two
-  words); `1 xor 1x2`, `1.2.3 and true` and `1x2 and 1.2.3` are the same.
-  `1x2 + 1.2.3` is R3 `not-related add: pair!` and JEBOL a sentence.
-  `Raised.ofUnrelated` builds this shape for eight callers (`BitsetValue`,
-  `CharacterActions`, `CharacterValue`, `IntegerValue`, `PairValue`,
-  `TupleActions`, `TupleValue`, `Value`), and none of them is handed the
-  action. `Raised.notRelatedToAction(left, actionName)`, added under 1f, is
-  R3's shape. Every caller moves to it, and `ofUnrelated` is deleted.
-- **`expect-arg` carries a sentence from `Comparison.asDouble` and
-  `Numbers.numberAsDouble`**: `none! is not a number`. First find which
-  sources reach either one with a non-number, because the type checks
-  before them refuse most. Then copy what R3 raises for the same source.
-  It may not be `expect-arg` at all.
-
-**The plan.**
-
-1. **Make the sentence unbuildable.** Delete `Raised.of(EvaluationFailure,
-   String)`, then work through the compile errors one call site at a time;
-   the compiler is the list. Each site becomes one of these three:
-   - **R3 raises the same error from the same source.** The arguments are
-     R3's: arg1, arg2 and arg3 read from `./r3-head`, as values (a word, a
-     set-word, a datatype, the offending value).
-   - **R3 raises it with no arguments** (`zero-divide`, `bad-refines`,
-     `feature-na`, whose catalogue messages take none). The site uses
-     `Raised.of(failure)`, and the prose is dropped.
-   - **R3 cannot reach it** (JEBOL's own hosts, displays, ports). The
-     argument is the value the error is about, never a description of it.
-     If an id's catalogue message then reads wrong, raise a different id
-     whose template fits. Never edit R3's `errors.reb`.
-
-   The remaining `ErrorValue.of` callers outside `Raised` (20 files, among
-   them `Evaluator`, `FunctionSpec`, `TranscodeNative`, `Ports`, the TLS and
-   HTTP actors) are read the same way. The compiler does not flag them.
-2. **Guard it at the value.** `ErrorValue`'s constructor already refuses a
-   null message. Make it refuse an any-word argument whose spelling the
-   scanner would not read back as one word (whitespace in it, for a
-   start). R3 cannot make such a word, so the guard is R3's own invariant,
-   and any path missed in step 1 fails loudly in the gate instead of
-   printing prose.
-3. **Sweep the arguments against R3**, the way 1e and 1f did:
-   - `scripts/error-arguments-sweep.py` writes
-     `src/testFixtures/resources/org/jebol/error-arguments-as-r3-answers.tsv`.
-     Each row is a source, then the id and `mold/flat` of arg1, arg2 and
-     arg3, from `./r3-head`, one case per process.
-   - `ErrorArgumentsAnswerAsR3DoesTest` puts each row to JEBOL.
-   - Copy `scripts/near-and-where-sweep.py` and
-     `NearAndWhereAnswerAsR3DoesTest`; the probe adds three lines,
-     `print mold/flat e/arg1` and the same for arg2 and arg3.
-   - Its cases are two sets. First, the 622 refusals that sweep already
-     generates, which cover the type checks before a call. Second, one
-     hand-written source per call site changed in step 1, which covers the
-     raises inside native bodies. A refusal never reaches those, and they
-     are where the prose lived.
-   - Write the hand-written ones into the generator as a list, not into
-     the TSV, so a regenerated table keeps them.
-4. **A `*FromTheSourceTest` per family fixed**: no-value, not-related,
-   expect-arg, invalid-path and bad-path-set, out-of-range, invalid-arg and
-   parse. Each asserts arg1 to arg3 as values and the formed message, and
-   goes past the sweep where it can: a set-word against a word, and a
-   datatype against its spelling as a word.
-5. **Search Rebol's suite for `arg1`, `arg2`, `arg3`** (18 files under
-   `src/testFixtures/resources/rebol-suite/` mention them) before choosing
-   any argument R3 cannot raise. An assertion there settles it.
-6. **Record it.** Add a finding for any C path that names an argument
-   unexpectedly (one that is a set-word where a word was expected, or the
-   left operand's datatype where the right's was expected). Also add a
-   decision for the ids JEBOL raises from places R3 cannot reach, with
-   what goes in their arguments.
-
-**Done when** `Raised.of(EvaluationFailure, String)` is gone, the
-`ErrorValue` guard is in, the sweep test passes every row, and every row
-of the three-row table above prints as R3 prints it.
 
 #### 1h. Clear the spec's open questions
 

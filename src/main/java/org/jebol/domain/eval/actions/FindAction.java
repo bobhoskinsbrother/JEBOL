@@ -9,6 +9,7 @@ import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
@@ -80,9 +81,7 @@ public class FindAction extends SeriesSearchAction {
         series.refuseNeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
             if (series instanceof AnyBlockValue) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "find/skip needs a record width of at least one, not "
-                                + search.stride());
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(search.stride()));
             }
             return NoneValue.none();
         }

@@ -50,8 +50,7 @@ public sealed interface Value permits
     }
 
     default List<Value> listItems() {
-        throw Raised.of(EvaluationFailure.CANNOT_USE,
-                "cannot walk " + datatype().literalSpelling() + " value");
+        throw Raised.of(EvaluationFailure.INVALID_ARG, this);
     }
 
     default void refuseToBeWrittenWhenItReachesItsContextsOwnSelf() {
@@ -77,8 +76,7 @@ public sealed interface Value permits
     }
 
     default long asPosition() {
-        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                "a position is a number, not " + datatype().literalSpelling());
+        throw Raised.of(EvaluationFailure.INVALID_ARG, this);
     }
 
     default String runTogether() {
@@ -177,8 +175,7 @@ public sealed interface Value permits
     }
 
     default long asCountOfRepetitions() {
-        throw Raised.of(EvaluationFailure.INVALID_TYPE,
-                Molder.mold(this) + " is not a count of repetitions");
+        throw Raised.of(EvaluationFailure.OUT_OF_RANGE, this);
     }
 
     default AnyBlockValue repeatInBlock(Value times) {
@@ -202,11 +199,8 @@ public sealed interface Value permits
     }
 
     default Value partWayTo(Value destination, double fraction) {
-        if (!Numbers.isANumber(this)) {
-            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(this));
-        }
-        if (!Numbers.isANumber(destination)) {
-            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+        if (!Numbers.isANumber(this) || !Numbers.isANumber(destination)) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, this, destination);
         }
         double from = Numbers.numberAsDouble(this);
         return DecimalValue.of(
@@ -214,12 +208,12 @@ public sealed interface Value permits
     }
 
 
-    default Value refuseArithmetic(Value right) {
-        throw Raised.ofUnrelated(this, right);
+    default Value refuseArithmetic(ArithmeticOperation operation) {
+        throw Raised.notRelatedToAction(this, operation.spelling());
     }
 
     default Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
-        throw Raised.cannotUse(this, "a set operation");
+        throw Raised.differentKindsOfSet(this, other);
     }
 
     default Optional<Value[]> combineWith(Value other) {

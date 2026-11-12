@@ -22,12 +22,11 @@ public final class VectorPath {
     public static Value read(VectorValue vector, Value selector) {
         if (selector instanceof AnyWordValue asked) {
             return VectorQuery.readField(vector, asked.canonical())
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                            asked.spelling()));
+                    .orElseThrow(() -> Raised.cannotSelect(asked));
         }
         Integer chosen = findPositionChosenBy(vector, selector);
         if (chosen == null) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
+            throw Raised.cannotSelect(selector);
         }
         if (chosen < 1 || chosen > vector.storageLength()) {
             return NoneValue.none();
@@ -37,11 +36,11 @@ public final class VectorPath {
 
     public static void write(VectorValue vector, Value selector, Value written) {
         if (!(selector instanceof IntegerValue) && !(selector instanceof AnyDecimalValue)) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(selector));
+            throw Raised.cannotSet(selector);
         }
         Integer chosen = findPositionChosenBy(vector, selector);
         if (chosen == null || chosen < 1 || chosen > vector.storageLength()) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(selector));
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, selector);
         }
         try {
             vector.storage().set(chosen, encodeForStorage(vector.kind(), written));
@@ -55,7 +54,7 @@ public final class VectorPath {
         try {
             return kind.encodeForStorage(written);
         } catch (IllegalArgumentException notNumber) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, written);
         }
     }
 

@@ -30,9 +30,7 @@ public class BindNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             Value targetGiven = arguments.get(1);
             Context target = findContextFor(targetGiven).orElseThrow(() ->
-                    Raised.of(EvaluationFailure.EXPECT_ARG,
-                            "bind wanted an object or a bound word, not "
-                                    + targetGiven.datatype().literalSpelling()));
+                    Raised.of(EvaluationFailure.INVALID_ARG, targetGiven));
             boolean addsWhatIsMissing = refinements.contains("new") || refinements.contains("set");
             return switch (arguments.getFirst()) {
                 case AnyWordValue word -> bindWordInto(word, target, addsWhatIsMissing);
@@ -45,7 +43,10 @@ public class BindNative extends DefaultNative {
 
     private Optional<Context> findContextFor(Value target) {
         if (target instanceof AnyWordValue word) {
-            return word.isBound() ? Optional.of(word.binding()) : Optional.empty();
+            if (!word.isBound()) {
+                throw Raised.wordNotBound(word);
+            }
+            return Optional.of(word.binding());
         }
         return target.fieldsAsContext();
     }
@@ -58,7 +59,7 @@ public class BindNative extends DefaultNative {
             return word.bindTo(target);
         }
         if (!target.holdsWhereResolved(word.canonical())) {
-            throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
+            throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, WordValue.of(word.spelling()));
         }
         return word.bindTo(target.contextHolding(word.canonical()));
     }

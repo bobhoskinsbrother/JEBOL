@@ -162,9 +162,7 @@ final class PendingCall {
             case NativeValue built ->
                     countArgumentsWritten(built.parameters(), mentioned);
             case OperatorValue operator -> operator.arity();
-            default -> throw Raised.of(
-                    EvaluationFailure.CANNOT_USE,
-                    callee.datatype().literalSpelling() + " is not callable");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, callee);
         };
     }
 

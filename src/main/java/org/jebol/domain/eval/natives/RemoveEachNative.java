@@ -168,7 +168,7 @@ public class RemoveEachNative extends LoopingNative {
                     numbers.storage().insertAt(at, ((IntegerValue) item).magnitude());
             case AnyStringValue text ->
                     text.storage().insertAt(at, ((CharacterValue) item).codepoint());
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE, "remove-each");
+            default -> throw Raised.cannotUse(series, "remove-each");
         }
     }
 

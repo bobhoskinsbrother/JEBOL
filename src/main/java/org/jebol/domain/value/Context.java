@@ -270,7 +270,7 @@ public final class Context {
 
     public Value findSystemFunctionNamed(String name) {
         if (!(readValueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+            throw Raised.wordNotBound(name);
         }
         if (!sys.contains(name)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());

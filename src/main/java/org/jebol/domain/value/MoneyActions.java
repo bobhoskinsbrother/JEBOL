@@ -23,7 +23,7 @@ public final class MoneyActions {
             case AnyDecimalValue decimal -> new Deci(decimal.quantity());
             case TimeValue time when operation.multiplies() -> new HoursBilled(time).asDeci();
             default -> throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.spelling()), MoneyValue.TYPE);
+                    SetWordValue.of(operation.spelling()), MoneyValue.TYPE);
         };
     }
 

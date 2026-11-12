@@ -76,8 +76,7 @@ public interface ImagePort {
             }
 
             private Raised refuse() {
-                return Raised.of(EvaluationFailure.FEATURE_NA,
-                        "image encoding through the operating system");
+                return Raised.of(EvaluationFailure.FEATURE_NA);
             }
         };
     }

@@ -23,8 +23,7 @@ public class XtestNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    "xtest exercises the C's own handle structures");
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         };
     }
 }

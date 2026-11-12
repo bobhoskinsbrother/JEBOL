@@ -18,25 +18,29 @@ final class Change extends DeclaredKeyword {
     }
 
     @Override
+    public boolean triesRuleFirst() {
+        return true;
+    }
+
+    @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         refuseModifierBeforeRule(rules.get(at + 1));
         Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
-                throw Raised.of(EvaluationFailure.PARSE_END,
-                        "change needs a value to put where the match was");
+                throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
             }
             return putBlockIn(walk, rules, at, at + 2,
                     Math.min(walk.position(), markOffset),
                     Math.abs(walk.position() - markOffset));
         }
         int replacementAt = at + 1 + walk.ruleSpan(rules, at + 1);
-        if (replacementAt >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END,
-                    "change needs a value to put where the match was");
-        }
         int before = walk.position();
-        if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
+        boolean matched = walk.matchOne(rules, at + 1) != ParseWalk.NO_MATCH;
+        if (matched && replacementAt >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
+        }
+        if (!matched) {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
@@ -58,13 +62,13 @@ final class Change extends DeclaredKeyword {
         }
         int span = walk.ruleSpan(rules, at + 1);
         int replacementAt = at + 1 + span;
-        if (replacementAt >= rules.size()) {
-            return ParseWalk.NO_MATCH;
-        }
         int before = walk.position();
         if (walk.matchOne(rules, at + 1) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
+        }
+        if (replacementAt >= rules.size()) {
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
         }
         putTextIn(walk, rules.get(replacementAt),
                 before, walk.position() - before);
@@ -104,9 +108,7 @@ final class Change extends DeclaredKeyword {
     private static void refuseModifierBeforeRule(Value rule) {
         if (rule instanceof WordValue misplaced
                 && misplaced.canonical().equals(WHOLE)) {
-            throw Raised.of(EvaluationFailure.PARSE_RULE,
-                    "only says how to put the replacement in, so it goes "
-                            + "before the replacement and not before the rule");
+            throw Raised.of(EvaluationFailure.PARSE_RULE, misplaced);
         }
     }
 }

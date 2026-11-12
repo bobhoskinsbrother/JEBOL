@@ -48,8 +48,7 @@ public class ShiftNative extends ArithmeticNative {
         }
         if (places >= Long.SIZE) {
             if (value != 0) {
-                throw Raised.of(EvaluationFailure.OVERFLOW,
-                        "shifting " + value + " left by " + places + " loses every bit");
+                throw Raised.of(EvaluationFailure.OVERFLOW);
             }
             return 0;
         }
@@ -57,8 +56,7 @@ public class ShiftNative extends ArithmeticNative {
         long magnitude = value < 0 ? -value : value;
         if (Long.compareUnsigned(largestThatFits, magnitude) <= 0) {
             if (Long.compareUnsigned(largestThatFits, magnitude) < 0 || value >= 0) {
-                throw Raised.of(EvaluationFailure.OVERFLOW,
-                        "shifting " + value + " left by " + places + " leaves the range");
+                throw Raised.of(EvaluationFailure.OVERFLOW);
             }
             return Long.MIN_VALUE;
         }

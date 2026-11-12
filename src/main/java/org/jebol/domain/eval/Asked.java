@@ -51,8 +51,7 @@ public record Asked(
     public void refuseRefinementsThisDatatypeDoesNotServe(String nativeName) {
         for (String unfinished : List.of("part", "only", "dup")) {
             if (refinementsAsked.contains(unfinished)) {
-                throw Raised.of(EvaluationFailure.FEATURE_NA,
-                        nativeName + "/" + unfinished + " on a gob is not implemented");
+                throw Raised.of(EvaluationFailure.NOT_DONE);
             }
         }
     }
@@ -95,7 +94,7 @@ public record Asked(
     private static Optional<Long> measureHowMuchOf(Value given, Value limit) {
         if (limit instanceof IntegerValue(long magnitude)) {
             if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, limit);
             }
             return Optional.of(magnitude);
         }

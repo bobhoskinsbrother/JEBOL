@@ -81,7 +81,7 @@ public class ReduceNative extends DefaultNative {
                     && !kept.contains(word.canonical())) {
                 Value held = word.findBoundSlot().value();
                 if (held instanceof UnsetValue) {
-                    throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
+                    throw Raised.wordHasNoValue(word);
                 }
                 results.add(held);
             } else {

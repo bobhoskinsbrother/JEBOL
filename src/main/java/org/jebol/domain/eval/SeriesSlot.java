@@ -23,8 +23,8 @@ record SeriesSlot(RebolSeries series, int at, Value held) implements Slot {
                             : Molder.form(value).codePointAt(0));
             case BinaryValue bytes -> bytes.storage().set(at, readOctetFrom(value));
             case ImageValue image -> ImagePath.write(image, at, value);
-            case GobValue gob ->
-                    GobPath.pokeWhichInsertsRatherThanReplaces(gob, at, value);
+            case GobValue ignored -> {
+            }
             case VectorValue vector -> vector.storage().set(at,
                     VectorPath.encodeForStorage(vector.kind(), value));
         }
@@ -35,12 +35,10 @@ record SeriesSlot(RebolSeries series, int at, Value held) implements Slot {
             return 0;
         }
         if (wanted < 0) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    wanted + " is not a byte: a binary holds 0 to 255");
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         if (wanted > 255) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    wanted + " is not a byte: a binary holds 0 to 255");
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
         }
         return (int) wanted;
     }

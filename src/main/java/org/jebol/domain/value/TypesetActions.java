@@ -31,7 +31,7 @@ public final class TypesetActions {
         Set<Datatype> found = new LinkedHashSet<>();
         for (Value item : spec.remaining()) {
             if (!addTypesNamedBy(item, found)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
+                throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }
         }
         return found;

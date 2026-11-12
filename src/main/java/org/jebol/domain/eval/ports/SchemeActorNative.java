@@ -82,7 +82,7 @@ public final class SchemeActorNative extends DefaultNative implements ServesPort
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, nativeName());
+            throw Raised.of(EvaluationFailure.CANNOT_USE, WordValue.of(nativeName()));
         };
     }
 

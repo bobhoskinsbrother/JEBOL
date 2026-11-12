@@ -38,7 +38,7 @@ final class ChecksumPort {
 
     private RunningSumThatReadDoesNotEnd sumNamed(String method) {
         String algorithm = Optional.ofNullable(Encodings.DIGESTS.get(method))
-                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, method));
+                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, WordValue.of(method)));
         if (BYTE_PRESERVING_DIGESTS.contains(algorithm)) {
             return keepBytes(method);
         }
@@ -136,7 +136,7 @@ final class ChecksumPort {
         if (!(port.readFieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
                 || !(context.ownSlotFor("method").value() instanceof AnyWordValue method)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, port.readFieldValue("spec"));
         }
         return method.canonical();
     }

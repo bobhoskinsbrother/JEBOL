@@ -1,0 +1,869 @@
+absolute #"a"	expect-arg	absolute	value	#(char!)
+absolute (#"a")	expect-arg	absolute	value	#(char!)
+add true	expect-arg	add	value1	#(logic!)
+add (true)	expect-arg	add	value1	#(logic!)
+add 1 true	expect-arg	add	value2	#(logic!)
+add 1 (true)	expect-arg	add	value2	#(logic!)
+and~ 1.5	expect-arg	and~	value1	#(decimal!)
+and~ (1.5)	expect-arg	and~	value1	#(decimal!)
+and~ 1 1.5	expect-arg	and~	value2	#(decimal!)
+and~ 1 (1.5)	expect-arg	and~	value2	#(decimal!)
+append 1	expect-arg	append	series	#(integer!)
+append (1)	expect-arg	append	series	#(integer!)
+at 1	expect-arg	at	series	#(integer!)
+at (1)	expect-arg	at	series	#(integer!)
+at {x} $1	expect-arg	at	index	#(money!)
+at {x} ($1)	expect-arg	at	index	#(money!)
+atz 1	expect-arg	atz	series	#(integer!)
+atz (1)	expect-arg	atz	series	#(integer!)
+atz {x} $1	expect-arg	atz	index	#(money!)
+atz {x} ($1)	expect-arg	atz	index	#(money!)
+back 1	expect-arg	back	series	#(integer!)
+back (1)	expect-arg	back	series	#(integer!)
+change 1	expect-arg	change	series	#(integer!)
+change (1)	expect-arg	change	series	#(integer!)
+clear 1	expect-arg	clear	series	#(integer!)
+clear (1)	expect-arg	clear	series	#(integer!)
+close 1	expect-arg	close	port	#(integer!)
+close (1)	expect-arg	close	port	#(integer!)
+complement 1.5	expect-arg	complement	value	#(decimal!)
+complement (1.5)	expect-arg	complement	value	#(decimal!)
+copy 1	expect-arg	copy	value	#(integer!)
+copy (1)	expect-arg	copy	value	#(integer!)
+create 1	expect-arg	create	port	#(integer!)
+create (1)	expect-arg	create	port	#(integer!)
+delete 1	expect-arg	delete	port	#(integer!)
+delete (1)	expect-arg	delete	port	#(integer!)
+divide true	expect-arg	divide	value1	#(logic!)
+divide (true)	expect-arg	divide	value1	#(logic!)
+divide 1 true	expect-arg	divide	value2	#(logic!)
+divide 1 (true)	expect-arg	divide	value2	#(logic!)
+even? 1.2.3	expect-arg	even?	number	#(tuple!)
+even? (1.2.3)	expect-arg	even?	number	#(tuple!)
+find 1	expect-arg	find	series	#(integer!)
+find (1)	expect-arg	find	series	#(integer!)
+flush 1	expect-arg	flush	port	#(integer!)
+flush (1)	expect-arg	flush	port	#(integer!)
+head 1	expect-arg	head	series	#(integer!)
+head (1)	expect-arg	head	series	#(integer!)
+head? 1	expect-arg	head?	series	#(integer!)
+head? (1)	expect-arg	head?	series	#(integer!)
+index? 1	expect-arg	index?	series	#(integer!)
+index? (1)	expect-arg	index?	series	#(integer!)
+indexz? 1	expect-arg	indexz?	series	#(integer!)
+indexz? (1)	expect-arg	indexz?	series	#(integer!)
+insert 1	expect-arg	insert	series	#(integer!)
+insert (1)	expect-arg	insert	series	#(integer!)
+length? 1	expect-arg	length?	series	#(integer!)
+length? (1)	expect-arg	length?	series	#(integer!)
+modify 1	expect-arg	modify	target	#(integer!)
+modify (1)	expect-arg	modify	target	#(integer!)
+modify %f 1	expect-arg	modify	field	#(integer!)
+modify %f (1)	expect-arg	modify	field	#(integer!)
+multiply true	expect-arg	multiply	value1	#(logic!)
+multiply (true)	expect-arg	multiply	value1	#(logic!)
+multiply 1 true	expect-arg	multiply	value2	#(logic!)
+multiply 1 (true)	expect-arg	multiply	value2	#(logic!)
+negate #"a"	expect-arg	negate	number	#(char!)
+negate (#"a")	expect-arg	negate	number	#(char!)
+next 1	expect-arg	next	series	#(integer!)
+next (1)	expect-arg	next	series	#(integer!)
+odd? 1.2.3	expect-arg	odd?	number	#(tuple!)
+odd? (1.2.3)	expect-arg	odd?	number	#(tuple!)
+open 1	expect-arg	open	spec	#(integer!)
+open (1)	expect-arg	open	spec	#(integer!)
+open? 1	expect-arg	open?	port	#(integer!)
+open? (1)	expect-arg	open?	port	#(integer!)
+or~ 1.5	expect-arg	or~	value1	#(decimal!)
+or~ (1.5)	expect-arg	or~	value1	#(decimal!)
+or~ 1 1.5	expect-arg	or~	value2	#(decimal!)
+or~ 1 (1.5)	expect-arg	or~	value2	#(decimal!)
+past? 1	expect-arg	past?	series	#(integer!)
+past? (1)	expect-arg	past?	series	#(integer!)
+pick 1	expect-arg	pick	aggregate	#(integer!)
+pick (1)	expect-arg	pick	aggregate	#(integer!)
+poke 1	expect-arg	poke	series	#(integer!)
+poke (1)	expect-arg	poke	series	#(integer!)
+power $1	expect-arg	power	number	#(money!)
+power ($1)	expect-arg	power	number	#(money!)
+power 1 $1	expect-arg	power	exponent	#(money!)
+power 1 ($1)	expect-arg	power	exponent	#(money!)
+put 1	expect-arg	put	series	#(integer!)
+put (1)	expect-arg	put	series	#(integer!)
+query 1	expect-arg	query	target	#(integer!)
+query (1)	expect-arg	query	target	#(integer!)
+query 1-Jan-2000 1	expect-arg	query	field	#(integer!)
+query 1-Jan-2000 (1)	expect-arg	query	field	#(integer!)
+read 1	expect-arg	read	source	#(integer!)
+read (1)	expect-arg	read	source	#(integer!)
+reflect 1 1	expect-arg	reflect	field	#(integer!)
+reflect 1 (1)	expect-arg	reflect	field	#(integer!)
+remainder true	expect-arg	remainder	value1	#(logic!)
+remainder (true)	expect-arg	remainder	value1	#(logic!)
+remainder 1 true	expect-arg	remainder	value2	#(logic!)
+remainder 1 (true)	expect-arg	remainder	value2	#(logic!)
+remove 1	expect-arg	remove	series	#(integer!)
+remove (1)	expect-arg	remove	series	#(integer!)
+rename 1	expect-arg	rename	from	#(integer!)
+rename (1)	expect-arg	rename	from	#(integer!)
+rename %f 1	expect-arg	rename	to	#(integer!)
+rename %f (1)	expect-arg	rename	to	#(integer!)
+reverse 1	expect-arg	reverse	series	#(integer!)
+reverse (1)	expect-arg	reverse	series	#(integer!)
+round #"a"	expect-arg	round	value	#(char!)
+round (#"a")	expect-arg	round	value	#(char!)
+select 1	expect-arg	select	series	#(integer!)
+select (1)	expect-arg	select	series	#(integer!)
+skip 1	expect-arg	skip	series	#(integer!)
+skip (1)	expect-arg	skip	series	#(integer!)
+skip {x} $1	expect-arg	skip	offset	#(money!)
+skip {x} ($1)	expect-arg	skip	offset	#(money!)
+sort 1	expect-arg	sort	series	#(integer!)
+sort (1)	expect-arg	sort	series	#(integer!)
+subtract true	expect-arg	subtract	value1	#(logic!)
+subtract (true)	expect-arg	subtract	value1	#(logic!)
+subtract 1 true	expect-arg	subtract	value2	#(logic!)
+subtract 1 (true)	expect-arg	subtract	value2	#(logic!)
+swap 1	expect-arg	swap	series1	#(integer!)
+swap (1)	expect-arg	swap	series1	#(integer!)
+swap {x} 1	expect-arg	swap	series2	#(integer!)
+swap {x} (1)	expect-arg	swap	series2	#(integer!)
+tail 1	expect-arg	tail	series	#(integer!)
+tail (1)	expect-arg	tail	series	#(integer!)
+tail? 1	expect-arg	tail?	series	#(integer!)
+tail? (1)	expect-arg	tail?	series	#(integer!)
+take 1	expect-arg	take	series	#(integer!)
+take (1)	expect-arg	take	series	#(integer!)
+trim 1	expect-arg	trim	series	#(integer!)
+trim (1)	expect-arg	trim	series	#(integer!)
+update 1	expect-arg	update	port	#(integer!)
+update (1)	expect-arg	update	port	#(integer!)
+write 1	expect-arg	write	destination	#(integer!)
+write (1)	expect-arg	write	destination	#(integer!)
+xor~ 1.5	expect-arg	xor~	value1	#(decimal!)
+xor~ (1.5)	expect-arg	xor~	value1	#(decimal!)
+xor~ 1 1.5	expect-arg	xor~	value2	#(decimal!)
+xor~ 1 (1.5)	expect-arg	xor~	value2	#(decimal!)
+++ 1	expect-arg	++	'word	#(integer!)
+++ (1)	expect-arg	++	'word	#(integer!)
+-- 1	expect-arg	--	'word	#(integer!)
+-- (1)	expect-arg	--	'word	#(integer!)
+access-os 1	expect-arg	access-os	field	#(integer!)
+access-os (1)	expect-arg	access-os	field	#(integer!)
+acos 1	expect-arg	acos	value	#(integer!)
+acos (1)	expect-arg	acos	value	#(integer!)
+ajoin 1	expect-arg	ajoin	block	#(integer!)
+ajoin (1)	expect-arg	ajoin	block	#(integer!)
+all 1	expect-arg	all	block	#(integer!)
+all (1)	expect-arg	all	block	#(integer!)
+any 1	expect-arg	any	block	#(integer!)
+any (1)	expect-arg	any	block	#(integer!)
+apply 1	expect-arg	apply	func	#(integer!)
+apply (1)	expect-arg	apply	func	#(integer!)
+arccosine $1	expect-arg	arccosine	value	#(money!)
+arccosine ($1)	expect-arg	arccosine	value	#(money!)
+arcsine $1	expect-arg	arcsine	value	#(money!)
+arcsine ($1)	expect-arg	arcsine	value	#(money!)
+arctangent $1	expect-arg	arctangent	value	#(money!)
+arctangent ($1)	expect-arg	arctangent	value	#(money!)
+arctangent2 1	expect-arg	arctangent2	point	#(integer!)
+arctangent2 (1)	expect-arg	arctangent2	point	#(integer!)
+as 1	expect-arg	as	type	#(integer!)
+as (1)	expect-arg	as	type	#(integer!)
+as {x} 1	expect-arg	as	spec	#(integer!)
+as {x} (1)	expect-arg	as	spec	#(integer!)
+as-color $1	expect-arg	as-color	r	#(money!)
+as-color ($1)	expect-arg	as-color	r	#(money!)
+as-color 1 $1	expect-arg	as-color	g	#(money!)
+as-color 1 ($1)	expect-arg	as-color	g	#(money!)
+as-color 1 1 $1	expect-arg	as-color	b	#(money!)
+as-color 1 1 ($1)	expect-arg	as-color	b	#(money!)
+as-pair $1	expect-arg	as-pair	x	#(money!)
+as-pair ($1)	expect-arg	as-pair	x	#(money!)
+as-pair 1 $1	expect-arg	as-pair	y	#(money!)
+as-pair 1 ($1)	expect-arg	as-pair	y	#(money!)
+ascii? 1.5	expect-arg	ascii?	value	#(decimal!)
+ascii? (1.5)	expect-arg	ascii?	value	#(decimal!)
+asin 1	expect-arg	asin	value	#(integer!)
+asin (1)	expect-arg	asin	value	#(integer!)
+assert 1	expect-arg	assert	conditions	#(integer!)
+assert (1)	expect-arg	assert	conditions	#(integer!)
+atan 1	expect-arg	atan	value	#(integer!)
+atan (1)	expect-arg	atan	value	#(integer!)
+atan2 1	expect-arg	atan2	y	#(integer!)
+atan2 (1)	expect-arg	atan2	y	#(integer!)
+atan2 1.5 1	expect-arg	atan2	x	#(integer!)
+atan2 1.5 (1)	expect-arg	atan2	x	#(integer!)
+attempt 1	expect-arg	attempt	block	#(integer!)
+attempt (1)	expect-arg	attempt	block	#(integer!)
+binary 1.5	expect-arg	binary	ctx	#(decimal!)
+binary (1.5)	expect-arg	binary	ctx	#(decimal!)
+bind 1	expect-arg	bind	word	#(integer!)
+bind (1)	expect-arg	bind	word	#(integer!)
+bind #a 1	expect-arg	bind	context	#(integer!)
+bind #a (1)	expect-arg	bind	context	#(integer!)
+blur 1	expect-arg	blur	image	#(integer!)
+blur (1)	expect-arg	blur	image	#(integer!)
+blur make image! 1x1 $1	expect-arg	blur	radius	#(money!)
+blur make image! 1x1 ($1)	expect-arg	blur	radius	#(money!)
+browse 1	expect-arg	browse	url	#(integer!)
+browse (1)	expect-arg	browse	url	#(integer!)
+call 1	expect-arg	call	command	#(integer!)
+call (1)	expect-arg	call	command	#(integer!)
+case 1	expect-arg	case	block	#(integer!)
+case (1)	expect-arg	case	block	#(integer!)
+catch 1	expect-arg	catch	block	#(integer!)
+catch (1)	expect-arg	catch	block	#(integer!)
+change-dir 1	expect-arg	change-dir	path	#(integer!)
+change-dir (1)	expect-arg	change-dir	path	#(integer!)
+check 1	expect-arg	check	val	#(integer!)
+check (1)	expect-arg	check	val	#(integer!)
+checksum 1	expect-arg	checksum	data	#(integer!)
+checksum (1)	expect-arg	checksum	data	#(integer!)
+checksum {x} 1	expect-arg	checksum	method	#(integer!)
+checksum {x} (1)	expect-arg	checksum	method	#(integer!)
+clamp #"a"	expect-arg	clamp	value	#(char!)
+clamp (#"a")	expect-arg	clamp	value	#(char!)
+clamp 1 #"a"	expect-arg	clamp	minimum	#(char!)
+clamp 1 (#"a")	expect-arg	clamp	minimum	#(char!)
+clamp 1 1 #"a"	expect-arg	clamp	maximum	#(char!)
+clamp 1 1 (#"a")	expect-arg	clamp	maximum	#(char!)
+collect-words 1	expect-arg	collect-words	block	#(integer!)
+collect-words (1)	expect-arg	collect-words	block	#(integer!)
+color-distance 1	expect-arg	color-distance	a	#(integer!)
+color-distance (1)	expect-arg	color-distance	a	#(integer!)
+color-distance 1.2.3 1	expect-arg	color-distance	b	#(integer!)
+color-distance 1.2.3 (1)	expect-arg	color-distance	b	#(integer!)
+complement? 1	expect-arg	complement?	value	#(integer!)
+complement? (1)	expect-arg	complement?	value	#(integer!)
+compress 1	expect-arg	compress	data	#(integer!)
+compress (1)	expect-arg	compress	data	#(integer!)
+compress {x} 1	expect-arg	compress	method	#(integer!)
+compress {x} (1)	expect-arg	compress	method	#(integer!)
+construct 1	expect-arg	construct	block	#(integer!)
+construct (1)	expect-arg	construct	block	#(integer!)
+context? 1	expect-arg	context?	word	#(integer!)
+context? (1)	expect-arg	context?	word	#(integer!)
+cos 1	expect-arg	cos	value	#(integer!)
+cos (1)	expect-arg	cos	value	#(integer!)
+cosine $1	expect-arg	cosine	value	#(money!)
+cosine ($1)	expect-arg	cosine	value	#(money!)
+debase 1	expect-arg	debase	value	#(integer!)
+debase (1)	expect-arg	debase	value	#(integer!)
+debase {x} 1.5	expect-arg	debase	base	#(decimal!)
+debase {x} (1.5)	expect-arg	debase	base	#(decimal!)
+decloak 1	expect-arg	decloak	data	#(integer!)
+decloak (1)	expect-arg	decloak	data	#(integer!)
+decloak #{01} 1.5	expect-arg	decloak	key	#(decimal!)
+decloak #{01} (1.5)	expect-arg	decloak	key	#(decimal!)
+decompress 1	expect-arg	decompress	data	#(integer!)
+decompress (1)	expect-arg	decompress	data	#(integer!)
+decompress #{01} 1	expect-arg	decompress	method	#(integer!)
+decompress #{01} (1)	expect-arg	decompress	method	#(integer!)
+dehex 1	expect-arg	dehex	value	#(integer!)
+dehex (1)	expect-arg	dehex	value	#(integer!)
+delect 1	expect-arg	delect	dialect	#(integer!)
+delect (1)	expect-arg	delect	dialect	#(integer!)
+delect make object! [] 1	expect-arg	delect	input	#(integer!)
+delect make object! [] (1)	expect-arg	delect	input	#(integer!)
+delect make object! [] [] 1	expect-arg	delect	output	#(integer!)
+delect make object! [] [] (1)	expect-arg	delect	output	#(integer!)
+deline 1	expect-arg	deline	string	#(integer!)
+deline (1)	expect-arg	deline	string	#(integer!)
+detab 1	expect-arg	detab	string	#(integer!)
+detab (1)	expect-arg	detab	string	#(integer!)
+difference 1	expect-arg	difference	set1	#(integer!)
+difference (1)	expect-arg	difference	set1	#(integer!)
+difference 1-Jan-2000 1	expect-arg	difference	set2	#(integer!)
+difference 1-Jan-2000 (1)	expect-arg	difference	set2	#(integer!)
+dir? 1	expect-arg	dir?	target	#(integer!)
+dir? (1)	expect-arg	dir?	target	#(integer!)
+distance 1	expect-arg	distance	value1	#(integer!)
+distance (1)	expect-arg	distance	value1	#(integer!)
+distance 1x2 1	expect-arg	distance	value2	#(integer!)
+distance 1x2 (1)	expect-arg	distance	value2	#(integer!)
+do-callback 1	expect-arg	do-callback	event	#(integer!)
+do-callback (1)	expect-arg	do-callback	event	#(integer!)
+do-codec 1	expect-arg	do-codec	handle	#(integer!)
+do-codec (1)	expect-arg	do-codec	handle	#(integer!)
+do-commands 1	expect-arg	do-commands	commands	#(integer!)
+do-commands (1)	expect-arg	do-commands	commands	#(integer!)
+echo 1	expect-arg	echo	target	#(integer!)
+echo (1)	expect-arg	echo	target	#(integer!)
+enbase 1.5	expect-arg	enbase	value	#(decimal!)
+enbase (1.5)	expect-arg	enbase	value	#(decimal!)
+enbase 1 1.5	expect-arg	enbase	base	#(decimal!)
+enbase 1 (1.5)	expect-arg	enbase	base	#(decimal!)
+encloak 1	expect-arg	encloak	data	#(integer!)
+encloak (1)	expect-arg	encloak	data	#(integer!)
+encloak #{01} 1.5	expect-arg	encloak	key	#(decimal!)
+encloak #{01} (1.5)	expect-arg	encloak	key	#(decimal!)
+enhex 1	expect-arg	enhex	value	#(integer!)
+enhex (1)	expect-arg	enhex	value	#(integer!)
+enline 1	expect-arg	enline	series	#(integer!)
+enline (1)	expect-arg	enline	series	#(integer!)
+entab 1	expect-arg	entab	string	#(integer!)
+entab (1)	expect-arg	entab	string	#(integer!)
+evoke 1.5	expect-arg	evoke	chant	#(decimal!)
+evoke (1.5)	expect-arg	evoke	chant	#(decimal!)
+exclude 1	expect-arg	exclude	set1	#(integer!)
+exclude (1)	expect-arg	exclude	set1	#(integer!)
+exclude {x} 1	expect-arg	exclude	set2	#(integer!)
+exclude {x} (1)	expect-arg	exclude	set2	#(integer!)
+exp $1	expect-arg	exp	power	#(money!)
+exp ($1)	expect-arg	exp	power	#(money!)
+factorial 1.5	expect-arg	factorial	value	#(decimal!)
+factorial (1.5)	expect-arg	factorial	value	#(decimal!)
+filter 1	expect-arg	filter	data	#(integer!)
+filter (1)	expect-arg	filter	data	#(integer!)
+filter #{01} $1	expect-arg	filter	width	#(money!)
+filter #{01} ($1)	expect-arg	filter	width	#(money!)
+filter #{01} 1 1.5	expect-arg	filter	type	#(decimal!)
+filter #{01} 1 (1.5)	expect-arg	filter	type	#(decimal!)
+find-script 1	expect-arg	find-script	script	#(integer!)
+find-script (1)	expect-arg	find-script	script	#(integer!)
+first+ 1	expect-arg	first+	'word	#(integer!)
+first+ (1)	expect-arg	first+	'word	#(integer!)
+for 1	expect-arg	for	'word	#(integer!)
+for (1)	expect-arg	for	'word	#(integer!)
+for 'x $1	expect-arg	for	'word	#(lit-word!)
+for 'x ($1)	expect-arg	for	'word	#(lit-word!)
+for 'x 1 $1	expect-arg	for	'word	#(lit-word!)
+for 'x 1 ($1)	expect-arg	for	'word	#(lit-word!)
+for 'x 1 1 $1	expect-arg	for	'word	#(lit-word!)
+for 'x 1 1 ($1)	expect-arg	for	'word	#(lit-word!)
+for 'x 1 1 1 1	expect-arg	for	'word	#(lit-word!)
+for 'x 1 1 1 (1)	expect-arg	for	'word	#(lit-word!)
+forall 1	expect-arg	forall	'word	#(integer!)
+forall (1)	expect-arg	forall	'word	#(integer!)
+forall 'x 1	expect-arg	forall	'word	#(lit-word!)
+forall 'x (1)	expect-arg	forall	'word	#(lit-word!)
+foreach 1	expect-arg	foreach	'word	#(integer!)
+foreach (1)	expect-arg	foreach	'word	#(integer!)
+foreach [] 1	expect-arg	foreach	data	#(integer!)
+foreach [] (1)	expect-arg	foreach	data	#(integer!)
+foreach [] {x} 1	expect-arg	foreach	body	#(integer!)
+foreach [] {x} (1)	expect-arg	foreach	body	#(integer!)
+forever 1	expect-arg	forever	body	#(integer!)
+forever (1)	expect-arg	forever	body	#(integer!)
+forskip 1	expect-arg	forskip	'word	#(integer!)
+forskip (1)	expect-arg	forskip	'word	#(integer!)
+forskip 'x 1%	expect-arg	forskip	'word	#(lit-word!)
+forskip 'x (1%)	expect-arg	forskip	'word	#(lit-word!)
+forskip 'x 1 1	expect-arg	forskip	'word	#(lit-word!)
+forskip 'x 1 (1)	expect-arg	forskip	'word	#(lit-word!)
+fraction 1	expect-arg	fraction	number	#(integer!)
+fraction (1)	expect-arg	fraction	number	#(integer!)
+gcd 1.5	expect-arg	gcd	a	#(decimal!)
+gcd (1.5)	expect-arg	gcd	a	#(decimal!)
+gcd 1 1.5	expect-arg	gcd	b	#(decimal!)
+gcd 1 (1.5)	expect-arg	gcd	b	#(decimal!)
+get-env 1	expect-arg	get-env	var	#(integer!)
+get-env (1)	expect-arg	get-env	var	#(integer!)
+grayscale 1	expect-arg	grayscale	target	#(integer!)
+grayscale (1)	expect-arg	grayscale	target	#(integer!)
+hsv-to-rgb 1	expect-arg	hsv-to-rgb	hsv	#(integer!)
+hsv-to-rgb (1)	expect-arg	hsv-to-rgb	hsv	#(integer!)
+iconv 1	expect-arg	iconv	data	#(integer!)
+iconv (1)	expect-arg	iconv	data	#(integer!)
+iconv #{01} 1.5	expect-arg	iconv	codepage	#(decimal!)
+iconv #{01} (1.5)	expect-arg	iconv	codepage	#(decimal!)
+image-diff 1	expect-arg	image-diff	a	#(integer!)
+image-diff (1)	expect-arg	image-diff	a	#(integer!)
+image-diff make image! 1x1 1	expect-arg	image-diff	b	#(integer!)
+image-diff make image! 1x1 (1)	expect-arg	image-diff	b	#(integer!)
+in 1	expect-arg	in	object	#(integer!)
+in (1)	expect-arg	in	object	#(integer!)
+in [] 1	expect-arg	in	word	#(integer!)
+in [] (1)	expect-arg	in	word	#(integer!)
+integer-divide $1	expect-arg	integer-divide	value1	#(money!)
+integer-divide ($1)	expect-arg	integer-divide	value1	#(money!)
+integer-divide 1 $1	expect-arg	integer-divide	value2	#(money!)
+integer-divide 1 ($1)	expect-arg	integer-divide	value2	#(money!)
+intersect 1	expect-arg	intersect	set1	#(integer!)
+intersect (1)	expect-arg	intersect	set1	#(integer!)
+intersect {x} 1	expect-arg	intersect	set2	#(integer!)
+intersect {x} (1)	expect-arg	intersect	set2	#(integer!)
+invalid-utf? 1	expect-arg	invalid-utf?	data	#(integer!)
+invalid-utf? (1)	expect-arg	invalid-utf?	data	#(integer!)
+last 1	expect-arg	last	value	#(integer!)
+last (1)	expect-arg	last	value	#(integer!)
+latin1? 1.5	expect-arg	latin1?	value	#(decimal!)
+latin1? (1.5)	expect-arg	latin1?	value	#(decimal!)
+lcm 1.5	expect-arg	lcm	a	#(decimal!)
+lcm (1.5)	expect-arg	lcm	a	#(decimal!)
+lcm 1 1.5	expect-arg	lcm	b	#(decimal!)
+lcm 1 (1.5)	expect-arg	lcm	b	#(decimal!)
+lerp $1	expect-arg	lerp	start	#(money!)
+lerp ($1)	expect-arg	lerp	start	#(money!)
+lerp 1 $1	expect-arg	lerp	end	#(money!)
+lerp 1 ($1)	expect-arg	lerp	end	#(money!)
+lerp 1 1 $1	expect-arg	lerp	factor	#(money!)
+lerp 1 1 ($1)	expect-arg	lerp	factor	#(money!)
+limit-usage 1	no-value	limit-usage	_	_
+limit-usage (1)	no-value	limit-usage	_	_
+limit-usage 'x $1	no-value	limit-usage	_	_
+limit-usage 'x ($1)	no-value	limit-usage	_	_
+load-extension 1	expect-arg	load-extension	name	#(integer!)
+load-extension (1)	expect-arg	load-extension	name	#(integer!)
+log-10 $1	expect-arg	log-10	value	#(money!)
+log-10 ($1)	expect-arg	log-10	value	#(money!)
+log-2 $1	expect-arg	log-2	value	#(money!)
+log-2 ($1)	expect-arg	log-2	value	#(money!)
+log-e $1	expect-arg	log-e	value	#(money!)
+log-e ($1)	expect-arg	log-e	value	#(money!)
+loop $1	expect-arg	loop	count	#(money!)
+loop ($1)	expect-arg	loop	count	#(money!)
+loop 1 1	expect-arg	loop	block	#(integer!)
+loop 1 (1)	expect-arg	loop	block	#(integer!)
+lowercase 1	expect-arg	lowercase	string	#(integer!)
+lowercase (1)	expect-arg	lowercase	string	#(integer!)
+luminosity 1	expect-arg	luminosity	target	#(integer!)
+luminosity (1)	expect-arg	luminosity	target	#(integer!)
+map-each 1	expect-arg	map-each	'word	#(integer!)
+map-each (1)	expect-arg	map-each	'word	#(integer!)
+map-each [] 1	expect-arg	map-each	data	#(integer!)
+map-each [] (1)	expect-arg	map-each	data	#(integer!)
+map-each [] [] 1	expect-arg	map-each	body	#(integer!)
+map-each [] [] (1)	expect-arg	map-each	body	#(integer!)
+map-event 1	expect-arg	map-event	event	#(integer!)
+map-event (1)	expect-arg	map-event	event	#(integer!)
+map-gob-offset 1	expect-arg	map-gob-offset	gob	#(integer!)
+map-gob-offset (1)	expect-arg	map-gob-offset	gob	#(integer!)
+maximum true	expect-arg	maximum	value1	#(logic!)
+maximum (true)	expect-arg	maximum	value1	#(logic!)
+maximum 1 true	expect-arg	maximum	value2	#(logic!)
+maximum 1 (true)	expect-arg	maximum	value2	#(logic!)
+minimum true	expect-arg	minimum	value1	#(logic!)
+minimum (true)	expect-arg	minimum	value1	#(logic!)
+minimum 1 true	expect-arg	minimum	value2	#(logic!)
+minimum 1 (true)	expect-arg	minimum	value2	#(logic!)
+mod 1x2	expect-arg	mod	a	#(pair!)
+mod (1x2)	expect-arg	mod	a	#(pair!)
+mod 1 1x2	expect-arg	mod	b	#(pair!)
+mod 1 (1x2)	expect-arg	mod	b	#(pair!)
+modulo 1x2	expect-arg	modulo	a	#(pair!)
+modulo (1x2)	expect-arg	modulo	a	#(pair!)
+modulo 1 1x2	expect-arg	modulo	b	#(pair!)
+modulo 1 (1x2)	expect-arg	modulo	b	#(pair!)
+negative? #"a"	expect-arg	negative?	number	#(char!)
+negative? (#"a")	expect-arg	negative?	number	#(char!)
+new-line 1	expect-arg	new-line	position	#(integer!)
+new-line (1)	expect-arg	new-line	position	#(integer!)
+new-line? 1	expect-arg	new-line?	position	#(integer!)
+new-line? (1)	expect-arg	new-line?	position	#(integer!)
+object 1	expect-arg	object	spec	#(integer!)
+object (1)	expect-arg	object	spec	#(integer!)
+parse 1	expect-arg	parse	input	#(integer!)
+parse (1)	expect-arg	parse	input	#(integer!)
+parse {x} 1	expect-arg	parse	rules	#(integer!)
+parse {x} (1)	expect-arg	parse	rules	#(integer!)
+pickz 1	expect-arg	pickz	aggregate	#(integer!)
+pickz (1)	expect-arg	pickz	aggregate	#(integer!)
+pickz 1.2.3 1.5	expect-arg	pickz	index	#(decimal!)
+pickz 1.2.3 (1.5)	expect-arg	pickz	index	#(decimal!)
+pokez 1	expect-arg	pokez	series	#(integer!)
+pokez (1)	expect-arg	pokez	series	#(integer!)
+pokez 1.2.3 1.5	expect-arg	pokez	index	#(decimal!)
+pokez 1.2.3 (1.5)	expect-arg	pokez	index	#(decimal!)
+positive? #"a"	expect-arg	positive?	number	#(char!)
+positive? (#"a")	expect-arg	positive?	number	#(char!)
+premultiply 1	expect-arg	premultiply	image	#(integer!)
+premultiply (1)	expect-arg	premultiply	image	#(integer!)
+prime? 1.5	expect-arg	prime?	number	#(decimal!)
+prime? (1.5)	expect-arg	prime?	number	#(decimal!)
+protect 1	expect-arg	protect	value	#(integer!)
+protect (1)	expect-arg	protect	value	#(integer!)
+protected? 1	expect-arg	protected?	value	#(integer!)
+protected? (1)	expect-arg	protected?	value	#(integer!)
+release 1	expect-arg	release	handle	#(integer!)
+release (1)	expect-arg	release	handle	#(integer!)
+remove-each 1	expect-arg	remove-each	'word	#(integer!)
+remove-each (1)	expect-arg	remove-each	'word	#(integer!)
+remove-each [] 1	expect-arg	remove-each	data	#(integer!)
+remove-each [] (1)	expect-arg	remove-each	data	#(integer!)
+remove-each [] {x} 1	expect-arg	remove-each	body	#(integer!)
+remove-each [] {x} (1)	expect-arg	remove-each	body	#(integer!)
+repeat 1	expect-arg	repeat	'word	#(integer!)
+repeat (1)	expect-arg	repeat	'word	#(integer!)
+repeat 'x $1	expect-arg	repeat	'word	#(lit-word!)
+repeat 'x ($1)	expect-arg	repeat	'word	#(lit-word!)
+repeat 'x 1 1	expect-arg	repeat	'word	#(lit-word!)
+repeat 'x 1 (1)	expect-arg	repeat	'word	#(lit-word!)
+resize 1	expect-arg	resize	image	#(integer!)
+resize (1)	expect-arg	resize	image	#(integer!)
+resize make image! 1x1 1.5	expect-arg	resize	size	#(decimal!)
+resize make image! 1x1 (1.5)	expect-arg	resize	size	#(decimal!)
+resolve 1	expect-arg	resolve	target	#(integer!)
+resolve (1)	expect-arg	resolve	target	#(integer!)
+resolve make object! [] 1	expect-arg	resolve	source	#(integer!)
+resolve make object! [] (1)	expect-arg	resolve	source	#(integer!)
+rgb-to-hsv 1	expect-arg	rgb-to-hsv	rgb	#(integer!)
+rgb-to-hsv (1)	expect-arg	rgb-to-hsv	rgb	#(integer!)
+selfless? 1	expect-arg	selfless?	context	#(integer!)
+selfless? (1)	expect-arg	selfless?	context	#(integer!)
+set 1	expect-arg	set	word	#(integer!)
+set (1)	expect-arg	set	word	#(integer!)
+set-env 1	expect-arg	set-env	var	#(integer!)
+set-env (1)	expect-arg	set-env	var	#(integer!)
+set-env {x} 1	expect-arg	set-env	value	#(integer!)
+set-env {x} (1)	expect-arg	set-env	value	#(integer!)
+set-scheme 1	expect-arg	set-scheme	scheme	#(integer!)
+set-scheme (1)	expect-arg	set-scheme	scheme	#(integer!)
+shift 1.5	expect-arg	shift	value	#(decimal!)
+shift (1.5)	expect-arg	shift	value	#(decimal!)
+shift 1 1.5	expect-arg	shift	bits	#(decimal!)
+shift 1 (1.5)	expect-arg	shift	bits	#(decimal!)
+sin 1	expect-arg	sin	value	#(integer!)
+sin (1)	expect-arg	sin	value	#(integer!)
+sine $1	expect-arg	sine	value	#(money!)
+sine ($1)	expect-arg	sine	value	#(money!)
+split-lines 1	expect-arg	split-lines	value	#(integer!)
+split-lines (1)	expect-arg	split-lines	value	#(integer!)
+sqrt 1	expect-arg	sqrt	value	#(integer!)
+sqrt (1)	expect-arg	sqrt	value	#(integer!)
+square-root $1	expect-arg	square-root	value	#(money!)
+square-root ($1)	expect-arg	square-root	value	#(money!)
+stack 1.5	expect-arg	stack	offset	#(decimal!)
+stack (1.5)	expect-arg	stack	offset	#(decimal!)
+swap-endian 1	expect-arg	swap-endian	value	#(integer!)
+swap-endian (1)	expect-arg	swap-endian	value	#(integer!)
+switch 1	no-arg	switch	cases	_
+switch (1)	no-arg	switch	cases	_
+tan 1	expect-arg	tan	value	#(integer!)
+tan (1)	expect-arg	tan	value	#(integer!)
+tangent $1	expect-arg	tangent	value	#(money!)
+tangent ($1)	expect-arg	tangent	value	#(money!)
+tint 1	expect-arg	tint	target	#(integer!)
+tint (1)	expect-arg	tint	target	#(integer!)
+tint 1.2.3 1	expect-arg	tint	rgb	#(integer!)
+tint 1.2.3 (1)	expect-arg	tint	rgb	#(integer!)
+tint 1.2.3 1.2.3 $1	expect-arg	tint	amount	#(money!)
+tint 1.2.3 1.2.3 ($1)	expect-arg	tint	amount	#(money!)
+to-degrees 1%	expect-arg	to-degrees	radians	#(percent!)
+to-degrees (1%)	expect-arg	to-degrees	radians	#(percent!)
+to-hex 1.5	expect-arg	to-hex	value	#(decimal!)
+to-hex (1.5)	expect-arg	to-hex	value	#(decimal!)
+to-local-file 1	expect-arg	to-local-file	path	#(integer!)
+to-local-file (1)	expect-arg	to-local-file	path	#(integer!)
+to-radians 1%	expect-arg	to-radians	degrees	#(percent!)
+to-radians (1%)	expect-arg	to-radians	degrees	#(percent!)
+to-real-file 1	expect-arg	to-real-file	path	#(integer!)
+to-real-file (1)	expect-arg	to-real-file	path	#(integer!)
+to-rebol-file 1	expect-arg	to-rebol-file	path	#(integer!)
+to-rebol-file (1)	expect-arg	to-rebol-file	path	#(integer!)
+trace 1.5	expect-arg	trace	mode	#(decimal!)
+trace (1.5)	expect-arg	trace	mode	#(decimal!)
+transcode 1	expect-arg	transcode	source	#(integer!)
+transcode (1)	expect-arg	transcode	source	#(integer!)
+truncate 1	expect-arg	truncate	series	#(integer!)
+truncate (1)	expect-arg	truncate	series	#(integer!)
+try 1	expect-arg	try	block	#(integer!)
+try (1)	expect-arg	try	block	#(integer!)
+unbind 1	expect-arg	unbind	word	#(integer!)
+unbind (1)	expect-arg	unbind	word	#(integer!)
+unfilter 1	expect-arg	unfilter	data	#(integer!)
+unfilter (1)	expect-arg	unfilter	data	#(integer!)
+unfilter #{01} $1	expect-arg	unfilter	width	#(money!)
+unfilter #{01} ($1)	expect-arg	unfilter	width	#(money!)
+union 1	expect-arg	union	set1	#(integer!)
+union (1)	expect-arg	union	set1	#(integer!)
+union {x} 1	expect-arg	union	set2	#(integer!)
+union {x} (1)	expect-arg	union	set2	#(integer!)
+unique 1	expect-arg	unique	set1	#(integer!)
+unique (1)	expect-arg	unique	set1	#(integer!)
+unprotect 1	expect-arg	unprotect	value	#(integer!)
+unprotect (1)	expect-arg	unprotect	value	#(integer!)
+unset 1	expect-arg	unset	word	#(integer!)
+unset (1)	expect-arg	unset	word	#(integer!)
+until 1	expect-arg	until	block	#(integer!)
+until (1)	expect-arg	until	block	#(integer!)
+uppercase 1	expect-arg	uppercase	string	#(integer!)
+uppercase (1)	expect-arg	uppercase	string	#(integer!)
+utf? 1	expect-arg	utf?	data	#(integer!)
+utf? (1)	expect-arg	utf?	data	#(integer!)
+value? 1	expect-arg	value?	value	#(integer!)
+value? (1)	expect-arg	value?	value	#(integer!)
+wait $1	expect-arg	wait	value	#(money!)
+wait ($1)	expect-arg	wait	value	#(money!)
+wake-up 1	expect-arg	wake-up	port	#(integer!)
+wake-up (1)	expect-arg	wake-up	port	#(integer!)
+while 1	expect-arg	while	cond-block	#(integer!)
+while (1)	expect-arg	while	cond-block	#(integer!)
+while [] 1	expect-arg	while	body-block	#(integer!)
+while [] (1)	expect-arg	while	body-block	#(integer!)
+wildcard? 1	expect-arg	wildcard?	path	#(integer!)
+wildcard? (1)	expect-arg	wildcard?	path	#(integer!)
+1 + true	expect-arg	+	value2	#(logic!)
+1 + (true)	expect-arg	+	value2	#(logic!)
+1 - true	expect-arg	-	value2	#(logic!)
+1 - (true)	expect-arg	-	value2	#(logic!)
+1 * true	expect-arg	*	value2	#(logic!)
+1 * (true)	expect-arg	*	value2	#(logic!)
+1 / true	expect-arg	/	value2	#(logic!)
+1 / (true)	expect-arg	/	value2	#(logic!)
+1 // $1	expect-arg	//	value2	#(money!)
+1 // ($1)	expect-arg	//	value2	#(money!)
+1 % true	expect-arg	%	value2	#(logic!)
+1 % (true)	expect-arg	%	value2	#(logic!)
+1 %% 1x2	expect-arg	%%	b	#(pair!)
+1 %% (1x2)	expect-arg	%%	b	#(pair!)
+1 ** $1	expect-arg	**	exponent	#(money!)
+1 ** ($1)	expect-arg	**	exponent	#(money!)
+1 & 1.5	expect-arg	&	value2	#(decimal!)
+1 & (1.5)	expect-arg	&	value2	#(decimal!)
+1 | 1.5	expect-arg	|	value2	#(decimal!)
+1 | (1.5)	expect-arg	|	value2	#(decimal!)
+1 and 1.5	expect-arg	and	value2	#(decimal!)
+1 and (1.5)	expect-arg	and	value2	#(decimal!)
+1 or 1.5	expect-arg	or	value2	#(decimal!)
+1 or (1.5)	expect-arg	or	value2	#(decimal!)
+1 xor 1.5	expect-arg	xor	value2	#(decimal!)
+1 xor (1.5)	expect-arg	xor	value2	#(decimal!)
+get first [zork]	no-value	zork	_	_
+zork	no-value	zork	_	_
+zork/a	no-value	zork	_	_
+reduce [zork]	no-value	zork	_	_
+do reduce [to word! {qq}]	not-defined	qq	_	_
+set to word! {qq} 1	not-defined	qq	_	_
+get to word! {qq}	not-defined	qq	_	_
+locked: 1 protect 'locked locked: 2	locked-word	locked:	_	_
+locked: 1 protect 'locked set 'locked 2	locked-word	locked	_	_
+bind 'zz make object! [a: 1]	not-in-context	zz	_	_
+bind [a] to word! {q}	not-defined	q	_	_
+hiding: make object! [p: 1] protect/hide in hiding 'p set hiding [1]	hidden	_	_	_
+hiding: make object! [a: 1] protect/hide in hiding 'a append hiding [a 3]	hidden	_	_	_
+hiding: make object! [a: 1] protect/hide in hiding 'a hiding/a: 2	invalid-path	hiding/a:	a	_
+1x2 + 1.2.3	not-related	add:	#(pair!)	_
+1 and true	not-related	and~:	#(integer!)	_
+1 xor 1x2	not-related	xor~:	#(integer!)	_
+1.2.3 and true	not-related	and~:	#(tuple!)	_
+1x2 and 1.2.3	not-related	and~:	#(pair!)	_
+block: [1 2] block/zz: 3	invalid-path	block/zz:	zz	_
+object: make object! [p: 1] object/zz	invalid-path	object/zz	zz	_
+object: make object! [p: 1] object/zz: 3	invalid-path	object/zz:	zz	_
+object: make object! [p: 1] object/1	invalid-path	object/1	1	_
+object: make object! [p: 1] set 'object/zz 1	invalid-path	object/zz	zz	_
+set 'nowhere/zz 1	no-value	nowhere	_	_
+date: 1-Jan-2000 date/zz: 3	invalid-path	date/zz:	zz	_
+date: 1-Jan-2000 date/weekday: 1	bad-path-set	date/weekday:	weekday	_
+date: 1-Jan-2000 date/julian: 1	bad-field-set	julian	#(integer!)	_
+date: 1-Jan-2000 date/zone: 16:00	out-of-range	zone	_	_
+make date! [1 1 2000 0:00 16:00]	out-of-range	16:00	_	_
+time: 1:00 time/zz	invalid-path	time/zz	zz	_
+time: 1:00 time/zz: 1	invalid-path	time/zz:	zz	_
+time: 1:00 time/(1.5): 1	invalid-path	time/(1.5):	(1.5)	_
+pick 1:00 'zz	invalid-path	1:00	zz	_
+pair: 1x2 pair/zz	invalid-path	pair/zz	zz	_
+pair: 1x2 pair/3	invalid-path	pair/3	3	_
+pair: 1x2 pair/zz: 3	invalid-path	pair/zz:	zz	_
+pick 1x2 'zz	invalid-arg	zz	_	_
+pick 1x2 3	out-of-range	3	_	_
+tuple: 1.2.3 tuple/zz	invalid-arg	zz	_	_
+tuple: 1.2.3 tuple/zz: 3	invalid-arg	zz	_	_
+tuple: 1.2.3 tuple/20: 3	invalid-path	tuple/20:	20	_
+pick 1.2.3 'zz	invalid-arg	zz	_	_
+error: make error! {x} error/zz	invalid-path	error/zz	zz	_
+error: make error! {x} error/zz: 1	invalid-path	error/zz:	zz	_
+text: {s} text/user	invalid-path	text/user	user	_
+image: make image! 2x2 image/zz	invalid-path	image/zz	zz	_
+image: make image! 2x2 image/zz: 1	invalid-path	image/zz:	zz	_
+image: make image! 2x2 image/9: 1.2.3	bad-path-set	image/9:	9	_
+image: make image! 2x2 image/size: 0x2	bad-path-set	image/size:	size	_
+image: make image! 2x2 image/rgb: {x}	bad-path-set	image/rgb:	rgb	_
+image: make image! 2x2 image/rgb: 300	out-of-range	rgb	_	_
+pick make image! 2x2 'zz	invalid-path	_	zz	_
+vector: make vector! 3 vector/zz	invalid-path	vector/zz	zz	_
+vector: make vector! 3 vector/zz: 1	bad-path-set	vector/zz:	zz	_
+vector: make vector! 3 vector/9: 1	out-of-range	9	_	_
+vector: make vector! 3 vector/1: {x}	invalid-arg	"x"	_	_
+vector: make vector! 3 vector/(none)	invalid-path	vector/(none)	(none)	_
+pick make vector! 3 'zz	invalid-path	_	zz	_
+gob: make gob! [] gob/zz	invalid-path	gob/zz	zz	_
+gob: make gob! [] gob/(none)	invalid-path	gob/(none)	(none)	_
+gob: make gob! [] gob/pane: 3	bad-path-set	gob/pane:	pane	_
+gob: make gob! [] gob/pane: [3]	invalid-arg	3	_	_
+gob: make gob! [] gob/1: 3	no-error			
+gob: make gob! [] gob/3: make gob! []	no-error			
+gob: make gob! [] append gob 3	expect-val	#(gob!)	#(integer!)	_
+gob: make gob! [] append/part gob make gob! [] 1	not-done	_	_	_
+gob: make gob! [] change/part gob make gob! [] 1	past-end	_	_	_
+pick make gob! [] 'zz	invalid-arg	zz	_	_
+event: make event! [type: 'down] event/zz	invalid-path	event/zz	zz	_
+event: make event! [type: 'down] event/(1)	invalid-path	event/(1)	(1)	_
+event: make event! [type: 'down] event/zz: 1	bad-path-set	event/zz:	zz	_
+event: make event! [type: 'key] event/key: 9999999	bad-path-set	event/key:	key	_
+make event! [type: 'zzz]	invalid-arg	'zzz	_	_
+make event! [type: 'down offset: 99999x1]	out-of-range	99999.0	_	_
+make event! [type: 'key key: 9999999]	bad-field-set	key:	#(integer!)	_
+make handle! 0	cannot-use	make:	#(datatype!)	_
+struct: make struct! [a [uint8!]] struct/zz	invalid-path	struct/zz	zz	_
+struct: make struct! [a [uint8!]] struct/1	invalid-path	struct/1	1	_
+struct: make struct! [a [uint8!]] struct/a: {x}	invalid-type	#(string!)	_	_
+struct: make struct! [a [struct! [b [uint8!]] [2]]] struct/a/3: 1	invalid-path	struct/a/3:	3	_
+struct: make struct! [a [uint8!]] change struct 1	expect-val	#(binary!)	#(integer!)	_
+binary: #{00} binary/1: -1	bad-path-set	binary/1:	1	_
+binary: #{00} binary/1: 256	out-of-range	256	_	_
+append/1 [] 1	bad-refine	1	_	_
+copy/deep make struct! [a [uint8!]]	bad-refines	_	_	_
+copy/part make object! [] 1	bad-refines	_	_	_
+sort/all/compare/skip [1 2] 1 2	bad-refines	_	_	_
+remove/key/part make bitset! 8 1 1	bad-refines	_	_	_
+append/dup make map! [] [a 1] 2	bad-refines	_	_	_
+protect/hide [1]	bad-refines	_	_	_
+sort/skip make vector! 3 1	feature-na	_	_	_
+binary/read/into binary #{0102} 2 []	feature-na	_	_	_
+find/skip [1 2] 1 0	out-of-range	0	_	_
+select/skip [1 2] 1 0	out-of-range	0	_	_
+sort/skip [1 2 3] 2	out-of-range	2	_	_
+unique/skip [1 2] 0	out-of-range	0	_	_
+factorial -1	out-of-range	-1	_	_
+poke #{00} 1 #"Ā"	out-of-range	#"Ā"	_	_
+poke #{00} 1 256	out-of-range	256	_	_
+append #{} 256	out-of-range	256	_	_
+find #{00} 256	out-of-range	256	_	_
+reverse/part 1.2.3 -1	no-error			
+put make object! [] 1 2	invalid-arg	1	_	_
+sort/compare [1 2] 1	invalid-arg	1	_	_
+sort/compare/skip [1 2] 3 2	invalid-arg	3	_	_
+sort/skip/compare [1 2 3 4] 2 [a]	invalid-arg	a	_	_
+sort/skip/compare [1 2 3 4] 2 [3]	invalid-arg	3	_	_
+sort/skip/compare [1 2 3 4] 2 [-1]	invalid-arg	-1	_	_
+poke #{00} 1 -1	invalid-arg	-1	_	_
+poke {a} 1 1.5	invalid-arg	1.5	_	_
+append #{} 1.5	invalid-arg	1.5	_	_
+remove/part make bitset! 8 1.5	invalid-arg	1.5	_	_
+func [a [1]] []	invalid-arg	1	_	_
+func [a [zz!]] []	invalid-arg	zz!	_	_
+append make map! [] 1	invalid-arg	#[]	_	_
+make map! [a]	invalid-arg	[a]	_	_
+foreach [a 1] [] []	invalid-arg	1	_	_
+set [#a] [1]	invalid-arg	#a	_	_
+set [/a] [1]	invalid-arg	/a	_	_
+assert/type [aa 1]	invalid-arg	1	_	_
+binary/write #{} [BYTES 1]	dialect	bincode	1	_
+charset [#"z" - #"a"]	past-end	#"a"	_	_
+remove make bitset! 8	missing-arg	_	_	_
+(make vector! [integer! 8 1]) < make vector! [decimal! 64 1]	not-same-type	_	_	_
+(make vector! [integer! 8 1]) = make vector! [decimal! 64 1]	not-same-type	_	_	_
+(make vector! [integer! 8 1]) + make vector! [integer! 16 1]	vector-not-compatible	_	_	_
+(make vector! [1]) / 0	zero-divide	_	_	_
+1.2.3 / 0	zero-divide	_	_	_
+9223372036854775807 + 1	overflow	_	_	_
+absolute -9223372036854775808	overflow	_	_	_
+to integer! 1e19	overflow	_	_	_
+shift 1 64	overflow	_	_	_
+shift 2 62	overflow	_	_	_
+for i 9223372036854775806 9223372036854775807 2 []	overflow	_	_	_
+reverse make image! 2x2	cannot-use	reverse:	#(image!)	_
+parse [a] [zork]	parse-rule	zork	_	_
+parse {a} [set 1]	parse-variable	1	_	_
+parse {a} [copy 1]	parse-variable	1	_	_
+parse [a] [set 1]	parse-variable	1	_	_
+parse {a} [set 1 skip]	parse-variable	1	_	_
+parse {a} [set x]	no-error			
+parse {a} [change {b}]	no-error			
+parse {a} [change only {a} {b}]	parse-rule	only	_	_
+parse {a} [into]	parse-end	into	_	_
+parse [a] [into 1]	parse-rule	into	_	_
+parse {a} [keep]	parse-end	keep	_	_
+parse {a} [limit]	not-done	_	_	_
+parse {a} [to]	parse-end	to	_	_
+parse {a} [thru 1.5]	parse-rule	thru	_	_
+1x2 + $1	not-related	add:	#(pair!)	_
+1x2 * 1:00	not-related	multiply:	#(pair!)	_
+1x2 - #"a"	not-related	subtract:	#(pair!)	_
+1x2 / 1-Jan-2000	not-related	divide:	#(pair!)	_
+1.2.3 + 1x2	not-related	add:	#(tuple!)	_
+1.2.3 + $1	not-related	add:	#(tuple!)	_
+1.2.3 * 1:00	not-related	multiply:	#(tuple!)	_
+$1 + 1x2	not-related	add:	#(money!)	_
+#"a" + 1x2	not-related	add:	#(char!)	_
+#"a" and 1x2	not-related	and~:	#(char!)	_
+1.2.3 or 1x2	not-related	or~:	#(tuple!)	_
+remainder 1x2 1.2.3	not-related	remainder:	#(pair!)	_
+1 - 1x2	not-related	subtract:	#(integer!)	_
+1.5 - 1.2.3	not-related	subtract:	#(decimal!)	_
+1:00 + 1.2.3	not-related	add:	#(time!)	_
+1:00 + 1x2	not-related	add:	#(time!)	_
+1:00 / 1-Jan-2000	not-related	divide:	#(time!)	_
+$1 + 1:00	not-related	add:	#(money!)	_
+$1 + 1-Jan-2000	not-related	add:	#(money!)	_
+1 - 1-Jan-2000	not-related	subtract:	#(integer!)	_
+1.5 + 1-Jan-2000	not-related	add:	#(decimal!)	_
+(make vector! [decimal! 64 [1.5]]) and 1	not-related	and~:	#(decimal!)	_
+1 - make vector! [1]	not-related	subtract:	#(integer!)	_
+1x2 - make vector! [1]	not-related	subtract:	#(pair!)	_
+1-Jan-2000 + 1.2.3	cannot-use	add:	#(date!)	_
+1-Jan-2000 * 2	cannot-use	multiply:	#(date!)	_
+1-Jan-2000 - $1	cannot-use	subtract:	#(date!)	_
+1-Jan-2000 + 1-Jan-2000	cannot-use	add:	#(date!)	_
+integer! and integer!	cannot-use	and~:	#(datatype!)	_
+integer! or 1	cannot-use	or~:	#(datatype!)	_
+(make vector! [1 2]) + 1x2	cannot-use	add:	#(vector!)	_
+reflect make struct! [a [uint8!]] 'zz	cannot-use	zz	#(struct!)	_
+take/part make image! 2x2 2	cannot-use	take:	#(image!)	_
+sort make image! 2x2	cannot-use	sort:	#(image!)	_
+select make image! 2x2 1	cannot-use	select:	#(image!)	_
+find make vector! [1] 1	cannot-use	find:	#(vector!)	_
+to handle! 0	cannot-use	to:	#(datatype!)	_
+union make bitset! 8 [a]	expect-val	#(bitset!)	#(block!)	_
+union [a] make bitset! 8	expect-val	#(block!)	#(bitset!)	_
+union make typeset! [integer!] [a]	expect-val	#(typeset!)	#(block!)	_
+intersect [a] {a}	expect-val	#(block!)	#(string!)	_
+intersect {a} [a]	expect-val	#(string!)	#(block!)	_
+difference {a} [a]	expect-val	#(string!)	#(block!)	_
+exclude make bitset! 8 {a}	expect-val	#(bitset!)	#(string!)	_
+union [#"a"] {b}	expect-val	#(block!)	#(string!)	_
+union [a] make map! [a 1]	expect-val	#(block!)	#(map!)	_
+union make map! [a 1] [b 2]	expect-val	#(map!)	#(block!)	_
+exclude [a] make typeset! [integer!]	expect-val	#(block!)	#(typeset!)	_
+unique/skip [1 2] -1	out-of-range	-1	_	_
+lerp 1.2.3 1x2 0.5	type-mismatch	1.2.3	1x2	_
+lerp 1 1x2 0.5	type-mismatch	1	1x2	_
+clamp 1 1.5 2	type-mismatch	1	1.5	_
+clamp 1 1 2.5	type-mismatch	1	2.5	_
+clamp 1.5 1 2	type-mismatch	1.5	1	_
+pick 1x2 0	out-of-range	0	_	_
+pick 1x2 'x	no-error			
+pick 1x2 1.5	no-error			
+pick 1x2 3.5	out-of-range	3.5	_	_
+pick 1x2 {a}	invalid-arg	"a"	_	_
+third 1x2	out-of-range	3	_	_
+pick 1.2.3 {a}	invalid-arg	"a"	_	_
+pick 1:00 'hour	no-error			
+pick 1:00 {a}	invalid-path	1:00	"a"	_
+pick make image! 2x2 'size	no-error			
+pick make image! 2x2 {a}	invalid-path	make image! [2x2 #{FFFFFFFFFFFFFFFFFFFFFFFF}]	"a"	_
+pick make vector! 3 'size	no-error			
+pick make vector! 3 {a}	invalid-path	#(int32! [0 0 0])	"a"	_
+gob: make gob! [] append gob make gob! [] gob/1: 3 length? gob	no-error			
+gob: make gob! [] gob/1: make gob! [] length? gob	no-error			
+gob: make gob! [] append gob make gob! [] poke gob 1 3	expect-val	#(gob!)	#(integer!)	_
+gob: make gob! [] poke gob 1 make gob! []	past-end	_	_	_
+gob: make gob! [] append gob make gob! [] change/part gob make gob! [] 1	not-done	_	_	_
+gob: make gob! [] append gob make gob! [] change gob 3	expect-val	#(gob!)	#(integer!)	_
+gob: make gob! [] insert/only gob make gob! []	not-done	_	_	_
+gob: make gob! [] append gob [3]	invalid-arg	3	_	_
+gob: make gob! [] insert gob 3	expect-val	#(gob!)	#(integer!)	_
+struct: make struct! [a [uint8!]] change/part struct #{05} 1 struct/a	no-error			
+collect-words/as [a] integer!	bad-func-arg	#(integer!)	_	_
+factorial 171	out-of-range	171	_	_
+foreach [a b c] make object! [x: 1 y: 2] [a]	invalid-arg	c	_	_
+foreach [a b c d] make map! [x 1 y 2 z 3] [a]	invalid-arg	c	_	_
+foreach [a b c] make map! [x 1] [a]	no-error			
+append make map! [] make map! [q 1]	invalid-arg	#[]	_	_
+append make map! [x 1] 1	invalid-arg	#[x: 1]	_	_
+make map! [a b c]	invalid-arg	[a b c]	_	_
+append/dup [] 1 1x2	out-of-range	1x2	_	_
+protect/hide [zzq]	bad-refines	_	_	_
+load #{41C342}	invalid-chars	_	_	_
+load #{41F642}	invalid-chars	_	_	_
+load #{41FE42}	invalid-chars	_	_	_
+load #{FF}	no-error			
+load #{41FF42}	no-error			
+load #{41C042}	no-error			
+load #{41F542}	no-error			
+for i 1 3 0 []	no-error			
+foreach [a b c] make map! [] []	no-error			
+foreach [a b c] make object! [] []	no-error			

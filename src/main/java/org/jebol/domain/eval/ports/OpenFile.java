@@ -127,7 +127,7 @@ public final class OpenFile {
 
     private void refuseClosedPosition() {
         if (!port.isOpen()) {
-            throw Raised.of(EvaluationFailure.NOT_OPEN, seekable.path());
+            throw Raised.of(EvaluationFailure.NOT_OPEN, port);
         }
     }
 

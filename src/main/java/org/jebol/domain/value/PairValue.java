@@ -54,7 +54,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     @Override
     public Value partWayTo(Value destination, double fraction) {
         if (!(destination instanceof PairValue(double reachedX, double reachedY))) {
-            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, this, destination);
         }
         return PairValue.of(
                 x + (reachedX - x) * fraction,
@@ -89,17 +89,17 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        PairValue theirs = makePointFrom(right);
+        PairValue theirs = makePointFrom(right, operation);
         return PairValue.of(
                 combineBits(x, theirs.x, operation),
                 combineBits(y, theirs.y, operation));
     }
 
-    private PairValue makePointFrom(Value right) {
+    private PairValue makePointFrom(Value right, BitwiseOperation operation) {
         return switch (right) {
             case PairValue point -> point;
             case IntegerValue(long magnitude) -> PairValue.of(magnitude, magnitude);
-            default -> throw Raised.ofUnrelated(this, right);
+            default -> throw Raised.notRelatedToAction(this, operation.actionName());
         };
     }
 
@@ -207,8 +207,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
             case AnyWordValue name -> readHalf(name.canonical());
             default -> Optional.empty();
         };
-        return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                "a pair has an x half, a y half and an area, and nothing else"));
+        return half.orElseThrow(() -> Raised.cannotSelect(selector));
     }
 
     @Override
@@ -240,7 +239,24 @@ public record PairValue(double x, double y) implements Value, PathTarget {
 
     @Override
     public Value pick(int oneBasedPosition) {
-        return readHalfAt(oneBasedPosition).orElseGet(NoneValue::none);
+        return readHalfAt(oneBasedPosition).orElseThrow(() ->
+                Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(oneBasedPosition)));
+    }
+
+    @Override
+    public Value pickBy(Value selector) {
+        if (selector instanceof AnyWordValue name) {
+            return readHalf(name.canonical()).orElseThrow(() ->
+                    Raised.of(EvaluationFailure.INVALID_ARG, selector));
+        }
+        int position = switch (selector) {
+            case IntegerValue(long magnitude) -> (int) Math.max(Integer.MIN_VALUE,
+                    Math.min(Integer.MAX_VALUE, magnitude));
+            case AnyDecimalValue fraction -> Value.truncateToPosition(fraction);
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, selector);
+        };
+        return readHalfAt(position).orElseThrow(() ->
+                Raised.of(EvaluationFailure.OUT_OF_RANGE, selector));
     }
 
     public Optional<Value> readHalfAt(int position) {

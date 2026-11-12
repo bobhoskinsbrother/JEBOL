@@ -196,14 +196,11 @@ public final class SeriesSorting {
     private int compareByColumns(List<Value> left, List<Value> right, List<Value> columns) {
         for (Value asked : columns) {
             if (!(asked instanceof IntegerValue(long magnitude))) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a column to sort by is a number, not "
-                                + asked.datatype().literalSpelling());
+                throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
             }
             int at = (int) magnitude - 1;
             if (at < 0 || at >= left.size() || at >= right.size()) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "there is no column " + magnitude + " to sort by");
+                throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
             }
             int ordering = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
             if (ordering != 0) {

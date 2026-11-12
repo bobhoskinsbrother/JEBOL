@@ -11,8 +11,7 @@ public final class PairActions {
     }
 
     public Value combineWith(Value right, ArithmeticOperation operation) {
-        requirePairOrNumber(left);
-        requirePairOrNumber(right);
+        requirePairOrNumber(right, operation);
         if (operation.needsNonZeroDivisor()) {
             operation.requireNonZeroDivisor(firstHalf(right));
             operation.requireNonZeroDivisor(secondHalf(right));
@@ -22,14 +21,13 @@ public final class PairActions {
                 combineHalf(secondHalf(left), secondHalf(right), operation));
     }
 
-    private static void requirePairOrNumber(Value side) {
+    private void requirePairOrNumber(Value side, ArithmeticOperation operation) {
         if (side instanceof PairValue
                 || side instanceof IntegerValue
                 || side instanceof AnyDecimalValue) {
             return;
         }
-        throw Raised.of(EvaluationFailure.NOT_RELATED,
-                side.datatype().literalSpelling() + " does not go with pair arithmetic");
+        throw Raised.notRelatedToAction(left, operation.spelling());
     }
 
     private static double combineHalf(

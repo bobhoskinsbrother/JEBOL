@@ -53,8 +53,7 @@ final class Numbers {
             case TimeValue time -> time.asSeconds().quantity();
             case AnyDecimalValue fraction -> fraction.quantity();
             case MoneyValue money -> money.asDeci().toDouble();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " is not a number");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         };
     }
 

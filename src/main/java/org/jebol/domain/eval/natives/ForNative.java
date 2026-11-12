@@ -51,10 +51,6 @@ public class ForNative extends LoopingNative {
     private Value loopInSteps(Evaluator evaluator, Context within, AnyWordValue counter,
                               Value start, Value end, Value step, AnyBlockValue body) {
 
-        if (Comparison.asDouble(step) == 0.0) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "a for loop with a step of zero would never end");
-        }
         rejectCharacterBound(start);
         rejectCharacterBound(end);
 
@@ -94,8 +90,7 @@ public class ForNative extends LoopingNative {
         try {
             return Math.addExact(at, stepBy);
         } catch (ArithmeticException overflowed) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "a for loop counter stepped past the integer range");
+            throw Raised.of(EvaluationFailure.OVERFLOW);
         }
     }
 
@@ -139,10 +134,8 @@ public class ForNative extends LoopingNative {
     }
 
     private void rejectCharacterBound(Value bound) {
-        if (bound instanceof CharacterValue character) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "for does not step a character range, and " + character
-                            + " is a character");
+        if (bound instanceof CharacterValue) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, bound);
         }
     }
 }

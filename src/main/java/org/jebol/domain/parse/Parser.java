@@ -5,6 +5,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.eval.SeriesContents;
 import org.jebol.domain.parse.keyword.ParseKeyword;
+import org.jebol.domain.parse.keyword.WhenNothingFollowsIt;
 import org.jebol.domain.value.*;
 
 import java.util.ArrayDeque;
@@ -129,14 +130,22 @@ public final class Parser implements ParseWalk {
         if (at + 1 >= rules.size()) {
             return Optional.of(answerForKeywordAlone(keyword));
         }
+        if (keyword.describeWhenNothingFollows() == WhenNothingFollowsIt.RAISES_PARSE_VARIABLE) {
+            findWordToWriteInto(rules, at);
+        }
+        if (keyword.triesRuleFirst()) {
+            return Optional.empty();
+        }
         return keyword.ownsRuleAfterIt() && at + keyword.slotsBeforeRuleSpan() >= rules.size() ? Optional.of(NO_MATCH) : Optional.empty();
     }
 
     private int answerForKeywordAlone(ParseKeyword keyword) {
         return switch (keyword.describeWhenNothingFollows()) {
             case DOES_NOT_MATCH -> NO_MATCH;
-            case RAISES_PARSE_END -> throw Raised.of(EvaluationFailure.PARSE_END, keyword.spelling());
-            case RAISES_PARSE_VARIABLE -> throw Raised.of(EvaluationFailure.PARSE_VARIABLE, keyword.spelling());
+            case RAISES_PARSE_END -> throw Raised.of(EvaluationFailure.PARSE_END,
+                    WordValue.of(keyword.spelling()));
+            case RAISES_PARSE_VARIABLE -> throw Raised.of(EvaluationFailure.PARSE_VARIABLE,
+                    WordValue.of(keyword.spelling()));
         };
     }
 
@@ -674,7 +683,7 @@ public final class Parser implements ParseWalk {
 
     Value readFollowing(List<Value> rules, int at, String keyword) {
         if (at + 1 >= rules.size()) {
-            throw Raised.of(EvaluationFailure.PARSE_END, keyword + " has no rule after it to apply to");
+            throw Raised.of(EvaluationFailure.PARSE_END, rules.get(at));
         }
         return rules.get(at + 1);
     }
@@ -811,7 +820,7 @@ public final class Parser implements ParseWalk {
         if (replacement instanceof WordValue word) {
             Context holder = word.isBound() ? word.binding() : context;
             if (!holder.contains(word.canonical()) || holder.findSlotFor(word.canonical()).value() instanceof UnsetValue) {
-                throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
+                throw Raised.wordHasNoValue(word);
             }
             return holder.findSlotFor(word.canonical()).value();
         }
@@ -835,7 +844,7 @@ public final class Parser implements ParseWalk {
                 }
                 int sought = marked.index() - source.index();
                 if (sought < 0 || sought > source.lengthFromHere()) {
-                    throw Raised.of(EvaluationFailure.PARSE_RULE, ":" + back.spelling() + " is not a position in what is " + "being parsed");
+                    throw Raised.of(EvaluationFailure.PARSE_RULE, back);
                 }
                 position = sought;
                 return 1;

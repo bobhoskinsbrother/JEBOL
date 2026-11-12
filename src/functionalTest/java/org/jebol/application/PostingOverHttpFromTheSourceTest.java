@@ -141,7 +141,7 @@ class PostingOverHttpFromTheSourceTest {
     void writeNeedsTheWebGranted() {
         Interpreter ungranted = Interpreter.createOn(
                 AnInterpreter.standardPorts().withHttp(server), OutputPort.discard(), Bounds.standard());
-        String source = "e: try [write http://example.test/form {x}] mold e";
+        String source = "e: try [write http://example.test/form {x}] form e";
         ungranted.defineNewWordsIn(source);
 
         assertThat(ungranted.display(ungranted.run(source))).contains("web is not granted");

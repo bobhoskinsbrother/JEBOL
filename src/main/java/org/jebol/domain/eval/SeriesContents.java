@@ -90,8 +90,7 @@ public final class SeriesContents {
                     addUtf8(new String(Character.toChars(letter.codepoint())), into);
             case IntegerValue whole -> {
                 if (whole.magnitude() < 0 || whole.magnitude() > 255) {
-                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                            "a byte is 0 to 255, not " + whole.magnitude());
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, whole);
                 }
                 into.add((int) whole.magnitude());
             }
@@ -105,15 +104,12 @@ public final class SeriesContents {
                 int taking = howMany < 0 ? items.size() : Math.min(howMany, items.size());
                 for (int at = 0; at < taking; at++) {
                     if (items.get(at) instanceof AnyBlockValue nested) {
-                        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                                nested.datatype().literalSpelling()
-                                        + " cannot go into a binary");
+                        throw Raised.of(EvaluationFailure.INVALID_ARG, nested);
                     }
                     gatherOctets(items.get(at), EVERY_ONE, into);
                 }
             }
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " cannot go into a binary");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         }
     }
 

@@ -40,9 +40,7 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
             case DateValue date -> date.day();
             case AnyDecimalValue fractional -> roundHalfAwayFromZero(fractional.quantity());
             case IntegerValue whole -> whole.magnitude();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    nativeName() + " takes a whole number, not "
-                            + value.datatype().literalSpelling());
+            default -> throw Raised.cannotUseAction(value, nativeName());
         };
     }
 

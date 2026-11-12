@@ -56,8 +56,7 @@ public class GuiMetricNative extends ScreenNative {
 
     private ScreenMetric readMetricNamedBy(Value asked) {
         if (!(asked instanceof WordValue word)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "gui-metric takes a word, not " + asked.datatype().literalSpelling());
+            throw argumentRefusal(asked, "keyword");
         }
         return ScreenMetric.findMetricNamed(word.canonical()).orElseThrow(() ->
                 Raised.of(EvaluationFailure.COMMAND_FAIL, NoneValue.none()));
@@ -71,8 +70,7 @@ public class GuiMetricNative extends ScreenNative {
 
     private int displayNumberedBy(Value written) {
         if (!(written instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "a display is numbered with an integer, not " + written.datatype().literalSpelling());
+            throw argumentRefusal(written, "idx");
         }
         return (int) magnitude;
     }
@@ -85,7 +83,7 @@ public class GuiMetricNative extends ScreenNative {
             return PairValue.of(0, 0);
         }
         if (!servesDisplay(screen, display)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, "there is no display " + display);
+            throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(display));
         }
         return screen.measure(metric, display);
     }

@@ -30,8 +30,7 @@ public class AppendAction extends AddingAction {
                         queue.queue(added, AT_END);
                 case PortValue file when file.isAFile() -> {
                     if (refinements.contains("dup") || refinements.contains("only")) {
-                        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                "append on a file port is a write, and takes no dup or only");
+                        throw Raised.of(EvaluationFailure.BAD_REFINES);
                     }
                     yield findFileBehind(file, evaluator).append(added);
                 }

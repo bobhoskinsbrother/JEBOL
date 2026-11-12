@@ -334,16 +334,10 @@ public abstract sealed class AnyBlockValue implements RebolSeries, CopiesItsCell
 
     @Override
     public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
-        return switch (other) {
-            case AnyStringValue ignored -> StringValue.of(AnyStringValue.textOf(
-                    keeping.from(AnyStringValue.listCharactersFrom(this),
-                            AnyStringValue.listCharactersFrom(other))));
-            case MapValue theirs -> MapValue.empty()
-                    .combineWith(theirs, keeping.how(), mindingCase);
-            case AnyBlockValue theirs -> BlockValue.of(
-                    keeping.from(remaining(), theirs.remaining()));
-            default -> throw Raised.cannotUse(other, "a set operation");
-        };
+        if (!(other instanceof AnyBlockValue theirs)) {
+            throw Raised.differentKindsOfSet(this, other);
+        }
+        return BlockValue.of(keeping.from(remaining(), theirs.remaining()));
     }
 
     @Override

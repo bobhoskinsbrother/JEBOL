@@ -119,7 +119,7 @@ public class DoNative extends DefaultNative {
         Value loadHeader = evaluator.systemContext().findSystemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
         if (read instanceof AnyWordValue why) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
+            throw Raised.of(EvaluationFailure.INVALID_ARG, why);
         }
         List<Value> parts = ((AnyBlockValue) read).remaining();
         requireInterpreterNewEnough(parts.getFirst(), evaluator);
@@ -168,8 +168,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value raiseHalfExpression(Value assigning) {
-        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                Molder.mold(assigning) + " assigns, and there is nothing here to assign");
+        throw Raised.of(EvaluationFailure.INVALID_ARG, assigning);
     }
 
     private void recordScriptArguments(Evaluator evaluator, Value given) {

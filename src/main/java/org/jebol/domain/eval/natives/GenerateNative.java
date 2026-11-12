@@ -25,7 +25,7 @@ public class GenerateNative extends DefaultNative {
             AnyWordValue curveNamed = (AnyWordValue) arguments.getFirst();
             if (!EllipticCurveKey.curveNamesInCataloguesOrder()
                     .contains(curveNamed.canonical())) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, curveNamed.spelling());
+                throw Raised.of(EvaluationFailure.INVALID_ARG, curveNamed);
             }
             return BinaryValue.of(0);
         };

@@ -41,7 +41,7 @@ public class PokezNative extends DefaultNative {
 
     private Value findActionItWraps(Context context) {
         if (!context.contains(ACTION_IT_WRAPS)) {
-            throw Raised.of(EvaluationFailure.NOT_DEFINED, ACTION_IT_WRAPS);
+            throw Raised.wordNotBound(ACTION_IT_WRAPS);
         }
         return context.findSlotFor(ACTION_IT_WRAPS).value();
     }

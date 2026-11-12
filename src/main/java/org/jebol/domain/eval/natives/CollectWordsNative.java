@@ -55,9 +55,9 @@ public class CollectWordsNative extends DefaultNative {
     private AnyWordValue.AnyWordDatatype readWordKindAsked(List<Value> arguments, Set<String> refinements) {
         int at = WHERE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 + (refinements.contains("ignore") ? 1 : 0);
-        if (arguments.size() <= at
-                || !(arguments.get(at) instanceof AnyWordValue.AnyWordDatatype asked)) {
-            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
+        Value given = arguments.size() <= at ? NoneValue.none() : arguments.get(at);
+        if (!(given instanceof AnyWordValue.AnyWordDatatype asked)) {
+            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, given);
         }
         return asked;
     }

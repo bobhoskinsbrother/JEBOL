@@ -9,7 +9,6 @@ public interface PathTarget {
     }
 
     default void writeThrough(Slot place, Value selector, Value written) {
-        throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                place.value().datatype().literalSpelling());
+        throw Raised.cannotSet(selector);
     }
 }

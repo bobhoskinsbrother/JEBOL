@@ -93,8 +93,7 @@ public final class BitsetActions implements Actions {
         boolean byKey = refinements.contains("key");
         boolean byPart = refinements.contains("part");
         if (byKey && byPart) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "/key and /part each say what to remove, and only one can");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
         if (byKey) {
             members.clearAllDirectly(readWhatIsMeantBy(argumentFor.apply("key")));
@@ -106,8 +105,7 @@ public final class BitsetActions implements Actions {
             members.clearAllDirectly(readWhatIsMeantBy(range));
             return members;
         }
-        throw Raised.of(EvaluationFailure.MISSING_ARG,
-                "/key or /part must say what to remove from the set");
+        throw Raised.of(EvaluationFailure.MISSING_ARG);
     }
 
     private static void refuseWhatNamesNoRange(Value range) {
@@ -116,8 +114,7 @@ public final class BitsetActions implements Actions {
                 || range instanceof CharacterValue
                 || range instanceof StringValue;
         if (!allowed) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    Molder.mold(range) + " names no range of members");
+            throw Raised.of(EvaluationFailure.INVALID_ARG, range);
         }
     }
 
@@ -176,7 +173,7 @@ public final class BitsetActions implements Actions {
         }
         if (!(source instanceof CharacterValue || source instanceof AnyStringValue
                 || source instanceof BinaryValue || source instanceof AnyBlockValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
+            throw Raised.of(EvaluationFailure.INVALID_TYPE, source.datatype());
         }
         return (BitsetValue) makeFrom(source);
     }
@@ -198,7 +195,7 @@ public final class BitsetActions implements Actions {
             if (spec instanceof AnyWordValue word && word.canonical().equals("bits")) {
                 if (at + 1 >= specs.size()
                         || !(specs.get(at + 1) instanceof BinaryValue held)) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
+                    throw Raised.of(EvaluationFailure.INVALID_ARG, whole);
                 }
                 octets = withOctetsSet(octets, held.octetsFromHere());
                 at++;
@@ -210,21 +207,22 @@ public final class BitsetActions implements Actions {
                 }
             } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
                 int from = findBitAsked(codepointFrom(spec));
-                int to = from;
+                Value closing = spec;
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
-                    to = findBitAsked(codepointFrom(runEndAt(spec, specs, at + 2)));
+                    closing = runEndAt(spec, specs, at + 2);
                     at += 2;
                 }
+                int to = findBitAsked(codepointFrom(closing));
                 if (to < from) {
-                    throw Raised.of(EvaluationFailure.PAST_END, String.valueOf(to));
+                    throw Raised.of(EvaluationFailure.PAST_END, closing);
                 }
                 for (int point = from; point <= to; point++) {
                     octets = withBitSet(octets, point);
                 }
             } else {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
+                throw Raised.of(EvaluationFailure.INVALID_ARG, whole);
             }
         }
         return octets;
@@ -233,7 +231,7 @@ public final class BitsetActions implements Actions {
     private static Value runEndAt(Value opening, List<Value> specs, int at) {
         Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
         if (opening.datatype() != closing.datatype()) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(closing));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, closing);
         }
         return closing;
     }
@@ -257,7 +255,7 @@ public final class BitsetActions implements Actions {
             }
             return points;
         }
-        throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
+        throw Raised.of(EvaluationFailure.INVALID_TYPE, asked.datatype());
     }
 
     private static int[] collectCodePointsIn(AnyBlockValue written) {

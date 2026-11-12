@@ -42,7 +42,7 @@ public abstract class SetOperationNative extends DefaultNative {
             return EVERY_MEMBER_ON_ITS_OWN;
         }
         if (wanted.magnitude() < 1) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(wanted));
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, wanted);
         }
         return (int) wanted.magnitude();
     }

@@ -141,8 +141,7 @@ public class TranscodeNative extends DefaultNative {
         return switch (source) {
             case AnyStringValue given -> given.text();
             case BinaryValue given -> given.asStrictText();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "transcode reads text, not " + source.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, source);
         };
     }
 

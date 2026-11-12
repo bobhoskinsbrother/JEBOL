@@ -172,10 +172,17 @@ class DoScriptPipelineFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("bytes that are not text at all are refused before any header is looked for")
+        @DisplayName("a script that begins with a nought byte ends there, and answers nothing, as R3's scanner stops at it")
+        void endsAtANoughtByte() {
+            assertThat(answerTo("""
+                    unset? try [do #{00FF}]""")).isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("bytes that cannot begin UTF-8 are refused as invalid-chars")
         void isRefusedForBytesThatAreNotText() {
             assertThat(answerTo("""
-                    e: try [do #{00FF}] e/id = 'invalid-chars""")).isEqualTo("#(true)");
+                    e: try [do #{41F642}] e/id = 'invalid-chars""")).isEqualTo("#(true)");
         }
     }
 }

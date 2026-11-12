@@ -93,7 +93,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     @Override
     public Value partWayTo(Value destination, double fraction) {
         if (!(destination instanceof TupleValue reached)) {
-            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, this, destination);
         }
         int width = Math.max(segmentCount(), reached.segmentCount());
         int[] octets = new int[width];
@@ -110,7 +110,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         return switch (right) {
             case TupleValue theirs -> combineOctetByOctetAgainst(theirs, operation);
             case IntegerValue(long magnitude) -> combineEveryOctetAgainst(magnitude, operation);
-            default -> throw Raised.ofUnrelated(this, right);
+            default -> throw Raised.notRelatedToAction(this, operation.actionName());
         };
     }
 
@@ -150,10 +150,9 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     public TupleValue reverseFront(int howMany) {
-        if (howMany < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
-        }
-        int width = Math.min(howMany, segmentCount());
+        int width = Integer.compareUnsigned(howMany, segmentCount()) < 0
+                ? howMany
+                : segmentCount();
         int[] octets = segments();
         for (int at = 0; at < width / 2; at++) {
             int held = octets[at];
@@ -171,11 +170,17 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     @Override
+    public Value pickBy(Value selector) {
+        if (!(selector instanceof IntegerValue || selector instanceof AnyDecimalValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, selector);
+        }
+        return Value.super.pickBy(selector);
+    }
+
+    @Override
     public Value stepIntoBy(Value selector) {
         if (!(selector instanceof IntegerValue(long at))) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "cannot select " + selector.datatype().literalSpelling()
-                            + " from " + datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.INVALID_ARG, selector);
         }
         return at < 1 || at > shownCount() ? NoneValue.none() : pick((int) at);
     }
@@ -183,14 +188,14 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     @Override
     public void writeThrough(Slot place, Value selector, Value written) {
         if (!(selector instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, selector);
         }
         place.setValue(withOctetWritten((int) magnitude, written));
     }
 
     private TupleValue withOctetWritten(int position, Value written) {
         if (position < 1 || position > MAXIMUM_SEGMENTS) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Integer.toString(position));
+            throw Raised.cannotSelect(IntegerValue.of(position));
         }
         if (written instanceof NoneValue) {
             return TupleValue.of(Arrays.copyOf(segments, position - 1));

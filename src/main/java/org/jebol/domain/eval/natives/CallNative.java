@@ -89,8 +89,7 @@ public class CallNative extends HostNative {
         return switch (resolved) {
             case AnyStringValue text -> text.text();
             case WordValue word -> word.spelling();
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    Molder.mold(resolved) + " names nothing a command line can hold");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, resolved);
         };
     }
 }

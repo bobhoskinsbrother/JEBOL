@@ -53,7 +53,7 @@ public class NewLineNative extends DefaultNative {
         if (refinements.contains("skip") && arguments.size() > WHERE_SKIP_SIZE_ARRIVES
                 && arguments.get(WHERE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
             if (size.magnitude() < 1) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(size));
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, size);
             }
             return OptionalInt.of((int) size.magnitude());
         }

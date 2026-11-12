@@ -118,7 +118,7 @@ public class ImageNative extends DefaultNative {
         Value given = refinementArgument("save", 1, arguments, refinements)
                 .orElseGet(NoneValue::none);
         if (!(given instanceof ImageValue image)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
         byte[] written = evaluator.ports().images().encode(readWholeImage(image), type);
         if (written == null) {

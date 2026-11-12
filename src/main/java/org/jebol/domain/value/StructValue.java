@@ -282,7 +282,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         try {
             initialiseFrom(written);
         } catch (StructLayoutRefused refused) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, written);
         }
     }
 
@@ -356,12 +356,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             startWith(written);
             return this;
         }
-        if (!(given instanceof BinaryValue octets)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "change wanted a value, not a " + given.datatype().literalSpelling());
-        }
         if (!acceptsRawBytes()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
+        }
+        if (!(given instanceof BinaryValue octets)) {
+            throw Raised.of(EvaluationFailure.EXPECT_VAL, BinaryValue.TYPE, given.datatype());
         }
         changeFrom(octets.readBytesFromHere());
         return this;
@@ -374,7 +373,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             case "words", "keys" -> BlockValue.of(fieldNames());
             case "values" -> BlockValue.of(fieldValues());
             case "body" -> BlockValue.of(readBody());
-            default -> throw Raised.cannotUse(asked, "reflect struct!");
+            default -> throw Raised.cannotUse(this, asked.spelling());
         };
     }
 

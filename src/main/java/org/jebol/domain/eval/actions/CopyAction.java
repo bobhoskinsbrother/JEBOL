@@ -65,8 +65,7 @@ public class CopyAction extends PortAction {
         Set<Datatype> kinds = chooseWhichDatatypesToCopy(arguments, refinements);
         if (original instanceof StructValue struct) {
             if (!refinements.isEmpty()) {
-                throw Raised.of(EvaluationFailure.BAD_REFINES,
-                        "copy on a struct takes no refinements at all");
+                throw Raised.of(EvaluationFailure.BAD_REFINES);
             }
             return struct.separateCopy();
         }
@@ -74,9 +73,7 @@ public class CopyAction extends PortAction {
             return original.copy(deeply, kinds);
         }
         if (isObjectErrorModuleOrPort(original)) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "/part names the first so many of something with an order, and a "
-                            + original.datatype().literalSpelling() + " has none");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
         if (!(original instanceof RebolSeries series)) {
             return refuseDatatype(original);

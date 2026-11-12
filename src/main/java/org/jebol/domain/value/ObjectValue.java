@@ -105,9 +105,16 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
                 : List.of(target);
         for (Value each : written) {
             if (each instanceof AnyWordValue word && hidesDeclaredField(word)) {
-                throw Raised.of(EvaluationFailure.HIDDEN, word.spelling());
+                throw Raised.of(EvaluationFailure.HIDDEN);
             }
         }
+    }
+
+    public ObjectValue refuseWhenAnyFieldIsHidden() {
+        if (context.listEverySlot().stream().anyMatch(ContextSlot::isHidden)) {
+            throw Raised.of(EvaluationFailure.HIDDEN);
+        }
+        return this;
     }
 
     private Stream<ContextSlot> fieldsOtherThanSelf() {

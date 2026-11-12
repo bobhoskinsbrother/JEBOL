@@ -27,16 +27,15 @@ public final class StructPath {
         try {
             struct.writeField(findFieldChosenBy(struct, selector), written);
         } catch (StructLayoutRefused refused) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
+            throw Raised.of(EvaluationFailure.INVALID_TYPE, written.datatype());
         }
     }
 
     private static StructSpec.StructField findFieldChosenBy(StructValue struct, Value selector) {
         if (!(selector instanceof AnyWordValue asked)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
+            throw Raised.cannotSelect(selector);
         }
         return struct.findFieldCalled(asked.spelling())
-                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
-                        asked.spelling()));
+                .orElseThrow(() -> Raised.cannotSelect(asked));
     }
 }

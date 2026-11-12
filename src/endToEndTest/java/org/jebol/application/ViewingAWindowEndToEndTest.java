@@ -154,7 +154,7 @@ class ViewingAWindowEndToEndTest {
         private String readWhatViewingSays(Interpreter interpreter) {
             String script = """
                     e: try [view/no-wait make gob! [size: 320x200]]
-                    either error? e [form e/arg1] ["no error at all"]""";
+                    either error? e [form e] ["no error at all"]""";
             interpreter.defineNewWordsIn(script);
             return interpreter.display(interpreter.run(script));
         }

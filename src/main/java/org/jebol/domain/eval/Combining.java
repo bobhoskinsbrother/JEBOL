@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BitwiseOperation;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.sets.MembersKept;
 import org.jebol.domain.value.sets.SetOperation;
@@ -21,6 +22,9 @@ public final class Combining {
     public static Value sets(
             Value first, Value second, SetOperation how, boolean mindingCase, int stride) {
 
+        if (first.datatype() != second.datatype()) {
+            throw Raised.differentKindsOfSet(first, second);
+        }
         return first.asSetWith(second, keep(how, mindingCase, stride), mindingCase);
     }
 

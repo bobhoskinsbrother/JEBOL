@@ -69,7 +69,7 @@ public class EcdhNative extends CipherNative {
 
     private void refuseMoreThanOneThingAtOnce(Set<String> refinements) {
         if (WHAT_ECDH_DOES.stream().filter(refinements::contains).count() > 1) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES, "ecdh does one thing per call");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }
 

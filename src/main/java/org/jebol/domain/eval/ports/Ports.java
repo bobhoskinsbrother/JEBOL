@@ -32,6 +32,7 @@ import org.jebol.domain.value.TextLines;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.SetWordValue;
 
@@ -152,7 +153,7 @@ public final class Ports {
         Value built = evaluator.applyFunction(
                 context.findSystemFunctionNamed("make-port*"), List.of(target));
         if (!(built instanceof PortValue port)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, "nothing knows how to open that");
+            throw Raised.of(EvaluationFailure.INVALID_ARG, target);
         }
         return port;
     }
@@ -193,10 +194,11 @@ public final class Ports {
             case "event" -> granted.require(HostService.WINDOWS);
             case "clipboard" -> granted.require(HostService.CLIPBOARD);
             case "midi" -> granted.require(HostService.MIDI);
-            default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
+            default -> throw Raised.saying(EvaluationFailure.NO_SERVICE,
                     scheme.isEmpty()
                             ? "that port has no scheme"
-                            : "nothing here serves the " + scheme + " scheme");
+                            : "nothing here serves the " + scheme + " scheme",
+                    schemeNamed(scheme));
         }
     }
 
@@ -216,9 +218,14 @@ public final class Ports {
                 cryptPort.refuseWhenClosed(port);
                 yield cryptPort.read(port);
             }
-            default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
-                    "nothing here reads the " + port.schemeName() + " scheme");
+            default -> throw Raised.saying(EvaluationFailure.NO_SERVICE,
+                    "nothing here reads the " + port.schemeName() + " scheme",
+                    schemeNamed(port.schemeName()));
         };
+    }
+
+    private static Value schemeNamed(String scheme) {
+        return scheme.isEmpty() ? NoneValue.none() : WordValue.of(scheme);
     }
 
     private Value lineReadFromConsole(Evaluator evaluator, PortRequest asked) {
@@ -269,7 +276,8 @@ public final class Ports {
         try {
             return evaluator.ports().clipboard().read();
         } catch (ClipboardPort.Unreachable unreachable) {
-            throw Raised.of(EvaluationFailure.READ_ERROR, unreachable.getMessage());
+            throw Raised.of(EvaluationFailure.READ_ERROR,
+                    WordValue.of("clipboard"), StringValue.of(unreachable.getMessage()));
         }
     }
 
@@ -480,13 +488,14 @@ public final class Ports {
         try {
             return evaluator.ports().clipboard().write(text) ? port : NoneValue.none();
         } catch (ClipboardPort.Unreachable unreachable) {
-            throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
+            throw Raised.of(EvaluationFailure.WRITE_ERROR,
+                    WordValue.of("clipboard"), StringValue.of(unreachable.getMessage()));
         }
     }
 
     private Value sumIntoPort(PortValue port, Value data, PortRequest asked) {
         if (!(data instanceof BinaryValue || data instanceof AnyStringValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(data));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, data);
         }
         if (!port.isOpen()) {
             port.markOpen(true);
@@ -692,7 +701,7 @@ public final class Ports {
                 && carried.held().orElse(null) instanceof NetworkPort.Datagrams bound) {
             return bound;
         }
-        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
+        throw Raised.of(EvaluationFailure.NOT_OPEN, port);
     }
 
     private void addToPortsData(PortValue port, BinaryValue arrived) {

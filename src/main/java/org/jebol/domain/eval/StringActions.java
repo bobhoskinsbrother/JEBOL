@@ -38,9 +38,7 @@ public final class StringActions extends SeriesActions {
                     when number.magnitude() >= 0
                     && number.magnitude() <= CharacterValue.MAXIMUM_CODEPOINT ->
                     (int) number.magnitude();
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "poke into a string takes a character or a codepoint, not a "
-                            + written.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, written);
         };
     }
 

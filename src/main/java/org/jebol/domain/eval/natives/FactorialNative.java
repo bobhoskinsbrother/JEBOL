@@ -34,9 +34,7 @@ public class FactorialNative extends WholeNumberNative {
 
     private Value multiplyEveryWholeNumberUpTo(long value) {
         if (value < 0 || value > LARGEST_FACTORIAL_AT_ALL) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "factorial takes 0 to " + LARGEST_FACTORIAL_AT_ALL
-                            + " and was given " + value);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(value));
         }
         if (value > LARGEST_EXACT_FACTORIAL) {
             double approximate = 1;

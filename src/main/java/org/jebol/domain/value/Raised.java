@@ -32,21 +32,6 @@ public final class Raised extends RuntimeException {
     }
 
     /**
-     * The detail names what the failure was about, and an error reports
-     * it as ARG1. It used to go only into the message, which meant ARG1
-     * had to be read back out of prose -- and "division by zero" gave
-     * the word DIVISION.
-     */
-    public static Raised of(EvaluationFailure failure, String detail) {
-        return new Raised(ErrorValue.of(
-                failure.category(), failure.errorId(),
-                failure.description() + ": " + detail,
-                detail.isEmpty()
-                        ? StringValue.of(detail)
-                        : WordValue.of(detail)));
-    }
-
-    /**
      * A failure whose subject is a value rather than a word coined from
      * prose, so {@code e/arg1} compares equal to the very thing that
      * offended -- the integer 0 in a parse rule, or the get-word itself.
@@ -105,9 +90,32 @@ public final class Raised extends RuntimeException {
         return of(EvaluationFailure.NOT_RELATED, SetWordValue.of(actionName), left.datatype());
     }
 
-    public static Raised ofUnrelated(Value left, Value right) {
-        return of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(left.datatype().literalSpelling()),
-                WordValue.of(right.datatype().literalSpelling()));
+    public static Raised saying(EvaluationFailure failure, String sentence, Value subject) {
+        return new Raised(ErrorValue.of(
+                failure.category(), failure.errorId(), sentence, subject));
+    }
+
+    public static Raised cannotSelect(Value selector) {
+        return of(EvaluationFailure.INVALID_PATH, NoneValue.none(), selector);
+    }
+
+    public static Raised cannotSet(Value selector) {
+        return of(EvaluationFailure.BAD_PATH_SET, NoneValue.none(), selector);
+    }
+
+    public static Raised differentKindsOfSet(Value left, Value right) {
+        return of(EvaluationFailure.EXPECT_VAL, left.datatype(), right.datatype());
+    }
+
+    public static Raised wordHasNoValue(AnyWordValue word) {
+        return of(EvaluationFailure.NO_VALUE, WordValue.of(word.spelling()));
+    }
+
+    public static Raised wordNotBound(AnyWordValue word) {
+        return wordNotBound(word.spelling());
+    }
+
+    public static Raised wordNotBound(String spelling) {
+        return of(EvaluationFailure.NOT_DEFINED, WordValue.of(spelling));
     }
 }

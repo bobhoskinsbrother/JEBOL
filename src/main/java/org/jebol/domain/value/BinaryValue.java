@@ -103,8 +103,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     @Override
     public void refuseNeedleItCannotHold(Value needle, String nativeName) {
         if (needle instanceof IntegerValue(long magnitude) && (magnitude < 0 || magnitude > 255)) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    nativeName + " on a binary wanted a byte, not " + magnitude);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, needle);
         }
     }
 
@@ -320,12 +319,26 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public String asStrictText() {
-        return decodeStrictlyAsUtf8(octetsFromHere());
+        return decodeStrictlyAsUtf8(withNeverUtf8BytesReadAsControls(octetsFromHere()));
     }
 
     public String asStrictTextUpTo(int endIndex) {
-        return decodeStrictlyAsUtf8(copyOctetsUpTo(endIndex));
+        return decodeStrictlyAsUtf8(withNeverUtf8BytesReadAsControls(copyOctetsUpTo(endIndex)));
     }
+
+    private static byte[] withNeverUtf8BytesReadAsControls(byte[] octets) {
+        byte[] read = octets.clone();
+        for (int at = 0; at < read.length; at++) {
+            if (NEVER_IN_UTF8.indexOf(read[at] & 0xFF) >= 0) {
+                read[at] = CONTROL_THE_SCANNER_SKIPS;
+            }
+        }
+        return read;
+    }
+
+    private static final String NEVER_IN_UTF8 = "ÀÁõÿ";
+
+    private static final byte CONTROL_THE_SCANNER_SKIPS = 0x01;
 
     private byte[] copyOctetsUpTo(int endIndex) {
         byte[] octets = new byte[Math.max(0, endIndex - index)];
@@ -343,8 +356,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                     .decode(ByteBuffer.wrap(octets))
                     .toString();
         } catch (CharacterCodingException notText) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                    "the bytes given to load are not valid UTF-8 text");
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
     }
 
@@ -432,7 +444,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                     .decode(ByteBuffer.wrap(bytes, width, bytes.length - width))
                     .toString();
         } catch (CharacterCodingException notText) {
-            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
+            throw Raised.of(EvaluationFailure.INVALID_UTF, this);
         }
     }
 

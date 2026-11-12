@@ -52,7 +52,7 @@ public class ResizeNative extends DefaultNative {
             wide = (int) x;
             high = (int) y;
             if (wide == 0 && high == 0) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
+                throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
             }
             if (wide == 0) {
                 wide = scaleFrom(high, wasWide, wasHigh);

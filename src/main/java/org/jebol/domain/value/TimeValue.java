@@ -46,7 +46,12 @@ public record TimeValue(long nanoseconds) implements Value {
             case "second" -> fraction == 0
                     ? IntegerValue.of(seconds % 60)
                     : DecimalValue.of(seconds % 60 + (double) fraction / NANOSECONDS_PER_SECOND);
-            default -> NoneValue.none();
+            default -> {
+                if (!(selector instanceof IntegerValue)) {
+                    throw Raised.of(EvaluationFailure.INVALID_PATH, this, selector);
+                }
+                yield NoneValue.none();
+            }
         };
     }
 

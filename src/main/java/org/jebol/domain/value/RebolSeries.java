@@ -125,7 +125,7 @@ public sealed interface RebolSeries extends Value
         if (howMuch instanceof IntegerValue count) {
             if (count.magnitude() < Integer.MIN_VALUE
                     || count.magnitude() > Integer.MAX_VALUE) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(count));
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, count);
             }
             return count.magnitude();
         }

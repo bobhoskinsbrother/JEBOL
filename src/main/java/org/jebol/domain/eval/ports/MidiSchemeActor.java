@@ -71,7 +71,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, nativeName());
+            throw Raised.of(EvaluationFailure.CANNOT_USE, WordValue.of(nativeName()));
         };
     }
 

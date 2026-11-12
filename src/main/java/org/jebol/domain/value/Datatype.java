@@ -108,7 +108,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        throw Raised.cannotUse(this, "a bit operation");
+        throw Raised.cannotUseAction(this, operation.actionName());
     }
 
     @Override

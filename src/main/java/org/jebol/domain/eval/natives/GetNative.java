@@ -28,7 +28,7 @@ public class GetNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PathValue path ->
                     evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
-            case ObjectValue object -> object.context().valuesExcludingSelf();
+            case ObjectValue object -> object.refuseWhenAnyFieldIsHidden().context().valuesExcludingSelf();
             case AnyWordValue word -> readWhatIsHeldBy(word, refinements.contains("any"));
             case Value anythingElse -> anythingElse;
         };
@@ -37,7 +37,7 @@ public class GetNative extends DefaultNative {
     private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnswer) {
         Value held = word.findBoundSlot().value();
         if (held instanceof UnsetValue && !unsetIsAnswer) {
-            throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling() + " has no value");
+            throw Raised.wordHasNoValue(word);
         }
         return held;
     }

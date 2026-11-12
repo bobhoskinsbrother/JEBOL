@@ -109,8 +109,7 @@ final class Keep extends DeclaredKeyword {
 
     private static void refuseKeepWithNoCollectAroundIt(ParseWalk walk) {
         if (walk.hasNoCollectionOpen()) {
-            throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
-                    "keep has no collect around it");
+            throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT);
         }
     }
 

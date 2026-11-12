@@ -92,7 +92,11 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected Value refuseArgument(Value given, String declaredArgument) {
-        throw new Raised(ErrorValue.of(
+        throw argumentRefusal(given, declaredArgument);
+    }
+
+    protected Raised argumentRefusal(Value given, String declaredArgument) {
+        return new Raised(ErrorValue.of(
                 EvaluationFailure.EXPECT_ARG.category(),
                 EvaluationFailure.EXPECT_ARG.errorId(),
                 nativeName() + " does not allow " + given.datatype().literalSpelling()

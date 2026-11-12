@@ -783,9 +783,10 @@ class TheMidiPortFromTheSourceTest {
         @Test
         @DisplayName("the refusal names midi as the service")
         void namesMidiInTheRefusal() {
-            assertThat(runWithoutTheGrant("failure: try [open midi://1] reduce [form failure/arg1]"))
-                    .isEqualTo("""
-                            ["midi is not granted"]""");
+            assertThat(runWithoutTheGrant("failure: try [open midi://1] failure/arg1"))
+                    .isEqualTo("midi");
+            assertThat(runWithoutTheGrant("failure: try [open midi://1] form failure"))
+                    .contains("midi is not granted");
         }
 
         @Test

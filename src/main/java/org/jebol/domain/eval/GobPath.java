@@ -15,9 +15,7 @@ public final class GobPath {
             return readField(gob, asked);
         }
         if (!(selector instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "cannot select " + selector.datatype().literalSpelling()
-                            + " from a gob");
+            throw Raised.cannotSelect(selector);
         }
         return childAt(gob, magnitude);
     }
@@ -52,7 +50,7 @@ public final class GobPath {
             case "parent" -> parentGob(storage);
             case "data" -> storage.data();
             case "flags" -> raisedFlagWords(storage);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PATH, asked.spelling());
+            default -> throw Raised.cannotSelect(asked);
         };
     }
 
@@ -199,9 +197,7 @@ public final class GobPath {
         }
         for (Value child : children) {
             if (!(child instanceof GobValue)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a pane holds gobs, not "
-                                + child.datatype().literalSpelling());
+                throw Raised.of(EvaluationFailure.INVALID_ARG, child);
             }
         }
         replaceRatherThanAddTo(storage);
@@ -260,15 +256,18 @@ public final class GobPath {
 
     static void pokeWhichInsertsRatherThanReplaces(
             GobValue gob, int oneBasedIndex, Value written) {
+        gob.storage().insertChild(oneBasedIndex,
+                requireChildWithin(gob, oneBasedIndex, written));
+    }
+
+    static GobValue requireChildWithin(GobValue gob, int oneBasedIndex, Value written) {
         if (!(written instanceof GobValue child)) {
-            throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                    "a pane holds gobs, not " + written.datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.EXPECT_VAL, GobValue.TYPE, written.datatype());
         }
         if (oneBasedIndex < 1 || oneBasedIndex > gob.storage().length()) {
-            throw Raised.of(EvaluationFailure.PAST_END,
-                    "there is no child at " + oneBasedIndex + " to change");
+            throw Raised.of(EvaluationFailure.PAST_END);
         }
-        gob.storage().insertChild(oneBasedIndex, child);
+        return child;
     }
 
 }

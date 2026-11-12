@@ -8,6 +8,7 @@ import org.jebol.domain.value.Context;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.AnyStringValue;
@@ -61,8 +62,7 @@ final class ProgramCalling {
             throw Raised.of(EvaluationFailure.CALL_FAIL, StringValue.of(result.refusalMessage().orElseThrow()));
         }
         if (waits && result.exitCode().isEmpty()) {
-            throw Raised.of(EvaluationFailure.CALL_FAIL,
-                    "the host waited for the program and answered no exit code");
+            throw Raised.of(EvaluationFailure.CALL_FAIL, NoneValue.none());
         }
         return IntegerValue.of(waits ? result.exitCode().orElseThrow() : result.processNumber());
     }

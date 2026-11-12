@@ -50,11 +50,11 @@ public class AssertNative extends DefaultNative {
     }
 
     private Value readValueNamedBy(Value subject, Evaluator evaluator, Context context) {
-        boolean namesValue = subject instanceof WordValue || subject instanceof PathValue;
-        if (!namesValue) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
-        }
-        return evaluator.evaluateOrRaise(BlockValue.of(List.of(subject)), context);
+        return switch (subject) {
+            case WordValue word -> word.findBoundSlot().value();
+            case PathValue ignored -> evaluator.evaluateOrRaise(BlockValue.of(List.of(subject)), context);
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
+        };
     }
 
     private Value assertEveryCondition(
@@ -84,8 +84,7 @@ public class AssertNative extends DefaultNative {
             }
             case AnyBlockValue any -> any.remaining().stream()
                     .anyMatch(one -> isOfType(held, one, context));
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "assert/type wants a datatype, not " + type.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, type);
         };
     }
 }

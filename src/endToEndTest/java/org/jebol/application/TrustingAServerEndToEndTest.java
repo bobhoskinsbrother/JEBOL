@@ -293,7 +293,8 @@ class TrustingAServerEndToEndTest {
                 assertThat(readError(interpreter, localhostUrl(server))).isEqualTo("[Access no-service]");
                 assertThat(run(interpreter, """
                         failure: try [read %s]
-                        {certificates is not granted} = form failure/arg1""".formatted(localhostUrl(server))))
+                        all [failure/arg1 = 'certificates not none? find form failure {certificates is not granted}]"""
+                        .formatted(localhostUrl(server))))
                         .isEqualTo("#(true)");
                 assertThat(server.connectionsAccepted()).isZero();
             }

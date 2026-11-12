@@ -8,7 +8,9 @@ import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.GetWordValue;
@@ -59,11 +61,20 @@ final class Seek extends DeclaredKeyword {
         if (wanted instanceof IntegerValue where) {
             return moveToPlaceItNames(walk, where);
         }
-        requirePlaceOrSearchTerm(wanted);
+        requirePlaceOrSearchTerm(wanted, rules.get(at));
         Value looked = walk.resolveWord(wanted);
+        if (namesNothingToFindInText(looked)) {
+            throw Raised.of(EvaluationFailure.PARSE_RULE, looked);
+        }
         return looked instanceof AnyBlockValue || looked instanceof BitsetValue
                 ? findFirstPlaceRuleMatches(walk, looked)
                 : findFirstPlaceTextAppears(walk, looked);
+    }
+
+    private static boolean namesNothingToFindInText(Value looked) {
+        return looked instanceof NoneValue
+                || looked instanceof UnsetValue
+                || looked instanceof LogicValue;
     }
 
     private static boolean namesTail(Value wanted) {
@@ -79,17 +90,15 @@ final class Seek extends DeclaredKeyword {
         return 2;
     }
 
-    private static void requirePlaceOrSearchTerm(Value wanted) {
+    private static void requirePlaceOrSearchTerm(Value wanted, Value keyword) {
         boolean refused = wanted instanceof AnyDecimalValue
                 || wanted instanceof GetWordValue
                 || wanted instanceof SetWordValue
-                || (wanted instanceof WordValue keyword
+                || (wanted instanceof WordValue reserved
                         && ParseTargets.WORDS_DIALECT_RESERVES
-                                .contains(keyword.canonical()));
+                                .contains(reserved.canonical()));
         if (refused) {
-            throw Raised.of(EvaluationFailure.PARSE_RULE,
-                    "to and thru take a place or something to look for, not "
-                            + Molder.mold(wanted));
+            throw Raised.of(EvaluationFailure.PARSE_RULE, keyword);
         }
     }
 

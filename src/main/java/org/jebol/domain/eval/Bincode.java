@@ -474,7 +474,7 @@ public final class Bincode {
         if (given instanceof AnyDecimalValue fraction) {
             return fraction.quantity();
         }
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+        throw refuse(given);
     }
 
     private static final double WHOLE_FIXED_POINT_UNIT = 65536.0;
@@ -776,7 +776,7 @@ public final class Bincode {
         if (given instanceof AnyStringValue text && carriesItsOwnBytes(given)) {
             return text.text().getBytes(StandardCharsets.UTF_8);
         }
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
+        throw refuse(given);
     }
 
     private static void writeRandom(Cursor cursor, long howMany) {

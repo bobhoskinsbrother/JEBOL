@@ -33,7 +33,8 @@ public class SortAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (!(arguments.getFirst() instanceof RebolSeries series)) {
+            if (!(arguments.getFirst() instanceof RebolSeries series)
+                    || arguments.getFirst() instanceof ImageValue) {
                 return refuseDatatype(arguments.getFirst());
             }
             Optional<Value> comparator = refinementArgument("compare", 0, arguments, refinements);
@@ -67,8 +68,7 @@ public class SortAction extends DefaultNative implements ActionValue {
 
     private void refuseRecordsInVector(Set<String> refinements) {
         if (refinements.contains("skip") || refinements.contains("compare")) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    "sort/skip and sort/compare on a vector!");
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
     }
 
@@ -76,20 +76,17 @@ public class SortAction extends DefaultNative implements ActionValue {
             Optional<Value> comparator) {
         if (refinements.contains("skip")
                 && (stride < 1 || stride > howMany || howMany % stride != 0)) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a record width of " + stride + " does not divide " + howMany);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(stride));
         }
         if (comparator.isPresent()
                 && comparator.get() instanceof IntegerValue(long magnitude)
                 && (!refinements.contains("skip") || magnitude < 1 || magnitude > stride)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "there is no column " + Molder.mold(comparator.get()) + " to sort by");
+            throw Raised.of(EvaluationFailure.INVALID_ARG, comparator.get());
         }
         if (refinements.contains("all")
                 && comparator.isPresent()
                 && !(comparator.get() instanceof AnyFunctionValue)) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "sort/all compares whole records, so a column has nothing left to say");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }
 }

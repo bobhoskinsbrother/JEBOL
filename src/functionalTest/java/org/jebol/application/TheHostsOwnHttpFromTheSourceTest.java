@@ -214,8 +214,10 @@ class TheHostsOwnHttpFromTheSourceTest {
                 OutputPort.discard(),
                 Bounds.standard().withoutTimeLimit());
 
-        assertThat(answerTo(interpreter, "e: try [read http://example.com/a] mold e"))
+        assertThat(answerTo(interpreter, "e: try [read http://example.com/a] form e"))
                 .contains("web is not granted");
+        assertThat(answerTo(interpreter, "e: try [read http://example.com/a] e/arg1"))
+                .isEqualTo("web");
     }
 
     @Test

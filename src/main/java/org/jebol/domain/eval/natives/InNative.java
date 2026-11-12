@@ -44,9 +44,7 @@ public class InNative extends DefaultNative {
             case PortValue port -> port.context();
             case ModuleValue module -> module.context();
             case ErrorValue raised -> readFieldsErrorHolds(raised);
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "in wanted an object, an error, a port or a block, not "
-                            + value.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         };
     }
 

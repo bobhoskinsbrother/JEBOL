@@ -75,9 +75,7 @@ public class RequestFileNative extends WindowNative {
 
     private List<String> pairUp(List<Value> items) {
         if (items.size() % 2 != 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a filter list pairs a name with a pattern, and "
-                            + items.size() + " items do not pair up");
+            throw Raised.of(EvaluationFailure.INVALID_ARG, BlockValue.of(items));
         }
         return items.stream().map(Molder::form).toList();
     }

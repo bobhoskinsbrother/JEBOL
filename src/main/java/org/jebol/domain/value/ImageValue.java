@@ -94,8 +94,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     @Override
     public RebolSeries reversedFromHere() {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                "reverse wanted a series, not a " + datatype().literalSpelling());
+        throw Raised.cannotUseAction(this, "reverse");
     }
 
     public void writePixel(int pixel, int[] channels) {

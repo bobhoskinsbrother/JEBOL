@@ -51,19 +51,19 @@ class SurfaceTypesFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a pair as a /dup count raises invalid-type, as Int32 does")
-        void aPairAsADupCountRaisesInvalidType() {
+        @DisplayName("a pair as a /dup count is out of range, as a real 3.22.5 answers")
+        void aPairAsADupCountIsOutOfRange() {
             assertThat(errorIdOf("""
-                    append/dup copy [] 1 1x2""")).isEqualTo("invalid-type");
+                    append/dup copy [] 1 1x2""")).isEqualTo("out-of-range");
         }
 
         @Test
-        @DisplayName("a decimal /dup count is truncated, a percent refused")
-        void aDecimalDupTruncatesAndAPercentIsRefused() {
+        @DisplayName("a decimal /dup count is truncated, a percent out of range")
+        void aDecimalDupTruncatesAndAPercentIsOutOfRange() {
             assertThat(answerTo("""
                     append/dup copy [] 1 2.9""")).isEqualTo("[1 1]");
             assertThat(errorIdOf("""
-                    append/dup copy [] 1 50%""")).isEqualTo("invalid-type");
+                    append/dup copy [] 1 50%""")).isEqualTo("out-of-range");
         }
     }
 

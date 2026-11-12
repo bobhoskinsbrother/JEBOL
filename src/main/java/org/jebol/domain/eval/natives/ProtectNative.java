@@ -43,7 +43,7 @@ public class ProtectNative extends ProtectingNative {
                 return target;
             }
             if (refinements.contains("hide") && !namesField(target, refinements)) {
-                throw Raised.of(EvaluationFailure.BAD_REFINES, "protect/hide needs a word");
+                throw Raised.of(EvaluationFailure.BAD_REFINES);
             }
             changeProtection(target, PROTECTED, refinements);
             return target;

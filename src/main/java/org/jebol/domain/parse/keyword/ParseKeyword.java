@@ -29,6 +29,10 @@ public interface ParseKeyword {
         return ownsRuleAfterIt() || slotsBeforeRule() > 0;
     }
 
+    default boolean triesRuleFirst() {
+        return false;
+    }
+
     Map<String, ParseKeyword> BY_SPELLING = DialectsWords.indexBySpelling();
 
     static Optional<ParseKeyword> findKeywordNamed(String canonical) {

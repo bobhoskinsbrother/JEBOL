@@ -34,7 +34,7 @@ class ABrowserHostFromTheSourceTest {
     }
 
     private static String readTheSentenceFor(Interpreter interpreter, String source) {
-        return answerTo(interpreter, "e: try [" + source + "] mold e");
+        return answerTo(interpreter, "e: try [" + source + "] form e");
     }
 
     @Test

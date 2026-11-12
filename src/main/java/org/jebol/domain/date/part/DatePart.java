@@ -53,7 +53,7 @@ public enum DatePart implements DateField {
         if (field instanceof WritableDateField writable) {
             return writable.writeOn(date, new Assigned(given, WordValue.of(spelling())));
         }
-        throw Raised.of(EvaluationFailure.BAD_PATH_SET, spelling());
+        throw Raised.cannotSet(WordValue.of(spelling()));
     }
 
     public static Value readFrom(DateValue date, Value selector) {
@@ -91,7 +91,6 @@ public enum DatePart implements DateField {
     }
 
     private static Raised refuseUnknownPart(Value selector) {
-        return Raised.of(EvaluationFailure.INVALID_PATH,
-                selector instanceof AnyWordValue word ? word.spelling() : "date");
+        return Raised.cannotSelect(selector);
     }
 }

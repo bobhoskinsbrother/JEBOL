@@ -21,8 +21,7 @@ final class HandlePath {
 
     static Value read(HandleValue handle, Value selector) {
         if (!(selector instanceof AnyWordValue field)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "a handle is selected by name, not by " + selector.datatype().literalSpelling());
+            throw Raised.cannotSelect(selector);
         }
         if (!handle.isContext()) {
             return NoneValue.none();

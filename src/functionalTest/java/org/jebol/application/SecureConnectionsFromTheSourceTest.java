@@ -108,7 +108,7 @@ class SecureConnectionsFromTheSourceTest {
             try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), TLS_1_3)) {
                 assertThat(openAndSayWhatHappened(makeAnInterpreter(trustingTheTestRoot(), withoutCertificates),
                         "localhost", server.port()))
-                        .isEqualTo("Access no-service | certificates is not granted");
+                        .isEqualTo("Access no-service | certificates");
                 assertThat(server.connectionsAccepted()).isZero();
             }
         }
@@ -123,7 +123,7 @@ class SecureConnectionsFromTheSourceTest {
                     .markUnavailable(HostService.CERTIFICATES)
                     .calls("a browser");
             assertThat(openAndSayWhatHappened(makeAnInterpreter(trustingTheTestRoot(), asABrowser), "localhost", 443))
-                    .isEqualTo("Access no-service | a browser does not allow certificates, which is not present");
+                    .isEqualTo("Access no-service | certificates");
         }
 
         @Test

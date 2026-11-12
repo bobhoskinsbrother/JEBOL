@@ -7126,3 +7126,84 @@ else, and `and~`, `or~` and `xor~` raise `cannot-use` for NONE, money and
 block and `not-related` for time. `modulo` reads a time in seconds
 (`VAL_TIME * NANO`) and writes the answer back with `DEC_TO_SECS`, so
 `1:00 %% 7` is `0:00:02`. `AnOperatorsUncheckedLeftOperandFromTheSourceTest`.
+
+## 241. An error's arguments are values, and where R3 puts each
+
+Measured on `./r3-head` and held row by row in
+`error-arguments-as-r3-answers.tsv` (`scripts/error-arguments-sweep.py`,
+`ErrorArgumentsAnswerAsR3DoesTest`); `AnErrorsArgumentsAreValuesFromTheSourceTest`
+goes past the table. The rules that a reading of the catalogue alone would get
+wrong:
+
+- **`not-related` is the action and the left operand's datatype**, whichever
+  side refused: `1x2 + 1.2.3` is `add: pair!`, `1.2.3 + 1x2` is `add: tuple!`,
+  `1 - 1x2` is `subtract: integer!`. The action is a set-word, and the bitwise
+  ones are spelt as their actions: `and~:`, `or~:`, `xor~:`. A bit operation on
+  a decimal vector names `decimal!`, not the vector's kind.
+- **Date arithmetic that cannot be done is `cannot-use <action>: date!`**, and
+  a vector beside anything but a number or a vector is `cannot-use add:
+  vector!`.
+- **`Set_Op` (`n-sets.c`) refuses any two datatypes that differ before
+  anything else**, as `expect-val` naming both in order: block with string,
+  block with map, map with block, bitset with block. `exclude [a] typeset` is
+  `expect-val block! typeset!`.
+- **`SET` and `GET` of an object refuse the whole object if any field is
+  hidden** (`Assert_Public_Object`, `n-data.c`), with `hidden` and no
+  arguments.
+- **`Loop_Each` (`n-loop.c`) reaches a third word over a map or an object
+  only while items remain**: one pair leaves it none, two pairs make it
+  `invalid-arg` naming the word, and an empty map raises nothing.
+- **A path's `PD_` function is what `pick` uses for a pair, tuple, time,
+  image and vector**, so `pick` follows the path's rules: `pick 1x2 3` is
+  `out-of-range 3`, `pick 1x2 'zz` is `invalid-arg zz`, `pick 1:00 'zz` is
+  `invalid-path 1:00 zz`. An image or a vector picked by an unknown word
+  carries `none` and the word, and by a string carries the series and the
+  string.
+- **`PD_Gob` ignores a value written through an integer**: `gob/1: x`
+  changes nothing and answers `x`. `poke` and `change` are what refuse, in
+  the order `expect-val`, `past-end`, then `not-done` for `/part`, `/only`
+  and `/dup`; `insert` and `append` refuse the refinements first.
+- **The struct `CHANGE` (`t-struct.c`) ignores its refinements** and checks
+  protection before the argument's type.
+- **`for` with a step of zero refuses nothing** (`Loop_Integer` tests
+  `start >= end` when the step is not positive), so `for i 1 3 0` runs no
+  round and `for i 3 1 0` runs until a `break`.
+
+## 242. A negative REVERSE/PART of a tuple reverses the whole tuple
+
+`T_Tuple`'s `A_REVERSE` (`t-tuple.c`) guards the count with `if (len < 0)
+Trap_Range(...)`, but `len` is a `REBCNT`, so the test never fires: a negative
+count becomes a huge one, `MIN` cuts it to the tuple's length, and
+`reverse/part 1.2.3 -1` is `3.2.1`. Rebol's own suite only checks a positive
+count (`tuple-test.r3`, `reverse/part 1.2.3.4.5 3`). JEBOL compares the count
+unsigned as the C does. `AnErrorsArgumentsAreValuesFromTheSourceTest`.
+
+## 243. Two parse errors carry a cell the error was not about
+
+**`#(end)`.** `parse "a" [set]`, `[copy]` and `[change "a"]` raise
+`parse-variable` and `parse-end` with arg1 the end marker of the rule block.
+`mold`, `type?` and every other native refuse it, so a script that reads
+`e/arg1` fails. JEBOL has no end value a script can hold (decision 67), and
+carries the keyword instead.
+
+**`item - 1`.** `To_Thru` (`u-parse.c`) refuses text input it cannot search
+for with `Trap1(RE_PARSE_RULE, item - 1)`. By then `item` has been replaced
+by the word's value in its context, so `item - 1` is whatever cell sits before
+it there: `parse "a" [to none]` names the `to` action, `[thru none]` names an
+unset value, `[to x]` with `x` unset names `to` again. Which cell it is
+depends on the layout of the context, so it cannot be copied. JEBOL raises
+the same `parse-rule` from the same sources and names what was found, which is
+what `item` held. Over block input `Find_Block` searches for anything, and
+neither raises.
+
+## 244. The four bytes UTF-8 never uses scan as a control character
+
+`Lex_Map` (`l-scan.c`) gives `C0`, `C1`, `F5` and `FF` the class `LEX_UTFE`,
+which is `LEX_DEFAULT` when R3 is built with `USE_UNICODE`, the class of the
+control characters `01` to `08`. So the scanner skips them as it skips `^A`:
+`load #{41FF42}` is `[A B]` and `load #{FF}` is `[]`. Every other byte that
+cannot start a UTF-8 sequence, and a lead byte with no continuation after it,
+is a word character the decoder then refuses: `load #{41F642}` and `load
+#{41C342}` are `invalid-chars`. Inside a string the four bytes hang
+`./r3-head` (`load #{2241FF4222}` never returns), which JEBOL does not copy:
+it reads each as `^A` there too. `AnErrorsArgumentsAreValuesFromTheSourceTest`.

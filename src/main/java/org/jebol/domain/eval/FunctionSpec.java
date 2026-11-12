@@ -118,9 +118,7 @@ final class FunctionSpec {
             switch (resolveTypeName(declared)) {
                 case Datatype datatype -> accepted.add(datatype);
                 case TypesetValue typeset -> accepted.addAll(typeset.members());
-                default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a type block holds datatypes, not "
-                                + declared.datatype().literalSpelling());
+                default -> throw Raised.of(EvaluationFailure.INVALID_ARG, declared);
             }
         }
         return accepted;
@@ -136,7 +134,6 @@ final class FunctionSpec {
         }
         return Catalogue.DATATYPES.findTypesetNamed(word.spelling())
                 .<Value>map(typeset -> typeset)
-                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
-                        word.spelling() + " names no datatype"));
+                .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, word));
     }
 }

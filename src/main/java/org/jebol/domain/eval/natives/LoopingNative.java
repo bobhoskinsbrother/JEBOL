@@ -43,9 +43,7 @@ public abstract class LoopingNative extends DefaultNative {
             if (target instanceof AnyWordValue single) {
                 return List.of(single);
             }
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    nativeName() + " walks with a word or a block of words, not a "
-                            + target.datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.INVALID_ARG, target);
         }
         if (block.lengthFromHere() == 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, block);
@@ -53,9 +51,7 @@ public abstract class LoopingNative extends DefaultNative {
         List<AnyWordValue> names = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
             if (!(item instanceof AnyWordValue name)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        nativeName() + " walks with words, and " + Molder.mold(item)
-                                + " is not one");
+                throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }
             names.add(name);
         }

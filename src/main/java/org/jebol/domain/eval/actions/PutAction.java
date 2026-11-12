@@ -41,8 +41,7 @@ public class PutAction extends DefaultNative implements ActionValue {
             case MapValue map -> map.put(key, written, refinements.contains("case"));
             case ObjectValue object when key instanceof AnyWordValue field ->
                     putIntoObject(object, field, written);
-            case ObjectValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    Molder.mold(key) + " is not a word an object can hold a field under");
+            case ObjectValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG, key);
             case AnyBlockValue block -> putIntoBlock(block, key, written,
                     recordWidth(arguments, refinements), refinements.contains("case"));
             case Value anythingElse -> refuseDatatype(anythingElse);

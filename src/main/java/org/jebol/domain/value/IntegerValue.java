@@ -56,8 +56,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     @Override
     public Value makeAbsolute() {
         if (magnitude == Long.MIN_VALUE) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "there is no positive counterpart to " + magnitude);
+            throw Raised.of(EvaluationFailure.OVERFLOW);
         }
         return IntegerValue.of(Math.abs(magnitude));
     }
@@ -123,14 +122,15 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return IntegerValue.of(operation.onWholeElements(magnitude, readWholeNumber(right)));
+        return IntegerValue.of(operation.onWholeElements(
+                magnitude, readWholeNumber(right, operation)));
     }
 
-    private long readWholeNumber(Value right) {
+    private long readWholeNumber(Value right, BitwiseOperation operation) {
         return switch (right) {
             case IntegerValue(long other) -> other;
             case CharacterValue(int codepoint) -> codepoint;
-            default -> throw Raised.ofUnrelated(this, right);
+            default -> throw Raised.notRelatedToAction(this, operation.actionName());
         };
     }
 
@@ -200,8 +200,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             if (Double.isNaN(quantity)
                     || quantity < -TOO_LARGE_FOR_WHOLE_NUMBER
                     || quantity >= TOO_LARGE_FOR_WHOLE_NUMBER) {
-                throw Raised.of(EvaluationFailure.OVERFLOW,
-                        "no whole number is what " + quantity + " names");
+                throw Raised.of(EvaluationFailure.OVERFLOW);
             }
             return IntegerValue.of((long) quantity);
         }

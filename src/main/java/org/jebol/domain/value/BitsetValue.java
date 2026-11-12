@@ -192,7 +192,7 @@ public final class BitsetValue implements Value {
     @Override
     public Value asSetWith(Value other, MembersKept keeping, boolean mindingCase) {
         if (!(other instanceof BitsetValue theirs)) {
-            throw Raised.cannotUse(this, "a set operation");
+            throw Raised.differentKindsOfSet(this, other);
         }
         byte[] mine = octets;
         byte[] yours = theirs.octets;
@@ -208,14 +208,14 @@ public final class BitsetValue implements Value {
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
         return BitsetValue.of(withoutTrailingZeros(
-                combineOctetByOctet(takeSomeBitsFrom(right), operation)));
+                combineOctetByOctet(takeSomeBitsFrom(right, operation), operation)));
     }
 
-    private byte[] takeSomeBitsFrom(Value right) {
+    private byte[] takeSomeBitsFrom(Value right, BitwiseOperation operation) {
         return switch (right) {
             case BitsetValue members -> members.octets();
             case BinaryValue given -> binaryAsBytes(given);
-            default -> throw Raised.ofUnrelated(this, right);
+            default -> throw Raised.notRelatedToAction(this, operation.actionName());
         };
     }
 

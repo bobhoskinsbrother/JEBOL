@@ -22,7 +22,7 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
 
     private Value withRoomForAsMuchAs(Value spec, double asked) {
         if (asked < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec.toString());
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
         }
         refuseMoreRoomThanFits(asked, bytesItemTakes());
         int room = (int) Math.min(Integer.MAX_VALUE, (long) asked);

@@ -4,6 +4,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.WordValue;
 
 import java.util.Locale;
 import java.util.Set;
@@ -36,7 +37,8 @@ public final class GrantedServices {
         if (allow(service)) {
             return;
         }
-        throw Raised.of(EvaluationFailure.NO_SERVICE, explainWhyNot(service));
+        throw Raised.saying(EvaluationFailure.NO_SERVICE, explainWhyNot(service),
+                WordValue.of(service.name().toLowerCase(Locale.ROOT).replace('_', '-')));
     }
 
     private String explainWhyNot(HostService service) {

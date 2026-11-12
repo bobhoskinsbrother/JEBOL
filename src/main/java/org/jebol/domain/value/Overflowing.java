@@ -11,7 +11,7 @@ public final class Overflowing {
         try {
             return counting.get();
         } catch (ArithmeticException overflowed) {
-            throw Raised.of(EvaluationFailure.OVERFLOW, overflowed.getMessage());
+            throw Raised.of(EvaluationFailure.OVERFLOW);
         }
     }
 
@@ -23,7 +23,7 @@ public final class Overflowing {
 
     public static void refuseZeroOctetDivisor(double divisor) {
         if (divisor == 0) {
-            throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 

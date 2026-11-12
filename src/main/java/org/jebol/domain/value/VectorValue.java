@@ -75,13 +75,13 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        refuseWhatItCannotTake(right);
+        refuseWhatItCannotTake(right, operation);
         return VectorMath.calculate(this, right, operation);
     }
 
-    private void refuseWhatItCannotTake(Value right) {
+    private void refuseWhatItCannotTake(Value right, BitwiseOperation operation) {
         if (!(right instanceof VectorValue) && !(right instanceof IntegerValue)) {
-            throw Raised.cannotUse(right, "a bit operation on a vector");
+            throw Raised.cannotUseAction(this, operation.actionName());
         }
     }
 
@@ -91,8 +91,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
             return false;
         }
         if (kind().measures() != theirs.kind().measures()) {
-            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
-                    kind().spelling() + " against " + theirs.kind().spelling());
+            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE);
         }
         return compareWith(theirs) == 0;
     }
@@ -183,7 +182,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         private Value ofSize(Value spec, long howMany) {
             refuseMoreRoomThanFits(howMany, BYTES_VECTORS_NUMBER_TAKES);
             if (howMany < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(spec));
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
             }
             return allocateWithinHost(() -> VectorSpec.ofSize((int) howMany));
         }

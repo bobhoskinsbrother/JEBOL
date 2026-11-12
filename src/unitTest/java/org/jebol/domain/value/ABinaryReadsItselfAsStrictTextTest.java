@@ -14,7 +14,8 @@ class ABinaryReadsItselfAsStrictTextTest {
     private static final int LOWER_C = 0x63;
     private static final int E_ACUTE_LEAD = 0xC3;
     private static final int E_ACUTE_TRAIL = 0xA9;
-    private static final int NEVER_IN_UTF8 = 0xFF;
+    private static final int NEVER_IN_UTF8 = 0xF6;
+    private static final int SCANNED_AS_A_CONTROL = 0xFF;
 
     private static String readTheErrorIdOf(Throwable thrown) {
         return ((Raised) thrown).error().errorId();
@@ -66,6 +67,15 @@ class ABinaryReadsItselfAsStrictTextTest {
                     .isInstanceOf(Raised.class)
                     .extracting(ABinaryReadsItselfAsStrictTextTest::readTheErrorIdOf)
                     .isEqualTo("invalid-chars");
+        }
+
+        @Test
+        @DisplayName("but the four bytes R3's scanner skips as a control are read as ^A")
+        void readsTheFourScannerControlsAsControls() {
+            assertThat(BinaryValue.of(LOWER_A, SCANNED_AS_A_CONTROL, LOWER_B).asStrictText())
+                    .isEqualTo("a\u0001b");
+            assertThat(BinaryValue.of(0xC0, 0xC1, 0xF5).asStrictText())
+                    .isEqualTo("\u0001\u0001\u0001");
         }
 
         @Test

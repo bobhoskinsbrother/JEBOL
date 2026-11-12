@@ -558,9 +558,9 @@ class TupleFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a negative /PART is refused")
-        void refusesANegativePart() {
-            assertThat(readTheErrorIdOf("reverse/part 1.2.3 -1")).isNotEqualTo("no-error");
+        @DisplayName("a negative /PART reverses the whole tuple, the C's guard comparing an unsigned count")
+        void aNegativePartReversesTheWholeTuple() {
+            assertThat(readTheErrorIdOf("reverse/part 1.2.3 -1")).isEqualTo("no-error");
         }
     }
 

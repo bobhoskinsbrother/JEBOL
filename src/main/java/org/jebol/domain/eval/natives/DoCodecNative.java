@@ -39,15 +39,13 @@ public class DoCodecNative extends DefaultNative {
 
     private Value runCodec(HandleValue handle, AnyWordValue action, Value data) {
         if (!handle.typeName().equals(CODEC)) {
-            throw Raised.of(EvaluationFailure.INVALID_HANDLE,
-                    "a codec was wanted, not a " + handle.typeName() + " handle");
+            throw Raised.of(EvaluationFailure.INVALID_HANDLE);
         }
         Codecs.Action asked = readActionAskedBy(action);
         refuseDataActionCannotTake(asked, data);
         Codecs.Answer answered = codecs.run(((AnyWordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
-            throw Raised.of(EvaluationFailure.BAD_MEDIA,
-                    action.spelling() + " is not something this codec does");
+            throw Raised.of(EvaluationFailure.BAD_MEDIA);
         }
         return answered.value();
     }
@@ -57,18 +55,14 @@ public class DoCodecNative extends DefaultNative {
             case "identify" -> Codecs.Action.IDENTIFY;
             case "decode" -> Codecs.Action.DECODE;
             case "encode" -> Codecs.Action.ENCODE;
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, action.spelling());
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, action);
         };
     }
 
     private void refuseDataActionCannotTake(Codecs.Action asked, Value data) {
-        if (asked == Codecs.Action.ENCODE && !(data instanceof ImageValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "encoding takes an image, not a " + data.datatype().literalSpelling());
-        }
-        if (asked != Codecs.Action.ENCODE && !(data instanceof BinaryValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "decoding takes a binary, not a " + data.datatype().literalSpelling());
+        boolean encodes = asked == Codecs.Action.ENCODE;
+        if (encodes ? !(data instanceof ImageValue) : !(data instanceof BinaryValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, data);
         }
     }
 }

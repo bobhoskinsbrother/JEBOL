@@ -24,13 +24,8 @@ public interface PathTargetWithFields extends PathTarget {
     }
 
     private ContextSlot findFieldNamedBy(Value selector) {
-        if (!(selector instanceof AnyWordValue asked)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "a field is named by a word, not "
-                            + selector.datatype().literalSpelling());
-        }
-        if (!context().holds(asked.canonical())) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, asked.spelling());
+        if (!(selector instanceof AnyWordValue asked) || !context().holds(asked.canonical())) {
+            throw Raised.cannotSelect(selector);
         }
         return context().ownSlotFor(asked.canonical());
     }

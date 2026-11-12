@@ -26,20 +26,20 @@ public final class SeriesChange {
 
     public Value change(Value subject) {
         if (subject instanceof StructValue struct) {
-            refuseGobOrStructChange();
             return struct.changeBy(replacement);
         }
         if (subject instanceof ImageValue picture) {
             return picture.change(replacement, countHowManyTimesOver(),
                     refinements.contains("only"), part.orElseGet(NoneValue::none));
         }
+        if (subject instanceof GobValue gob) {
+            GobValue child = GobPath.requireChildWithin(gob, gob.index(), replacement);
+            refuseGobChangeRefinements();
+            gob.storage().insertChild(gob.index(), child);
+            return gob.atIndex(gob.index() + 1);
+        }
         if (part.isPresent() && subject instanceof RebolSeries stranded) {
             return replaceAcrossPart(stranded, part.get());
-        }
-        if (subject instanceof GobValue gob) {
-            refuseGobOrStructChange();
-            GobPath.pokeWhichInsertsRatherThanReplaces(gob, gob.index(), replacement);
-            return gob.atIndex(gob.index() + 1);
         }
         Value replacing = dup.<Value>map(replacement::repeatInBlock).orElse(replacement);
         return switch (subject) {
@@ -178,9 +178,7 @@ public final class SeriesChange {
                     parts.length > 2 ? parts[2] : 0,
                     parts.length > 3 ? parts[3] : 0xFF});
         } else {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "an image takes a pixel or another image, not "
-                            + value.datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         }
         for (int at = 0; at < pixels.size(); at++) {
             int[] channels = pixels.get(at);
@@ -222,11 +220,10 @@ public final class SeriesChange {
                 : 1;
     }
 
-    private void refuseGobOrStructChange() {
+    private void refuseGobChangeRefinements() {
         for (String unfinished : List.of("part", "only", "dup")) {
             if (refinements.contains(unfinished)) {
-                throw Raised.of(EvaluationFailure.FEATURE_NA,
-                        "change/" + unfinished + " on a gob is not implemented");
+                throw Raised.of(EvaluationFailure.NOT_DONE);
             }
         }
     }

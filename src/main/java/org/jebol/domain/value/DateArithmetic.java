@@ -21,16 +21,14 @@ public final class DateArithmetic {
 
     public Value takeFrom(Value left, ArithmeticOperation operation) {
         if (operation.canSubtractOneFromOther()) {
-            throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    WordValue.of(operation.spelling() + ":"),
-                    left.datatype());
+            throw Raised.notRelatedToAction(left, operation.spelling());
         }
         return moveBy(left, operation);
     }
 
     private Value countDaysSince(DateValue to, ArithmeticOperation operation) {
         if (!operation.canSubtractOneFromOther()) {
-            throw Raised.cannotUse(moment, "date arithmetic");
+            throw Raised.cannotUseAction(moment, operation.spelling());
         }
         return IntegerValue.of(moment.dayNumber() - to.dayNumber());
     }
@@ -38,8 +36,8 @@ public final class DateArithmetic {
     private Value moveBy(Value span, ArithmeticOperation operation) {
         refuseSpanDateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
-        return span instanceof IntegerValue
-                ? moveByDays(sign * (long) quantityFrom(span))
+        return span instanceof IntegerValue(long days)
+                ? moveByDays(sign * days)
                 : moveByClock(sign * clockShiftNanoseconds(span));
     }
 
@@ -51,7 +49,7 @@ public final class DateArithmetic {
                 || !(span instanceof IntegerValue
                         || span instanceof DecimalValue
                         || span instanceof TimeValue)) {
-            throw Raised.cannotUse(moment, "date arithmetic");
+            throw Raised.cannotUseAction(moment, operation.spelling());
         }
     }
 
@@ -94,18 +92,10 @@ public final class DateArithmetic {
         return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 
-    private static double quantityFrom(Value span) {
-        return switch (span) {
-            case IntegerValue(long magnitude) -> magnitude;
-            case AnyDecimalValue fraction -> fraction.quantity();
-            default -> throw Raised.cannotUse(span, "date arithmetic");
-        };
-    }
-
     private static long clockShiftNanoseconds(Value span) {
         return span instanceof TimeValue(long nanoseconds)
                 ? nanoseconds
-                : (long) (quantityFrom(span) * TimeValue.NANOSECONDS_PER_DAY);
+                : (long) (((AnyDecimalValue) span).quantity() * TimeValue.NANOSECONDS_PER_DAY);
     }
 
 }

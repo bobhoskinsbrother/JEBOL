@@ -33,8 +33,13 @@ public class SetNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
             Value supplied = arguments.get(1);
-            refuseUnassignable(target, EvaluationFailure.EXPECT_ARG);
+            if (isUnassignable(target)) {
+                refuseArgument(target, "word");
+            }
             target.refuseToBeWrittenWhenItReachesItsContextsOwnSelf();
+            if (target instanceof ObjectValue object) {
+                object.refuseWhenAnyFieldIsHidden();
+            }
             if (!refinements.contains("any") && supplied instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, target);
             }
@@ -100,15 +105,16 @@ public class SetNative extends DefaultNative {
     }
 
     private void refuseEachUnassignable(List<Value> words) {
-        words.forEach(word -> refuseUnassignable(word, EvaluationFailure.INVALID_ARG));
+        for (Value word : words) {
+            if (isUnassignable(word)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, word);
+            }
+        }
         words.forEach(Value::refuseToBeWrittenWhenItReachesItsContextsOwnSelf);
     }
 
-    private void refuseUnassignable(Value word, EvaluationFailure failure) {
-        if (word instanceof IssueValue || word instanceof RefinementValue) {
-            throw Raised.of(failure,
-                    "set cannot assign to a " + word.datatype().literalSpelling());
-        }
+    private static boolean isUnassignable(Value word) {
+        return word instanceof IssueValue || word instanceof RefinementValue;
     }
 
     private Value writeThroughPath(AnyBlockValue path, Value supplied) {
@@ -117,6 +123,9 @@ public class SetNative extends DefaultNative {
             return refuseDatatype(path);
         }
         Value holder = head.findBoundSlot().value();
+        if (holder instanceof UnsetValue) {
+            throw Raised.wordHasNoValue(head);
+        }
         for (int at = 1; at < segments.size() - 1; at++) {
             if (!(segments.get(at) instanceof AnyWordValue field)
                     || !(holder instanceof ObjectValue(Context fields))
@@ -130,7 +139,7 @@ public class SetNative extends DefaultNative {
             return refuseDatatype(path);
         }
         if (!fields.holds(field.canonical())) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
+            throw Raised.of(EvaluationFailure.INVALID_PATH, path, field);
         }
         fields.ownSlotFor(field.canonical()).setValue(supplied);
         return supplied;

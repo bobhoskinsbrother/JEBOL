@@ -48,9 +48,7 @@ public class RsaNative extends CipherNative {
             List<String> asked = WHAT_RSA_DOES.stream().filter(refinements::contains).toList();
             refuseAnythingButOneThing(asked, refinements);
             RsaKey key = readKeyHeldBy(arguments.getFirst(), RSA_HANDLE_TYPE, RsaKey.class)
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE,
-                            arguments.getFirst() instanceof HandleValue other
-                                    ? other.typeName() : "rsa-key"));
+                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE));
             if (asked.isEmpty()) {
                 return NoneValue.none();
             }
@@ -66,7 +64,7 @@ public class RsaNative extends CipherNative {
         boolean padded = refinements.contains("oaep") || refinements.contains("pss");
         if (asked.size() > 1
                 || ((padded || refinements.contains("hash")) && asked.isEmpty())) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES, "rsa does one thing per call");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }
 

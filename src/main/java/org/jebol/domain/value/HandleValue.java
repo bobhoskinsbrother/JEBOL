@@ -87,12 +87,12 @@ public record HandleValue(
 
         @Override
         public Value makeFrom(Value spec, Maker maker) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("make"), this);
+            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("make"), datatype());
         }
 
         @Override
         public Value convert(Value value, Maker maker) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("to"), this);
+            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("to"), datatype());
         }
     };
 

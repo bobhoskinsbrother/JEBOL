@@ -382,8 +382,7 @@ public final class Comparison {
 
     private static int compareVectors(VectorValue left, VectorValue right) {
         if (left.kind().measures() != right.kind().measures()) {
-            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
-                    left.kind().spelling() + " against " + right.kind().spelling());
+            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE);
         }
         return left.compareWith(right);
     }
@@ -462,8 +461,7 @@ public final class Comparison {
             case TimeValue time -> time.asSeconds().quantity();
             case AnyDecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.asDeci().toDouble();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    value.datatype().literalSpelling() + " is not a number");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         };
     }
 }

@@ -602,7 +602,7 @@ public final class Encodings {
         try {
             return port.digestOf(method, octets);
         } catch (DigestPort.Refused refused) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
     }
 
@@ -610,7 +610,7 @@ public final class Encodings {
         try {
             return port.digestWithKey(method, octets, key);
         } catch (DigestPort.Refused refused) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
     }
 
@@ -618,7 +618,7 @@ public final class Encodings {
         try {
             return port.start(method);
         } catch (DigestPort.Refused refused) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
     }
 

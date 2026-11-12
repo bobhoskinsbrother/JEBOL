@@ -32,25 +32,22 @@ public final class BinaryActions extends SeriesActions {
 
     private int readOctetPokedFrom(Value written) {
         return switch (written) {
-            case IntegerValue number -> asOctet(number.magnitude());
-            case CharacterValue(int codepoint) when codepoint > 0xFF ->
-                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                            codepoint + " does not fit in a byte");
+            case IntegerValue number -> asOctet(number);
+            case CharacterValue letter when letter.codepoint() > 0xFF ->
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, letter);
             case CharacterValue(int codepoint) -> codepoint;
             default -> throw Raised.cannotUseAction(bytes, "poke");
         };
     }
 
-    private int asOctet(long wanted) {
-        if (wanted < 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    wanted + " is not a byte: a binary holds 0 to 255");
+    private int asOctet(IntegerValue wanted) {
+        if (wanted.magnitude() < 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, wanted);
         }
-        if (wanted > 255) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    wanted + " is not a byte: a binary holds 0 to 255");
+        if (wanted.magnitude() > 255) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, wanted);
         }
-        return (int) wanted;
+        return (int) wanted.magnitude();
     }
 
     @Override

@@ -62,8 +62,7 @@ final class Capture extends DeclaredKeyword {
             walk.assign(mark, walk.inputPositionedHere());
             ruleAt++;
             if (ruleAt >= rules.size()) {
-                throw Raised.of(EvaluationFailure.PARSE_END,
-                        "a capture has no rule after its marks to apply to");
+                throw Raised.of(EvaluationFailure.PARSE_END, mark);
             }
         }
         if (rules.get(ruleAt) instanceof GetWordValue asRule) {

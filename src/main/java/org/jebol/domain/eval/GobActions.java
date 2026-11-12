@@ -58,9 +58,7 @@ public final class GobActions extends SeriesActions {
         int goesAt = at;
         for (Value child : listChildrenOffered(value)) {
             if (!(child instanceof GobValue one)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a pane holds gobs, not "
-                                + child.datatype().literalSpelling());
+                throw Raised.of(EvaluationFailure.INVALID_ARG, child);
             }
             gob.storage().insertChild(goesAt, one);
             goesAt = Math.min(goesAt + 1, gob.storage().length() + 1);
@@ -73,8 +71,7 @@ public final class GobActions extends SeriesActions {
             case GobValue only -> List.of(only);
             case BlockValue block ->
                     block.remaining();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                    "a pane holds gobs, not " + value.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.EXPECT_VAL, GobValue.TYPE, value.datatype());
         };
     }
 }

@@ -217,8 +217,7 @@ public record EventValue(
     public Optional<Value> readKey() {
         if (typeIndex == EventCatalogue.KEY || typeIndex == EventCatalogue.KEY_UP) {
             if (!Character.isValidCodePoint(data)) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "an event's key holds " + data + ", which is no character");
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(data));
             }
             return Optional.of(CharacterValue.of(data));
         }

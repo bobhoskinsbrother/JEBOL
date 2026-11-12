@@ -39,18 +39,17 @@ public final class MapActions implements Actions {
 
     @Override
     public Value append(Asked asked) {
-        return addPairsFrom(asked, "append");
+        return addPairsFrom(asked);
     }
 
     @Override
     public Value insert(Asked asked) {
-        return addPairsFrom(asked, "insert");
+        return addPairsFrom(asked);
     }
 
-    Value addPairsFrom(Asked asked, String nativeName) {
+    Value addPairsFrom(Asked asked) {
         pairs.requireChangeable();
-        refuseWhatIsNotWholeBlockOfPairs(
-                asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
+        refuseWhatIsNotWholeBlockOfPairs(asked.given(), asked.refinementsAsked().contains("dup"));
         return takeWanted(pickWantedPairsFrom((AnyBlockValue) asked.given(), asked));
     }
 
@@ -98,26 +97,18 @@ public final class MapActions implements Actions {
         return pairs;
     }
 
-    public static void refuseWhatIsNotWholeBlockOfPairs(
-            Value given, boolean duplicating, String nativeName) {
-
-        if (!(given instanceof BlockValue block)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    nativeName + " puts pairs into a map, and needs a block of them, "
-                            + "not a " + given.datatype().literalSpelling());
+    private void refuseWhatIsNotWholeBlockOfPairs(Value given, boolean duplicating) {
+        if (!(given instanceof BlockValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, pairs);
         }
         if (duplicating) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    nativeName + "/dup means nothing for a map, where adding a key "
-                            + "twice over leaves one key");
+            throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
     }
 
     public static Value makeFrom(Value given, List<Value> flattened) {
-        if (flattened.size() % 2 != 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a map needs a value for every key, and this has "
-                            + flattened.size() + " items");
+        if (flattened.size() % PAIR_WIDTH != 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
         return MapValue.of(flattened);
     }
@@ -147,12 +138,12 @@ public final class MapActions implements Actions {
     }
 
     public static void refuseMoreNamesThanPairHas(Value series, List<AnyWordValue> names) {
-        if (names.size() > 2
-                && (series instanceof MapValue || series instanceof ObjectValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a walk over " + series.datatype().literalSpelling()
-                            + " takes a key and a value, and " + names.size()
-                            + " names is one more than a pair has");
+        if (names.size() > PAIR_WIDTH
+                && (series instanceof MapValue || series instanceof ObjectValue)
+                && series.listItems().size() > PAIR_WIDTH) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, names.get(PAIR_WIDTH));
         }
     }
+
+    private static final int PAIR_WIDTH = 2;
 }

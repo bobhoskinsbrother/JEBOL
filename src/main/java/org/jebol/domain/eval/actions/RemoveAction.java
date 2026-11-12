@@ -74,8 +74,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             return series;
         }
         if (key.isPresent()) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    "/key removes from a map or a bitset, not a series");
+            throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
         long howMany = part.map(count -> countHowMany(series, count)).orElse(ONE_ITEM);
         return Actions.of(series).orElseThrow().remove(howMany);
@@ -85,7 +84,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
         return switch (count) {
             case IntegerValue whole
                     when whole.magnitude() > Integer.MAX_VALUE || whole.magnitude() < Integer.MIN_VALUE ->
-                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(whole.magnitude()));
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, whole);
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
