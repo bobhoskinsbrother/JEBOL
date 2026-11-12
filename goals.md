@@ -19,9 +19,9 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Eight pieces of work, in the order to do them.
+Seven pieces of work, in the order to do them.
 
-**1e to 1g come first: each makes the same script answer differently on a
+**1f and 1g come first: each makes the same script answer differently on a
 real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
 either. They are all what a script sees when it fails.
 
@@ -42,23 +42,156 @@ smallest failing case is one line before reading any code.
 
 #### 1f. An operator with nothing on its left raises what R3 raises
 
-Measured on 2026-10-23:
+**The spec is already corrected** (2026-11-12): `spec/eval.allium` now has
+`AnOperatorAtTheHeadOfItsSeriesFails` and
+`AnOperatorFurtherInTakesNoneOnItsLeft` in place of the old rule, which
+specified `missing-arg` for the mid-series case. R3 never raises that there.
+What is left is the tests and then the code.
 
-| Source         | R3                                   | JEBOL                                                                   |
-|----------------|--------------------------------------|-------------------------------------------------------------------------|
-| `do [+ 1]`     | `no-op-arg`, arg1 `+`                | `no-op-arg`, arg1 the sentence "the operator + has nothing on its left" |
-| `do [1 + + 3]` | `cannot-use`, arg1 `add:`, arg2 none | `missing-arg`, arg1 the same sentence                                   |
+**What R3 does**, read from `Do_Next` in `rebol3-source/src/core/c-do.c`
+(the `ET_OPERATOR` case) and confirmed by every probe below:
 
-`AnOperatorWithNothingOnItsLeftFails` in `spec/eval.allium` names
-`missing-arg` for the second case, which R3 does not raise there: the rule is
-wrong, so it is fixed first.
+- **At the head of its series**, meaning position 1 of the series itself and
+  not where the walk began, the guard `if (DSP <= 0 || index == 0)
+  Trap1(RE_NO_OP_ARG, word)` raises `no-op-arg`. Its arg1 is the operator's
+  word as written (`+`, `<>`), and arg2 and arg3 are none.
+- **Anywhere else** there is no error of the evaluator's own. `Push_Func`
+  makes the frame, and `DS_PUSH(DS_VALUE(dsf))` copies whatever is on top of
+  the data stack into the first argument. In every position probed, that is
+  NONE: either the argument slot `Do_Args` filled with NONE before
+  evaluating into it, or an unused slot under a series walked from past its
+  head. So the operator simply runs as `none <op> right`, and the result is
+  whatever its action does with NONE. For `+` that is `cannot-use`, arg1
+  `add:` (a set-word, because that is how actions name themselves), arg2
+  `none!`. For `<>` it is TRUE and no error at all.
 
-1. Read the C for what the second case pushes and why it surfaces as
-   `cannot-use` on `add:`; probe a few more positions (after a set-word,
-   inside a paren, after a function's last argument).
-2. Correct the rule, then the tests, then the code.
+**What JEBOL does now.** `Evaluator.evaluateWord`
+(`src/main/java/org/jebol/domain/eval/Evaluator.java`, the
+`bound instanceof OperatorValue` branch) throws in both cases. The head
+test, `frame.position - 1 <= 1`, is already right, because `Frame.position`
+starts at `code.index()` and so counts from the series head. Two things are
+wrong:
 
-**Done when** every position probed answers R3's id and arguments.
+- arg1 is a sentence, built from `"the operator " + spelling + " has nothing
+  on its left"`. It should be the word itself.
+- The non-head branch raises `missing-arg`. It should start the operator as
+  an infix call with NONE on its left: `PendingCall.makeInfix(operator,
+  NoneValue)`, pushed the way `deliver` pushes one, so that `isInfix()`
+  suppresses the lookahead for its right operand exactly as `Do_Next(...,
+  op=TRUE)` does. Then let the call run. `readNameWrittenAt` and
+  `startAt(...)` must get the operator's own position, so that the error's
+  `near` and `where` come out as R3's (goal 1e's machinery; check them).
+
+**Probes, measured on `./r3-head` (3.22.5) and JEBOL's jar, 2026-11-12.**
+Each line is the source, loaded with `load/all` and run under `try`. Where
+"near" is given it is `e/near`, and it is the C's near rather than the
+`try` call's.
+
+At the head, R3 answers `no-op-arg`, arg1 the word. JEBOL has the right id
+and a sentence for arg1:
+
+    + 1            (+ 1)           1 (+ 1)          [1] (+ 1)
+    1 + (+ 1)      <> 0            +                if true [+ 1]
+    reduce [+ 1]   compose [(+ 1)] any [+ 1]        case [true [+ 1]]
+    do skip [+ 1] 0                do head next [+ 1]
+    f: func [a b] [reduce [a b]] f 4 (+ 2)
+
+Further in, R3 answers `cannot-use`, arg1 `add:` (or the operator's own
+action: `multiply:`, `subtract:`), arg2 `none!`. JEBOL answers `missing-arg`
+with the sentence:
+
+    1 + + 3            near [+ 3]      1 + * 3          near [* 3]
+    1 + - 2            near [- 2]      x: + 1           near [+ 1]
+    x: 1 + + 3         x: 1 y: + 2     a/b: + 1         o: object [a: 1] o/a: + 1
+    print + 1          negate + 1      first + 1        if + 1 [2]   near [+ 1 [2]]
+    f: func [a] [a] f + 1              f: func [a b] [reduce [a b]] f 1 + + 2
+    f: func [a /r b] [b] f/r 1 + + 2   f: func [a b c] [c + + 1] f 7 8 9
+    1 = + 1            1 and + 1       1 ** + 2         1 <> 0 = + 1
+    1 + 2 + + 3        reduce [1 + 1 + + 1]             all [1 + 1 + + 1]
+    o: object [a: 1] 1 + o/a + + 1
+    do next [5 + 1]    do next [5 - 1] do next [[a] + 1]  do at [1 2 + 3] 3
+    do at [7 8 - 1] 3  b: next [9 + 1] do b               7 do next [5 + 1]
+    1 + do next [0 + 1]                reduce [1 2 do next [5 + 1]]
+    f: func [a b c] [do next [5 + 1]] f 7 8 9
+    (1 2) do next [5 + 1]              reduce next [5 + 1]
+
+Further in, where NONE is a fine left operand, R3 answers with no error.
+JEBOL raises `missing-arg`:
+
+    do next [1 <> 0]   => true         do next [5 <> 0]  => true
+
+Further in, with nothing on the right either, R3 answers `no-arg`, arg1 `+`,
+arg2 `value2`. JEBOL raises `missing-arg`:
+
+    1 + +
+
+And these already agree. Keep them as tests so the fix cannot move them:
+
+    1 +                                    => no-arg + value2
+    do at [9 9 + 1] 2                      => 10
+    set 'g :+ 10 g 1                       => 11  (real infix: 10 g 1)
+    set 'g :+ "s" g 1                      => cannot-use add: string!
+    set 'g :+ g 1                          => cannot-use add: op!
+    f: func ['a] [a] f x + 2               => cannot-use add: word!
+    f: func [:a] [a] f x + 2               => cannot-use add: word!
+    quote + 1                              => 1
+    f: func [a /r b] [a] f/r 1 + 2         => no-arg f b
+    f: func [a b] [b] f 1 + 2 + 3          => no-arg f b
+
+**Three neighbouring disagreements the probes turned up.** By the zero-bug
+rule they are part of this goal, not parked:
+
+1. **A quoted argument is followed by infix when it should not be.** For
+   `f: func ['a b] [b] f x + 2` and `f: func [:a b] [b] f x + 2`, R3 answers
+   `cannot-use add: none!`: `'a` takes `x` literally, then `b` starts at
+   `+ 2` with NONE on its left. JEBOL answers `cannot-use add: word!`,
+   having made `x + 2` an infix call inside the quoted argument. In
+   `Do_Args`, the `REB_LIT_WORD` and `REB_GET_WORD` cases take the value
+   with `index++` and never call `Do_Next`, so no lookahead runs. The
+   exception is a lit-word parameter handed a paren, get-word or get-path:
+   that case does go through `Do_Next(block, index, IS_OP(func))` and so
+   does look ahead. Probe `f: func ['a b] [] f (x) + 2` and
+   `f: func ['a b] [] f :x + 2` before deciding. In JEBOL the lookahead is
+   `deliver`'s `findOperatorAt` branch, which runs for every delivered
+   value whose waiting call is not infix.
+2. **`do quote +`**: R3 answers `invalid-type`, arg1 `op!`. `quote` takes
+   the word `+` literally and `do` of that word reaches an op!. JEBOL
+   answers `no-arg`, arg1 `quote`, arg2 `value1`, as though `quote` never
+   received the `+`. `do quote + 1` is the same: R3 `invalid-type op!`,
+   JEBOL `no-arg quote value2`. Find why JEBOL's get-word parameter does not
+   take an operator word, then fix it.
+3. **An action's refusal of NONE.** Once the mid-series case passes NONE to
+   every operator, every operator's action meets it. Two already disagree:
+   `none and 1` (R3 `cannot-use and~: none!`, JEBOL `expect-arg`) and
+   `none ** 2` (R3 `cannot-use power: none!`, JEBOL `expect-arg power
+   number`). Sweep every `op!` in `system/contexts/lib` with
+   `none <op> 1`, `none <op> none` and `none <op> "a"` on both, and fix
+   each one that differs.
+
+**The order of work:**
+
+1. Write `AnOperatorWithNothingOnItsLeftFromTheSourceTest` in
+   `src/functionalTest/java`, failing. It covers every probe above (each
+   group a parameterised test whose rows are the source and the expected
+   id, arg1 and arg2), plus `near` for the cases that list one. Its error
+   arg1 assertions check the datatype as well as the spelling: arg1 of
+   `no-op-arg` is a `word!` spelt `+`, arg1 of `cannot-use` is a
+   `set-word!` spelt `add`. Add the quoted-argument cases, `do quote +`, and
+   the op sweep as their own tests. The sweep reads its expectations from a
+   checked-in transcript of `./r3-head`'s answers, produced by a checked-in
+   generator script under `scripts/`, because a probe is never thrown away.
+2. Fix `evaluateWord`, then the quoted-argument lookahead, then `quote`,
+   then each action the sweep names.
+3. Rebol's own suite asserts `do "<> 0"` gives `no-op-arg`
+   (`evaluation-test.r3:91`). It must stay green.
+4. Delete the sentence from `Evaluator`. Check that nothing else built a
+   sentence for this error, and that `EvaluationFailure.NO_OP_ARG`'s
+   catalogue message is R3's (`gen-errnums.h`: `:arg1 "operator is missing
+   an argument"`).
+
+**Done when** every probe above, the three neighbouring cases and the op
+sweep answer R3's id, arg1, arg2 and (where listed) near, proven by the new
+test, and the gate is green.
 
 #### 1g. An error's arguments are values, not sentences
 
@@ -603,3 +736,144 @@ with and without the jar against a real Postgres.
 devices, playback, fades and effect nodes, ported rather than bound to a native
 library. Last on purpose. Sound cannot be compared byte for byte the way a codec
 can, so working out what its tests compare against is the first step.
+
+### 15. Find where JEBOL's answers differ from R3's by mutating real code
+
+The sweeps so far are a grid per feature, answered by `./r3-head`:
+`make-to-sweep.py` (every MAKE and TO), `near-and-where-sweep.py` (every
+native refusing every argument), and `sweep.py` (each suite assertion as a
+probe). They are boundary analysis feature by feature, and they work. But
+they cannot find a difference that only appears when two features combine.
+Goal 1f is the proof: `print + 1` raises `cannot-use` in R3 and
+`missing-arg` in JEBOL, and no grid over `print` or over `+` would ever
+write it. A one-token mutation of `print 1 + 1` does.
+
+So this is differential testing: real Rebol code, mutated a token at a time,
+run through both interpreters, with every disagreement made into a test.
+The case that matters most is the one where R3 answers a value and JEBOL
+raises, or the reverse. That is a difference in logic, not in reporting.
+
+**The seeds are real code, not invented code:**
+
+- the `--assert` expressions of Rebol's own suite (10,144 of them;
+  `sweep.py` already turns each into a probe), read from
+  `rebol3-source/src/tests/units/`;
+- the `code` entries of `corpus/*.corpus`;
+- the top-level expressions of the library JEBOL borrows,
+  `rebol3-source/src/mezz/`, run only where they define nothing and have no
+  side effects (the filter comes first, see below).
+
+**The mutations work on values, not text.** Rebol code is a block, so a
+seed is loaded, one value is changed, and the block is molded back. One
+mutation per mutant, so that a difference has one cause. The operators:
+
+- delete a value; duplicate a value (`1 + 1` becomes `1 + + 1`); swap two
+  neighbours;
+- replace a value with one of a fixed set chosen to sit on boundaries:
+  `none`, `true`, `false`, `0`, `-1`, `1`, `""`, `[]`, `#{}`, `0.0`,
+  `1x1`, `'a`, `#"a"`, `%f`, and the word of an operator;
+- wrap a value in a paren, or in a block; unwrap a paren or block of one
+  value;
+- turn a word into its set-word, get-word or lit-word, and back;
+- insert an operator word before or after a value.
+
+**Each case's outcome is put on a ladder,** and a difference is ranked by
+the highest rung where the two disagree:
+
+1. **value against error.** One answers, the other raises. Always a defect
+   unless the allowlist names it.
+2. **different values.** Compared by `mold/all`, after the normalisation
+   below.
+3. **different error id.**
+4. **same id, different arg1, arg2 or arg3.** The datatype is compared as
+   well as the spelling, so `add:` is not `add`.
+5. **same id and arguments, different `near`.**
+
+**The allowlist is what keeps the output readable.** It is a checked-in
+file under `src/testFixtures/resources/org/jebol/`. Each line pairs a
+pattern (an error id, a native's name, or the shape of the source) with
+the entry in `docs/standing.md` ("Where JEBOL differs from a real 3.22.5
+on purpose") or the decision number it is the consequence of. The five
+fixes JEBOL makes to Rebol on purpose (goal 1k) are the first entries. A
+difference the allowlist names is counted, not reported. A line the
+allowlist has that no case matches anymore is reported too, so the list
+cannot go stale silently.
+
+**Shrink every difference before reporting it.** Delete values from the
+mutant, from the outside in and from both ends, as long as the two
+interpreters still disagree on the same rung. Stop when one more deletion
+would make them agree. What is reported is that smallest source, its seed
+and the mutation applied to it, and both answers. CLAUDE.md asks for this
+of a codec ("shrink the input until the smallest failing case is one
+line"), and it is what makes a difference fixable rather than just
+counted.
+
+**A probe is never thrown away.** Every shrunken difference becomes a row in
+a checked-in transcript, the same shape as `make-and-to-as-r3-answers.tsv`:
+source, R3's answer, rung. Once it is fixed, the row moves into a
+`*FromTheSourceTest`, standing on its own as CLAUDE.md requires, and the
+transcript row stays as the regression. The generator script is checked in
+under `scripts/` beside the other sweeps and follows their conventions:
+find the repository and the JDK from where the script stands, run
+`./r3-head` (never a release binary), and write the TSV that the test
+reads.
+
+**What has to be settled before the first run:**
+
+- **Answers that change from run to run.** `now`, `random`, `checksum` of
+  anything holding a time, `stats`, molded handles, ports and events, and
+  anything that prints an address are either normalised (a date becomes
+  `<date>`) or excluded by name. A list of excluded natives is checked in,
+  and each entry gives its reason.
+- **Side effects.** Each batch runs in a fresh, empty working directory
+  under `build/`, with a timeout per case. Mutants that would reach `quit`,
+  `halt`, `q`, `wait`, `call`, `browse`, `write`, `delete`, `rename`,
+  `make-dir`, `secure`, or a network scheme are dropped before they run, by
+  checking the mutant's words against that list. Network scheme means
+  `read` or `open` of a url other than a `file:` one. Never test against an
+  external site (see the memory on this).
+- **R3 crashing.** A few cases segfault a real Rebol (`make event! [[x]
+  [x]]` is one; `make-to-sweep.py` says so). The existing sweeps run one
+  process per case, which is too slow for tens of thousands of mutants.
+  Run cases in batches, each case under `try`, with one line of output per
+  case. When a process dies, rerun what is left of the batch from the case
+  after the last line written, and record the crash itself as a finding
+  for `docs/rebol-findings.md`.
+- **JEBOL's boot.** At about 54ms an interpreter, give each batch one
+  interpreter, as `SweepRunner` does. A case runs inside its own
+  `do`-of-a-copy, so a mutant that redefines a word cannot leak into the
+  next. Redefining a word from the library (`print: ...`, `+: ...`) is a
+  mutation in its own right, but it is excluded at first, because it
+  poisons the rest of the batch on both sides.
+
+**Then measure what the cases reach in the C.** Build a second
+`./r3-head` with gcov (`--coverage` on the compile; add it as an option of
+`scripts/build-r3.sh` rather than a copy of the script), run the seeds and
+the mutants through it, and list the branches of
+`rebol3-source/src/core/` that nothing reached. Those branches are the
+boundaries that per-feature boundary analysis wants, read from the C
+instead of guessed. CLAUDE.md says the same for compressors: the
+boundaries that matter are where the implementation changes what it does.
+Keep any mutant that reaches a branch nothing before it reached as a seed
+for the next round. That is coverage-guided fuzzing, the simplest version
+of it, and the uncovered list becomes the stopping rule: a round that adds
+no new branch and no new difference ends the search for that seed set.
+
+**The order:**
+
+1. The value-against-error rung only. Suite seeds, one mutation each, the
+   allowlist, the side-effect filter, batching. That is the cheapest
+   stage, and it catches the worst class of difference.
+2. Shrinking, and the transcript plus its test.
+3. The other four rungs, rung by rung, triaged as they come in. Each new
+   kind of difference is either fixed under the zero-bug rule or, if it is
+   deliberate, given an allowlist line that names its decision.
+4. The corpus and the library as seeds.
+5. gcov on `r3-head`, the list of unreached branches, and coverage-guided
+   seeding.
+
+**Done when** a full round over every seed set has no unexplained
+difference on any rung, every difference found is either fixed with its
+test or named in the allowlist with its reason, the transcript is checked
+in and read by a test in `allTests`, and the list of unreached C branches
+is in `docs/standing.md` beside the other measures.

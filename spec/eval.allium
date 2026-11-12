@@ -44,8 +44,8 @@ enum EvaluationFailure {
     | not_defined       -- a word with no binding was evaluated
     | need_value        -- a set-word with nothing after it to assign
     | no_arg            -- a call reached the end of the block still short
-    | no_op_arg         -- an operator at the head of a series, nothing on its left
-    | missing_arg       -- an operator further in, nothing on its left
+    | no_op_arg         -- an operator at the head of its series, nothing on its left
+    | missing_arg       -- a native's argument combination that leaves one out
     | expect_arg        -- an argument of the wrong datatype
     | not_in_context    -- a word an object does not have among its own fields
     | invalid_path      -- a path segment that selects nothing
@@ -152,6 +152,18 @@ entity EvaluationStep {
     -- dispatch branches do not each repeat the lookup.
     is_bound: input.binding != null
     bound_value: slot_value(input)
+
+    -- A word bound to an operator, reached as a step of its own rather than
+    -- as the infix continuation of the value before it.
+    reaches_an_operator_alone: input.datatype = word
+        and is_bound
+        and bound_value.datatype = op
+        and infix_left = null
+
+    -- Counted from the head of the series itself, not from the position the
+    -- evaluation of it began at.
+    stands_at_the_head_of_its_series:
+        index_of(evaluation.code) + input_position - 1 = 1
 
     transitions status {
         pending -> produced
@@ -405,35 +417,68 @@ rule InfixOperatorContinuesTheWalk {
         -- 2 rather than 6.
 }
 
--- An operator reached with nothing on its left fails, and which failure it
--- is depends on where in the series it was reached.
+-- An operator reached with nothing on its left -- not as the infix
+-- continuation of a value just produced, but as a step of its own -- does
+-- one of two things, and which depends only on where it stands in its
+-- series.
 --
--- At the very head of the series it is `no-op-arg`, which names the operator
--- and says what is wrong. Anywhere further in it is `missing-arg`, which says
--- an argument is missing without naming the operator. Both mean the same
--- thing to a reader; only the reported id and the wording differ.
+-- At the head of its series it fails with `no-op-arg`, and the error's arg1
+-- is the word as written: `do [+ 1]`, `(+ 1)`, `if true [<> 0]`,
+-- `reduce [+ 1]`, `do head next [+ 1]` all raise it naming `+` or `<>`.
+-- The head is the series' own head, not the position the evaluation began
+-- from, so `do next [5 + 1]` is not at the head.
 --
--- This is not a distinction JEBOL chose, and it is worth knowing that it is
--- an artefact rather than a design. The C's guard is
--- `if (DSP <= 0 || index == 0) Trap1(RE_NO_OP_ARG, word);` -- the friendly
--- error fires only when nothing at all has been pushed or the walk is at the
--- head. Reached mid-series the C takes a value off the stack that was never
--- meant for it and the imbalance surfaces later as missing-arg. So
--- `do "<> 0"` says no-op-arg and `do next [1 <> 0]` says missing-arg, on the
--- same mistake.
+-- Anywhere else it does not fail on its own account. It is called as usual,
+-- with NONE as its left operand, and whatever follows is what that
+-- operator does with NONE. So `1 + + 3`, `x: + 1`, `print + 1` and
+-- `do next [5 + 1]` all raise `cannot-use` with arg1 `add:` and arg2
+-- `none!`, the error ADD raises for `none + 1`; `do next [1 <> 0]` raises
+-- nothing and answers TRUE, because NONE is not equal to 0; and `1 + +`
+-- raises `no-arg` naming the inner `+`, because that one then finds
+-- nothing on its right either.
 --
--- Specified because a script catching by id sees the difference, and because
--- an implementation that reported one id everywhere would look tidier and be
--- wrong against every assertion in Rebol's own suite.
-rule AnOperatorWithNothingOnItsLeftFails {
-    when: step: EvaluationStep.status transitions_to raised
-    requires: is_operator(step.bound_value)
-    requires: step.infix_left = null
+-- This is what the C does, and it is an accident of its stack rather than
+-- a design. The guard is `if (DSP <= 0 || index == 0)
+-- Trap1(RE_NO_OP_ARG, word);` in `Do_Next` (`c-do.c`); past it, the operator
+-- is pushed as a frame whose first argument is a copy of whatever value is
+-- on top of the data stack. Reached as the first thing of an argument or of
+-- a set-word's value, that top is the slot waiting to be filled, which
+-- `Do_Args` has already set to NONE; reached as the first step of a series
+-- walked from past its head, it is NONE too. Measured on 3.22.5 in every
+-- such position that was probed -- the list is in goals.md under 1f -- the
+-- left operand was NONE every time. `DSP <= 0` cannot happen beneath a
+-- script, which always runs inside some frame.
+--
+-- Specified because a script catching by id sees it, and because Rebol's
+-- own suite asserts the head case. An earlier reading of this rule had the
+-- mid-series case raise `missing-arg`; no position R3 was probed in raises
+-- that for an operator.
+rule AnOperatorAtTheHeadOfItsSeriesFails {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.reaches_an_operator_alone
+    requires: step.stands_at_the_head_of_its_series
 
     ensures:
-        step.failure =
-            if step.input_position <= 1: no_op_arg
-            else: missing_arg
+        step.status = raised
+        step.failure = no_op_arg
+        step.error = script_error(no_op_arg)
+        step.error.arg1 = step.input
+}
+
+rule AnOperatorFurtherInTakesNoneOnItsLeft {
+    when: step: EvaluationStep.created
+    requires: step.status = pending
+    requires: step.reaches_an_operator_alone
+    requires: not step.stands_at_the_head_of_its_series
+
+    ensures: Application.created(
+        step: step,
+        applied: step.bound_value,
+        infix_left: none_value(),
+        requested_refinements: {},
+        status: gathering
+    )
 }
 
 -- === Dispatch ==============================================
@@ -546,6 +591,7 @@ rule WordEvaluates {
     when: step: EvaluationStep.created
     requires: step.status = pending
     requires: step.input.datatype = word
+    requires: not step.reaches_an_operator_alone
 
     ensures:
         if not step.is_bound:
@@ -556,10 +602,6 @@ rule WordEvaluates {
             step.status = raised
             step.failure = no_value
             step.error = script_error(no_value)
-        else if step.bound_value.datatype = op and step.infix_left = null:
-            step.status = raised
-            step.failure = no_op_arg
-            step.error = script_error(no_op_arg)
         else if step.bound_value.is_any_function:
             Application.created(
                 step: step,
@@ -1578,7 +1620,15 @@ surface Evaluating {
 -- fires in practice, because the evaluator still recurses on the host
 -- stack for nested blocks; that is a known gap rather than a design.
 
-open question "An operator with nothing on its left reports two different error ids depending on where in the series it was reached -- no-op-arg at the head, missing-arg anywhere else -- and AnOperatorWithNothingOnItsLeftFails specifies that faithfully. It is an artefact rather than a design: the C's friendly error fires only when nothing has been pushed, and reached mid-series the C takes a bogus stack value whose imbalance surfaces later as the other id. A script cannot act differently on the two, because the mistake is identical; what it can do is catch by id and miss half the cases. So: does JEBOL reproduce the artefact because scripts and Rebol's own suite already depend on the exact id, or normalise both to no-op-arg on the grounds that one mistake should have one name? Reproducing costs nothing today and pins JEBOL to a detail of the C's stack discipline that has no meaning here."
+-- Resolved against a real R3 (3.22.5, 2026-11-12), and its premise was
+-- wrong: an operator with nothing on its left never raises missing-arg.
+-- At the head of its series it raises no-op-arg naming the word; anywhere
+-- else it runs with NONE on its left, which mostly surfaces as cannot-use
+-- from the operator's own action and sometimes as no failure at all.
+-- JEBOL reproduces both, because agreeing with the C comes first and a
+-- script catching by id sees every one of them.
+-- AnOperatorAtTheHeadOfItsSeriesFails and
+-- AnOperatorFurtherInTakesNoneOnItsLeft say so.
 
 open question "AGetWordNamesARefinementTheCallDecidesOn and PathGathersRefinement disagree about a misspelled refinement, and it is not settled which of them is right. Written plainly, `append/bogus` raises no-refine, because PathGathersRefinement checks the name against the function before granting it. Written as a get-word, `append/:bogus` raises only when BOGUS holds something true; when it holds false the name is never checked at all and the call runs as though the refinement had not been written. So the same misspelling is caught or not caught depending on a value, which is precisely the kind of silence PathGathersRefinement exists to prevent -- and a script forwarding a refinement it spelled wrong would go years without hearing about it, because the false branch is the common one. Two readings. Check the name whatever the word holds, on the grounds that a refinement the function has not got is a mistake in the code rather than a fact about the run; or leave it, on the grounds that a get-word refinement is a request rather than an assertion and asking for nothing cannot be wrong. The first is almost certainly right and wants measuring against a real R3 before it is built, because Rebol's own library forwards refinements constantly and a newly strict check would raise on any of them that names something the callee dropped."
 
