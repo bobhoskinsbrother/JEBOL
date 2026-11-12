@@ -7088,3 +7088,41 @@ AUTH -- IF is given LOG-TRACE's unset answer and raises `expect-arg if
 true-branch #(unset!)`, as `./r3-head` does for `if false log-trace 'SMTP
 ["x"]`. Real mail servers offer AUTH once the connection is encrypted, so the
 local peer in `UpgradingAConnectionToTlsFromTheSourceTest` does too.
+
+## 239. A deep copy keeps a nested series' position, and a function keeps only its body's series
+
+`Copy_Deep_Values` (`f-blocks.c`) replaces a nested value's series with
+`Copy_Series` of the whole of it and leaves the value's index alone. So
+`index? first copy/deep reduce [next [5 6]]` is 2 and its head is `[5 6]`, for
+blocks, strings, binaries and paths alike, and inside objects and `/part`
+copies too. Only the outer series is copied from where it stands.
+
+`Make_Function` (`c-function.c`) keeps `VAL_SERIES` of the spec and of the body
+and drops both indexes, and `Do_Function` runs `Do_Blk(body, 0)`. So
+`func [] next [5 <> 0]` runs `5 <> 0` and answers TRUE, `func [] tail [5 6]`
+answers 6, and `body-of` shows `[5 6]`. `function`, `closure` and `has` copy the
+body from where it stands first, so for them the position is the head.
+`Make_Function` also reads the definition's two items from its head
+(`VAL_BLK(def)`) while it counts them from the index, and wants exactly two:
+`make function! [[] [1] 3]` and `make function! next [9 [] [1]]` are both
+`bad-make-arg`. `CopyDeepKeepsANestedPositionFromTheSourceTest` and
+`AFunctionBodyIsItsWholeSeriesFromTheSourceTest`.
+
+## 240. An operator's left operand is never type-checked
+
+`Do_Args` skips the type check for an operator's first argument (the check is
+commented out), so a native reached through an operator meets whatever is on
+the left. `integer-divide` reads the cell as `VAL_DECIMAL`: a denormal, so 0,
+for NONE, logic, char, string, block, time and tuple, and the two floats of a
+pair read as one double, so `1x2 // 1` is 2 and `3x9 // 1` is 262144.
+`modulo` hands back a left operand outside its types unchanged, because its
+return slot is that operand's cell: `none %% 1` is none and `{a} %% 1` is
+`"a"`, and a zero divisor is still `zero-divide`. `shift-left` and
+`shift-right` check for themselves and raise `expect-val integer!:` naming the
+value. The actions dispatch on the left's datatype: `power` computes for
+integer, decimal and percent, raises `not-related` for time and pair,
+`expect-val logic! <type>` for logic, and `cannot-use power:` for everything
+else, and `and~`, `or~` and `xor~` raise `cannot-use` for NONE, money and
+block and `not-related` for time. `modulo` reads a time in seconds
+(`VAL_TIME * NANO`) and writes the answer back with `DEC_TO_SECS`, so
+`1:00 %% 7` is `0:00:02`. `AnOperatorsUncheckedLeftOperandFromTheSourceTest`.

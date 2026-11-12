@@ -19,6 +19,15 @@ public sealed interface RebolSeries extends Value
 
     Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds);
 
+    @Override
+    default Value copyAsMember(boolean deeply, Set<Datatype> kinds) {
+        if (!kinds.contains(datatype())) {
+            return this;
+        }
+        Value wholeSeries = atIndex(1).copy(deeply, deeply ? kinds : Copying.NOTHING_INSIDE);
+        return wholeSeries instanceof RebolSeries copied ? copied.atIndex(index()) : wholeSeries;
+    }
+
     default RebolSeries reversedFromHere() {
         return reverseFront(lengthFromHere());
     }

@@ -23,12 +23,31 @@ public final class Arithmetic {
         return IntegerValue.of(asIntegerDivideReadsIt(dividend) / by);
     }
 
+    private static final long DENORMAL_TRUNCATED = 0;
+
     private static long asIntegerDivideReadsIt(Value number) {
         return switch (number) {
             case IntegerValue(long magnitude) -> magnitude;
+            case AnyDecimalValue fraction -> (long) Comparison.asDouble(fraction);
             case MoneyValue money -> (long) Double.longBitsToDouble(money.asDeci().significand().longValue());
-            default -> (long) Comparison.asDouble(number);
+            case PairValue pair -> (long) readPairCellAsDecimal(pair);
+            default -> DENORMAL_TRUNCATED;
         };
+    }
+
+    private static double readPairCellAsDecimal(PairValue pair) {
+        long lowHalf = Integer.toUnsignedLong(Float.floatToRawIntBits((float) pair.x()));
+        long highHalf = Integer.toUnsignedLong(Float.floatToRawIntBits((float) pair.y()));
+        return Double.longBitsToDouble(highHalf << Integer.SIZE | lowHalf);
+    }
+
+    public static boolean isDivisible(Value dividend) {
+        return Comparison.isNumeric(dividend) || dividend instanceof CharacterValue;
+    }
+
+    public static Value answerUndividedLeftOperand(Value dividend, Value divisor) {
+        requireNonZero(asModulusReadsIt(divisor));
+        return dividend;
     }
 
     public static Value findRest(Value dividend, Value divisor, Division definition) {
@@ -36,8 +55,8 @@ public final class Arithmetic {
             return IntegerValue.of(
                     findWholeRest(magnitude1, magnitude, definition));
         }
-        double first = asMagnitude(dividend);
-        double second = asMagnitude(divisor);
+        double first = asModulusReadsIt(dividend);
+        double second = asModulusReadsIt(divisor);
         requireNonZero(second);
         if (definition == Division.SIGN_FOLLOWS_DIVIDEND) {
             return shapeLikeDividend(dividend, first % second);
@@ -65,7 +84,8 @@ public final class Arithmetic {
     private static Value shapeLikeDividend(Value dividend, double magnitude) {
         return switch (dividend) {
             case CharacterValue ignored -> CharacterValue.of((int) magnitude);
-            case TimeValue ignored -> TimeValue.ofNanoseconds((long) magnitude);
+            case TimeValue ignored -> TimeValue.ofNanoseconds(
+                    (long) ((magnitude + HALF_NANOSECOND_IN_SECONDS) * NANOSECONDS_IN_SECOND));
             case MoneyValue ignored -> new MoneyValue(new Deci(magnitude));
             case IntegerValue ignored -> IntegerValue.of((long) magnitude);
             default -> DecimalValue.of(magnitude);
@@ -84,6 +104,18 @@ public final class Arithmetic {
     public static boolean areNearlySame(double first, double second) {
         return Comparison.areLooselyEqual(
                 DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
+    }
+
+    private static final double NANOSECONDS_IN_SECOND = 1.0e9;
+
+    private static final double HALF_NANOSECOND_IN_SECONDS = 5.0e-10;
+
+    private static final double SECONDS_IN_NANOSECOND = 1.0e-9;
+
+    private static double asModulusReadsIt(Value value) {
+        return value instanceof TimeValue(long nanoseconds)
+                ? nanoseconds * SECONDS_IN_NANOSECOND
+                : asMagnitude(value);
     }
 
     public static double asMagnitude(Value value) {

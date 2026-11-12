@@ -8,6 +8,11 @@ public final class Xor implements BitwiseOperation {
     }
 
     @Override
+    public String actionName() {
+        return "xor~";
+    }
+
+    @Override
     public long onWholeElements(long ours, long theirs) {
         return ours ^ theirs;
     }

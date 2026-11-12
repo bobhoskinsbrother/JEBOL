@@ -1,0 +1,75 @@
+none + 1	cannot-use	add:	#(none!)	_
+none + none	expect-arg	+	value2	#(none!)
+none + {a}	expect-arg	+	value2	#(string!)
+none - 1	cannot-use	subtract:	#(none!)	_
+none - none	expect-arg	-	value2	#(none!)
+none - {a}	expect-arg	-	value2	#(string!)
+none * 1	cannot-use	multiply:	#(none!)	_
+none * none	expect-arg	*	value2	#(none!)
+none * {a}	expect-arg	*	value2	#(string!)
+none / 1	cannot-use	divide:	#(none!)	_
+none / none	expect-arg	/	value2	#(none!)
+none / {a}	expect-arg	/	value2	#(string!)
+none // 1	value	0		
+none // none	expect-arg	//	value2	#(none!)
+none // {a}	expect-arg	//	value2	#(string!)
+none % 1	cannot-use	remainder:	#(none!)	_
+none % none	expect-arg	%	value2	#(none!)
+none % {a}	expect-arg	%	value2	#(string!)
+none %% 1	value	_		
+none %% none	expect-arg	%%	b	#(none!)
+none %% {a}	expect-arg	%%	b	#(string!)
+none ** 1	cannot-use	power:	#(none!)	_
+none ** none	expect-arg	**	exponent	#(none!)
+none ** {a}	expect-arg	**	exponent	#(string!)
+none = 1	value	#(false)		
+none = none	value	#(true)		
+none = {a}	value	#(false)		
+none =? 1	value	#(false)		
+none =? none	value	#(true)		
+none =? {a}	value	#(false)		
+none == 1	value	#(false)		
+none == none	value	#(true)		
+none == {a}	value	#(false)		
+none != 1	value	#(true)		
+none != none	value	#(false)		
+none != {a}	value	#(true)		
+none <> 1	value	#(true)		
+none <> none	value	#(false)		
+none <> {a}	value	#(true)		
+none !== 1	value	#(true)		
+none !== none	value	#(false)		
+none !== {a}	value	#(true)		
+none < 1	invalid-compare	#(none!)	#(integer!)	_
+none < none	invalid-compare	#(none!)	#(none!)	_
+none < {a}	invalid-compare	#(none!)	#(string!)	_
+none <= 1	invalid-compare	#(none!)	#(integer!)	_
+none <= none	invalid-compare	#(none!)	#(none!)	_
+none <= {a}	invalid-compare	#(none!)	#(string!)	_
+none > 1	invalid-compare	#(none!)	#(integer!)	_
+none > none	invalid-compare	#(none!)	#(none!)	_
+none > {a}	invalid-compare	#(none!)	#(string!)	_
+none >= 1	invalid-compare	#(none!)	#(integer!)	_
+none >= none	invalid-compare	#(none!)	#(none!)	_
+none >= {a}	invalid-compare	#(none!)	#(string!)	_
+none & 1	cannot-use	and~:	#(none!)	_
+none & none	expect-arg	&	value2	#(none!)
+none & {a}	expect-arg	&	value2	#(string!)
+none | 1	cannot-use	or~:	#(none!)	_
+none | none	expect-arg	|	value2	#(none!)
+none | {a}	expect-arg	|	value2	#(string!)
+none and 1	cannot-use	and~:	#(none!)	_
+none and none	expect-arg	and	value2	#(none!)
+none and {a}	expect-arg	and	value2	#(string!)
+none or 1	cannot-use	or~:	#(none!)	_
+none or none	expect-arg	or	value2	#(none!)
+none or {a}	expect-arg	or	value2	#(string!)
+none xor 1	cannot-use	xor~:	#(none!)	_
+none xor none	expect-arg	xor	value2	#(none!)
+none xor {a}	expect-arg	xor	value2	#(string!)
+none << 1	expect-val	integer!:	_	_
+none << none	expect-arg	<<	bits	#(none!)
+none << {a}	expect-arg	<<	bits	#(string!)
+none >> 1	expect-val	integer!:	_	_
+none >> none	expect-arg	>>	bits	#(none!)
+none >> {a}	expect-arg	>>	bits	#(string!)

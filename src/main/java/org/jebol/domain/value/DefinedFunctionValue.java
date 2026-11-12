@@ -77,6 +77,8 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
             super(spelling);
         }
 
+        private static final int SPEC_AND_BODY = 2;
+
         abstract Value fromFunction(FunctionValue made);
 
         @Override
@@ -84,13 +86,12 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
             if (!(spec instanceof AnyBlockValue parts)) {
                 throw refuse(spec);
             }
-            List<Value> items = parts.remaining();
-            if (items.size() < 2
-                    || !(items.get(0) instanceof AnyBlockValue functionSpec)
-                    || !(items.get(1) instanceof AnyBlockValue body)) {
+            if (parts.remaining().size() != SPEC_AND_BODY
+                    || !(parts.readItemAt(1) instanceof AnyBlockValue functionSpec)
+                    || !(parts.readItemAt(2) instanceof AnyBlockValue body)) {
                 throw refuse(spec);
             }
-            return fromFunction(maker.bindFunction(functionSpec, body));
+            return fromFunction(maker.bindFunction(functionSpec.atIndex(1), body.atIndex(1)));
         }
 
         @Override

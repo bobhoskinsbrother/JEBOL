@@ -8,6 +8,11 @@ public final class And implements BitwiseOperation {
     }
 
     @Override
+    public String actionName() {
+        return "and~";
+    }
+
+    @Override
     public long onWholeElements(long ours, long theirs) {
         return ours & theirs;
     }

@@ -21,6 +21,11 @@ public record TimeValue(long nanoseconds) implements Value {
         return TimeValue.ofNanoseconds(Math.abs(nanoseconds));
     }
 
+    @Override
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        throw Raised.notRelatedToAction(this, operation.actionName());
+    }
+
 
     @Override
     public Value calculate(Value right, ArithmeticOperation operation) {

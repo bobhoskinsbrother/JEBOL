@@ -89,7 +89,7 @@ public class ComposeNative extends DefaultNative {
 
     private void spliceParenResult(BlockStorage built, ParenValue paren,
                                    Evaluator evaluator, Context context, boolean keepingBlocksWhole) {
-        for (Value produced : evaluator.evaluateEachOrRaise(paren.asBlock(), context)) {
+        for (Value produced : evaluator.evaluateEachRefusingStrandedOperator(paren.asBlock(), context)) {
             if (produced instanceof UnsetValue) {
                 continue;
             }

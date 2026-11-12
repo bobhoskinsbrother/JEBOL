@@ -36,7 +36,8 @@ public class TryNative extends DefaultNative {
             evaluator.setSystemState("last-error", NoneValue.none());
             Value failure;
             try {
-                return evaluator.evaluateOrRaise((AnyBlockValue) arguments.getFirst(), context);
+                return evaluator.evaluateForgivingStrandedOperator(
+                        (AnyBlockValue) arguments.getFirst(), context);
             } catch (Raised raised) {
                 failure = raised.error();
             } catch (ThrownSignal | LoopSignal | ContinueSignal | ReturnSignal escaping) {

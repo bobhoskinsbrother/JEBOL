@@ -32,9 +32,11 @@ public record LogicValue(boolean truth) implements Value {
 
     @Override
     public Value calculate(Value right, ArithmeticOperation operation) {
-        throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                WordValue.of("logic!"),
-                WordValue.of(right.datatype().literalSpelling()));
+        throw refusePartner(right);
+    }
+
+    public static Raised refusePartner(Value right) {
+        return Raised.of(EvaluationFailure.EXPECT_VAL, TYPE, right.datatype());
     }
 
 
@@ -47,9 +49,7 @@ public record LogicValue(boolean truth) implements Value {
         if (right instanceof LogicValue(boolean theirs)) {
             return theirs;
         }
-        throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                WordValue.of("logic!"),
-                WordValue.of(right.datatype().literalSpelling()));
+        throw refusePartner(right);
     }
 
 

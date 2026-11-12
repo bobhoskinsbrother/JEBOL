@@ -69,6 +69,13 @@ a baseline from the same machine rather than against the row.
 - **No Java PDF implementation in the interpreter jar.** The borrowed codec is
   what Rebol has; more than that is a library the caller adds, which is goal 12.
 - **bzip2 answers where its C never does.** Decision 62.
+- **An operator with nothing on its left takes NONE here where R3 reads a
+  cell it does not own.** `reduce next [5 <> 0 7]` is `[#(true) 7]` here and
+  `[7]` there, `print <> 0` prints `true` here and the PRINT native there, and
+  `reduce/into next [5 + 1] []` refuses `none!` here and `block!` there.
+  Everywhere R3's answer is deterministic, including the `missing-arg` its
+  own suite asserts for `do next [1 <> 0]`, JEBOL answers the same.
+  Decision 66.
 - **On Windows the console's modes change nothing, and `read-key` reads no
   key.** R3's Windows device turns the console's own echo off and reads keys
   through the console API; JEBOL accepts `echo`, `line` and `error` there and

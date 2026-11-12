@@ -242,7 +242,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries, CopiesItsCell
         List<Value> members = new ArrayList<>(taken.size());
         for (Value item : taken) {
             members.add(deeply && kinds.contains(item.datatype())
-                    ? item.copy(true, kinds)
+                    ? item.copyAsMember(true, kinds)
                     : item);
         }
         BlockStorage built = new BlockStorage(members);

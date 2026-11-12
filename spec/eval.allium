@@ -93,6 +93,12 @@ entity Evaluation {
     any_step_raised: raised_steps.count > 0
     exceeded_depth: depth > config.max_evaluation_depth
 
+    -- An operator ran here with nothing on its left and no argument slot
+    -- open, and whether this walk is one R3 runs without its balance check
+    -- (AnOperatorFurtherInTakesNoneOnItsLeft, EvaluationConcludes).
+    ran_stranded_operator: Boolean
+    forgives_stranded_operator: Boolean
+
     -- The walk has nothing left to do: it blew the depth limit before it
     -- started, a step raised, the block was empty, or the last step ran
     -- off the end of the block.
@@ -349,6 +355,9 @@ rule EvaluationConcludes {
         else if evaluation.any_step_raised:
             evaluation.status = raised
             evaluation.error = first_raised_error(evaluation)
+        else if evaluation.ran_stranded_operator and not evaluation.forgives_stranded_operator:
+            evaluation.status = raised
+            evaluation.error = script_error(missing_arg)
         else if evaluation.step_count = 0:
             evaluation.status = completed
             evaluation.result = unset_value()
@@ -432,27 +441,37 @@ rule InfixOperatorContinuesTheWalk {
 -- with NONE as its left operand, and whatever follows is what that
 -- operator does with NONE. So `1 + + 3`, `x: + 1`, `print + 1` and
 -- `do next [5 + 1]` all raise `cannot-use` with arg1 `add:` and arg2
--- `none!`, the error ADD raises for `none + 1`; `do next [1 <> 0]` raises
--- nothing and answers TRUE, because NONE is not equal to 0; and `1 + +`
--- raises `no-arg` naming the inner `+`, because that one then finds
--- nothing on its right either.
+-- `none!`, the error ADD raises for `none + 1`, and the error is located at
+-- the operator: its near is `[+ 3]`. `1 = <> 0` answers FALSE, because NONE
+-- is not equal to 0; and `1 + +` raises
+-- `no-arg` naming the inner `+`, because that one then finds nothing on its
+-- right either.
 --
 -- This is what the C does, and it is an accident of its stack rather than
 -- a design. The guard is `if (DSP <= 0 || index == 0)
 -- Trap1(RE_NO_OP_ARG, word);` in `Do_Next` (`c-do.c`); past it, the operator
--- is pushed as a frame whose first argument is a copy of whatever value is
--- on top of the data stack. Reached as the first thing of an argument or of
--- a set-word's value, that top is the slot waiting to be filled, which
--- `Do_Args` has already set to NONE; reached as the first step of a series
--- walked from past its head, it is NONE too. Measured on 3.22.5 in every
--- such position that was probed -- the list is in goals.md under 1f -- the
--- left operand was NONE every time. `DSP <= 0` cannot happen beneath a
--- script, which always runs inside some frame.
+-- is pushed by `Push_Func(TRUE, ...)`, which takes the cell on top of the
+-- data stack as both the operator's left operand and its return slot.
+-- Inside an argument that cell is the last argument slot `Do_Args` filled
+-- with NONE, so the left is NONE and the result lands where it was wanted.
+-- `DSP <= 0` cannot happen beneath a script, which always runs inside some
+-- frame.
+--
+-- With no argument slot open the cell is the caller's. An operator that
+-- succeeds then leaves the stack a cell short, and a block that checks its
+-- balance ends in `missing-arg`; the guidance below says which. Where R3
+-- reads that cell as a value, JEBOL still passes NONE, a deliberate
+-- difference (decision 66): R3's left is the last argument of the native
+-- that started the walk -- a block for `reduce/into next [5 + 1] []`, a word
+-- for `do/next [x: + 1] 'p` -- and a walker that does not check is corrupted
+-- rather than failed, so `reduce next [5 <> 0 7]` answers `[7]` and
+-- `print <> 0` prints the PRINT native. JEBOL answers `[#(true) 7]` and
+-- prints `true`.
 --
 -- Specified because a script catching by id sees it, and because Rebol's
 -- own suite asserts the head case. An earlier reading of this rule had the
--- mid-series case raise `missing-arg`; no position R3 was probed in raises
--- that for an operator.
+-- mid-series case raise `missing-arg`; that id appears only through the
+-- stack running short, never from the operator.
 rule AnOperatorAtTheHeadOfItsSeriesFails {
     when: step: EvaluationStep.created
     requires: step.status = pending
@@ -472,13 +491,36 @@ rule AnOperatorFurtherInTakesNoneOnItsLeft {
     requires: step.reaches_an_operator_alone
     requires: not step.stands_at_the_head_of_its_series
 
-    ensures: Application.created(
-        step: step,
-        applied: step.bound_value,
-        infix_left: none_value(),
-        requested_refinements: {},
-        status: gathering
-    )
+    ensures:
+        Application.created(
+            step: step,
+            applied: step.bound_value,
+            infix_left: none_value(),
+            requested_refinements: {},
+            status: gathering
+        )
+        if has_no_argument_slot_open(step):
+            step.evaluation.ran_stranded_operator = true
+
+    @guidance
+        -- An operator that took NONE on its left with no argument slot open -- as
+-- a step of its own, or as a set-word's or set-path's value at the top of
+        -- its block -- leaves that block raising `missing-arg`, with no
+        -- arguments, once the block has finished (EvaluationConcludes):
+        -- `do next [1 <> 0]`, `do [x: <> 0]`, a function body `[x: <> 0]`.
+        -- The rest of the block runs first, so `do [x: <> 0 print 3]` prints
+        -- 3 and then raises. If the operator's action refuses NONE, that
+        -- error comes first. In the C the operator took the top cell of the
+        -- data stack as its left operand and return slot; with no slot open
+        -- that cell was the caller's, so the stack ends a cell short and
+        -- `Do_Blk`'s balance check fires. Every walk that is `Do_Blk`
+        -- checks: `do`, `if`, `either`, `case`, `loop`, `until`, `forever`,
+        -- `catch`, a paren, `compose`'s parens, a function body, a script.
+        -- `try` and `attempt` (`Try_Block`), `all`, `any`, `do/next` and the
+        -- walks that collect each value (`reduce`, `ajoin`, `print`,
+        -- `apply`, `wait`) forgive it and answer the operator's value.
+        -- Rebol's own suite asserts the `do next [1 <> 0]` case (issue 903).
+        -- Decision 66.
 }
 
 -- === Dispatch ==============================================
@@ -1620,15 +1662,15 @@ surface Evaluating {
 -- fires in practice, because the evaluator still recurses on the host
 -- stack for nested blocks; that is a known gap rather than a design.
 
--- Resolved against a real R3 (3.22.5, 2026-11-12), and its premise was
--- wrong: an operator with nothing on its left never raises missing-arg.
--- At the head of its series it raises no-op-arg naming the word; anywhere
--- else it runs with NONE on its left, which mostly surfaces as cannot-use
--- from the operator's own action and sometimes as no failure at all.
--- JEBOL reproduces both, because agreeing with the C comes first and a
--- script catching by id sees every one of them.
--- AnOperatorAtTheHeadOfItsSeriesFails and
--- AnOperatorFurtherInTakesNoneOnItsLeft say so.
+-- Resolved against a real R3 (3.22.5, 2026-11-12). An operator with nothing
+-- on its left raises no-op-arg naming the word at the head of its series;
+-- anywhere else it runs with NONE on its left, which mostly surfaces as
+-- cannot-use from the operator's own action. Where it succeeds with no
+-- argument slot open, the block that ran it ends in an argument-less
+-- missing-arg if that block is one R3 checks. JEBOL reproduces all three,
+-- because agreeing with the C comes first and a script catching by id sees
+-- every one of them (decision 66). AnOperatorAtTheHeadOfItsSeriesFails,
+-- AnOperatorFurtherInTakesNoneOnItsLeft and EvaluationConcludes say so.
 
 open question "AGetWordNamesARefinementTheCallDecidesOn and PathGathersRefinement disagree about a misspelled refinement, and it is not settled which of them is right. Written plainly, `append/bogus` raises no-refine, because PathGathersRefinement checks the name against the function before granting it. Written as a get-word, `append/:bogus` raises only when BOGUS holds something true; when it holds false the name is never checked at all and the call runs as though the refinement had not been written. So the same misspelling is caught or not caught depending on a value, which is precisely the kind of silence PathGathersRefinement exists to prevent -- and a script forwarding a refinement it spelled wrong would go years without hearing about it, because the false branch is the common one. Two readings. Check the name whatever the word holds, on the grounds that a refinement the function has not got is a mistake in the code rather than a fact about the run; or leave it, on the grounds that a get-word refinement is a request rather than an assertion and asking for nothing cannot be wrong. The first is almost certainly right and wants measuring against a real R3 before it is built, because Rebol's own library forwards refinements constantly and a newly strict check would raise on any of them that names something the callee dropped."
 

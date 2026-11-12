@@ -23,10 +23,15 @@ public class PowerAction extends ArithmeticNative implements ActionValue {
         return (arguments, evaluator, context, refinements) -> {
             Value base = arguments.get(0);
             Value exponent = arguments.get(1);
-            if (base instanceof TupleValue) {
-                return refuseDatatype(base);
+            switch (base) {
+                case IntegerValue ignored -> { }
+                case AnyDecimalValue ignored -> { }
+                case LogicValue ignored -> throw LogicValue.refusePartner(exponent);
+                case TimeValue ignored -> throw Raised.notRelatedToAction(base, nativeName());
+                case PairValue ignored -> throw Raised.notRelatedToAction(base, nativeName());
+                default -> refuseDatatype(base);
             }
-            if (!Comparison.isNumeric(base) || !Comparison.isNumeric(exponent)) {
+            if (!Comparison.isNumeric(exponent)) {
                 return refuseArgument(base, "number");
             }
             double raised = Math.pow(

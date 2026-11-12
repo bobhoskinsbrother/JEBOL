@@ -68,6 +68,11 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber, Copi
     }
 
     @Override
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        throw Raised.notRelatedToAction(this, operation.actionName());
+    }
+
+    @Override
     public Value negated() {
         return makeSameKindHolding(-quantity);
     }

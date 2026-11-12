@@ -11,6 +11,8 @@ public interface BitwiseOperation extends ValueOperation {
 
     boolean onLogics(boolean ours, boolean theirs);
 
+    String actionName();
+
     @Override
     default boolean isBitwise() {
         return true;

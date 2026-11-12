@@ -2867,3 +2867,64 @@ on a port with no length waits as the C does, until woken or the run's deadline.
 `src/testFixtures/resources/tcp/waiting.r3` runs thirteen scenarios on
 `./r3-head` against `nc`, and `WaitingOnAPortFromTheSourceTest` asserts R3's
 transcript line for line.
+
+## 66. An operator with nothing on its left takes NONE, and a block that ran one with no slot open ends in missing-arg
+
+**Owner's decision, 2026-11-12.** An operator reached with nothing on its left
+raises `no-op-arg` naming its word at the head of its series. Anywhere else it
+runs with NONE on its left. If no argument slot was open when it ran -- it was
+a step of its own, or a set-word's or set-path's value at the top of its block
+-- the block finishes and then raises `missing-arg` with no arguments, as R3
+does. `AnOperatorAtTheHeadOfItsSeriesFails`,
+`AnOperatorFurtherInTakesNoneOnItsLeft` and `EvaluationConcludes` in
+`spec/eval.allium`.
+
+**Why, in the C.** `Do_Next` pushes the operator with `Push_Func(TRUE, ...)`,
+which takes the cell on top of the data stack as both the left operand and
+the return slot. Inside an argument that cell is the slot `Do_Args` filled
+with NONE, so the answer lands where it was wanted: `1 = <> 0` is FALSE and
+`f <> 0` is TRUE. With no slot open the cell belongs to whoever started the
+block, so an operator that succeeds leaves the stack a cell short, and
+`Do_Blk`'s balance check raises `missing-arg` once the block ends. The rest of
+the block still runs first: `do [x: <> 0 print 3]` prints 3.
+
+**Which blocks check.** Every walk that is R3's `Do_Blk` does: `do`, `if`,
+`either`, `case`, `loop`, `until`, `forever`, `catch`, a paren, `compose`'s
+parens, a function body and a script. `try` and `attempt` (`Try_Block`),
+`all`, `any`, `do/next`, and every walk that collects each value as R3's
+`Reduce_Block` does -- `reduce`, `ajoin`, `print`, `apply`, `wait` -- do not,
+and answer the operator's value: `try next [5 <> 0]` is TRUE.
+
+**This reverses the first reading of the decision**, which let the operator's
+answer stand everywhere. That reading was offered without checking Rebol's own
+suite, which asserts the `missing-arg` (`evaluation-test.r3`, issue 903:
+`all [error? e: try [do next [1 <> 0]]  e/id = 'missing-arg]`). It is also the
+reading that fits the language: a missing operand is an error everywhere else
+in Rebol (`1 +` is `no-arg`), and a NONE nobody wrote should not quietly
+become a value.
+
+**What still differs, because R3 is reading a cell it does not own:**
+
+- **The left is the caller's last argument.** `reduce/into next [5 + 1] []`
+  gives `cannot-use add: block!` and `do/next [x: + 1] 'p` gives `word!`.
+  JEBOL gives `none!` in both.
+- **A walker that does not check is corrupted instead.** `reduce next [5 <> 0
+  7]` answers `[7]` and `reduce [x: <> 0]` answers `[]`; JEBOL answers
+  `[#(true) 7]` and `[#(true)]`. `print <> 0` prints the PRINT native, and
+  JEBOL prints `true`.
+
+What that corruption does depends on what the caller does next, so it cannot
+be copied. `AnOperatorWithNothingOnItsLeftFromTheSourceTest` holds R3's answers
+under `WithNoArgumentSlotOpen` and these under `WhereR3ReadsACellItDoesNotOwn`.
+
+**The operator's actions do meet NONE, and what they do with it is R3's.**
+`scripts/operator-none-sweep.py` asks `./r3-head` what every operator in
+`boot/ops.reb` answers for `none <op> 1`, `none <op> none` and
+`none <op> {a}`, and `OperatorWithNoneOnItsLeftAnswersAsR3DoesTest` holds
+JEBOL to its transcript. An operator's left operand is never type-checked,
+since the check in `Do_Args` is commented out. So `integer-divide` reads
+whatever the cell holds as a decimal, which is 0 for NONE and 2 for `1x2`.
+`modulo` hands back a left operand it cannot divide, because its return slot
+is that operand's cell. The actions dispatch on the left's datatype and refuse
+with `cannot-use` where that datatype has no handler.
+`AnOperatorsUncheckedLeftOperandFromTheSourceTest` holds those cases.

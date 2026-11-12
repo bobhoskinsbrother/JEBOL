@@ -19,11 +19,11 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Seven pieces of work, in the order to do them.
+Six pieces of work, in the order to do them.
 
-**1f and 1g come first: each makes the same script answer differently on a
-real 3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
-either. They are all what a script sees when it fails.
+**1g comes first: it makes the same script answer differently on a real
+3.22.5 and on JEBOL.** The aim is that any Rebol file runs the same on
+either. It is what a script sees when it fails.
 
 **1h to 1l change nothing a script run on both would see**: the spec, a
 process-wide table, confinement and tasks, and then the five Rebol bugs
@@ -40,165 +40,24 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1f. An operator with nothing on its left raises what R3 raises
-
-**The spec is already corrected** (2026-11-12): `spec/eval.allium` now has
-`AnOperatorAtTheHeadOfItsSeriesFails` and
-`AnOperatorFurtherInTakesNoneOnItsLeft` in place of the old rule, which
-specified `missing-arg` for the mid-series case. R3 never raises that there.
-What is left is the tests and then the code.
-
-**What R3 does**, read from `Do_Next` in `rebol3-source/src/core/c-do.c`
-(the `ET_OPERATOR` case) and confirmed by every probe below:
-
-- **At the head of its series**, meaning position 1 of the series itself and
-  not where the walk began, the guard `if (DSP <= 0 || index == 0)
-  Trap1(RE_NO_OP_ARG, word)` raises `no-op-arg`. Its arg1 is the operator's
-  word as written (`+`, `<>`), and arg2 and arg3 are none.
-- **Anywhere else** there is no error of the evaluator's own. `Push_Func`
-  makes the frame, and `DS_PUSH(DS_VALUE(dsf))` copies whatever is on top of
-  the data stack into the first argument. In every position probed, that is
-  NONE: either the argument slot `Do_Args` filled with NONE before
-  evaluating into it, or an unused slot under a series walked from past its
-  head. So the operator simply runs as `none <op> right`, and the result is
-  whatever its action does with NONE. For `+` that is `cannot-use`, arg1
-  `add:` (a set-word, because that is how actions name themselves), arg2
-  `none!`. For `<>` it is TRUE and no error at all.
-
-**What JEBOL does now.** `Evaluator.evaluateWord`
-(`src/main/java/org/jebol/domain/eval/Evaluator.java`, the
-`bound instanceof OperatorValue` branch) throws in both cases. The head
-test, `frame.position - 1 <= 1`, is already right, because `Frame.position`
-starts at `code.index()` and so counts from the series head. Two things are
-wrong:
-
-- arg1 is a sentence, built from `"the operator " + spelling + " has nothing
-  on its left"`. It should be the word itself.
-- The non-head branch raises `missing-arg`. It should start the operator as
-  an infix call with NONE on its left: `PendingCall.makeInfix(operator,
-  NoneValue)`, pushed the way `deliver` pushes one, so that `isInfix()`
-  suppresses the lookahead for its right operand exactly as `Do_Next(...,
-  op=TRUE)` does. Then let the call run. `readNameWrittenAt` and
-  `startAt(...)` must get the operator's own position, so that the error's
-  `near` and `where` come out as R3's (goal 1e's machinery; check them).
-
-**Probes, measured on `./r3-head` (3.22.5) and JEBOL's jar, 2026-11-12.**
-Each line is the source, loaded with `load/all` and run under `try`. Where
-"near" is given it is `e/near`, and it is the C's near rather than the
-`try` call's.
-
-At the head, R3 answers `no-op-arg`, arg1 the word. JEBOL has the right id
-and a sentence for arg1:
-
-    + 1            (+ 1)           1 (+ 1)          [1] (+ 1)
-    1 + (+ 1)      <> 0            +                if true [+ 1]
-    reduce [+ 1]   compose [(+ 1)] any [+ 1]        case [true [+ 1]]
-    do skip [+ 1] 0                do head next [+ 1]
-    f: func [a b] [reduce [a b]] f 4 (+ 2)
-
-Further in, R3 answers `cannot-use`, arg1 `add:` (or the operator's own
-action: `multiply:`, `subtract:`), arg2 `none!`. JEBOL answers `missing-arg`
-with the sentence:
-
-    1 + + 3            near [+ 3]      1 + * 3          near [* 3]
-    1 + - 2            near [- 2]      x: + 1           near [+ 1]
-    x: 1 + + 3         x: 1 y: + 2     a/b: + 1         o: object [a: 1] o/a: + 1
-    print + 1          negate + 1      first + 1        if + 1 [2]   near [+ 1 [2]]
-    f: func [a] [a] f + 1              f: func [a b] [reduce [a b]] f 1 + + 2
-    f: func [a /r b] [b] f/r 1 + + 2   f: func [a b c] [c + + 1] f 7 8 9
-    1 = + 1            1 and + 1       1 ** + 2         1 <> 0 = + 1
-    1 + 2 + + 3        reduce [1 + 1 + + 1]             all [1 + 1 + + 1]
-    o: object [a: 1] 1 + o/a + + 1
-    do next [5 + 1]    do next [5 - 1] do next [[a] + 1]  do at [1 2 + 3] 3
-    do at [7 8 - 1] 3  b: next [9 + 1] do b               7 do next [5 + 1]
-    1 + do next [0 + 1]                reduce [1 2 do next [5 + 1]]
-    f: func [a b c] [do next [5 + 1]] f 7 8 9
-    (1 2) do next [5 + 1]              reduce next [5 + 1]
-
-Further in, where NONE is a fine left operand, R3 answers with no error.
-JEBOL raises `missing-arg`:
-
-    do next [1 <> 0]   => true         do next [5 <> 0]  => true
-
-Further in, with nothing on the right either, R3 answers `no-arg`, arg1 `+`,
-arg2 `value2`. JEBOL raises `missing-arg`:
-
-    1 + +
-
-And these already agree. Keep them as tests so the fix cannot move them:
-
-    1 +                                    => no-arg + value2
-    do at [9 9 + 1] 2                      => 10
-    set 'g :+ 10 g 1                       => 11  (real infix: 10 g 1)
-    set 'g :+ "s" g 1                      => cannot-use add: string!
-    set 'g :+ g 1                          => cannot-use add: op!
-    f: func ['a] [a] f x + 2               => cannot-use add: word!
-    f: func [:a] [a] f x + 2               => cannot-use add: word!
-    quote + 1                              => 1
-    f: func [a /r b] [a] f/r 1 + 2         => no-arg f b
-    f: func [a b] [b] f 1 + 2 + 3          => no-arg f b
-
-**Three neighbouring disagreements the probes turned up.** By the zero-bug
-rule they are part of this goal, not parked:
-
-1. **A quoted argument is followed by infix when it should not be.** For
-   `f: func ['a b] [b] f x + 2` and `f: func [:a b] [b] f x + 2`, R3 answers
-   `cannot-use add: none!`: `'a` takes `x` literally, then `b` starts at
-   `+ 2` with NONE on its left. JEBOL answers `cannot-use add: word!`,
-   having made `x + 2` an infix call inside the quoted argument. In
-   `Do_Args`, the `REB_LIT_WORD` and `REB_GET_WORD` cases take the value
-   with `index++` and never call `Do_Next`, so no lookahead runs. The
-   exception is a lit-word parameter handed a paren, get-word or get-path:
-   that case does go through `Do_Next(block, index, IS_OP(func))` and so
-   does look ahead. Probe `f: func ['a b] [] f (x) + 2` and
-   `f: func ['a b] [] f :x + 2` before deciding. In JEBOL the lookahead is
-   `deliver`'s `findOperatorAt` branch, which runs for every delivered
-   value whose waiting call is not infix.
-2. **`do quote +`**: R3 answers `invalid-type`, arg1 `op!`. `quote` takes
-   the word `+` literally and `do` of that word reaches an op!. JEBOL
-   answers `no-arg`, arg1 `quote`, arg2 `value1`, as though `quote` never
-   received the `+`. `do quote + 1` is the same: R3 `invalid-type op!`,
-   JEBOL `no-arg quote value2`. Find why JEBOL's get-word parameter does not
-   take an operator word, then fix it.
-3. **An action's refusal of NONE.** Once the mid-series case passes NONE to
-   every operator, every operator's action meets it. Two already disagree:
-   `none and 1` (R3 `cannot-use and~: none!`, JEBOL `expect-arg`) and
-   `none ** 2` (R3 `cannot-use power: none!`, JEBOL `expect-arg power
-   number`). Sweep every `op!` in `system/contexts/lib` with
-   `none <op> 1`, `none <op> none` and `none <op> "a"` on both, and fix
-   each one that differs.
-
-**The order of work:**
-
-1. Write `AnOperatorWithNothingOnItsLeftFromTheSourceTest` in
-   `src/functionalTest/java`, failing. It covers every probe above (each
-   group a parameterised test whose rows are the source and the expected
-   id, arg1 and arg2), plus `near` for the cases that list one. Its error
-   arg1 assertions check the datatype as well as the spelling: arg1 of
-   `no-op-arg` is a `word!` spelt `+`, arg1 of `cannot-use` is a
-   `set-word!` spelt `add`. Add the quoted-argument cases, `do quote +`, and
-   the op sweep as their own tests. The sweep reads its expectations from a
-   checked-in transcript of `./r3-head`'s answers, produced by a checked-in
-   generator script under `scripts/`, because a probe is never thrown away.
-2. Fix `evaluateWord`, then the quoted-argument lookahead, then `quote`,
-   then each action the sweep names.
-3. Rebol's own suite asserts `do "<> 0"` gives `no-op-arg`
-   (`evaluation-test.r3:91`). It must stay green.
-4. Delete the sentence from `Evaluator`. Check that nothing else built a
-   sentence for this error, and that `EvaluationFailure.NO_OP_ARG`'s
-   catalogue message is R3's (`gen-errnums.h`: `:arg1 "operator is missing
-   an argument"`).
-
-**Done when** every probe above, the three neighbouring cases and the op
-sweep answer R3's id, arg1, arg2 and (where listed) near, proven by the new
-test, and the gate is green.
-
 #### 1g. An error's arguments are values, not sentences
 
-Twice now JEBOL has put an English sentence where R3 puts a value: arg1
-of the operator error (1f), and arg1 of `no-value`, which for `get first
-[zork]` is a `word!` spelt `zork has no value` where R3's is `zork`. A script
-that reads `e/arg1` gets prose.
+JEBOL has put an English sentence where R3 puts a value more than once:
+arg1 of the operator error (fixed under decision 66), and arg1 of
+`no-value`, which for `get first [zork]` is a `word!` spelt `zork has no
+value` where R3's is `zork`. A script that reads `e/arg1` gets prose.
+
+Known cases, measured on `./r3-head` on 2026-11-12:
+
+- **`not-related` names two datatypes as words, where R3 names the action
+  and one datatype.** `1 and true` is R3 `not-related and~: integer!` (a
+  set-word and a datatype) and JEBOL `not-related integer! logic!` (two
+  words); `1 xor 1x2`, `1.2.3 and true` and `1x2 and 1.2.3` are the same.
+  `1x2 + 1.2.3` is R3 `not-related add: pair!` and JEBOL a sentence. Every
+  caller of `Raised.ofUnrelated` builds this shape, and none of them is
+  handed the action.
+- **`expect-arg` carries a sentence from `Comparison.asDouble` and
+  `Numbers`**: `none! is not a number`.
 
 1. Sweep: raise every error JEBOL can raise, read arg1, arg2 and arg3, and
    list every one that is a sentence. `scripts/error-parity.py` is the place
@@ -500,7 +359,17 @@ interpreters -- reads as missing.
 
 ### 6. Debugging and tracing
 
-**First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
+**Before anything in JEBOL: a debugger on the reference.** Goal 1f's stack
+drift (decision 66) was found from about forty black-box probes on
+`./r3-head` and a reading of `Push_Func`. A watch on `DSP` across `Do_Next`'s
+operator case would have shown it in one run. Have `scripts/build-r3.sh`
+build a second `./r3-head-debug` with symbols and no optimisation, and check
+in a gdb command file under `scripts/` that runs a one-line script and prints
+`DSP`, `DSF` and the top cells at each `Do_Next`, `Push_Func` and `Do_Blk`
+exit. A probe is never thrown away, so each question it answers is checked in
+as a transcript beside the test that uses it.
+
+**Then make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
 (`<-- + == 3`); JEBOL prints none of the three and numbers the lines
 differently. `trace/back`, `trace/function` and `stack` with its refinements are

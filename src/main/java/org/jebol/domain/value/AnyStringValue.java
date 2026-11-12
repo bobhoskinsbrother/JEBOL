@@ -117,6 +117,16 @@ public abstract sealed class AnyStringValue implements RebolSeries, CopiesItsCel
         return makeSameKindOver(StringStorage.of(text), 1);
     }
 
+    @Override
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        if (!(right instanceof BinaryValue octets)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, right);
+        }
+        BinaryValue encoded = BinaryValue.ofBytes(text().getBytes(StandardCharsets.UTF_8));
+        BinaryValue combined = (BinaryValue) encoded.combineBitwise(octets, operation);
+        return wrap(combined.asText());
+    }
+
     public StringStorage storage() {
         return storage;
     }

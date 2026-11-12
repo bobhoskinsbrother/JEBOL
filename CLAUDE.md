@@ -319,7 +319,11 @@ so the file choosers cannot see the files a test offers and the downloads a
 test waits for never arrive. Remove the snap (`sudo snap remove firefox`) and
 install Firefox from Mozilla's apt repository at packages.mozilla.org, pinned
 above Ubuntu's archive -- Ubuntu's `firefox` package is a placeholder that
-reinstalls the snap. `file -L $(command -v firefox)` should say ELF, not
+reinstalls the snap. Pin Ubuntu's `firefox*` at -1 as well
+(`/etc/apt/preferences.d/no-ubuntu-firefox`, which `scripts/setup-machine.sh`
+writes): unattended-upgrades only installs from origins it allows, so it ignores the
+Mozilla pin and installs the placeholder, whose epoch makes it look newer. It did
+this twice in November 2026. `file -L $(command -v firefox)` should say ELF, not
 shell script. Removing the snap also removes its `geckodriver`, and Selenium
 fetches a matching one itself.
 

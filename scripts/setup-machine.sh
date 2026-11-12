@@ -80,6 +80,11 @@ Package: *
 Pin: origin packages.mozilla.org
 Pin-Priority: 1000
 PIN
+sudo tee /etc/apt/preferences.d/no-ubuntu-firefox >/dev/null <<'PIN'
+Package: firefox*
+Pin: release o=Ubuntu
+Pin-Priority: -1
+PIN
 sudo apt-get update
 sudo apt-get install -y --allow-downgrades firefox
 
@@ -105,6 +110,7 @@ check "allium"                      allium --version
 check "python3"                     python3 --version
 check "google-chrome"               google-chrome --version
 check "firefox is an ELF, not a script" sh -c 'file -L "$(command -v firefox)" | grep -q ELF'
+check "Ubuntu's firefox placeholder is never installed" sh -c 'apt-cache policy firefox | grep -q "1snap1.* -1"'
 check "gradle wrapper starts"       ./gradlew --version
 check "spec/ passes allium"         ./gradlew checkSpec
 

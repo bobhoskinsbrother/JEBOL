@@ -161,7 +161,7 @@ public sealed interface Value permits
     }
 
     default Value combineBitwise(Value right, BitwiseOperation operation) {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG, this);
+        throw Raised.cannotUseAction(this, operation.actionName());
     }
 
     default Value calculate(Value right, ArithmeticOperation operation) {

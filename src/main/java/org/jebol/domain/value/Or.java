@@ -8,6 +8,11 @@ public final class Or implements BitwiseOperation {
     }
 
     @Override
+    public String actionName() {
+        return "or~";
+    }
+
+    @Override
     public long onWholeElements(long ours, long theirs) {
         return ours | theirs;
     }

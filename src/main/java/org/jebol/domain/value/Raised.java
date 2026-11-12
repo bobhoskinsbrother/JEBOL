@@ -101,6 +101,10 @@ public final class Raised extends RuntimeException {
                 value.datatype()));
     }
 
+    public static Raised notRelatedToAction(Value left, String actionName) {
+        return of(EvaluationFailure.NOT_RELATED, SetWordValue.of(actionName), left.datatype());
+    }
+
     public static Raised ofUnrelated(Value left, Value right) {
         return of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(left.datatype().literalSpelling()),

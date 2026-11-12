@@ -577,6 +577,7 @@ public final class Evaluator {
         Deque<Frame> frames = new ArrayDeque<>();
         frames.push(frame);
         frame.sink = (produced, startedAt, stoppedBefore) -> false;
+        frame.forgivesStrandedOperator = true;
         walksInProgress.push(frames);
         Value produced;
         try {
@@ -641,10 +642,32 @@ public final class Evaluator {
 
     private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink,
                        boolean bodyOfAppliedFunction) {
+        return walk(code, context, depth, sink, bodyOfAppliedFunction,
+                sink == null ? REFUSES_STRANDED_OPERATOR : FORGIVES_STRANDED_OPERATOR);
+    }
+
+    public List<Value> evaluateEachRefusingStrandedOperator(AnyBlockValue code, Context context) {
+        List<Value> results = new ArrayList<>();
+        walk(code, context, 1, (produced, startedAt, stoppedBefore) -> results.add(produced),
+                ORDINARY_BLOCK, REFUSES_STRANDED_OPERATOR);
+        return results;
+    }
+
+    private static final boolean REFUSES_STRANDED_OPERATOR = false;
+
+    private static final boolean FORGIVES_STRANDED_OPERATOR = true;
+
+    public Value evaluateForgivingStrandedOperator(AnyBlockValue code, Context context) {
+        return walk(code, context, 1, null, ORDINARY_BLOCK, FORGIVES_STRANDED_OPERATOR);
+    }
+
+    private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink,
+                       boolean bodyOfAppliedFunction, boolean forgivesStrandedOperator) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
         root.sink = sink;
         root.bodyOfAppliedFunction = bodyOfAppliedFunction;
+        root.forgivesStrandedOperator = forgivesStrandedOperator;
         frames.push(root);
         int callsOpenBeforeWalk = functionsBeingRun.size();
         walksInProgress.push(frames);
@@ -655,6 +678,12 @@ public final class Evaluator {
             while (functionsBeingRun.size() > callsOpenBeforeWalk) {
                 handBackFrameTakenOverBy(functionsBeingRun.pop());
             }
+        }
+    }
+
+    private static void refuseStrandedOperator(Frame frame) {
+        if (frame.ranStrandedOperator && !frame.forgivesStrandedOperator) {
+            throw Raised.of(EvaluationFailure.MISSING_ARG);
         }
     }
 
@@ -687,6 +716,9 @@ public final class Evaluator {
                                 WordValue.of(gathering.nameInArgumentError()),
                                 gathering.describeArgumentStillWanted());
                     }
+                    if (!frame.stopped) {
+                        refuseStrandedOperator(frame);
+                    }
                     Value finished = frame.lastResult;
                     if (frame.functionBody && !functionsBeingRun.isEmpty()) {
                         handBackFrameTakenOverBy(functionsBeingRun.pop());
@@ -705,7 +737,7 @@ public final class Evaluator {
                 if (gathering != null && gathering.wantsUnevaluated(frame.current())) {
                     Value unevaluated = frame.current();
                     frame.advance();
-                    deliver(frame, unevaluated, frames);
+                    deliverAsWritten(frame, unevaluated, frames);
                     continue;
                 }
 
@@ -847,47 +879,62 @@ public final class Evaluator {
     }
 
     private void deliver(Frame frame, Value produced, Deque<Frame> frames) {
-        Value carrying = produced;
-        while (true) {
-            PendingCall waiting = frame.pendingCalls.peek();
-            boolean feedingOperator = waiting != null && waiting.isInfix();
-            if (!feedingOperator) {
-                Optional<OperatorValue> operator = findOperatorAt(frame);
-                if (operator.isPresent()) {
-                    int wroteOperatorAt = frame.position;
-                    frame.advance();
-                    PendingCall infix =
-                            PendingCall.makeInfix(operator.orElseThrow(), carrying);
-                    infix.startAt(wroteOperatorAt,
-                            readNameWrittenAt(frame, wroteOperatorAt, OPERATOR_TAKES_NO_REFINEMENT));
-                    frame.pendingCalls.push(infix);
-                    return;
-                }
-            }
-            if (frame.pendingCalls.isEmpty()) {
-                frame.lastResult = carrying;
-                int startedAt = frame.expressionStartedAt;
-                frame.expressionStartedAt = -1;
-                if (frame.sink != null
-                        && !frame.sink.accept(carrying, startedAt, frame.position)) {
-                    frame.stopped = true;
-                }
-                return;
-            }
-            requireParameterAccepts(waiting, carrying);
-            waiting.accept(carrying);
-            if (!waiting.isSatisfied()) {
-                return;
-            }
-            frame.pendingCalls.pop();
-            frame.callBeingMade = waiting;
-            StepOutcome outcome = invoke(frame, waiting, frames);
-            if (isStillRunningHavingPushedBody(outcome)) {
-                return;
-            }
-            StepOutcome.Produced invoked = (StepOutcome.Produced) outcome;
-            frame.callBeingMade = null;
-            carrying = invoked.value();
+        Optional<Value> carrying = Optional.of(produced);
+        while (carrying.isPresent() && !startInfixCallIfOperatorFollows(frame, carrying.get())) {
+            carrying = feedWaitingCall(frame, carrying.get(), frames);
+        }
+    }
+
+    private void deliverAsWritten(Frame frame, Value written, Deque<Frame> frames) {
+        feedWaitingCall(frame, written, frames)
+                .ifPresent(result -> deliver(frame, result, frames));
+    }
+
+    private boolean startInfixCallIfOperatorFollows(Frame frame, Value left) {
+        PendingCall waiting = frame.pendingCalls.peek();
+        if (waiting != null && waiting.isInfix()) {
+            return false;
+        }
+        Optional<OperatorValue> operator = findOperatorAt(frame);
+        if (operator.isEmpty()) {
+            return false;
+        }
+        int wroteOperatorAt = frame.position;
+        frame.advance();
+        PendingCall infix = PendingCall.makeInfix(operator.orElseThrow(), left);
+        infix.startAt(wroteOperatorAt,
+                readNameWrittenAt(frame, wroteOperatorAt, OPERATOR_TAKES_NO_REFINEMENT));
+        frame.pendingCalls.push(infix);
+        return true;
+    }
+
+    private Optional<Value> feedWaitingCall(Frame frame, Value arriving, Deque<Frame> frames) {
+        PendingCall waiting = frame.pendingCalls.peek();
+        if (waiting == null) {
+            finishExpression(frame, arriving);
+            return Optional.empty();
+        }
+        requireParameterAccepts(waiting, arriving);
+        waiting.accept(arriving);
+        if (!waiting.isSatisfied()) {
+            return Optional.empty();
+        }
+        frame.pendingCalls.pop();
+        frame.callBeingMade = waiting;
+        StepOutcome outcome = invoke(frame, waiting, frames);
+        if (isStillRunningHavingPushedBody(outcome)) {
+            return Optional.empty();
+        }
+        frame.callBeingMade = null;
+        return Optional.of(((StepOutcome.Produced) outcome).value());
+    }
+
+    private static void finishExpression(Frame frame, Value result) {
+        frame.lastResult = result;
+        int startedAt = frame.expressionStartedAt;
+        frame.expressionStartedAt = -1;
+        if (frame.sink != null && !frame.sink.accept(result, startedAt, frame.position)) {
+            frame.stopped = true;
         }
     }
 
@@ -935,21 +982,28 @@ public final class Evaluator {
         if (bound instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
         }
-        if (bound instanceof OperatorValue) {
-            boolean atVeryHead = frame.position - 1 <= 1;
-            throw atVeryHead
-                    ? Raised.of(EvaluationFailure.NO_OP_ARG,
-                            "the operator " + word.spelling()
-                                    + " has nothing on its left")
-                    : Raised.of(EvaluationFailure.MISSING_ARG,
-                            "the operator " + word.spelling()
-                                    + " has nothing on its left");
+        if (bound instanceof OperatorValue operator) {
+            if (frame.startedThisValueAt <= 1) {
+                throw Raised.of(EvaluationFailure.NO_OP_ARG, word);
+            }
+            startInfixCallWithNoneOnLeft(frame, operator);
+            return StepOutcome.waiting();
         }
         if (!(bound instanceof AnyFunctionValue)) {
             return StepOutcome.of(bound);
         }
         lastWordCalledThrough = word.spelling();
         return startCall(frame, frames, bound, List.of());
+    }
+
+    private void startInfixCallWithNoneOnLeft(Frame frame, OperatorValue operator) {
+        if (frame.pendingCalls.stream().allMatch(PendingCall::isAssignment)) {
+            frame.ranStrandedOperator = true;
+        }
+        PendingCall infix = PendingCall.makeInfix(operator, NoneValue.none());
+        infix.startAt(frame.startedThisValueAt, readNameWrittenAt(
+                frame, frame.startedThisValueAt, OPERATOR_TAKES_NO_REFINEMENT));
+        frame.pendingCalls.push(infix);
     }
 
     private Value evaluateGetWord(AnyWordValue word) {
@@ -1078,7 +1132,7 @@ public final class Evaluator {
                         && produced instanceof AnyFunctionValue
                         && !ordered.isEmpty()
                         && asksForReEvaluation(ordered.get(0))
-                        ? startCall(frame, frames, produced, List.of())
+                        ? reEvaluate(frame, frames, produced)
                         : StepOutcome.of(produced);
             }
             case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
@@ -1095,6 +1149,13 @@ public final class Evaluator {
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     call.callee().datatype().literalSpelling() + " is not callable");
         };
+    }
+
+    private StepOutcome reEvaluate(Frame frame, Deque<Frame> frames, Value function) {
+        if (function instanceof OperatorValue) {
+            throw Raised.of(EvaluationFailure.INVALID_TYPE, function.datatype());
+        }
+        return startCall(frame, frames, function, List.of());
     }
 
     private Value invokeUnderlying(
@@ -1797,6 +1858,8 @@ public final class Evaluator {
         private boolean stopped;
         private boolean functionBody;
         private boolean bodyOfAppliedFunction;
+        private boolean ranStrandedOperator;
+        private boolean forgivesStrandedOperator;
 
         private int expressionStartedAt = -1;
 

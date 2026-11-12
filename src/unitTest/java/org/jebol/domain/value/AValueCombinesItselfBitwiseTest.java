@@ -158,16 +158,30 @@ class AValueCombinesItselfBitwiseTest {
     class ADatatypeWithNoBitOperations {
 
         @Test
-        @DisplayName("a string, a decimal and a none all refuse")
-        void coversTheOnesOutsideTheTen() {
-            for (Value outsider : List.of(
-                    StringValue.of("ab"), DecimalValue.of(1.5), NoneValue.none())) {
-                assertThatThrownBy(() -> outsider.combineBitwise(A_WHOLE_NUMBER, AND))
-                        .as("%s", outsider.datatype())
-                        .isInstanceOf(Raised.class)
-                        .extracting(raised -> ((Raised) raised).error().errorId())
-                        .isEqualTo("expect-arg");
-            }
+        @DisplayName("a none has no handler, so and~ cannot be used on it")
+        void refusesNoneAsCannotUse() {
+            assertThatThrownBy(() -> NoneValue.none().combineBitwise(A_WHOLE_NUMBER, AND))
+                    .isInstanceOf(Raised.class)
+                    .extracting(raised -> ((Raised) raised).error().errorId())
+                    .isEqualTo("cannot-use");
+        }
+
+        @Test
+        @DisplayName("a decimal has a handler that refuses and~ as not related")
+        void refusesDecimalAsNotRelated() {
+            assertThatThrownBy(() -> DecimalValue.of(1.5).combineBitwise(A_WHOLE_NUMBER, AND))
+                    .isInstanceOf(Raised.class)
+                    .extracting(raised -> ((Raised) raised).error().errorId())
+                    .isEqualTo("not-related");
+        }
+
+        @Test
+        @DisplayName("a string combines only with a binary, and refuses a whole number as an invalid argument")
+        void refusesStringBesideWholeNumberAsInvalidArgument() {
+            assertThatThrownBy(() -> StringValue.of("ab").combineBitwise(A_WHOLE_NUMBER, AND))
+                    .isInstanceOf(Raised.class)
+                    .extracting(raised -> ((Raised) raised).error().errorId())
+                    .isEqualTo("invalid-arg");
         }
     }
 
