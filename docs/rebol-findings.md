@@ -7245,3 +7245,24 @@ e`, `compose` and `reduce` take it. `./r3-head` answers, all in
 
 JEBOL carries it as `EndValue` and does each of these; decision 67 says why.
 `AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.
+
+## 246. `open/new` on a missing directory answers two ways on two identical runs
+
+On a real 3.22.5, in a fresh directory both times and with byte-identical
+input, `open/new` on a directory that is not there answers a port on the first
+run and raises `no-create` naming the directory on the second. The directory
+exists afterwards either way, so it is made, and then something after the
+making disagrees about whether that counts. It is the second place the
+reference has been caught answering differently on the same input, the first
+being `checksum-test.r3`, so a single run is never taken as settling either.
+JEBOL refuses to open a directory that is not there unless asked for `new`
+(`OpeningADirectoryThatIsNotThereIsRefused`).
+
+## 247. `change/part` on an image with a count changes nothing
+
+`change/part target other 2` on an image moves the position by two and changes
+no colour. The image arm of `CHANGE` reads an integer `/part` into the variable
+that counts what was given and leaves the rectangle's width and height at
+nought, so the copy returns before writing a pixel. Only a pair, a shape, says
+how much to write. JEBOL copies it (owner's answer, goal 1k), as
+`PartAsACountOnAnImageWritesNothing`. `ImageAsASeriesFromTheSourceTest`.

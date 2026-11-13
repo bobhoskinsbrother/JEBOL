@@ -343,13 +343,20 @@ contract LexicalResolution {
 ------------------------------------------------------------
 
 entity TranscodeRequest {
-    source_text: String
-
-    -- The series the caller handed in, as opposed to the text inside it. Held
-    -- separately because the remainder a stepping read answers is that very
-    -- series advanced, sharing its storage -- see
+    -- The series the caller handed in. It is the one field, because the
+    -- remainder a stepping read answers is that very series advanced,
+    -- sharing its storage -- see
     -- TheRemainderIsThePositionInTheSourceRatherThanACopy.
     source: values/Value
+
+    -- The text inside it, derived rather than held: a string's characters
+    -- from its position, or a binary's UTF-8 with any byte order mark
+    -- dropped (LoadOfABinaryDropsAnyByteOrderMark).
+    source_text: text_after_any_byte_order_mark(source)
+
+    -- What was open when a delimiter failed to balance: the script, a
+    -- block or a paren.
+    open_token: UnbalancedTokenKind?
 
     status: reading | succeeded | failed
 
@@ -602,9 +609,9 @@ rule AColonBeforeASlashSettlesTheLexemeAsAUrl {
 }
 
 rule TranscodeBegins {
-    when: Transcode(source_text, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
+    when: Transcode(source, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
     ensures: TranscodeRequest.created(
-        source_text: source_text,
+        source: source,
         scope: scope,
         hands_back_failures: hands_back_failures,
         answers_the_value_alone: answers_the_value_alone,
@@ -930,7 +937,10 @@ rule ConstructionSyntaxNamesValuesThatHaveNoLiteral {
 -- A map literal `#[...]` reads as a map when its items pair up, and an odd
 -- count is refused. `#[a 1 b 2]` is a map of two keys, `#[]` is an empty map,
 -- and `#[a]` and `#[a 1 b]` both fail: a map's items are key-then-value, so an
--- odd one leaves a key with no value.
+-- odd one leaves a key with no value. `#[none]` is one of them: it reads as
+-- a one-item map, not as the old construct for none, and is invalid-arg
+-- naming the block [none] in a real 3.22.5 and here
+-- (MapLiteralFromTheSourceTest).
 --
 -- The failure is invalid-arg, not the malconstruct a malformed construct
 -- gives. The two live one bracket apart -- `#(...)` is a construct and
@@ -1096,13 +1106,23 @@ rule TheCategoryIsWhicheverOneTheCatalogueFilesTheIdUnder {
 -- inside was an unclosed series, because "you did not close this" is the true
 -- and useful thing to say -- wrapping it as "this datatype cannot be built
 -- that way" points at the wrong mistake entirely.
+--
+-- The three spellings of the first argument are behaviour, not a message
+-- detail: a script that catches the error reads them, and a real 3.22.5
+-- writes exactly these, as strings, with the underscores as hyphens.
+-- MissingDelimiterFromTheSourceTest and
+-- MalformedSourceAsRebolReportsItFromTheSourceTest cover them.
+enum UnbalancedTokenKind {
+    end_of_script | end_of_block | end_of_paren
+}
+
 rule UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments {
     when: request: TranscodeRequest.status transitions_to failed
     requires: request.failure in {missing_close, extra_close, mismatched_close}
 
     ensures:
         request.error_value.id = missing
-        request.error_value.arg1 = the_token_kind_that_was_open(request)
+        request.error_value.arg1 = spelled_with_hyphens(request.open_token)
         request.error_value.arg2 = the_delimiter_involved(request)
 }
 
@@ -1143,7 +1163,7 @@ rule LoadOfABinaryDropsAnyByteOrderMark {
     requires: the_bytes_are_utf8(request.source)
 
     ensures: TranscodeRequest.created(
-        source_text: text_after_any_byte_order_mark(request.source),
+        source: request.source,
         scope: the_whole_source,
         status: reading,
         load_request: request
@@ -1186,7 +1206,7 @@ rule LoadStartsRead {
     requires: not is_a_binary(request.source)
 
     ensures: TranscodeRequest.created(
-        source_text: text_of(request.source),
+        source: request.source,
         scope: the_whole_source,
         status: reading,
         load_request: request
@@ -1399,11 +1419,9 @@ rule OnlyExportsReachTheLibrary {
                 = value_in(load.context, name)
 
     @guidance
-        -- An export naming a word the body never defined is the module's own
-        -- defect. What should happen about it is undecided and recorded as an
-        -- open question below: today the loader defines every exported name
-        -- before the body runs, so the guard here never fires and an unset
-        -- slot reaches the library without a word being said.
+        -- An export naming a word the body never defined reaches the
+        -- library unset, and nothing is said about it: a real 3.22.5 does
+        -- the same, as resolved below.
 }
 
 -- A file that stops partway keeps whatever it managed to define, and what
@@ -1557,7 +1575,7 @@ surface SourceReading {
         LoadTarget
 
     provides:
-        Transcode(source_text, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
+        Transcode(source, scope, hands_back_failures, answers_the_value_alone, first_line_number, characters_permitted)
         Load(source, always_answers_a_block)
         LoadLibraryFile(file_name, header, declared_type, declared_exports, catalogue_target)
 
@@ -1584,7 +1602,7 @@ surface SourceReading {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled
 ------------------------------------------------------------
 
 -- Resolved: LOAD names no context and does no binding. It reads the source,
@@ -1633,7 +1651,12 @@ surface SourceReading {
 -- `<` is absorbed into a word fails on `1<`. Neither is wrong about the
 -- case it was drawn from.
 
-open question "A real R3 refuses % # $ \\ inside a word as well as an angle bracket -- `a%b`, `a#b` and `a$b` all raise invalid, measured directly. JEBOL refuses the angle brackets and now the comma, and not the other three. The hash is the awkward one: it is how a based number and a based binary are written, `2#01` and `64#{...}`, so a rule that refuses it in a word has to run after those forms are recognised rather than on the raw lexeme. Refusing it early turned `64#{` into the integer 64 and broke a source file that reads perfectly well. The comma half of this is resolved by ACommaEndsNothingAndIsTheOtherDecimalPoint above, and it was the same shape: the reader treated it as a delimiter, so `a,b` was split before any check saw it."
+-- Resolved against a real R3: a percent sign, a hash, a dollar and a
+-- backslash inside a word are refused too. `a%b`, `a#b` and `a\b` raise
+-- invalid naming a word, and `a$b` invalid naming money, because the dollar
+-- starts a money lexeme. The hash is checked only after a based number or
+-- binary has had its chance, so `64#{AQID}` still reads. WordCharactersTest
+-- covers all four.
 
 -- Resolved against a real R3: a construct naming a series may carry its
 -- position as a second value, which is the one exception to a read series
@@ -1653,8 +1676,6 @@ open question "A real R3 refuses % # $ \\ inside a word as well as an angle brac
 --
 -- Without the refinement the same source raises, which is what makes the
 -- refinement worth having rather than being the only behaviour.
-
-open question "UnbalancedDelimitersAreOneIdWithTheTokenAndDelimiterAsArguments says the first argument carries the token kind, and the implementation writes the three spellings the C uses -- end-of-script, end-of-block, end-of-paren. Whether those exact words are behaviour a script may depend on, or a message detail free to change, is not settled. Rebol's own suite compares the second argument (the delimiter) directly and the money group compares an offending token's text directly, so at least some of these arguments are read; nothing yet shows the first argument being read. If it is behaviour, the three spellings belong in an enumeration here rather than as literals in the reader."
 
 -- A malconstruct names the construct's first item when that item is not a
 -- word, and the whole construct as a block when it is, or when there is no
@@ -1688,9 +1709,9 @@ rule AMalconstructNamesTheFirstItemUnlessItIsAWord {
                 the_construct_as_a_block(request.source_text)
 }
 
-open question "TranscodeRequest now carries both source_text and source, because the remainder a stepping read answers has to be the caller's own series advanced rather than a copy of its text. Two fields for one thing is a smell, and the honest alternative is to drop source_text and derive the text from the series. What stops that today is that every other rule in this module reads source_text and several measure lengths against it, so the change is wide. Which of the two is the real field?"
-
-open question "A path may begin with a paren: `(make object! [q: 7])/q` is 7 in a real R3, and `(transcode/one/error \"2#12\")/id` reads the error's field the same way. JEBOL reads a paren followed by /id as two values, the paren and the refinement, so the path is never formed. A paren is already handled as a path segment in the middle -- `data/(k)` works -- so this is the same idea at the front. Is the leading form worth supporting, and does it change how a lone refinement after any value should be read?"
+-- Resolved against a real 3.22.5: a paren followed by a refinement is two
+-- values, the paren and the refinement, so `(make object! [q: 7])/q`
+-- answers the refinement /q. No path is formed in either.
 
 -- Resolved against a real R3: TRANSCODE/NEXT answers the first value and
 -- whatever is left, and getting "whatever is left" right is the whole of
@@ -1716,6 +1737,10 @@ open question "A path may begin with a paren: `(make object! [q: 7])/q` is 7 in 
 -- Answering none would be wrong because none is a value a source can
 -- genuinely hold, and a caller could not tell the two apart.
 
-open question "A module whose header exports a word its body never defines puts an unset slot into the library and says nothing about it. The loader defines every exported name before the body runs, so by the time the export is copied the name is always known and the guard that was meant to catch this can never fire. Two honest answers and they differ in what a sound-but-sloppy file costs: raising when the module is made names the export that was never defined and stops the file, which catches a typo in a header at the moment it is introduced; skipping the copy for a word that is still unset lets the rest of the file load and leaves the library untouched. Which one applies, and does the answer change for a file JEBOL borrows rather than owns?"
+-- Resolved against a real 3.22.5: a module whose header exports a word its
+-- body never defines says nothing, in both, and the word reaches the
+-- library unset. AnExportNeverDefinedFromTheSourceTest covers it.
 
-open question "A module built at load time is not the same as one a script asks for. Rebol's mezz-help.reb writes `import (module [...][...])` in its body, so the file needs the IMPORT function rather than a loader that reads headers, and IMPORT lives in sys-load.reb on top of the whole of LOAD-HEADER. That file costs a hundred and fifteen suite assertions when it goes in, because its LOAD replaces JEBOL's. So the ten functions mezz-help.reb defines -- HELP, ?, ABOUT, USAGE, WHAT, LICENSE, SOURCE, DUMP-OBJ, BUGS and CHANGES -- wait on sys-load.reb and not on this. Does the loader here and the IMPORT there end up sharing one path, or are they two ways of making a module that both have to exist?"
+-- Resolved: mezz-help.reb's ten functions -- HELP, ?, ABOUT, USAGE, WHAT,
+-- LICENSE, SOURCE, DUMP-OBJ, BUGS and CHANGES -- exist, made by IMPORT as
+-- the file writes it.

@@ -26,6 +26,13 @@ class MapLiteralFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("#[none] is invalid-arg naming the block, not a reader's malconstruct")
+    void refusesTheNoneConstructAsAMap() {
+        assertThat(answerTo("""
+                e: try [load {#[none]}] reduce [e/type e/id e/arg1]""")).isEqualTo("[Script invalid-arg [none]]");
+    }
+
+    @Test
     @DisplayName("an odd-length map literal is invalid-arg")
     void refusesAnOddLengthMap() {
         assertThat(readTheErrorIdOf("load {#[a 1 b]}")).isEqualTo("invalid-arg");

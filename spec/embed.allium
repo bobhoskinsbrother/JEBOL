@@ -142,6 +142,7 @@ enum ServiceRefusal {
 value Bounds {
     time_limit: Duration
     maximum_nesting: Integer
+    check_every: Integer
     -- Empty by default. A host that says nothing gets a script that can
     -- compute and cannot reach out, thus a host must name each service it
     -- wants, one at a time. The other bounds have useful defaults because
@@ -447,6 +448,7 @@ entity ScriptRun {
 
     deadline: started_at + interpreter.bounds.time_limit
     overdue: now >= deadline
+    steps_taken: Integer
 
     -- Which host service the script asked for and did not get, and why.
     -- Kept on the run and not only in the error value because a host that
@@ -482,6 +484,7 @@ config {
     -- script does not hold a request open until something else times out.
     default_time_limit: Duration = 5.seconds
     default_maximum_nesting: Integer = 10_000
+    default_check_every: Integer = 1_000
 }
 
 ------------------------------------------------------------
@@ -1187,6 +1190,19 @@ rule OverdueRunIsStopped {
     ensures: run.cancellation_requested = true
 }
 
+-- The evaluator checks its deadline and whether it was asked to stop once
+-- every check_every steps, 1,000 unless the host says otherwise. Every step
+-- would be safest and slowest; a thousand steps of a tight loop is well
+-- under a millisecond, so the overrun it allows is too small to matter
+-- against a deadline counted in seconds. A host that wants it tighter sets
+-- it, down to every step.
+rule TheEvaluatorChecksItsBoundsEveryCheckEverySteps {
+    when: run: ScriptRun.steps_taken becomes a_multiple_of(run.interpreter.bounds.check_every)
+    requires: run.status = running
+
+    ensures: the_evaluator_checks_the_deadline_and_cancellation(run)
+}
+
 ------------------------------------------------------------
 -- Invariants
 ------------------------------------------------------------
@@ -1353,16 +1369,20 @@ actor HostApplication {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled, and open
 ------------------------------------------------------------
 
-open question "Does a file feeding a started program's input cross the boundary as a path for the host to open, or as bytes the interpreter read? The C passes the path and the host opens it, which is what this spec follows and why ProgramInput has four members rather than three. Reading it in the interpreter would leave the host with one way of being fed rather than two, at the cost of holding a whole file in memory and of the host losing the chance to stream it. Nothing a script can observe separates them, so this is a question about where the work sits rather than about behaviour."
+-- A file feeding a started program's input crosses the boundary as a path
+-- for the host to open, as the C passes it, which is why ProgramInput has
+-- four members rather than three. Nothing a script can observe separates
+-- that from the interpreter reading the bytes, so it stays where the C put
+-- it.
 
-open question "How often does the evaluator check whether it should stop? Every step is safest and slowest; every hundredth is cheaper and lets a tight loop overrun by a hundred steps. What is the right granularity, and should it be measured rather than guessed?"
+-- A host sees nothing of a run until it ends (owner's answer). A partial
+-- result or a progress callback would cross the boundary while the script
+-- is still running, which AnInterpreterIsOwnedByOneThread forbids.
 
-open question "Is there a memory bound as well as a time bound? A script can allocate without nesting, so a depth limit does not stop it. Bounding heap per interpreter needs something the JVM does not offer directly."
-
-open question "What does a host see of a script's progress while it runs? Nothing at all is simplest; a partial result or a progress callback would need the boundary to be crossed while the script is still running, which the one-thread rule forbids."
+open question "Should a host be able to cap how much memory a script uses? A time limit stops a script that runs too long, and a nesting limit stops one that nests too deep, but a script can fill memory without doing either. The JVM gives no simple way to cap memory for one interpreter. Later."
 
 -- A host may let a script reach the network, and what that means is two
 -- different things.
@@ -1795,4 +1815,4 @@ rule AUnicodeHostIsReachedByItsAsciiName {
         CallFails(error: cannot_connect)
 }
 
-open question "Revocation is not checked. A browser asks an authority whether a certificate has been withdrawn, or reads a list it was stapled, and fails open when it cannot find out; JEBOL does neither. Is a withdrawn certificate worth a network round trip per handshake, and which way should it fail?"
+open question "Should JEBOL check whether a server's certificate has been withdrawn, and if it cannot find out, should it allow the connection or refuse it? A browser checks, and lets the connection through when it cannot find out; JEBOL does not check at all. Checking costs a trip across the network on every secure connection. Later."

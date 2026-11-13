@@ -535,6 +535,19 @@ rule RemoveAndChangeTakeAMarkedPositionAsASpan {
         position: the_earlier_of(rule.value, the_current_position))
 }
 
+-- A word holding a position in some other series is read as an ordinary
+-- rule, as a real R3 reads it, rather than refused. It is the reading that
+-- leaves `remove some-rule` working when SOME-RULE holds a series.
+-- ParseSpansAndCollectFromTheSourceTest covers it.
+rule AMarkInAnotherSeriesIsReadAsARule {
+    when: MatchRule(rule, input)
+    requires: rule.keyword in {remove, change}
+    requires: is_a_word(rule.value)
+    requires: not names_a_position_in_the_input_being_parsed(rule.value)
+
+    ensures: RuleAppliedIs(value_of(rule.value))
+}
+
 -- A CHANGE replacement written as a word is fetched from its binding, and a
 -- word holding nothing raises no-value.
 --
@@ -1048,8 +1061,7 @@ rule CollectingIntoABinaryDeliversBytes {
 -- after it runs straight on. `parse "ab" ["a" then "b"]` is true -- "a"
 -- matches, THEN matches nothing and consumes nothing, and "b" matches from
 -- where "a" left off. It sits inside a longer sequence without breaking it.
-
-open question "THEN's fuller behaviour commits the current alternative when the rule after it fails, skipping the later bar branches so they are not tried -- the C does it by skipping to the next bar on the following rule's failure. JEBOL implements only the zero-width success half so far, which is what parse-test.r3 asserts; the commit-on-failure half is not built yet and no assertion presses on it. Recorded as an open edge: the built behaviour is correct as far as it goes, and the missing half changes only what happens down a failing branch."
+-- And on a failure after it, it commits: ThenGivesUpTheRemainingAlternatives.
 
 -- REBOL 2 let the rule be a string, a character or NONE, meaning "split
 -- the input on these delimiters" rather than "match this grammar", and
@@ -1174,7 +1186,38 @@ surface ParseDialect {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- How far a failure backs up
+------------------------------------------------------------
+
+-- A failed alternative puts the input back where that alternative started,
+-- and the next `|` alternative of the same block is tried from there. It
+-- backs up no further: an alternative inside a nested block goes back to the
+-- start of that block, not of the one around it. The C keeps the index the
+-- block began at and, on a failure, skips to the next bar and restores it.
+-- ParseBacksUpOnlyToTheAlternativeFromTheSourceTest covers it.
+rule AFailedAlternativeBacksUpToWhereItStarted {
+    when: MatchRule(rule, input)
+    requires: an_alternative_of_the_block_fails(rule)
+
+    ensures: the_next_alternative_is_tried_from(the_position_the_block_began_at(rule))
+}
+
+-- A repeat takes all it can and never gives any back. SOME, ANY, OPT and a
+-- range match as many times as they can, and a rule after them that then
+-- fails does not make them try a lower count: `parse "aab" [[some "a"] "a"
+-- "b"]` and `parse "a" [opt "a" "a"]` are both false, in a real R3 and here.
+-- Only the input running out, or the rule failing, stops a repeat short.
+-- ParseBacksUpOnlyToTheAlternativeFromTheSourceTest covers it.
+rule ARepeatIsNeverRetriedAtALowerCount {
+    when: MatchRule(rule, input)
+    requires: is_a_repeat(rule)
+    requires: a_rule_after_it_fails(rule)
+
+    ensures: the_repeat_is_not_retried(rule)
+}
+
+------------------------------------------------------------
+-- Settled against a real R3
 ------------------------------------------------------------
 
 -- Resolved against a real R3: the whole of the input must be consumed for
@@ -1190,10 +1233,6 @@ surface ParseDialect {
 -- R3-Alpha. R3-Alpha's last commit was in July 2015. Where the two
 -- disagree the fork decides, which so far means only the splitting form
 -- above. See docs/decisions.md item 10.
-
-open question "RemoveAndChangeTakeAMarkedPositionAsASpan says a word holding a position in the series being parsed names a span. A word holding a position in some OTHER series falls through and is read as an ordinary rule instead, silently. That is defensible -- it is the only reading that leaves `remove some-rule` working when SOME-RULE happens to hold a series -- and it is also exactly the shape of mistake a rule author makes: mark a position, parse a different series, then reach for the mark. Should a foreign position raise instead, the way a get-word naming a place in a different series already fails to match rather than moving? The two are the same mistake and today they are handled differently."
-
-open question "Backtracking is specified here only by what survives it. Nothing says how far PARSE backs up when an alternative fails, or whether a partially applied repeat count is retried at a lower count. The corpus reaches the common cases and the implementation makes a choice; the choice is not written down."
 
 -- Resolved against a real R3: two mistakes PARSE refuses that JEBOL used
 -- to let past in silence.
@@ -1278,9 +1317,9 @@ open question "Backtracking is specified here only by what survives it. Nothing 
 -- mark: to end]` leaves mark as [2 3]. A mark at the head holds the whole
 -- series and one at the tail holds an empty one; both are places.
 --
--- A get-word naming no place, or a place in a different series, does not
--- match. That is better than moving: a position the walker cannot read is
--- worse than a rule that simply fails.
+-- A get-word naming a place in a different series switches the input to
+-- that series, and one holding no series at all raises parse-series:
+-- AGetWordThatHoldsNoSeriesRaisesParseSeries.
 --
 -- Missing entirely, a set-word is taken as a value to match and fails
 -- against whatever is there, and everything after it in the rule fails

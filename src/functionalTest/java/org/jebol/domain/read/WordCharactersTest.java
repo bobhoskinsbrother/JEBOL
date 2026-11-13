@@ -28,6 +28,22 @@ class WordCharactersTest {
     }
 
     @Test
+    @DisplayName("nor a percent sign, a hash, a dollar or a backslash, each naming what it read as")
+    void refuseTheOtherFourCharacters() {
+        assertThat(answerTo("""
+                collect [foreach s [{a%b} {a#b} {a$b} {a\\b}] [
+                    e: try [load s] keep reduce [e/id e/arg1 e/arg2]
+                ]]""")).isEqualTo("""
+                [invalid "word" "a%b" invalid "word" "a#b" invalid "money" "a$b" invalid "word" "a\\b"]""");
+    }
+
+    @Test
+    @DisplayName("a based binary is still read, though a hash may not sit in a word")
+    void keepABasedBinary() {
+        assertThat(answerTo("load {64#{AQID}}")).isEqualTo("#{010203}");
+    }
+
+    @Test
     @DisplayName("a run of only symbols is a word, whatever it contains")
     void makeAWordFromAnAllSymbolRun() {
         assertThat(answerTo("mold load {<}")).isEqualTo("\"<\"");

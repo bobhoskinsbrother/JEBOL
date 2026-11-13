@@ -63,4 +63,19 @@ class ForAndRepeatFromTheSourceTest {
                 out: copy [] repeat x 2x2 [append out x]
                 out = [1x1 2x1 1x2 2x2]""")).isEqualTo("#(true)");
     }
+
+    @Test
+    @DisplayName("REPEAT over a series walks it from where it stands to its tail")
+    void repeatOverASeriesWalksIt() {
+        assertThat(answerTo("""
+                out: copy [] repeat x "abc" [append out x] out""")).isEqualTo("""
+                ["abc" "bc" "c"]""");
+    }
+
+    @Test
+    @DisplayName("REPEAT with a decimal count drops the fraction and counts from one")
+    void repeatWithADecimalCountDropsTheFraction() {
+        assertThat(answerTo("""
+                out: copy [] repeat x 2.7 [append out x] out""")).isEqualTo("[1 2]");
+    }
 }

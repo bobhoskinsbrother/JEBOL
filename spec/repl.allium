@@ -860,7 +860,7 @@ actor ConsoleUser {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled
 ------------------------------------------------------------
 
 -- Resolved, and reversed: the console counts what is open, as R3's host does,

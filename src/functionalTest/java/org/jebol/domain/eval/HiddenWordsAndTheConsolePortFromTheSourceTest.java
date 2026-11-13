@@ -60,6 +60,17 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("a path to a hidden field is invalid-path, and appending it again is hidden, as R3 has it")
+        void refusesThePathAndTheAppend() {
+            assertThat(answerTo("""
+                    o: make object! [a: 1 test: 2]
+                    protect/hide in o 'a
+                    e: try [o/a]
+                    f: try [append o [a: 2]]
+                    reduce [words-of o e/id e/arg2 f/id]""")).isEqualTo("[[test] invalid-path a hidden]");
+        }
+
+        @Test
         @DisplayName("and /HIDE without a word or a block of them is still refused")
         void hideWithoutWords() {
             assertThat(readTheErrorIdFrom("""

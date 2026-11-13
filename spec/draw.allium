@@ -918,22 +918,11 @@ surface TheDrawDialect {
         -- posix one, so a stock R3 on macOS or Linux draws nothing at all.
 
     @guarantee WhatIsNotPaintedYetIsNamedRatherThanHidden
-        -- Gradients, dash patterns, images, text, arrows and Gouraud shading
-        -- are not painted. Each is left out because the two renderers would
-        -- not agree about it, not because it was forgotten, and a command
-        -- nobody serves is skipped so that the rest of a block still draws.
+        -- Of the 34 commands in dial-draw.reb, EFFECT is the one not painted,
+        -- and it is skipped so that the rest of a block still draws. Goal 1l
+        -- makes it raise until it is built.
         --
         -- The gap is the same gap everywhere, because it is decided in one
         -- place. A renderer cannot quietly support something the others do
         -- not.
 }
-
-------------------------------------------------------------
--- Open questions
-------------------------------------------------------------
-
-open question "Should a command this build does not paint be skipped or refused? Skipped is what this says, on the grounds that a picture missing one shape is more use than no picture. But the binary dialect made the opposite call for a reason that half applies here: a caller who writes `grad-pen` and gets a flat fill has been told nothing, and may ship it. Would a way to ask -- draw/strict, or a warning collected somewhere a script can read -- be better than either?"
-
-open question "The C's defaults read the gob's size, so `box` alone fills the gob and `circle` alone is the biggest circle that fits. That is lovely for writing by hand and it means a draw block means different things on gobs of different sizes -- which is either the point or a trap, depending on whether somebody expected a block to be portable between gobs. Nothing in the C or the documentation says which."
-
-open question "SPLINE takes a segmentation count and draws a curve through its points, and nothing anywhere says which interpolation. AGG has a specific one; a browser has none built in. Implementing it means picking a spline and being wrong somewhere. Is it worth having at all, or is CURVE enough?"

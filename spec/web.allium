@@ -239,6 +239,21 @@ rule AnOpenedFolderIsCopiedWhole {
         the_path("/picked/", pick, "/", folder.name, "/"))
 }
 
+-- A chosen folder that holds no files answers the pick's own folder, empty:
+-- /picked/3/. webkitdirectory lists files, each with a path that starts with
+-- the folder's name, so an empty folder lists none and no browser can say
+-- what it was called. The operator did choose something, so the answer is a
+-- directory rather than none. PickedFilesTest covers it.
+rule AnEmptyFolderAnswersThePicksOwnFolder {
+    when: the_operator_chooses_a_folder(ask, folder)
+    requires: ask.kind = a_folder_to_open
+    requires: every_file_under(folder) = none_at_all
+
+    let pick = one_more_than_the_highest_pick_in_the_store()
+
+    ensures: the_script_gets_the_directory(the_path("/picked/", pick, "/"))
+}
+
 ------------------------------------------------------------
 -- Saving a file
 ------------------------------------------------------------
@@ -536,6 +551,4 @@ surface ThePageOnTheOtherSide {
 -- Open questions
 ------------------------------------------------------------
 
-open question "A folder the operator chose that holds no files gives a browser nothing to read its name from: webkitdirectory lists files, each with a path that starts with the folder's name, and an empty folder lists none. This spec answers the pick's own folder, empty, rather than none, because the operator did choose something. Whether a script would rather be told the folder's name is the question, and no browser offers a way to learn it."
-
-open question "Decoding through a 2D canvas stores pixels premultiplied, so a pixel whose alpha is neither 0 nor 255 can come back a step away from the file's own value even with premultiplyAlpha set to none. ImageDecoder would avoid it and is not in every browser. Lossless tests use opaque or fully transparent pixels; is a partly transparent pixel worth a second decoder?"
+open question "Does a partly transparent pixel come out visibly wrong when a browser decodes it? A browser's canvas stores colours already multiplied by their transparency, so a pixel that is neither fully see-through nor fully solid can come back one step away from the file's own value. A second decoder would avoid that, but not every browser has one. Look at such a pixel first, then decide whether the second decoder is worth it."

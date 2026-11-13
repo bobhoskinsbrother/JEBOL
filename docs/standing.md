@@ -94,3 +94,10 @@ a baseline from the same machine rather than against the row.
   doing so; JEBOL refuses it, as Brotli 1.2.1 does. It also finishes a level 0
   or 1 stream given `none` where the C crashes. Decision 58 and
   `docs/brotli-port.md`.
+- **`check` on a vector or an image answers it, where R3 may raise.** The C
+  walks the series' own memory a byte at a time, so `check make vector! [1 2
+  3]` raises `bad-series` on the zero byte inside the first number, and
+  `check make image! 2x2` the same. A JEBOL vector holds numbers, not bytes,
+  so there is nothing to walk. CHECK is a debugging native that asks about
+  memory rather than data, and the owner dropped a byte-exact one.
+  `CheckAnswersTheSeriesItWasGiven` in `spec/natives.allium`.

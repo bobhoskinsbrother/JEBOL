@@ -322,24 +322,29 @@ entity ProgramCall {
 }
 
 ------------------------------------------------------------
--- Config
+-- Constants
 ------------------------------------------------------------
 
-config {
+-- How MOLD lays text out. These are named constants, not configuration: a
+-- saved script's header is molded and then checksummed, and a value molded
+-- here is compared byte for byte with what a real 3.22.5 writes, so changing
+-- any of them changes bytes something else compares. A caller cannot set
+-- them.
+value MoldLayout {
     -- Above this many characters a plain string molds braced rather than
     -- quoted, because a long single line reads more easily between braces.
-    longest_quoted_string: Integer = 50
+    longest_quoted_string: Integer
 
     -- At this many newlines or more a plain string molds braced, so the
     -- lines stay real line breaks rather than becoming a run of `^/`.
-    newlines_forcing_braces: Integer = 3
+    newlines_forcing_braces: Integer
 
     -- Spaces of indent per level of nesting when a block carries line breaks
-    -- into its mold. Pinned rather than left to taste because a saved
-    -- script's header is molded and then checksummed, so the exact bytes are
-    -- compared.
-    mold_indent_width: Integer = 4
+    -- into its mold.
+    indent_width: Integer
 }
+
+default MoldLayout mold_layout = { longest_quoted_string: 50, newlines_forcing_braces: 3, indent_width: 4 }
 
 ------------------------------------------------------------
 -- Rules
@@ -871,11 +876,10 @@ rule InWithABlockBindsThatBlockAndAnswersIt {
 -- LOG-DEBUG, which takes a lit-word first, and the client hello stopped on the
 -- log line rather than on anything to do with TLS.
 --
--- BIND with a single word and an object target already answers this question
--- the same way: binding one the object does not hold is refused rather than
--- resolved somewhere else. With a bound word as the target it does not -- it
--- walks up from there -- so the two forms of BIND disagree with each other,
--- and which of them is right for a word target is an open question below.
+-- BIND with a single word answers the same way, whether its target is an
+-- object or a bound word: binding one the target's own context does not hold
+-- is refused rather than resolved somewhere else, as a real 3.22.5 refuses
+-- it. BindingAWordAsksTheTargetsOwnContextAlone.
 rule BindingABlockTouchesOnlyWhatTheContextHoldsItself {
     when: EvaluateCall(bind, block, target)
     requires: is_block(block)
@@ -1169,15 +1173,29 @@ rule BodyOfAnswersADeepCopyOfTheBody {
 --
 -- Cannot-use rather than bad-make-arg, because the failure is the copy
 -- routine rejecting a body for a value that has none, which the C reports
--- against the prototype. The two are worth keeping apart: bad-make-arg is
--- what the datatype form of the same mistake gives, and that difference is
--- recorded as an open question below.
+-- against the prototype. The two are kept apart because a real 3.22.5 keeps
+-- them apart: bad-make-arg is what the datatype form of the same mistake
+-- gives, below.
 rule MakingFromANativePrototypeWithABodyIsRefused {
     when: EvaluateCall(make, prototype, definition)
     requires: is_native(prototype) or is_action(prototype)
     requires: definition_supplies_a_body(definition)
 
     ensures: CallFails(error: cannot_use, about: definition)
+}
+
+-- The datatype form of the same mistake, `make native! [[][]]` or `make
+-- action! [[][]]`, never reaches the copy: Make_Function refuses REB_NATIVE
+-- and REB_ACTION outright and the arm reports it with Trap_Make, so it is
+-- bad-make-arg naming the type and then the definition. Same mistake, two
+-- doors, two ids, in a real 3.22.5 and here; a script catching by id sees
+-- the difference. BodyOfAndMakeFunctionFromTheSourceTest covers all three
+-- spellings.
+rule MakingANativeOrActionDatatypeIsRefused {
+    when: EvaluateCall(make, datatype, definition)
+    requires: datatype in {native, action}
+
+    ensures: CallFails(error: bad_make_arg, about: datatype, and: definition)
 }
 
 -- An operator is never a prototype. MAKE from one refuses whatever it is
@@ -1611,9 +1629,9 @@ rule AddingSomethingThatNamesNoBitsIsRefused {
 -- /key takes any value at all and clears the bits it names. /part takes a
 -- range. Either says which members go, and the answer is the set.
 --
--- Of an ordinary set. What removing from a complemented one does is an open
--- question below, because the C does not put REMOVE through the inversion
--- that APPEND, INSERT and a path write all go through.
+-- Of an ordinary set. Removing from a complemented one clears the stored
+-- bits too, which turns removing into adding:
+-- RemovingFromABitsetClearsTheStoredBits.
 rule RemovingFromASetClearsWhatItIsTold {
     when: EvaluateCall(remove, target)
     requires: is_bitset(target)
@@ -3256,8 +3274,6 @@ rule AMidiDeviceThatWillNotStartRefuses {
     ensures: not the_port_is_open(target)
 }
 
-open question "What does opening a MIDI port that is already open do? MIDI_Actor has no ALREADY-OPEN check: it asks the device to open again, and the macOS device takes a fresh slot and connects again, leaving the first connection held and no longer reachable from the port. JEBOL does what the C does and asks the host again. Refusing with already-open, as the crypt port does, or closing the first connection before making the second, would each be kinder, and each would be a place JEBOL answers what a real 3.22.5 does not."
-
 -- OPEN/WRITE with only one device named means that device is an output:
 -- the number moves from device-in to device-out before the host is asked,
 -- and stays moved if the open fails.
@@ -4133,8 +4149,6 @@ rule AnActorThatIsNeitherIsAnInvalidActor {
     ensures: CallFails(error: invalid_actor)
 }
 
-open question "BIND with a bound word as its target walks up from that word's context; BIND with a block does not. So `bind 'outer 'local` binds OUTER and `bind [outer] 'local` leaves it alone, which is one native disagreeing with itself. The block form matches `Bind_Block` and the C has no parent chain to walk, so the word form is the one to change -- but it is the older of the two and something may be relying on it. It wants measuring against a real 3.22.5 on a word target before either is moved."
-
 -- With no length among what it waits on, a WAIT on a port waits as the C
 -- does, until an awake function says to stop. A connection is read on a thread
 -- of the host's, so the queue can fill while the wait goes on; the run's own
@@ -4145,8 +4159,6 @@ rule WaitingOnAPortWithNoLengthWaitsUntilWoken {
     requires: not there_is_a_length_among(waited_on)
     ensures: CallResult(value: the_first_port_an_awake_function_woke())
 }
-
-open question "Where home is does not come from the filesystem a script was given. `system/options/home` is what the host's machine says (ScriptSeesHostMachine in spec/embed.allium), so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
 
 -- A cipher port encrypts what is written to it, `crypt://`.
 --
@@ -4182,8 +4194,6 @@ invariant EveryCipherWorksInEveryModeTheCatalogueNames {
     for algorithm in host_cipher_algorithms() where it_needs_no_header:
         a_cipher_port_opened_on(algorithm).transforms_and_transforms_back()
 }
-
-open question "The invariant above excludes the one cipher that takes a header as a whole write of its own, because writing a message to it without one makes the message the header and nothing comes out. A real 3.22.5 does the same -- a walk over its own catalogue raises feature-na on that cipher. Is a port that silently eats a message worth matching, or is REBOL's behaviour here a defect nobody has reported?"
 
 -- The same two questions are asked again when the port is *made*, which is
 -- earlier, and the answers name the thing that was wrong rather than the whole
@@ -4826,7 +4836,11 @@ rule AWrittenImageCarriesNoPosition {
     ensures: ReadFails(error: malconstruct)
 }
 
-open question "A block of tuples is read as a run of pixels and then refused anyway, because the reader that consumes it never steps past it and the leftover check above then fires on the block it has just used. So `make image! [2x1 [1.1.1 2.2.2]]` is a malconstruct in a real 3.22.5 even though the block is exactly what the code that reads it wants, and the only way to give an image a list of colours is to write them as bytes. JEBOL matches it, because a caller catching the failure is relying on it and because guessing at the intent of an unreachable branch is how a port stops being a port. Whether the branch is meant to work is a question for REBOL rather than for JEBOL."
+-- A block of tuples is read as a run of pixels and then refused anyway,
+-- because the reader that consumes it never steps past it and the leftover
+-- check above then fires on the block it has just used. So `make image! [2x1
+-- [1.1.1 2.2.2]]` is a malconstruct in a real 3.22.5 and here. Goal 1k fixes
+-- it on purpose, and its rule arrives with that work.
 
 -- === An image is a series of pixels ========================
 
@@ -5072,7 +5086,23 @@ rule PartOnAnImageIsTheSizeOfTheRectangle {
     ensures: the_written_block_is(width: part.x, height: part.y)
 }
 
-open question "A /PART given as a count rather than a shape writes nothing at all. The C reads the count into the variable that holds how many things were given and leaves the rectangle's width and height at nought, and the copy then returns before writing a pixel -- so `change/part target other 2` moves the position by two and changes no colour. It is unreachable as anything useful and JEBOL matches it, because a caller catching the no-op is relying on it. Whether a count was ever meant to mean anything here is a question for REBOL."
+-- A /PART given as a count rather than a shape writes nothing at all, and
+-- the position still moves by the count. The C reads the count into the
+-- variable that holds how many things were given and leaves the rectangle's
+-- width and height at nought, so the copy returns before writing a pixel:
+-- `change/part target other 2` moves the position by two and changes no
+-- colour. JEBOL copies it (owner's answer); docs/rebol-findings.md records
+-- it as R3's. ImageAsASeriesFromTheSourceTest covers it.
+rule PartAsACountOnAnImageWritesNothing {
+    when: EvaluateCall(change, target, value, part)
+    requires: is_image(target)
+    requires: is_image(value)
+    requires: refinement_asked(part)
+    requires: part.datatype = integer
+
+    ensures: target = unchanged
+    ensures: CallResult(value: the_image_moved_on_by(part))
+}
 
 -- === Starting another program ==============================
 
@@ -7277,7 +7307,8 @@ rule OpeningADirectoryThatIsNotThereIsRefused {
     ensures: CallFails(error: cannot_open, about: target)
 }
 
-open question "`open/new` on a directory that is not there does two different things on consecutive runs of a real 3.22.5, in a fresh directory both times with byte-identical input. The first run answers a port and the second raises `no-create` naming the directory, and the directory exists afterwards either way -- so it is made and then something after the making disagrees about whether that counts. It is the second place the canonical reference has been caught being non-deterministic, the first being `checksum-test.r3`, and both are recorded so that a single run is never taken as settling one of them."
+-- What `open/new` on a directory that is not there answers in a real 3.22.5
+-- differs between two identical runs: docs/rebol-findings.md, finding 246.
 
 rule TryPassesThroughASuccessfulResult {
     when: EvaluateTry(body)
@@ -7471,7 +7502,7 @@ surface BuiltInFunctions {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled
 ------------------------------------------------------------
 
 -- Resolved: the list is pinned by the corpus rather than written out
@@ -7585,20 +7616,30 @@ rule TheCatalogueListsWhatRebolDeclaresInItsOrder {
 -- caller reading the block back and were still bound underneath, so a later
 -- SET reached a slot the caller thought it had detached.
 
-open question "Refusing a body to a native comes back under two different error ids in the C, depending on how the make was written, and it is not settled that JEBOL should keep them apart. The prototype form `make :read [[][]]` reaches Copy_Function, which returns FALSE for a value that is not a function or closure, and the make arm reports that with Trap_Reflect -- cannot-use, arg1 the definition block. The datatype form `make native! [[][]]` and `make action! [[][]]` never reach Copy_Function: Make_Function refuses REB_NATIVE and REB_ACTION outright and the arm reports that with Trap_Make -- bad-make-arg, arg1 the type. Same mistake, two doors, two ids. MakingFromANativePrototypeWithABodyIsRefused specifies the prototype form as cannot-use, matching the C for the case the suite exercises and the derivation contrast turns on. What is undecided is whether JEBOL should reproduce the datatype form's bad-make-arg as faithfully, or unify the two on one id on the grounds that a script cannot tell which arm it hit and the distinction is an artefact of the C's control flow rather than a fact about the value. It wants measuring against a real R3 on all three spellings before either is built."
+-- REMOVE on a bitset clears the stored bits, whatever the set's sense. APPEND,
+-- INSERT and POKE reach the `set_bits` label, where `if (BITS_NOT(...)) diff =
+-- !diff` turns "hold this" into "clear the bit" for a complemented set; REMOVE
+-- jumps straight to `Set_Bits(..., FALSE)`. So on a complemented set,
+-- removing a character it does not hold makes it one it holds, and removing
+-- one it holds changes nothing. A real 3.22.5 does exactly this.
+-- ComplementedBitsetTest covers both.
+rule RemovingFromABitsetClearsTheStoredBits {
+    when: EvaluateCall(remove, target, part)
+    requires: is_bitset(target)
+    requires: target.is_complemented
 
-open question "CompressedBytesAreTheOnesARealRebolWrites holds for the six methods this build writes itself and not for the three of the deflate family -- zlib, gzip and deflate -- which a real 3.22.5 writes through libdeflate. The streams read back correctly and are a little larger, because libdeflate's parse is not the one the JVM's own deflater uses and no setting brings the two together. Three ways out and none is free. Port libdeflate, which is a second compressor of comparable size to the ones already here and buys nothing but the bytes. Declare the three methods reproducible only against JEBOL itself, which is honest and quietly makes the invariant say two different things depending on the method. Or say that reproducibility is a property of the format rather than of the encoder, and that a caller who needs the same bytes must record them rather than recompute them -- which is the most defensible position and the least useful one, since the whole point is comparing against something already written. It wants deciding before anything is built on it, because a caller who reads the invariant and does not read this cannot tell which three of the nine will disappoint them."
-
-open question "A wildcard in a path read as a directory listing in the C, and cannot-open here. `read %*.r3` in a real R3 lists the matching files, because the path goes to the directory scheme and the pattern is handed to the operating system's own matcher. JEBOL takes the path literally, finds no file spelled that way and raises cannot-open. Three things to settle before it is built: whether the matching belongs in JEBOL or in the host, given that the JVM's own path matcher and a Windows shell disagree about several patterns; whether a wildcard should list only where the path names no real file, since a file genuinely called `*.r3` is legal on every system JEBOL runs on; and whether the answer is the plain names a directory listing gives, which is what would make the two forms interchangeable. Backlogged rather than open in the sense of blocking: nothing in Rebol's own library reads a wildcard, so this costs no assertions today."
-
-open question "What should REMOVE do to a complemented bitset? Three of the four ways of writing bits go through one inversion -- APPEND, INSERT and POKE all reach the `set_bits` label, where `if (BITS_NOT(...)) diff = !diff` turns \"hold this\" into \"clear the octet\" for a complemented set -- and REMOVE does not. It jumps straight to `Set_Bits(..., FALSE)`, so it clears the octet whatever the set's sense is, which on a complemented set means the character it was told to remove becomes one the set holds. Two readings and neither is obviously the C's intent: REMOVE is meant to clear octets rather than to remove members, in which case the asymmetry is deliberate and the name is misleading; or it is meant to remove members like every other verb and the missing inversion is an oversight nobody has hit, because complemented sets are made by COMPLEMENT and rarely written to afterwards. Worth measuring against a real R3 before either is built, since the two disagree on every call."
+    ensures: the_stored_bits_named_by(part) = cleared
+    ensures: target.complemented = unchanged
+}
 
 
-open question "system/options/boot has two readings in Rebol and JEBOL can only serve one of them. Rebol sets it from its own executable path, and scripts use it two ways: to start another interpreter, and to resolve a file sitting beside the binary. The first is settled here and is not a free choice -- LAUNCH is `reduce [system/options/boot script]`, Rebol's own call-test and module-test re-launch through it a dozen times, and ASecondInterpreterIsConfinedAsThisOneIs in spec/embed.allium requires the child to inherit the parent's root. So the field is the launcher this interpreter writes for itself, carrying that root, and it has to be a real executable file the host shell can run. What stays open is the second reading: a script resolving a sibling resource against it lands in the temp directory the launcher was written to, which is nowhere near the interpreter's own resources. Nothing in Rebol's suite does that, so nothing measures it, and the two readings cannot both be served by one field -- serving the second would mean giving up confinement propagation, which is the more valuable of the two. A separate field naming where the build was loaded from is the likely answer if a caller ever wants it."
-
-open question "AnEmptyTagUnderAllMoldsAsAConstruct and AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct are two members of a set that has no stated boundary: the values whose literal form would not read back. A real R3 writes construct syntax for others too, and the guidance under MoldAllIsPlainMoldWhereThereIsNoPositionToKeep already records that the rest are not here. What is undecided is whether the set should be enumerated in this spec at all, or stated once as the property -- MOLD writes whatever reads back as the same value, and construct syntax wherever the literal form would not -- with the enumeration left to the round-trip invariant to enforce. The property reads better and is harder to test; the enumeration is testable and goes stale."
-
-open question "config.mold_indent_width is declared as configuration and is in practice a pinned constant: a saved script's header is molded and then checksummed, so changing it changes bytes something else compares. Is it configuration a caller may set, in which case the checksum guarantee has to be stated as holding only for a fixed width, or is it a named constant that happens to live in the config block? The same question applies to longest_quoted_string and newlines_forcing_braces beside it, which are equally load-bearing for a round trip."
+-- Resolved (owner's answer): system/options/boot serves starting another
+-- interpreter, and that is enough. Rebol sets it from its own executable
+-- path, and LAUNCH is `reduce [system/options/boot script]`, so the field is
+-- the launcher this interpreter writes for itself, carrying its root, as
+-- ASecondInterpreterIsConfinedAsThisOneIs in spec/embed.allium requires. A
+-- script resolving a file beside the binary against it lands in the
+-- directory the launcher was written to; nothing in Rebol's suite does that.
 
 -- Resolved: an object is asked only for its own fields, and a word it has
 -- not got raises not-in-context. The nesting JEBOL stores an object in is an
@@ -8202,7 +8243,6 @@ rule ChangingCaseOfAnythingElseIsRefused {
 -- JEBOL threw a Java IllegalStateException for all three, which
 -- spec/embed.allium says cannot happen.
 
-open question "PROTECT/HIDE takes a field out of WORDS-OF and makes the path to it raise invalid-path rather than reading it. Confirmed against a real R3: after hiding `a`, `words-of` gives [test], `o/a` raises invalid-path, and `append o [a: 2]` raises hidden. JEBOL accepts the call and hides nothing. Is hiding a property of the slot, of the context, or of the object, and what should REFLECT do with a hidden field -- omit it as WORDS-OF does, or report it?"
 
 -- Resolved against a real R3: SAME? on two objects asks whether they are
 -- one object, not whether they hold the same fields. `make base
@@ -8399,7 +8439,21 @@ rule ComposeDeepCopiesTheBlockShapesItDoesNotRebuild {
 -- rather than refusing it at the type check, which is where it stopped
 -- before.
 
-open question "REPEAT in the C accepts a series and a decimal count as well as an integer and a pair, and JEBOL takes only the integer and the pair so far. A series count walks the series the way FOR does, one to its tail; a decimal count is floored to an integer and then counts as one. JEBOL still refuses both -- a series or a decimal count raises at the type check. Neither is hard once FOR's series walk is shared, and the decimal-to-integer floor is one conversion; they are left out because nothing in Rebol's own library repeats over a series or a fractional count, so they cost no assertions today. Recorded as an open edge rather than a settled refusal: the refusal is where JEBOL is, not where it means to stay."
+-- REPEAT also takes a series and a decimal count, as the C does. A series is
+-- walked the way FOR walks one, from where it stands to its tail, so `repeat
+-- x "abc"` sets x to "abc", "bc" and "c". A decimal count drops its fraction
+-- and counts from one, so `repeat x 2.7` runs twice. A real 3.22.5 answers
+-- the same; ForAndRepeatFromTheSourceTest covers both.
+rule RepeatWalksASeriesAndDropsADecimalsFraction {
+    when: EvaluateCall(repeat, word, count, body)
+    requires: is_series(count) or is_decimal(count)
+
+    ensures:
+        if is_series(count):
+            the_word_takes_each_position_of(count, from: count.index, to: the_tail_of(count))
+        else:
+            the_word_counts_from_one_to(truncated(count))
+}
 
 -- Resolved: there are three ways out and each stops somewhere different.
 -- BREAK leaves the nearest loop. RETURN leaves the nearest function, and no
@@ -8913,7 +8967,10 @@ rule TrimTakesEverySeriesAndRefusesLater {
 -- outside that is a mistake in the caller rather than a search that
 -- happened to miss, and answering none would hide it.
 
-open question "Searching a binary for 255 answers none even when the byte is there: `find #{00FF} 255` and `find #{FF00} 255` are both none, while `find #{0063} 99` finds its byte. 255 is inside the legal range and is not refused, so this is neither the out-of-range rule nor an ordinary miss. Is 255 a sentinel inside R3's own search, and is the behaviour intended? JEBOL finds the byte, which is what the rule above implies; if the binary is right then the rule needs an exception nobody has written down."
+-- Searching a binary for 255 answers none in a real 3.22.5 even when the
+-- byte is there -- `find #{00FF} 255` is none -- and JEBOL finds the byte.
+-- It is one of the five R3 bugs goal 1k fixes on purpose, and its rule and
+-- its entry in docs/standing.md arrive with that work.
 
 -- Resolved against a real R3: what TAKE/PART answers is a series of the
 -- same kind it was taking from. Two items off a paren give a paren, off a
@@ -9299,13 +9356,8 @@ rule MoldAllKeepsThePositionOfEveryNestedSeriesToo {
 -- back as the same value. There is no position to keep, so the construct
 -- form would otherwise add ceremony and say nothing.
 --
--- Two values fall outside it, and they fall outside for the same reason /ALL
--- exists: the literal spelling does not survive the reader. An empty tag
--- molds as `#(tag! "")`, because `<>` reads back as the word `<>`. And a url
--- or an email the reader would not read back molds as a construct by
--- AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct below -- which applies to
--- plain MOLD as well, because MOLD's promise is the round trip whether or not
--- /ALL was asked for.
+-- What would not read back is ALiteralThatWouldNotReadBackMoldsAsAConstruct
+-- below.
 rule MoldAllIsPlainMoldWhereThereIsNoPositionToKeep {
     when: EvaluateMold(subject)
     requires: refinement_asked(all)
@@ -9313,40 +9365,30 @@ rule MoldAllIsPlainMoldWhereThereIsNoPositionToKeep {
     requires: the_literal_form_would_read_back_as_itself(subject)
 
     ensures: MoldResult(text: what_plain_mold_writes(subject))
-
-    @guidance
-        -- The positioned series, the empty tag and the unreadable url are
-        -- what JEBOL's /ALL writes as constructs today. A real R3 also writes
-        -- construct syntax for other values that have no literal spelling of
-        -- their own, and those are not here yet -- so a mold/all of something
-        -- outside these matches R3 by accident rather than by construction,
-        -- and the gap is worth knowing before leaning on it.
 }
 
--- A url or an email that would not read back as itself molds as construction
--- syntax instead of bare.
+-- MOLD writes whatever reads back as the same value, and construction syntax
+-- wherever the literal form would not. That is the property, stated once;
+-- MoldRoundTripsThroughRead in load.allium is the invariant that enforces it,
+-- and the members are whatever fails the reader rather than a list kept here.
 --
--- MOLD's promise is that what it writes reads back as the same value, and a
--- url is the datatype where the promise is hardest to keep: its literal form
--- has no delimiters, so the reader decides where it ends by looking at the
+-- Under /ALL it holds for every value. Plain MOLD keeps it for a url and an
+-- email, and leaves other values in their literal form even where that would
+-- not read back -- `mold to tag! ""` is `<>` -- because that is where a real
+-- 3.22.5 draws the line.
+--
+-- A url is where the promise is hardest to keep: its literal form has no
+-- delimiters, so the reader decides where it ends by looking at the
 -- characters. A url holding a space, a bracket, a quote or a control
 -- character would be cut short or misread; an empty one, or one with no colon
 -- at all, would come back as a word; an email with no at-sign, or with the
--- at-sign at either end, is not an email.
---
--- Every one of those falls back to `#(url! "...")`, which reads back exactly.
--- The C decides the same way and for the same reason -- Mold_Url writes the
--- text bare only when the scanner would read it back as the same value.
---
--- Writing it bare regardless is the failure this replaces, and it breaks the
--- round trip in the direction nobody notices: the text looks right, and only
--- loading it again shows a word, a truncated url, or a syntax error.
---
--- The same fallback carries the position, so a positioned url molds as
--- `#(url! "whole" 3)`.
-rule AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct {
+-- at-sign at either end, is not an email. Each falls back to `#(url! "...")`,
+-- as Mold_Url does, and the fallback carries the position: `#(url! "whole"
+-- 3)`. An empty tag under /ALL molds as `#(tag! "")`, because `<>` reads back
+-- as a word.
+rule ALiteralThatWouldNotReadBackMoldsAsAConstruct {
     when: EvaluateMold(subject)
-    requires: is_url(subject) or is_email(subject)
+    requires: refinement_asked(all) or is_url(subject) or is_email(subject)
     requires: not the_reader_would_read_it_back_as_itself(subject)
 
     ensures: MoldResult(text: the_construct_form_naming(
@@ -9400,17 +9442,6 @@ rule AHashUnderAllMoldsAsAConstructFromItsPosition {
 
     ensures: MoldResult(text: the_construct_form_naming(hash,
         the_items_from_where_it_stands(subject), subject.index))
-}
-
--- An empty tag molds as a construct under /ALL, because `<>` reads back as
--- the word `<>` rather than as a tag.
-rule AnEmptyTagUnderAllMoldsAsAConstruct {
-    when: EvaluateMold(subject)
-    requires: refinement_asked(all)
-    requires: is_tag(subject)
-    requires: subject.length = 0
-
-    ensures: MoldResult(text: the_construct_form_naming(tag, ""))
 }
 
 -- A struct is laid out over lines, one field to a line, and names its layout
@@ -9613,7 +9644,7 @@ rule ABlockWithLineBreaksMoldsOneItemToALine {
             begins_a_new_line(item_at(subject, position)) =
                 carries_a_line_break(subject, position)
         the_indent_of_each_new_line(subject) =
-            config.mold_indent_width * the_nesting_depth(subject)
+            mold_layout.indent_width * the_nesting_depth(subject)
         the_closing_bracket_stands_on_its_own_line(subject)
 }
 
@@ -9698,8 +9729,8 @@ rule AStringMoldsQuotedOnlyWhenItIsShortAndPlain {
 
     ensures: MoldResult(string_form:
         if has_no_quote(subject)
-                and newline_count(subject) < config.newlines_forcing_braces
-                and character_count(subject) <= config.longest_quoted_string:
+                and newline_count(subject) < mold_layout.newlines_forcing_braces
+                and character_count(subject) <= mold_layout.longest_quoted_string:
             quoted
         else: braced)
 }
@@ -10457,11 +10488,12 @@ rule TheLevelNobodyAskedForIsTheMethodsOwn {
 -- absent. That is why it is written as an invariant over all data rather than
 -- as a rule with cases.
 --
--- Stated here for the methods this build writes for itself, at every level each
--- of them has. The three that go through the host's own deflate library are
--- left out, and why is the open question below.
+-- It holds for all nine methods, at every level each of them has, with no
+-- exception: zlib, gzip and deflate write the bytes R3's libdeflate writes at
+-- every level from 0 to 12 (DeflateCompressorFromTheSourceTest), and LZ4 and
+-- LZAV were ported byte for byte.
 invariant CompressedBytesAreTheOnesARealRebolWrites {
-    for method in compression_methods_written_here():
+    for method in compression_methods():
         for level in levels_the_method_has(method):
             for octets in AnyBinary:
                 compress(octets, method, level)
@@ -11235,8 +11267,9 @@ rule CheckRaisesOnASeriesCarryingAZero {
 -- That is a fact about how the C lays a vector out in memory, not about the
 -- language. A JEBOL vector holds numbers rather than bytes, so there is no
 -- corresponding walk, and inventing one would mean modelling the C's
--- allocator to answer a question no script asks.
-open question "Is a byte-exact CHECK over a vector or an image worth having? It would mean laying JEBOL's vectors out the way the C does, or keeping a byte view of them for one debug native to walk. Nothing in Rebol's own suite asks, and a script that called CHECK on a vector would be asking about memory rather than about its own data. Recorded because the divergence is real and measured, not because it is known to matter."
+-- allocator to answer a question no script asks. A byte-exact CHECK over a
+-- vector or an image is dropped (owner's answer), and docs/standing.md lists
+-- the difference.
 
 -- And it takes a series and nothing else: `val [series!]`.
 rule CheckRefusesWhatIsNotASeries {
@@ -11676,7 +11709,11 @@ rule TheUsageLimitsAreNeverConsulted {
     ensures: not (check.class in {eval, memory})
 }
 
-open question "The six natives that wait on a datatype -- AS-COLOR on image!, MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and RELEASE on handle! -- have nothing to specify until the datatype they take exists, because each is a small arm over a value JEBOL cannot make. They are recorded in the order boot/types.reb declares the datatypes, which is the order they will be built. What is not yet decided is whether handle! should carry a Java object directly, since that is what a JVM codec would need to hold, or stay opaque the way the C's does."
+-- The six natives that once waited on a datatype -- AS-COLOR on image!,
+-- MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and
+-- RELEASE on handle! -- exist, each with its datatype. A handle holds what
+-- the runtime put behind it and stays opaque to a script, as the C's does:
+-- HandleValue in values.allium.
 
 -- === Extensions, from the script's side =====================
 
@@ -14713,6 +14750,23 @@ rule HidingSomethingThatIsNotANameIsRefused {
     ensures: CallFails(error: bad_refines, about: subject)
 }
 
+-- Hiding is a property of the slot. A hidden field leaves WORDS-OF and every
+-- other reflection of the object, a path to it raises invalid-path, and
+-- appending the name again raises hidden; the object's own code, bound
+-- before the hiding, still reads it. After `protect/hide in o 'a` on
+-- `[a: 1 test: 2]`, `words-of o` is [test] in a real 3.22.5 and here.
+-- HiddenWordsAndTheConsolePortFromTheSourceTest covers it.
+rule HidingAFieldTakesItOutOfReach {
+    when: EvaluateCall(protect, subject)
+    requires: refinement_asked(hide)
+    requires: names_a_field(subject)
+
+    ensures: not the_field_is_reflected(subject)
+    ensures: a_path_to_the_field_raises(invalid_path)
+    ensures: appending_the_name_raises(hidden)
+    ensures: code_bound_before_still_reads_it(subject)
+}
+
 -- DELECT checks its output block's protection before it does anything else,
 -- and then declines, because the dialect parse itself is not built.
 --
@@ -16269,7 +16323,14 @@ rule ACornerOutsideBothImagesIsRefused {
     ensures: CallFails(error: invalid_data)
 }
 
-open question "A rectangle reaching past the right or bottom edge is neither clipped to the edge nor refused: the C subtracts the size a second time -- `wide = maxx - ofsx - wide` where clipping would be `maxx - ofsx` -- and a rectangle one column too wide comes out with a negative width. Nothing is then compared and the answer is nought per cent, so `image-diff/part i1 i2 0x0 1x3` on a pair of two-by-two images says the two are identical when the pixels it was pointed at differ. JEBOL matches it because REBOL's own test asserts that nought per cent twice and the whole point of the port is to answer what a real 3.22.5 answers. It is recorded here rather than fixed because fixing it would be a change to REBOL, not a change to JEBOL, and because the next person to read the clamping will otherwise assume the port got it wrong."
+-- A rectangle reaching past the right or bottom edge is neither clipped to
+-- the edge nor refused: the C subtracts the size a second time -- `wide =
+-- maxx - ofsx - wide` where clipping would be `maxx - ofsx` -- so a rectangle
+-- one column too wide has a negative width, nothing is compared, and
+-- `image-diff/part i1 i2 0x0 1x3` on two two-by-two images answers nought
+-- per cent where the pixels differ. JEBOL matches it today, as Rebol's own
+-- image-test.r3 asserts. Goal 1k clips it on purpose, and its rule arrives
+-- with that work.
 
 -- IMAGE is the shim onto whatever image codec the platform has, and this
 -- platform has one.
@@ -16677,11 +16738,8 @@ invariant QoiDecodingUndoesEncoding {
 -- blue swapped in every picture handed between them. Interchange with the
 -- thing being ported is worth more than agreement with a document neither of
 -- them follows, and the suite cannot tell the two apart because it only ever
--- round trips within one interpreter.
---
--- open question "Whether to keep matching r3 here if r3 ever fixes it. The
--- ratchet would catch the day it changes, because the round-trip assertions
--- would still pass and a byte comparison against the oracle would not."
+-- round trips within one interpreter. If R3 ever fixes it, JEBOL follows,
+-- because the target is what a real 3.22.5 answers.
 rule QoiWritesTheChannelsInRebolsOrder {
     when: EvaluateCall(encode, qoi, picture)
     ensures: the_channel_the_format_calls_red = the_pictures_blue_channel

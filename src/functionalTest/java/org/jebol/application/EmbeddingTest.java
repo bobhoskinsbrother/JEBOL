@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 
 class EmbeddingTest {
@@ -88,6 +89,31 @@ class EmbeddingTest {
             assertThat(took)
                     .as("must stop near its deadline, not run on")
                     .isLessThan(Duration.ofSeconds(5));
+        }
+
+        @Test
+        @DisplayName("the evaluator checks its bounds every thousand steps unless the host says otherwise")
+        void checksEveryThousandStepsByDefault() {
+            assertThat(org.jebol.application.Bounds.standard().checkEvery()).isEqualTo(1_000);
+        }
+
+        @Test
+        @DisplayName("a host may have it check every step, and a runaway script is still stopped")
+        void checksEveryStepWhenTheHostAsks() {
+            Interpreter interpreter = AnInterpreter.withBounds(
+                    org.jebol.application.Bounds.standard()
+                            .withCheckEvery(1)
+                            .withTimeLimit(Duration.ofMillis(200)));
+
+            assertThat(interpreter.run("while [true] [1]").conclusion()).isEqualTo(Conclusion.TIMED_OUT);
+        }
+
+        @Test
+        @DisplayName("a count of no steps between checks is refused")
+        void refusesNoStepsBetweenChecks() {
+            org.jebol.application.Bounds standard = org.jebol.application.Bounds.standard();
+
+            assertThatIllegalArgumentException().isThrownBy(() -> standard.withCheckEvery(0));
         }
 
         @Test

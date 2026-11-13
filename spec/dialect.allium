@@ -375,20 +375,24 @@ surface TheDialectReader {
         -- The cost is that two slots of the same type cannot be told apart by
         -- anything but their order, and a caller who writes them the wrong way
         -- round gets no complaint. DRAW lives with that: `box` takes two pairs
-        -- and the first is the corner because it was written first.
+        -- and the first is the corner because it was written first. Nothing
+        -- warns about a swap: the owner's answer is that this is the price of
+        -- the whole idea, and the C checks nothing either.
+
+    @guarantee ARepeatingSlotIsLast
+        -- A repeating slot stops at the first value it will not take, drops
+        -- its unused output slot and hands over to the next slot, as the C
+        -- does. Every `*` in dial-draw.reb is the last slot of its command,
+        -- so no dialect REBOL ships has a slot after a repeater, and how a
+        -- later slot would compete for a value is never reached.
+
+    @guarantee NearMissesAreDebuggingOutput
+        -- TRACE/DELECT counts arguments that found no slot and prints a
+        -- running total. It stays debugging output (owner's answer): it
+        -- changes nothing about what is read, and no script can ask for it.
 
     @guarantee OneReaderServesEveryDialect
         -- DRAW, EFFECT, TEXT and REBCODE are read by this and nothing else.
         -- A dialect is an object whose fields are its commands, so adding one
         -- is adding an object rather than adding a parser.
 }
-
-------------------------------------------------------------
--- Open questions
-------------------------------------------------------------
-
-open question "Two slots of the same datatype are told apart only by the order they were written in, and a caller who swaps them is not told. `box: [pair! pair! decimal!]` takes a corner and an end, and `box 20x20 10x10 0` is a backwards box that reads as valid. Nothing in the C checks it and nothing could without the dialect saying more than a type. Is this worth a warning somewhere, or is it the price of the whole idea?"
-
-open question "What should a repeating slot do when a later slot could also have taken the value? The C stops repeating at the first value the repeater will not take and removes the unused output slot, then carries on with the next slot. That is faithful and it means `line: [* pair!]` followed by another slot is order-sensitive in a way the rest of the dialect is not. No dialect in the tree has a slot after a repeater, so this is currently theoretical."
-
-open question "TRACE/DELECT counts arguments that found no slot and prints a running total. It changes nothing about what is parsed, so it is out of scope here. Is a count of near-misses worth having as anything other than debugging output -- could a dialect report `you wrote three things BOX could not use` rather than silently padding with none?"

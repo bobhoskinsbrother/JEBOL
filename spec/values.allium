@@ -23,9 +23,8 @@
 -- that leaves. command! was the sixth and moved out when extensions existed;
 -- MakingACommandChecksItsDefinition is what it does now.
 --
--- struct! is neither a full datatype nor a bare name. A value of it can be
--- made and STRUCT? affirms it, but only the layout is held. StructValue below
--- says what that leaves out and why.
+-- struct! is a full datatype, built as a binary layout tool: StructValue
+-- below.
 
 ------------------------------------------------------------
 -- Enumerations
@@ -425,9 +424,9 @@ variant DecimalValue : Value {
 }
 
 -- Amounts keep the scale they were written with, because money! is not
--- normalised: $1.50 and $1.5 hold different scales. Whether they are
--- nonetheless equal is an open question below, and it is exactly the
--- distinction BigDecimal draws between equals and compareTo.
+-- normalised: $1.50 and $1.5 hold different scales. They are nonetheless
+-- equal, as resolved below, which is exactly the distinction BigDecimal
+-- draws between equals and compareTo.
 --
 -- The range is bounded and both bounds matter. Rebol's `deci` struct packs
 -- a money into ninety-six bits: one sign bit, an eight-bit signed
@@ -657,41 +656,34 @@ variant GobValue : Value {
     index: Integer              -- 1-based child; storage.length + 1 is the tail
 }
 
--- The layout of a C record: field names, each declaring one scalar type.
---
--- Construction is the whole of it, and that is deliberate rather than
--- unfinished-for-now. `#(struct! [a [uint8!]])` reads back as a value
--- STRUCT? affirms, which is what Rebol's own lexer test asks for and all it
--- asks for. Reading a field, writing one, molding the layout back out and
--- handing a record to a foreign library are all absent, because every one
--- of them is a foreign-function interface in disguise and JEBOL offers
--- none.
---
--- What that leaves out is worth naming, because a real R3 does more with
--- the same spelling. It carries the field values beside the layout, which
--- is why it molds as two blocks -- `#(struct! [a [uint8!]] [a: 0])` -- and
--- why LENGTH? of one answers the record's width in bytes. It reads an array
--- count inside the type block, `[uint8! [2]]`. And it accepts the aliases
--- `boot/words.reb` lists beside the canonical names -- float!, double!,
--- byte!, single!, i8!, u8! and the rest. None of the three is read here, so
--- a layout a real R3 accepts can be a malformed construct to JEBOL.
+-- A C-shaped record: named, typed fields laid over a run of bytes. It is a
+-- binary layout tool, and it does what a real 3.22.5 does with one: typed
+-- fields with array counts (`[int16! [2]]`), nesting (`[struct! [...]]`),
+-- `rebval!` fields holding any value, the aliases `boot/words.reb` lists
+-- beside the canonical names, reading and writing a field by path,
+-- `change s #{...}` to lay bytes over it, `to binary!` to read them back,
+-- and LENGTH? answering the record's width in bytes. That is all a real R3
+-- does with one; handing a record to a foreign library is the one thing it
+-- is for there that JEBOL has no use for. StructFromTheSourceTest covers it.
 variant StructValue : Value {
-    -- The block the construct carried, held exactly as it was written:
-    -- pairs of a field word and a one-element block naming its type.
-    layout: Value
+    -- What the bytes mean: each field's name, type, count and offset.
+    layout: List<StructFieldType>
 
-    -- The type each of those pairs declared, in the order they were written.
-    declared_field_types: List<StructFieldType>
+    -- The bytes, shared with any struct reached through a nested field.
+    bytes: Binary
+
+    -- Where in the bytes this struct starts.
+    offset: Integer
 }
 
 -- The scalar types a struct field may declare, spelled as the canonical
--- names in `boot/words.reb`. Thirteen, and a field naming anything else
--- makes the whole layout a malformed construct.
+-- names in `boot/words.reb`, and a nested struct. A field naming anything
+-- else is refused.
 enum StructFieldType {
     int8 | int16 | int32 | int64
     | uint8 | uint16 | uint32 | uint64
     | float32 | float64
-    | pointer | word | rebval
+    | pointer | word | rebval | struct
 }
 
 variant AnyBlockValue : Value {
@@ -1152,7 +1144,7 @@ invariant RefinementArgumentsHaveOwners {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled
 ------------------------------------------------------------
 
 -- Resolved, and corrected. An earlier note here claimed R3 molds the
@@ -1251,12 +1243,6 @@ invariant RefinementArgumentsHaveOwners {
 -- hold 999.999.999 and an email is a shape rather than a checked address.
 -- The invariants below constrain what the reader can build, not what a
 -- caller may construct through conversion. See docs/decisions.md item 7.
-
-open question "A malformed map literal such as #[none] is refused by the reader with a syntax malconstruct, where a real Rebol refuses it with a script invalid-arg. Rebol reads the brackets into a block and builds the map afterwards; JEBOL builds it while reading. Is the reader the right place to build a map at all, or should #[...] read as a block that something later turns into one?"
-
-open question "Should a struct! ever be more than its layout here? Everything a real R3 does with one past construction exists to serve a foreign-function interface: the field values are there so a record can be filled and handed to a C library, the byte width is there so the library can be told how much to read, and the array counts are there because C arrays are laid out that way. An interpreter embedded in a host application already has a way to reach foreign code -- the host calls in and hands values across -- so a second one modelled on C's memory layout would be a parallel road to the same place, and a worse one, since it would put pointer arithmetic in a language that has none. The argument the other way is that a script that reads or writes a struct field is not asking for an FFI at all: it is asking to lay a record over a binary, which is a reasonable thing to want when parsing a file format, and STRUCT is the only place REBOL offers it. So the question is really whether struct! is a foreign-call fixture or a binary-layout tool, and only the second is worth building here."
-
-open question "Nothing may cross between interpreter instances yet, because a block carries its storage and its bindings with it. Is passing values between instances supported at all, and if so is it by deep copy, or by a handle that only the owning instance may follow?"
 
 -- Resolved: integer! crosses as a long and block! as a List. Anything
 -- without an obvious counterpart stays a REBOL value the host asks about

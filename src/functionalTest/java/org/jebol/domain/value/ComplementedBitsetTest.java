@@ -57,6 +57,24 @@ class ComplementedBitsetTest {
     }
 
     @Test
+    @DisplayName("REMOVE clears the stored bit whatever the sense, so removing a non-member makes it one, as R3 does")
+    void removeClearsTheStoredBit() {
+        assertThat(answerTo("""
+                b: complement charset "a"
+                remove/part b "a"
+                reduce [true? find b #"a" true? find b #"b"]""")).isEqualTo("[#(true) #(true)]");
+    }
+
+    @Test
+    @DisplayName("and removing a member of a complemented set leaves it a member")
+    void removeLeavesAComplementedMember() {
+        assertThat(answerTo("""
+                b: complement charset "a"
+                remove/part b "b"
+                reduce [true? find b #"a" true? find b #"b"]""")).isEqualTo("[#(false) #(true)]");
+    }
+
+    @Test
     @DisplayName("complementing twice gives the first set back")
     void turnsTheFlagBothWays() {
         assertThat(answerTo("complement? complement complement charset \"a\""))

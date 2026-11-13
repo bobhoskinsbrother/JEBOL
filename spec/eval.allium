@@ -903,7 +903,7 @@ rule PathSelectsNextSegment {
         -- has positions that simply hold nothing. Selecting a name an
         -- object does not have raises, because an object either has that
         -- field or the code is wrong. can_select_from carries that
-        -- difference; see the open question on whether R3-Alpha agrees.
+        -- difference, and a real 3.22.5 draws it in the same place.
 }
 
 -- Once a function has been reached, the remaining segments stop being
@@ -970,11 +970,22 @@ rule AGetWordNamesARefinementTheCallDecidesOn {
     requires: segment_at_is_a_get_word(selection.path, selection.position)
 
     ensures:
-        if the_get_word_resolves_to_something_truthy(
-                selection.path, selection.position):
-            selection.refinements.add(
-                refinement_name_at(selection.path, selection.position))
-        selection.position = selection.position + 1
+        if not selection.current.has_refinement_named(
+                refinement_name_at(selection.path, selection.position)):
+            selection.status = raised
+            selection.failure = no_refine
+        else:
+            if the_get_word_resolves_to_something_truthy(
+                    selection.path, selection.position):
+                selection.refinements.add(
+                    refinement_name_at(selection.path, selection.position))
+            selection.position = selection.position + 1
+
+    @guidance
+        -- The name is checked whatever the word holds: `append/:bogus` is
+        -- no-refine with BOGUS false, none or true, in a real 3.22.5 and
+        -- here, so a misspelled forwarded refinement is caught on the
+        -- common false branch too. WhatParseDeclaresTest covers all three.
 }
 
 -- The set a function is told about is the set the path granted, and that
@@ -1611,7 +1622,7 @@ surface Evaluating {
 }
 
 ------------------------------------------------------------
--- Open Questions
+-- Settled
 ------------------------------------------------------------
 
 -- Resolved: assigning through an unbound set-word raises. The evaluator
@@ -1671,7 +1682,3 @@ surface Evaluating {
 -- because agreeing with the C comes first and a script catching by id sees
 -- every one of them (decision 66). AnOperatorAtTheHeadOfItsSeriesFails,
 -- AnOperatorFurtherInTakesNoneOnItsLeft and EvaluationConcludes say so.
-
-open question "AGetWordNamesARefinementTheCallDecidesOn and PathGathersRefinement disagree about a misspelled refinement, and it is not settled which of them is right. Written plainly, `append/bogus` raises no-refine, because PathGathersRefinement checks the name against the function before granting it. Written as a get-word, `append/:bogus` raises only when BOGUS holds something true; when it holds false the name is never checked at all and the call runs as though the refinement had not been written. So the same misspelling is caught or not caught depending on a value, which is precisely the kind of silence PathGathersRefinement exists to prevent -- and a script forwarding a refinement it spelled wrong would go years without hearing about it, because the false branch is the common one. Two readings. Check the name whatever the word holds, on the grounds that a refinement the function has not got is a mistake in the code rather than a fact about the run; or leave it, on the grounds that a get-word refinement is a request rather than an assertion and asking for nothing cannot be wrong. The first is almost certainly right and wants measuring against a real R3 before it is built, because Rebol's own library forwards refinements constantly and a newly strict check would raise on any of them that names something the callee dropped."
-
-open question "Evaluation state lives on the heap, so a running evaluation could in principle be suspended, resumed or moved between threads. Nothing here says whether JEBOL promises any of that, or at what granularity a script can be interrupted. A server that wants to bound how long one script runs needs an answer."

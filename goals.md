@@ -19,11 +19,17 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Five pieces of work, in the order to do them.
+Four pieces of work, in the order to do them.
 
-**1h to 1l change nothing a script run on both would see**: the spec, a
-process-wide table, confinement and tasks, and then the five Rebol bugs
-JEBOL fixes on purpose (1k), which make the two differ deliberately.
+**1i to 1l change nothing a script run on both would see**: a process-wide
+table, confinement and tasks, and then the five Rebol bugs JEBOL fixes on
+purpose (1k), which make the two differ deliberately.
+
+**And a browser's swipe is proven to move the app's history.** The browser's
+own swipe moves its history, and JEBOL's history is the browser's (decision
+50, `spec/nav.allium`), so it should work today. Prove it with an end-to-end
+test, and check a mobile browser's edge swipe takes the same path. How a
+desktop window hears a swipe is the open question in `spec/nav.allium`.
 
 **And one Rebol file that does not run here is this project's own**:
 `scripts/resolve-nest.r3`, the pre-make step `scripts/build-r3.sh` needs, so
@@ -35,106 +41,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1h. Clear the spec's open questions
-
-Every open question in the spec has an answer. The work that follows from the
-answers is 1j, 1k and 1l; this sub-goal is the spec's side of it.
-Every edit runs `allium check` clean.
-
-1. **Already answered: the question becomes a rule, or goes.** Each of
-   these now matches R3 or is built. Where the behaviour is not already a
-   rule, write it as one, and point it at the test that covers it (write the
-   test if none does):
-   - `parse.allium`: THEN commits the alternative (`parse "ab" [["a" then
-     "x" | "a" "b"]]` is false in both); a mark into another series is read
-     as a rule, as R3 reads it.
-   - `eval.allium`: a get-word refinement is checked whatever it holds
-     (`append/:bogus` is `no-refine` with BOGUS false, in both).
-   - `values.allium`: `#[none]` is `invalid-arg` in both; `struct!` matches
-     R3 as a binary layout tool (typed fields, arrays, nesting, `rebval!`
-     fields, `change s #{...}` to lay bytes over it, `to binary!`) -- that
-     is all R3 does with one, so the question goes.
-   - `load.allium`: `a%b`, `a#b`, `a$b` and `a\b` are `invalid` in both; an
-     export never defined says nothing, in both; HELP, SOURCE, WHAT, ABOUT
-     and DUMP-OBJ exist; the unbalanced-delimiter spellings match R3.
-     Delete the paren-led path question outright: R3 reads
-     `(make object! [q: 7])/q` as a paren and a refinement too.
-   - `natives.allium`: the two error ids for giving a native a body match
-     R3 on all three spellings; `read %*.r3` lists matches; REMOVE on a
-     complemented bitset matches; PROTECT/HIDE hides; REPEAT takes a
-     series and a decimal; the six natives waiting on datatypes exist; a
-     handle holds a value and stays opaque;
-     `CompressedBytesAreTheOnesARealRebolWrites` now holds for all nine
-     methods (zlib, gzip and deflate write R3's bytes at levels 0, 1, 6 and
-     9; LZ4 and LZAV were ported byte for byte), so the libdeflate question goes and the invariant loses its
-     exception;
-     `system/options/boot` serves children only, which is enough (owner's
-     answer); a byte-exact CHECK over a vector is dropped.
-   - `screen.allium`: VIEW waits until a deadline ends it, built; a draw
-     block on a gob paints; a missing screen's metrics are zero, as R3's
-     host answers; the window's size is settled by the sliders example
-     matching its reference screenshot.
-   - `draw.allium`: SPLINE is built; a block's defaults read the gob's
-     size, as the C does.
-   - `dialect.allium`: no dialect has a slot after a repeating slot (every
-     `*` in `dial-draw.reb` is last); swapped slots of one type get no
-     warning (owner's answer); a near-miss count stays debugging output
-     (owner's answer).
-   - `embed.allium`: the evaluator checks its bounds every `checkEvery`
-     steps, 1,000 by default; a file feeding a program's input stays a path
-     for the host, since no script can tell; a host sees nothing of a run
-     until it ends (owner's answer).
-   - `web.allium`: an empty folder chosen in a browser answers the empty
-     folder; no browser can name it.
-2. **Answered by the owner, with work to do: the question becomes a rule
-   when its sub-goal starts**, not before, so the rule and its tests arrive
-   together: home and values between interpreters (1j), the Rebol bugs (1k), `effect` in DRAW and
-   GUI-METRIC/SET (1l).
-3. **Not a question for JEBOL:** move the `open/new` question -- a real
-   3.22.5 answers two different ways on two identical runs -- to
-   `docs/rebol-findings.md`. `change/part` on an image with a count copies
-   R3 (owner's answer): the question becomes a finding beside it.
-4. **Questions about the spec itself**, decided while editing:
-   - Write down how far PARSE backs up when an alternative fails, and
-     whether a repeat is retried at a lower count -- read off the C and
-     `./r3-head`.
-   - `TranscodeRequest` holds the text twice (`source_text` and `source`);
-     keep `source` and derive the text.
-   - State the mold property once (whatever would not read back is written
-     as a construct) rather than listing members, with the round-trip
-     invariant enforcing it.
-   - `mold_indent_width`, `longest_quoted_string` and
-     `newlines_forcing_braces` become named constants, not configuration.
-5. **Moved:** whether a running script can be paused and resumed goes to
-   goal 6, where stepping needs it.
-6. **Still open, rewritten in plain English:**
-   - Should a host be able to cap a script's memory? (Later.)
-   - Should JEBOL check whether a certificate was revoked, and if it cannot
-     find out, allow or refuse? (Later.)
-   - Does a partly transparent pixel decoded in the browser come out
-     visibly wrong? Look at one first, then decide whether a second decoder
-     is worth it.
-   - A swipe moves an app back and forward on every platform: decided. How
-     it arrives differs on each, and the desktop is the one undecided:
-     - **Web, desktop and mobile browsers:** the browser's own swipe moves
-       its history, and JEBOL's history is the browser's (decision 50,
-       `spec/nav.allium`), so it works today. Prove it with an end-to-end
-       test, and check a mobile browser's edge swipe takes the same path.
-     - **Desktop window:** macOS sends a swipe to
-       `com.apple.eawt.event.SwipeListener`, which JDK 25 still ships but
-       does not export (it needs `Add-Exports` in the jar's manifest, and
-       works on macOS only); the public alternative is reading a sideways
-       scroll as back and forward, which works on every system and cannot
-       tell a swipe from scrolling sideways. Try both on a real trackpad,
-       then choose.
-     - **Android and iOS (goals 2 and 3):** Android's system back gesture
-       arrives through the app's back handler; iOS has no system back, so
-       an edge swipe has to be recognised by the app itself. Each goes in
-       its platform's goal.
-
-**Done when** the spec holds only the four questions in step 6, each in
-plain English, and every answered one is a rule or gone.
 
 #### 1i. The table of word spellings belongs to an interpreter
 
@@ -166,7 +72,7 @@ the machine's home, so neither changes what a script run on both answers.
 **Done when** both are rules with tests, and a confined interpreter can make
 REBOL's user file at home.
 
-#### 1k. Fix five Rebol bugs, and copy one
+#### 1k. Fix five Rebol bugs
 
 Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
 real 3.22.5 does not, so each gets an entry in `docs/standing.md` saying what
@@ -174,7 +80,7 @@ and why.
 
 1. **`find` in a binary finds 255.** `find #{00FF} 255` is none in R3 and
    `#{FF}` here; JEBOL is already right. Write it in `docs/standing.md`, and
-   turn the open question into a rule.
+   turn the note beside it in `spec/natives.allium` into a rule.
 2. **`make image!` takes a block of tuples.** `make image! [2x1 [1.1.1
    2.2.2]]` is a malconstruct in R3, because the reader that consumes the
    block never steps past it. Read the C and decide what the block should
@@ -203,8 +109,6 @@ and why.
      here it deletes the file.
    - `rename p %zz` refuses in both, as `no-rename`, but arg1 is the file in
      R3 and the whole port object here.
-6. **Copied, not fixed:** `change/part` on an image with a count changes
-   nothing. The question becomes a finding in `docs/rebol-findings.md`.
 
 **Done when** the five behave as above, each with a rule, tests, and an entry
 in `docs/standing.md`, and the suite records the `image-diff` difference.
@@ -234,7 +138,7 @@ restores and maximises a real window.
    canvas and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled. The system back gesture (and
    the back button) moves the app's history back, through Android's back
-   handler, as a swipe does in a browser (1h, `spec/nav.allium`).
+   handler, as a swipe does in a browser (`spec/nav.allium`).
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
    console view. CALL is refused. And a task's body must run on the host's
    ports too: `ThreadTasks`
@@ -278,7 +182,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    on Android, using goal 2 step 4's work in the 2010 GUI. iOS has no system
    back gesture, so the app recognises a swipe from the left edge as back
    and from the right edge as forward, the way a browser on the phone
-   does (1h, `spec/nav.allium`).
+   does (`spec/nav.allium`).
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the

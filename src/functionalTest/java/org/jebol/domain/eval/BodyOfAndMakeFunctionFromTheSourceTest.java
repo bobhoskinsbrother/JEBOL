@@ -46,6 +46,16 @@ class BodyOfAndMakeFunctionFromTheSourceTest {
         assertThat(readTheErrorFrom("make native! [[][]]")).isEqualTo("#(true)");
     }
 
+    @Test
+    @DisplayName("the prototype form is cannot-use and the datatype forms bad-make-arg, as R3 has them")
+    void keepsTheTwoIdsApartAsR3Does() {
+        assertThat(answerTo("""
+                collect [foreach code [[make :read [[][]]] [make native! [[][]]] [make action! [[][]]]] [
+                    e: try code keep e/id keep mold e/arg1 keep mold e/arg2
+                ]]""")).isEqualTo("""
+                [cannot-use "[[] []]" "#(action!)" bad-make-arg "#(native!)" "[[] []]" bad-make-arg "#(action!)" "[[] []]"]""");
+    }
+
     @ParameterizedTest(name = "make := {0} is refused as cannot-use naming it and op!")
     @ValueSource(strings = {"[* [value1 > value2]]", "[[a b] [a]]", "[[a b] [a] extra]", "1", "none"})
     @DisplayName("MAKE from an operator prototype refuses a body and anything but a block")

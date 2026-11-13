@@ -605,4 +605,4 @@ surface TheNavigationWords {
 -- Open questions
 ------------------------------------------------------------
 
-open question "The trackpad's two-finger swipe moves a page's history because the browser does it. Java has no public way to hear a swipe in a window: macOS reports it to the JDK's own com.apple.eawt.event, which is not exported. Is a window's swipe worth reaching into the JDK for, or does the window keep the keys and the mouse buttons only?"
+open question "How does a swipe move a desktop window back and forward? That a swipe moves an app back and forward on every platform is decided. In a browser it already works, because the browser's own swipe moves its history and JEBOL's history is the browser's. A desktop window has two ways to hear one. On macOS, Java hears a real swipe, but only by reaching into a part of the JDK that is not public. On every system, a sideways scroll could be read as back and forward, though that cannot tell a swipe from scrolling sideways. Try both on a real trackpad, then choose."

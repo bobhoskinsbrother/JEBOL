@@ -9,10 +9,8 @@
 -- DO-EVENTS and the handler list are borrowed and never rewritten here.
 --
 -- Excludes:
---   - The DRAW dialect. A gob whose content is a draw block carries thirty
---     commands declared in boot/draw.reb, and painting them is a separate
---     piece of work with a spec of its own. Here a gob paints its colour,
---     its text and its image, and a draw block paints nothing yet.
+--   - The DRAW dialect. A gob whose content is a draw block paints it, and
+--     what each command paints is spec/draw.allium.
 --   - How the 2010 GUI lays out and draws its faces. That is the GUI's own
 --     REBOL, carried in the build and specified by its guide at
 --     https://www.rebol.com/r3/docs/gui/gui.html; this spec covers only how
@@ -848,8 +846,7 @@ rule TheWaitEndsWhenTheScreenHasNoWindowsLeft {
 }
 
 -- A wait on the screen is ended by the run's deadline, and by the host asking
--- the run to stop, with windows still open. It is the reading the first open
--- question below takes, written down as a rule: a run with no deadline waits
+-- the run to stop, with windows still open. A run with no deadline waits
 -- for its windows forever, and a run with one is ended by it, so
 -- FinishedRunsRespectTheirDeadline in embed.allium holds with no exception.
 --
@@ -1091,10 +1088,10 @@ rule OpacityMultipliesDownTheTree {
 
 -- A content kind nothing can paint yet produces no instruction at all.
 --
--- Four of the eight paint: a colour, a string, a rich-text block and an
--- image. A draw block, an effect, a native widget and nothing itself produce
--- nothing, and that gap is the same gap in all three renderers because it is
--- decided here.
+-- Five of the eight paint: a colour, a string, a rich-text block, an image
+-- and a draw block, which spec/draw.allium covers. An effect, a native widget
+-- and nothing itself produce nothing, and that gap is the same gap in all
+-- three renderers because it is decided here.
 rule AContentKindWithNothingToPaintProducesNoInstruction {
     when: FlattenTheTree(root)
     ensures:
@@ -1733,15 +1730,15 @@ surface TheScreen {
 }
 
 ------------------------------------------------------------
--- Open questions
+-- Settled
 ------------------------------------------------------------
 
-open question "VIEW without /no-wait ends in DO-EVENTS, which is `wait system/ports/event`, and that returns only when the last window has closed. This spec says it blocks, which is what the C does and what a desktop script wants. It sits badly with the rest of JEBOL: a host runs a script under a deadline and a nesting limit precisely so that a request thread cannot be parked, and a granted screen would be the one way past that. FinishedRunsRespectTheirDeadline in embed.allium says a finished run respected its deadline, so either the wait is interruptible by the deadline or that invariant has an exception in it. The reading taken here is that a run with no deadline waits forever and a run with one is ended by it, because that keeps both true and needs no special case. Whether blocking at all is the right default is the part to revisit: it may make a poor experience for a host that expected to keep serving requests."
+-- VIEW without /no-wait blocks until the last window closes, as the C does,
+-- and a run with a deadline is ended by it: ADeadlineEndsAWaitOnTheScreen.
 
-open question "Should a metric of a screen that is not there be zero, or should the three commands split some other way? Zero is what the posix host answers for the ten metrics it does not implement, so it is a real answer rather than a stand-in, and it is what lets the library load on a build server. The cost is that a script cannot tell 'this display is genuinely at the origin' from 'there is no display'. Nothing in REBOL's own library reads a metric and branches on whether it is zero, so the cost is currently theoretical."
+-- A metric of a screen that is not there is zero, as the posix host
+-- answers: EveryMetricOfAScreenThatIsNotThereIsZero.
 
-open question "Which gob content kinds paint in this increment? Colour, text and image, because those need no dialect. A gob whose content is a draw block currently paints nothing at all rather than refusing, which is the quiet failure this project keeps finding elsewhere: it will look like a blank window rather than like a missing feature. Should it refuse until the DRAW dialect lands, so that the gap has a name?"
-
-open question "GUI-METRIC declares a /set refinement for the writable keywords -- restore, minimize, maximize and activate are in the word list -- and neither host reads the value it is given. The posix host reads the /display index and nothing else. Are those four words window controls that were never finished, or metrics that were never made writable? Nothing in the mezzanine calls GUI-METRIC/SET, so there is no second reading to check against."
-
-open question "What size is a window, as against the gob inside it? VIEW builds a parent gob at the child's size and then offsets it by title-size, which reads as though the gob's size is the drawable area and the title bar sits outside it. Both hosts also serve border-size and border-fixed, which only matter if something is meant to add them. Nothing in view-funcs.reb adds them, so either the host is expected to, or they are there for a layout engine that was never written."
+-- A window's gob size is its drawable area, and the title bar and borders
+-- sit outside it. The sliders example matching its reference screenshot
+-- settles it: the window JEBOL opens is the size the screenshot shows.
