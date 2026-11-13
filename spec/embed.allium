@@ -1232,6 +1232,20 @@ invariant RunsDoNotOverlap {
         run.status = running implies run.interpreter.active_runs.count = 1
 }
 
+-- Nothing a script makes outlives the interpreter that ran it. Once the host
+-- lets go of an interpreter, every word, name, series and context its
+-- scripts made can be collected: no static in the process remembers a
+-- spelling a script read or made (decision 68), so a long-running host
+-- whose scripts make words in a loop does not grow. The tables the process
+-- does share are bounded by the classpath and the library, never by what a
+-- script does. `NothingAScriptNamesOutlivesItsInterpreterTest` makes a
+-- thousand words, binds them in an object, drops the interpreter and finds
+-- a name they carried collected.
+invariant NothingAScriptMakesOutlivesItsInterpreter {
+    for run in ScriptRuns:
+        reachable_once_released(made_by(run), run.interpreter) = false
+}
+
 ------------------------------------------------------------
 -- Surfaces
 ------------------------------------------------------------

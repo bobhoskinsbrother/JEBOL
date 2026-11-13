@@ -34,6 +34,10 @@ public abstract sealed class AnyWordValue implements Value, CopiesItsCell, Clone
     private final Context binding;
 
     AnyWordValue(String spelling, Context binding) {
+        this(spelling, spelling == null ? null : Context.canonicalise(spelling), binding);
+    }
+
+    AnyWordValue(String spelling, String canonical, Context binding) {
         if (spelling == null || spelling.isEmpty()) {
             throw new IllegalArgumentException("a word needs a spelling");
         }
@@ -42,8 +46,12 @@ public abstract sealed class AnyWordValue implements Value, CopiesItsCell, Clone
                     "an unbound word carries Context.unbound(), never null");
         }
         this.spelling = spelling;
-        this.canonical = Context.canonicalise(spelling);
+        this.canonical = canonical;
         this.binding = binding;
+    }
+
+    String canonicalNameIn(Context context) {
+        return context == null ? canonical : context.sharedCanonicalName(canonical);
     }
 
     @Override
@@ -190,11 +198,11 @@ public abstract sealed class AnyWordValue implements Value, CopiesItsCell, Clone
     }
 
     public WordValue asWord() {
-        return new WordValue(spelling, binding);
+        return new WordValue(spelling, canonical, binding);
     }
 
     public SetWordValue asSetWord() {
-        return new SetWordValue(spelling, binding);
+        return new SetWordValue(spelling, canonical, binding);
     }
 
     public boolean namesSameAs(AnyWordValue other) {

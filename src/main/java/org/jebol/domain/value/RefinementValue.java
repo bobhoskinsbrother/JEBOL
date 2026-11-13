@@ -14,6 +14,10 @@ public final class RefinementValue extends AnyWordValue {
         super(spelling, binding);
     }
 
+    RefinementValue(String spelling, String canonical, Context binding) {
+        super(spelling, canonical, binding);
+    }
+
     public static RefinementValue of(String spelling) {
         return new RefinementValue(spelling, Context.unbound());
     }
@@ -25,7 +29,7 @@ public final class RefinementValue extends AnyWordValue {
 
     @Override
     public RefinementValue bindTo(Context context) {
-        return new RefinementValue(spelling(), context);
+        return new RefinementValue(spelling(), canonicalNameIn(context), context);
     }
 
     @Override

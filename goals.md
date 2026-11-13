@@ -21,8 +21,8 @@ something a real 3.22.5 does not is a defect.
 
 Four pieces of work, in the order to do them.
 
-**1i to 1l change nothing a script run on both would see**: a process-wide
-table, confinement and tasks, and then the five Rebol bugs JEBOL fixes on
+**1j to 1l change nothing a script run on both would see**: confinement and
+tasks, and then the five Rebol bugs JEBOL fixes on
 purpose (1k), which make the two differ deliberately.
 
 **And a browser's swipe is proven to move the app's history.** The browser's
@@ -41,108 +41,6 @@ with `scan-names` run over a small literal block -- it fails only once
 `scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
-
-#### 1i. The table of word spellings belongs to an interpreter
-
-`Context.ONE_NAME_PER_SPELLING` (`src/main/java/org/jebol/domain/value/Context.java`,
-beside `canonicalise`) keeps one lower-cased copy of every spelling ever read,
-in a static table every interpreter in the process shares and nothing empties.
-A long-running process whose scripts make words in a loop (`to word! join "k"
-i`) grows it without limit. It is per-interpreter state held in a static, and
-it goes.
-
-**What the table is for, measured before planning (2026-11-13).** Speed, and
-nothing else. Commit `0d65cfa4` added it (decision 38: "canonical names are
-interned, so a word lookup is an identity compare ... The C keeps one symbol
-per spelling for the process for the same reason"). Nothing compares canonical
-names with `==`: `SlotTable.findPosition` uses `equals` and a `HashMap`, and
-`String.equals` returns at once when both sides are the same object. So
-dropping the table changes no answer, only how fast a lookup is. Its callers
-are `AnyWordValue`'s constructor and nine others (`ide_find_references` on
-`Context.canonicalise`). `WordValue.bindTo` and its siblings build a new word
-through that constructor, so every bind lower-cases and interns again.
-
-**Why not move the table onto the interpreter.** About two hundred places make
-words (`WordValue.of` alone is 152 in `src/main`), many of them static
-constants built when a class loads, with no interpreter in reach. A table per
-interpreter needs either the interpreter threaded through all of them, or a
-thread-local "current interpreter" that every entry point sets and restores --
-and two interpreters used in turn on one thread, which the tests do
-constantly, is where that goes wrong. Keep that only as the fallback (step 4).
-
-**The plan: no table at all; binding supplies the shared name.** The identity
-compare only pays off when a bound word is looked up in its context, and the
-context already holds a per-interpreter copy of the name: the key in its
-`SlotTable` (and `ContextSlot` carries it).
-
-1. **Baseline.** `scripts/timing.py speed` three times and `scripts/timing.py
-   boot` once, on an idle machine, and keep the figures for the decision.
-2. **Failing tests first.**
-   - Functional (`src/functionalTest`): make a thousand words in one
-     interpreter (`repeat i 1000 [to word! join "k" i]`, and some set in an
-     object so they are bound), take a `WeakReference` to the canonical name
-     of one of them (`AnyWordValue.canonical()`), drop the interpreter, and
-     ask for a collection a bounded number of times until the reference
-     clears. It must clear: nothing process-wide may hold a name a script
-     made. It fails today, held by the static table. This is the done-when's
-     "finds none of them in the next", made provable.
-   - Unit (`src/unitTest`): a word bound to a context carries that context's
-     own copy of its name -- `assertSame` against the slot's canonical name --
-     including a word whose spelling differs in case from the slot's. This
-     pins the speed property so it cannot quietly go.
-   - Unit: an unbound word's canonical name is its spelling lower-cased with
-     `Locale.ROOT` (check one exists before writing it).
-3. **The change.**
-   - `Context.canonicalise` becomes `spelling.toLowerCase(Locale.ROOT)`. Java
-     answers the same object when nothing changes case, so most spellings
-     cost nothing extra. The static map goes.
-   - `AnyWordValue` gets a constructor that is handed its canonical name, and
-     each subclass's `bindTo(context)` passes on the name the context's own
-     slot table holds (one probe of that context's own slots, not its
-     parents), or the word's own when the context has no such slot. Every one
-     of the ~20 `bindTo` callers (`Binder`, `BindNative`, `InNative`,
-     `Evaluator` around lines 1056, 1630, 1684 and 1700, the `words-of`-style
-     builders in `Context`, `ObjectValue` and `SetNative`) goes through it, so
-     nothing else changes. `Binder` already binds to the context that holds
-     the slot (`contextHolding`), which is the one whose copy is wanted.
-   - Function call frames keep the identity compare unchanged: `makeCallFrame`
-     takes the function's own list of canonical names, built once per function
-     and shared by every call, and the body was bound against the same list.
-   - The library cache (`LibrarySource`) shares its unbound words between
-     interpreters; each interpreter binds them afresh, so they pick up its own
-     names. The cached words' own strings are bounded by the library's
-     vocabulary.
-   - What gets slower: an unbound word looked up by name compares characters
-     instead of identity -- a path selector (`o/field`), `in`, `select` on an
-     object, `get` of an unbound word. Its hash is cached on the string, so it
-     is one short `equals` more per lookup.
-   - Run `ide_diagnostics` on every touched file before the gate.
-4. **Measure again, same way.** If any of the seven workloads is more than
-   about 5% slower over three runs each side ("a path into a context" is the
-   one to watch), stop and take the figures to the owner rather than ship it.
-   The fallback is the per-interpreter table found through a thread-local set
-   by every `Interpreter` entry point, and it would need its own plan.
-5. **Docs.** A new decision in `docs/decisions.md` (68 is next)
-   that amends decision 38's interning line, says why there is no table, and
-   gives the before and after figures. In `spec/values.allium`,
-   `AnyWordValue.canonical` says it is the spelling lower-cased, and that a
-   bound word shares its context's copy of it; and an invariant in
-   `spec/embed.allium` that nothing a script makes outlives the interpreter
-   that ran it, pointing at the functional test. `docs/standing.md` and
-   CLAUDE.md change only if the boot figure (54ms) moves.
-6. **Gate.** `./gradlew allTests`; the end-to-end suite builds the core for
-   the web with TeaVM, so it covers the browser build of this change too.
-
-**Checked while planning:** the other static maps in `src/main` are bounded.
-`LibrarySource.READ_VALUES` and `CANNOT_BE_COPIED` hold one entry per library
-file, `ClasspathFiles.READ` one per classpath file, and `ErrorCatalogue` is
-built once. The spelling table is the only static that grows with what
-scripts do.
-
-**Done when** no static holds a spelling, proven by the functional test above
-(a name made in one interpreter is collectable once it is gone), the bound-word
-identity test passes, and `timing.py speed` shows no workload more than about
-5% slower.
 
 #### 1j. A confined script's home, and values between interpreters
 

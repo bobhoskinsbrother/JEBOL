@@ -691,6 +691,13 @@ variant AnyBlockValue : Value {
     index: Integer
 }
 
+-- A word's canonical name is its spelling lower-cased with the root locale,
+-- and nothing else: no table in the process keeps one copy per spelling,
+-- because such a table outlives every interpreter that fills it. A word
+-- bound to a context that holds a slot of its own for it carries that
+-- slot's own copy of the name, so finding the slot is an identity compare;
+-- a function's call frames and its body share their copies the same way
+-- (decision 68).
 variant AnyWordValue : Value {
     spelling: String            -- case preserved as written
     canonical: String           -- lowercased, the form used for comparison

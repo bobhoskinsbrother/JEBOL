@@ -1,7 +1,6 @@
 package org.jebol.domain.value;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,11 +74,14 @@ public final class Context {
         return UNBOUND;
     }
 
-    private static final Map<String, String> ONE_NAME_PER_SPELLING = new ConcurrentHashMap<>();
-
     public static String canonicalise(String spelling) {
-        return ONE_NAME_PER_SPELLING.computeIfAbsent(
-                spelling.toLowerCase(Locale.ROOT), folded -> folded);
+        String folded = spelling.toLowerCase(Locale.ROOT);
+        return folded.equals(spelling) ? spelling : folded;
+    }
+
+    public String sharedCanonicalName(String canonicalName) {
+        ContextSlot slot = slotsByCanonicalName.get(canonicalName);
+        return slot == null ? canonicalName : slot.canonical();
     }
 
     public boolean isALoopFrame() {
@@ -164,8 +166,12 @@ public final class Context {
     }
 
     public boolean holds(String canonicalName) {
+        return ownVisibleSlotOrNone(canonicalName) != null;
+    }
+
+    public ContextSlot ownVisibleSlotOrNone(String canonicalName) {
         ContextSlot slot = unbound || lacksLentFrame() ? null : slotsByCanonicalName.get(canonicalName);
-        return slot != null && !slot.isHidden();
+        return slot == null || slot.isHidden() ? null : slot;
     }
 
     public boolean holdsWhereResolved(String canonicalName) {

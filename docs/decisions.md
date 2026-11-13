@@ -1573,7 +1573,10 @@ ranked actions of goal 14, in the order decision 37 measured them:
 - `Context.slotOrNone` makes the `knows`-then-`slotFor` walk one pass, and
   canonical names are interned, so a word lookup is an identity compare
   rather than a character-by-character one. The C keeps one symbol per
-  spelling for the process for the same reason.
+  spelling for the process for the same reason. (Decision 68 replaces the
+  interning table: binding hands a word its context's own copy of the name,
+  which keeps the identity compare without a table that outlives every
+  interpreter.)
 
 **What it bought.** The seven workloads of `scripts/timing.py speed`, before
 and after, the real 3.22.5 beside them unchanged: function calls 848 to about
@@ -2974,3 +2977,60 @@ answers there as R3's C does, including the answers that come from its data
 stack being one short (`missing-arg` from `do`, the block itself from `all`
 and `any`, `none` from `try` and `case`), because those are what a script on
 3.22.5 sees. `AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.
+
+## 68. No table of spellings: binding hands a word its context's own copy of the name
+
+Decision 38 interned every canonical name in `Context.ONE_NAME_PER_SPELLING`,
+so that a bound word's lookup in its context found the slot by identity. The
+table was static: every interpreter in the process shared it and nothing
+emptied it, so a script that made words in a loop (`to word! join "k" i`) grew
+it for as long as the process lived. It is gone, and so is any table in its
+place.
+
+**What keeps the identity compare.** The only lookup that profits from it is a
+bound word looking itself up in its own context, and that context already
+holds a copy of the name: the key of its slot. So `bindTo(context)` hands the
+new word that key (`Context.sharedCanonicalName`, one probe of that context's
+own slots, not its parents'), and a word bound where it has no slot of its
+own keeps its own name. `asWord` and `asSetWord` carry the name across.
+`Context.canonicalise` is the spelling lower-cased with `Locale.ROOT`, and the
+spelling itself where nothing changes case, so most words cost no second
+string at all.
+
+A function's call frames are built from one list of names per function, and
+its body is bound to its `declaredWords` context; the two now hold the same
+strings (`DefinedFunctionValue.frameNameFor`, and the frame takes
+`declaredWords`' copy where a closure shares it with the function it was made
+from), so a local's lookup in a running frame is still an identity compare.
+
+**What got slower, and what paid for it.** An unbound word looked up by name
+compares characters: a path selector (`o/field`), `in`, `select` on an
+object, `get` of an unbound word. The path into a context paid it twice,
+because `PathTargetWithFields` asked `holds` and then `ownSlotFor`; it now
+probes once (`Context.ownVisibleSlotOrNone`). Measured on an idle machine,
+`scripts/timing.py speed`, the median of three runs each side, ms:
+
+| workload     | table | no table, one probe |
+| ---          | ---   | ---                 |
+| calls        | 374   | 369                 |
+| count-global | 406   | 394                 |
+| count-local  | 407   | 398                 |
+| fib          | 250   | 236                 |
+| lookup       | 239   | 238                 |
+| series       | 515   | 454                 |
+| strings      | 497   | 469                 |
+
+`lookup` alone, five runs each: 228ms with the table, 239 without it while
+the path still probed twice, 228 with one probe. A warm `Interpreter.create()`
+measured 66ms median before and 59 after in the same session, which is noise
+around the 54ms `docs/standing.md` records rather than a change.
+
+**Nothing a script names outlives its interpreter.** The other static maps in
+`src/main` are bounded by the classpath and the library (`LibrarySource`,
+`ClasspathFiles`, `ErrorCatalogue`), and the library's cached words are
+shared unbound, so each interpreter's binding gives them its own names.
+`NothingAScriptNamesOutlivesItsInterpreterTest` makes a thousand words, binds
+them in an object, drops the interpreter and asks that a name it made be
+collected; `ABoundWordSharesItsContextsNameTest` and
+`ACallFrameSharesItsBodysNamesTest` pin the identity property so the speed
+cannot quietly go.

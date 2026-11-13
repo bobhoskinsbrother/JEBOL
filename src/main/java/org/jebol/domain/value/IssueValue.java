@@ -24,6 +24,10 @@ public final class IssueValue extends AnyWordValue {
         super(spelling, binding);
     }
 
+    IssueValue(String spelling, String canonical, Context binding) {
+        super(spelling, canonical, binding);
+    }
+
     public static IssueValue of(String spelling) {
         return new IssueValue(spelling, Context.unbound());
     }
@@ -35,7 +39,7 @@ public final class IssueValue extends AnyWordValue {
 
     @Override
     public IssueValue bindTo(Context context) {
-        return new IssueValue(spelling(), context);
+        return new IssueValue(spelling(), canonicalNameIn(context), context);
     }
 
     @Override

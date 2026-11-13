@@ -62,9 +62,9 @@ public final class Binder {
     private static Set<String> listNamesDeclaredBy(DefinedFunctionValue function) {
         Set<String> declared = new HashSet<>();
         function.parameters().forEach(
-                parameter -> declared.add(Context.canonicalise(parameter.name())));
+                parameter -> declared.add(function.frameNameFor(parameter.name())));
         function.localNames().forEach(
-                name -> declared.add(Context.canonicalise(name)));
+                name -> declared.add(function.frameNameFor(name)));
         return declared;
     }
 

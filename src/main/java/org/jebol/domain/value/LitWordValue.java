@@ -14,6 +14,10 @@ public final class LitWordValue extends AnyWordValue {
         super(spelling, binding);
     }
 
+    LitWordValue(String spelling, String canonical, Context binding) {
+        super(spelling, canonical, binding);
+    }
+
     public static LitWordValue of(String spelling) {
         return new LitWordValue(spelling, Context.unbound());
     }
@@ -25,7 +29,7 @@ public final class LitWordValue extends AnyWordValue {
 
     @Override
     public LitWordValue bindTo(Context context) {
-        return new LitWordValue(spelling(), context);
+        return new LitWordValue(spelling(), canonicalNameIn(context), context);
     }
 
     @Override

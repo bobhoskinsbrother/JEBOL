@@ -24,9 +24,12 @@ public interface PathTargetWithFields extends PathTarget {
     }
 
     private ContextSlot findFieldNamedBy(Value selector) {
-        if (!(selector instanceof AnyWordValue asked) || !context().holds(asked.canonical())) {
+        ContextSlot field = selector instanceof AnyWordValue asked
+                ? context().ownVisibleSlotOrNone(asked.canonical())
+                : null;
+        if (field == null) {
             throw Raised.cannotSelect(selector);
         }
-        return context().ownSlotFor(asked.canonical());
+        return field;
     }
 }

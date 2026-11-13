@@ -14,6 +14,10 @@ public final class GetWordValue extends AnyWordValue {
         super(spelling, binding);
     }
 
+    GetWordValue(String spelling, String canonical, Context binding) {
+        super(spelling, canonical, binding);
+    }
+
     public static GetWordValue of(String spelling) {
         return new GetWordValue(spelling, Context.unbound());
     }
@@ -25,7 +29,7 @@ public final class GetWordValue extends AnyWordValue {
 
     @Override
     public GetWordValue bindTo(Context context) {
-        return new GetWordValue(spelling(), context);
+        return new GetWordValue(spelling(), canonicalNameIn(context), context);
     }
 
     @Override

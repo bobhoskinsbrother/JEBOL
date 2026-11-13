@@ -44,7 +44,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     }
 
     private int placeInFrame(String spelling) {
-        String canonical = Context.canonicalise(spelling);
+        String canonical = declaredWords.sharedCanonicalName(Context.canonicalise(spelling));
         int existing = frameCanonicalNames.indexOf(canonical);
         if (existing >= 0) {
             return existing;
@@ -55,6 +55,12 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     }
 
     private static final int NO_SLOT = -1;
+
+    public String frameNameFor(String spelling) {
+        String canonical = Context.canonicalise(spelling);
+        int placed = frameCanonicalNames.indexOf(canonical);
+        return placed < 0 ? canonical : frameCanonicalNames.get(placed);
+    }
 
     protected Context makeFrameUnder(Context parent) {
         return Context.makeCallFrame(parent, frameSpellings, frameCanonicalNames);

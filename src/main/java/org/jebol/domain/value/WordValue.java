@@ -14,6 +14,10 @@ public final class WordValue extends AnyWordValue {
         super(spelling, binding);
     }
 
+    WordValue(String spelling, String canonical, Context binding) {
+        super(spelling, canonical, binding);
+    }
+
     public static WordValue of(String spelling) {
         return new WordValue(spelling, Context.unbound());
     }
@@ -25,7 +29,7 @@ public final class WordValue extends AnyWordValue {
 
     @Override
     public WordValue bindTo(Context context) {
-        return new WordValue(spelling(), context);
+        return new WordValue(spelling(), canonicalNameIn(context), context);
     }
 
     @Override
