@@ -44,21 +44,110 @@ smallest failing case is one line before reading any code.
 
 #### 1j. A confined script's home, and values between interpreters
 
-The command line confines a script to its folder as R3 does, and both report
-the machine's home, so neither changes what a script run on both answers.
+Two parts, done in this order, each spec first, then failing tests, then code.
+Neither changes what an unconfined script run on both answers.
 
-- **Home inside the confinement.** `system/options/home` reports the
-  machine's home even when the script may only see one folder, so REBOL's
-  own user storage cannot write there. Ask the filesystem port where home
-  is, so every host gives an answer inside what it lets the script see.
-- **Values cross between interpreters by deep copy.** Owner's decision. Say
-  in `values.allium` what crosses (every datatype, or which not: ports,
-  handles, functions bound to the sender's contexts), and that the receiver
-  gets a copy it owns. A task's body is the first place it is used; goal 6's
-  copied interpreter is the second.
+**Part 1. Home inside the confinement.**
 
-**Done when** both are rules with tests, and a confined interpreter can make
-REBOL's user file at home.
+What is true today, measured on 2026-11-13 with the jar and `./r3-head`:
+
+- Home is not set where it looks set. `SystemObject.makeOptions` presets
+  `system/options/home` from `MachinePort.homeDirectory()` (the JVM's
+  `user.home`), but the borrowed `start` in `sys-start.reb` (lines 100-125)
+  overwrites it with `get-env "HOME"` (then `USERPROFILE`), and works out
+  `data` from it: `REBOL_HOME`, else `APPDATA/Rebol/` on Windows, else
+  `home/.rebol/`. So the command line's home is whatever `ProcessEnvironment`
+  says `HOME` is. That agrees with R3, and an unconfined run must keep it.
+- Under `--root box`, home still answers the machine's path (`%/home/ben/`).
+  Inside the root that path names `box/home/ben/`, and `start`'s
+  `make-dir/deep data` builds `box/home/ben/.rebol/modules/` -- the machine's
+  home path copied into the box, and told to the script. That breaks the
+  promise in `ALinkLeavingTheRootIsRefused` (`spec/embed.allium`) and in
+  `FilePort.workingDirectory`'s contract that a confined script never learns
+  where its root sits.
+- `set-user/n` writes `rejoin [system/options/home "." name ".safe"]`
+  (`mezz-shell.reb:83`). Under the default policy it is refused **in both**,
+  `security violation`, because `start`'s SECURE makes home
+  `[allow read allow execute]` (`sys-start.reb:224`). With `-s` both write it.
+  Confined with `-s`, JEBOL writes `box/<machine home>/.me.safe`: it works,
+  but at the copied path.
+- With `HOME` unset, both stop at boot with the same
+  `invalid _ security policy: allow`. They agree, so this is a boundary to
+  test, not a fault to fix.
+- Two places work around this today: `SuiteHost.putHomeInsideTheDirectoryTheRunCanReach`
+  and `TheSafeSchemeFromTheSourceTest.answerTo` both set
+  `system/options/home: %./`.
+
+What to build is decision 69: a confined script's home is the machine's
+home as the script sees it, or `/` outside the root, and the confined
+command line's environment answers `HOME` (and `USERPROFILE`) with it, so
+`sys-start.reb` stays as borrowed. `data` follows, because `start` derives
+it from home: `/.rebol/` inside the root, which the launcher already passes
+to a child with `--data` (`ASecondInterpreterFindsTheSameApplicationData`).
+
+- **The filesystem port answers it.** Add a method to `FilePort` that turns
+  a host path into the port's own terms (the inverse of `hostPath`), or
+  answers home directly. `FileSystemPort` implements it, and `WebFiles`,
+  `PickedFiles`, `ClasspathFiles` and `FilePort.none()` each say what home
+  is for them (the page's answer goes in `spec/web.allium`).
+- **The environment uses it.** `Repl.portsFor` hands a confined run an
+  environment whose `HOME` and `USERPROFILE` are the confined home in local
+  form. Read `JavaProcess` first: a program CALL starts must still get the
+  machine's real `HOME`.
+
+Tests, standing on their own:
+
+- `spec/embed.allium`: a rule `AConfinedScriptsHomeIsInsideItsRoot` beside
+  `MachineReportsItself`, and `MachineReportsItself` says it holds for an
+  unconfined port.
+- Functional (`HostMachineTest` or a new `*FromTheSourceTest`): home inside
+  the root is translated (`root/u/me` gives `%/u/me/`); home outside gives
+  `%/`; home exactly at the root gives `%/`; a home with a link that lands
+  outside is `%/`; `data` is home plus `.rebol/` in each case; an
+  unconfined port is unchanged; and nothing under the root is created at the
+  machine's home path.
+- End-to-end, command line, under `--root` with `HOME` pointed at a temp
+  folder (never the real home): `system/options/home` is `%/`;
+  `set-user/n/p` with `-s` makes `/.<name>.safe` inside the root and
+  `set-user/p` reads it back; without `-s` it is refused as R3 refuses it;
+  `get-env "HOME"` agrees with home, and a program CALL starts sees the
+  machine's real `HOME`; `HOME` unset still fails
+  as R3 does; and a child started through `system/options/boot` agrees
+  with its parent on home and data.
+- Remove both `system/options/home: %./` workarounds and keep the suite and
+  the safe-scheme tests green without them.
+
+**Part 2. Values cross between interpreters by deep copy.** Owner's
+decision.
+
+What is true today: a task's body crosses as text.
+`DoNative` (line 106) molds it, `TaskPort.runBody(String, OutputPort)`
+hands the text over, and `ThreadTasks` runs `do <text>` in a fresh
+interpreter. Anything that does not survive MOLD and LOAD is lost or
+changed: a function, an object, a handle, a series referenced twice (it
+becomes two), a cyclic block.
+
+What crosses, what is refused, how words are rebound and when the copy is
+made are decision 70. Write them as rules in `spec/values.allium`, then:
+
+- **Tests first**, standing on their own: each datatype that copies, and
+  each that is refused, caught by the sender; a block the sender changes
+  after DO; a string the body changes that the sender reads again; a series
+  held twice; a cyclic block; a function and a closure; an object holding a
+  function that refers to the object's own word; a native crossing as the
+  receiver's own; and a body that works through MOLD and LOAD today
+  answering the same.
+- **Then the code**: a copier in the domain, `TaskPort.runBody` taking the
+  copied value rather than text (`DoNative`, the port, `HostPortsTest`'s
+  use of `none().tasks()`), and `ThreadTasks` binding it in the child.
+  Goal 6's copied interpreter is the second user and is not part of this
+  goal.
+
+**Done when** both are rules with tests, a confined interpreter makes
+REBOL's user file inside its root at the home it reports (with `-s`, as R3
+needs too), the two `%./` workarounds are gone, a task's body no longer
+passes through text, and decisions 69 and 70 name the tests that hold
+them.
 
 #### 1k. Fix five Rebol bugs
 

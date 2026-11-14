@@ -3034,3 +3034,64 @@ them in an object, drops the interpreter and asks that a name it made be
 collected; `ABoundWordSharesItsContextsNameTest` and
 `ACallFrameSharesItsBodysNamesTest` pin the identity property so the speed
 cannot quietly go.
+
+## 69. A confined script's home is inside its root, and the environment says so
+
+Owner's decision, 2026-11-14 (goal 1j).
+
+`start` in the borrowed `sys-start.reb` reads home from `get-env "HOME"`, then
+`USERPROFILE`, and works out `data` from it. Under `--root` the command line
+handed it the machine's `HOME`. Inside the root, that path names a copy of the
+machine's folders, and `start`'s `make-dir/deep data` then built that copy,
+which also told the script where the machine's home is.
+
+**The rule.** A confined script's home is the machine's home written as the
+script sees it, when it lies inside the root, and the root `/` when it does
+not. `system/options/path` already follows this rule
+(`Repl.CommandLine.asScriptSeesIt`). The filesystem port gives the answer,
+because only the port knows the root. An unconfined port answers the machine's
+home, as R3 does.
+
+**How `start` hears it.** The confined command line's environment answers
+`HOME`, and `USERPROFILE` on Windows, with that home in local form.
+`sys-start.reb` stays as borrowed, and `get-env "HOME"` agrees with
+`system/options/home`, so the script cannot learn the machine's home that way
+either. A program CALL starts runs outside the sandbox and still gets the
+machine's real `HOME`. Editing `start` to prefer a home the host set was
+rejected for two reasons: `get-env` would still give the machine's home away,
+and an unconfined run would follow `user.home` where R3 follows `$HOME`.
+
+What does not change: under R3's default SECURE policy home is read-and-execute
+only (`sys-start.reb:224`), so `set-user/n` is refused at home in both
+interpreters unless the run is given `-s`.
+
+## 70. Values cross between interpreters by deep copy
+
+Owner's decision, 2026-11-14 (goal 1j).
+
+A task's body used to cross to its child interpreter as molded text, so
+anything that MOLD and LOAD do not preserve was lost on the way. R3 offers no
+model to follow: `INCLUDE_TASK` is off in `rebol3.nest`, so `./r3-head` never
+runs a body, and where it is on, `Launch_Task` takes a shallow `Clone_Block`
+whose words stay bound to the sender's contexts. JEBOL cannot share contexts
+between threads. So the receiver gets a copy that it owns:
+
+- **Data copies, deeply.** Scalars, every series (each nested series keeps its
+  position, finding 239), maps, bitsets, images, vectors, objects (as new
+  objects the receiver owns), errors and tasks. A series reached twice in the
+  sender is one series reached twice in the copy, and a cycle copies as a
+  cycle.
+- **Functions and closures copy** their spec and body, rebound as below.
+  Natives and actions cross as the receiver's own of the same name.
+- **What stands for something outside the interpreter is refused**: ports,
+  handles, libraries, events, gobs and java objects. The sender gets a
+  catchable error naming the datatype, raised before anything starts.
+- **Binding.** A word loses the sender's context and is bound in the receiver
+  as LOAD would bind it: lib, then the receiver's user context. A word bound to
+  a copied object stays bound to that object's copy. A task body that works
+  through MOLD and LOAD today answers the same.
+- **Timing.** The copy is made on the sender's thread when DO is called. After
+  that, a change in either interpreter never reaches the other.
+
+The copier belongs to the domain, because goal 6's copied interpreter is its
+second user.
