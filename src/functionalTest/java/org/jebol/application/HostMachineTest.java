@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.adapter.web.WebFiles;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.host.OutputPort;
@@ -8,6 +9,7 @@ import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Value;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -296,7 +301,7 @@ class HostMachineTest {
         }
 
         @Test
-        @DisplayName("given a filesystem, the launcher is asked for again, rooted there and told the data directory")
+        @DisplayName("given a filesystem, the launcher is asked for again, rooted there and told the data directory as the script sees it")
         void asksAgainForConfinedLauncher(@TempDir Path directory) {
             String root = directory.toAbsolutePath().normalize().toString();
             DescribedMachine machine = new DescribedMachine()
@@ -310,7 +315,7 @@ class HostMachineTest {
                     grantingProcesses().grant(HostService.FILES));
 
             assertThat(machine.launchersAskedFor).last()
-                    .isEqualTo(new LauncherRequest(root, "/home/someone/.jebol/"));
+                    .isEqualTo(new LauncherRequest(root, "/.jebol/"));
             assertThat(interpreter.run("""
                     system/options/boot""").display()).isEqualTo("%/tmp/confined.sh");
         }
@@ -423,6 +428,120 @@ class HostMachineTest {
             assertThat(interpreter.run("""
                     access-os/set 'pid 77""").errorId()).contains("no-service");
             assertThat(processes.signalsSent).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("a confined script's home, start directory and data are inside its root")
+    class AConfinedScriptsHomeIsInsideItsRoot {
+
+        @TempDir
+        Path machineFolder;
+
+        private Path root;
+
+        private Path outside;
+
+        @BeforeEach
+        void makeRootAndFolderBesideIt() throws IOException {
+            root = Files.createDirectories(machineFolder.resolve("root"));
+            outside = Files.createDirectories(machineFolder.resolve("outside"));
+        }
+
+        private String answerConfined(DescribedMachine machine, String source) {
+            return Interpreter.createOn(
+                    AnInterpreter.standardPorts()
+                            .withMachine(machine)
+                            .withFiles(FileSystemPort.rootFileSystem(root)),
+                    OutputPort.discard(),
+                    Bounds.standard()).run(source).display();
+        }
+
+        private String directoriesWithHomeAt(Path home) {
+            return answerConfined(new DescribedMachine().homeAt(home.toString()).startedIn(home.toString()), """
+                    reduce [system/options/home  system/options/data  system/options/path]""");
+        }
+
+        @Test
+        @DisplayName("a home inside the root is written beneath it, and data and the start directory follow")
+        void translatesHomeInsideRoot() throws IOException {
+            Path home = Files.createDirectories(root.resolve("u/me"));
+
+            assertThat(directoriesWithHomeAt(home)).isEqualTo("[%/u/me/ %/u/me/.jebol/ %/u/me/]");
+        }
+
+        @Test
+        @DisplayName("a home elsewhere on the machine is the root, and nothing names the machine's path")
+        void placesHomeOutsideAtRoot() {
+            assertThat(directoriesWithHomeAt(outside)).isEqualTo("[%/ %/.jebol/ %/]");
+        }
+
+        @Test
+        @DisplayName("a home exactly at the root is the root")
+        void placesHomeAtRootItself() {
+            assertThat(directoriesWithHomeAt(root)).isEqualTo("[%/ %/.jebol/ %/]");
+        }
+
+        @Test
+        @DisplayName("a home reached through a link inside the root that lands outside it is the root")
+        void placesHomeThroughLinkLeavingRootAtRoot() throws IOException {
+            Path door = Files.createSymbolicLink(root.resolve("door"), outside);
+
+            assertThat(directoriesWithHomeAt(door)).isEqualTo("[%/ %/.jebol/ %/]");
+        }
+
+        @Test
+        @DisplayName("a home outside the root reached through a link that lands inside it is written where it lands")
+        void translatesHomeThroughLinkLandingInsideRoot() throws IOException {
+            Path landing = Files.createDirectories(root.resolve("kept"));
+            Path pointer = Files.createSymbolicLink(outside.resolve("pointer"), landing);
+
+            assertThat(directoriesWithHomeAt(pointer)).isEqualTo("[%/kept/ %/kept/.jebol/ %/kept/]");
+        }
+
+        @Test
+        @DisplayName("a machine that reports no home gives the root")
+        void placesBlankHomeAtRoot() {
+            assertThat(answerConfined(new DescribedMachine().homeAt("").startedIn(""), """
+                    reduce [system/options/home  system/options/path]""")).isEqualTo("[%/ %/]");
+        }
+
+        @Test
+        @DisplayName("building the interpreter makes nothing beneath the root, at the machine's home path or anywhere")
+        void makesNothingBeneathRoot() throws IOException {
+            directoriesWithHomeAt(outside);
+
+            try (Stream<Path> made = Files.list(root)) {
+                assertThat(made).isEmpty();
+            }
+        }
+
+        @Test
+        @DisplayName("a filesystem rooted at the machine's own root confines nothing, and home is the machine's path as given")
+        void keepsMachinesHomeUnconfined() {
+            String answer = Interpreter.createOn(
+                    AnInterpreter.standardPorts()
+                            .withMachine(new DescribedMachine().homeAt("/home/someone").startedIn("/work"))
+                            .withFiles(FileSystemPort.rootFileSystem(Path.of("/"))),
+                    OutputPort.discard(),
+                    Bounds.standard()).run("""
+                    reduce [system/options/home  system/options/data  system/options/path]""").display();
+
+            assertThat(answer).isEqualTo("[%/home/someone/ %/home/someone/.jebol/ %/work/]");
+        }
+
+        @Test
+        @DisplayName("a page's home is the root of its store, whatever the machine running the browser says")
+        void placesPagesHomeAtRootOfStore() {
+            String answer = Interpreter.createOn(
+                    AnInterpreter.standardPorts()
+                            .withMachine(new DescribedMachine().homeAt("/home/someone").startedIn("/work"))
+                            .withFiles(new WebFiles()),
+                    OutputPort.discard(),
+                    Bounds.standard()).run("""
+                    reduce [system/options/home  system/options/data  system/options/path]""").display();
+
+            assertThat(answer).isEqualTo("[%/ %/.jebol/ %/]");
         }
     }
 

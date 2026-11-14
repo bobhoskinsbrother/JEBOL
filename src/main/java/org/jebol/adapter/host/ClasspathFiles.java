@@ -65,6 +65,11 @@ public final class ClasspathFiles implements FilePort {
     }
 
     @Override
+    public Optional<String> findScriptPath(String hostPath) {
+        return Optional.empty();
+    }
+
+    @Override
     public String locationFor(String path) {
         return path;
     }

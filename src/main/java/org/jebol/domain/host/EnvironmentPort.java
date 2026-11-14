@@ -30,6 +30,18 @@ public interface EnvironmentPort {
     Map<String, String> readAll();
 
     /**
+     * Every name a program this interpreter starts inherits.
+     *
+     * <p>What the interpreter reports, except where the host tells a confined
+     * script something that means nothing outside it: a program runs outside
+     * the sandbox, and is handed the machine's own value instead. Specified in
+     * {@code spec/embed.allium} as AConfinedCommandLineTellsStartTheConfinedHome.
+     */
+    default Map<String, String> listWhatProgramsInherit() {
+        return readAll();
+    }
+
+    /**
      * Lays a value over a name, or takes the name away when given null.
      *
      * <p>Over rather than into: the host's own names stay where they are and a

@@ -85,7 +85,6 @@ final class SuiteHost {
                 .withPause(new WakeablePause())
                 .withCertificateAuthority(new JavaCertificateAuthority());
         Interpreter interpreter = Interpreter.createOn(ports, output, bounds);
-        putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
         try {
             putTheModulesTheSuiteImportsWhereImportLooks(theRootOfThisRun);
@@ -93,14 +92,6 @@ final class SuiteHost {
             throw new UncheckedIOException(noModules);
         }
         return interpreter;
-    }
-
-    private static void putHomeInsideTheDirectoryTheRunCanReach(
-            Interpreter interpreter) {
-
-        String sayingSo = "system/options/home: %./";
-        interpreter.defineNewWordsIn(sayingSo);
-        interpreter.run(sayingSo);
     }
 
     private static void putTheApplicationDataDirectoryThereToo(Interpreter interpreter) {

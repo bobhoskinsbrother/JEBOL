@@ -64,8 +64,9 @@ a baseline from the same machine rather than against the row.
   task and DO answers it, but nothing ever starts the body: an obvious bug.
   JEBOL runs it where a host supplies a way to: on a thread of its own in a
   fresh interpreter on the JVM, which the console and the command line wire.
+  The body crosses as a deep copy the child owns, made when DO is called.
   A browser runs none. `TheFateOfATasksBodyIsTheHostsToDecide` in
-  `spec/natives.allium`, decision 30.
+  `spec/natives.allium`, decisions 30 and 70.
 - **No Java PDF implementation in the interpreter jar.** The borrowed codec is
   what Rebol has; more than that is a library the caller adds, which is goal 12.
 - **bzip2 answers where its C never does.** Decision 62.

@@ -35,6 +35,14 @@ public final class Interpreter {
 
     private static final String RESULT_MARKER = "== ";
 
+    private static final String DIRECTORY_SEPARATOR = "/";
+
+    private static final String ROOT_AS_SCRIPT_SEES_IT = DIRECTORY_SEPARATOR;
+
+    private static final String APPLICATION_DATA_IN_HOME = ".jebol/";
+
+    private static final String DATA_DIRECTORY_CHILD_WORKS_OUT = "";
+
     private final Context systemContext;
     private final SystemPaths systemPaths;
     private final Evaluator evaluator;
@@ -131,6 +139,16 @@ public final class Interpreter {
 
     public ScriptOutcome run(String source) {
         return concludeWithinBounds(() -> evaluate(source));
+    }
+
+    public Crossing.CrossedCopy receive(Crossing crossing) {
+        return crossing.copyInto(userContext, systemContext);
+    }
+
+    public ScriptOutcome runReceived(Crossing.CrossedCopy copy) {
+        return concludeWithinBounds(() -> copy.markLinesOnThisThread() instanceof AnyBlockValue body
+                ? evaluator.evaluate(body, userContext)
+                : new Outcome.Completed(copy.value()));
     }
 
     public void setSystemValue(String option, Value value) {
@@ -379,11 +397,24 @@ public final class Interpreter {
 
     private void handFilesystemAndScreenTheirWork() {
         if (hostGaveFileSystem()) {
+            setDirectoriesFromFilePort(ports.files());
             setSharedRootForChildInterpreters(ports.files());
             followApplicationDataDirectory();
         }
         handOverRootGobTo(ports.screen());
         dispatchDrawDialectTo(ports.screen());
+    }
+
+    private void setDirectoriesFromFilePort(FilePort files) {
+        String home = asDirectory(files.findScriptPath(ports.machine().homeDirectory()).orElse(ROOT_AS_SCRIPT_SEES_IT));
+        setSystemValue("home", FileValue.of(home));
+        setSystemValue("data", FileValue.of(home + APPLICATION_DATA_IN_HOME));
+        setSystemValue("path", FileValue.of(asDirectory(
+                files.findScriptPath(ports.machine().currentDirectory()).orElse(ROOT_AS_SCRIPT_SEES_IT))));
+    }
+
+    private static String asDirectory(String path) {
+        return path.endsWith(DIRECTORY_SEPARATOR) ? path : path + DIRECTORY_SEPARATOR;
     }
 
     private boolean hostGaveFileSystem() {
@@ -410,7 +441,11 @@ public final class Interpreter {
 
     public void followApplicationDataDirectory() {
         library.placeModulesDirectory();
-        constrainInterpreter();
+        constrainInterpreter(findDataDirectory());
+    }
+
+    public void omitDataDirectoryFromLauncher() {
+        constrainInterpreter(DATA_DIRECTORY_CHILD_WORKS_OUT);
     }
 
     private void setSharedRootForChildInterpreters(FilePort port) {
@@ -424,11 +459,11 @@ public final class Interpreter {
         }
     }
 
-    private void constrainInterpreter() {
+    private void constrainInterpreter(String dataDirectory) {
         if (sharedRoot.isEmpty()) {
             return;
         }
-        Value launcher = ports.machine().launcherFor(sharedRoot, findDataDirectory());
+        Value launcher = ports.machine().launcherFor(sharedRoot, dataDirectory);
         if (launcher instanceof FileValue file) {
             evaluator.ports().files().acceptFileFromOutsideRoot(file.text());
         }

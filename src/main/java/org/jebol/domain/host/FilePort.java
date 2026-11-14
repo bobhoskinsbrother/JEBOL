@@ -62,6 +62,19 @@ public interface FilePort {
      */
     String hostPath(String path);
 
+    /**
+     * The path a script names a place on the machine by, or empty when this
+     * port reaches nothing there.
+     *
+     * <p>The inverse of {@link #hostPath}. A port that confines a script to a
+     * root answers the path beneath the root, after following every link, and
+     * empty for anywhere outside it, so the machine's own path is never told;
+     * a port rooted at the machine's own root confines nothing and answers the
+     * path as given. Specified in {@code spec/embed.allium} as
+     * AConfinedScriptsHomeIsInsideItsRoot.
+     */
+    Optional<String> findScriptPath(String hostPath);
+
     default void acceptFileFromOutsideRoot(String hostFile) {
     }
 
@@ -207,6 +220,11 @@ public interface FilePort {
 
             @Override
             public String hostPath(String path) {
+                throw refuse();
+            }
+
+            @Override
+            public Optional<String> findScriptPath(String hostPath) {
                 throw refuse();
             }
 

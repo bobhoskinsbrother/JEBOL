@@ -2,9 +2,11 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Comparison;
+import org.jebol.domain.eval.Crossing;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.ReturnSignal;
+import org.jebol.domain.host.TaskPort;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.value.*;
@@ -103,7 +105,10 @@ public class DoNative extends DefaultNative {
     }
 
     private Value handToHost(TaskValue task, Evaluator evaluator) {
-        evaluator.ports().tasks().runBody(Molder.mold(task.body()), evaluator.findOutput());
+        TaskPort tasks = evaluator.ports().tasks();
+        if (tasks.runsBodies()) {
+            tasks.runBody(Crossing.prepare(task.body()), evaluator.findOutput());
+        }
         return task;
     }
 

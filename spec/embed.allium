@@ -586,20 +586,85 @@ rule StartingAProgramCrossesAsACommandAndThreeStreams {
 -- current directories, the separator TO-LOCAL-FILE writes, and the process
 -- number ACCESS-OS answers all come from the one place, so a host that
 -- describes a machine gets a script that sees that machine throughout.
+--
+-- The three directories are the machine's own only where the filesystem the
+-- script was given does not confine it; AConfinedScriptsHomeIsInsideItsRoot
+-- says what a confined script sees instead.
 rule ScriptSeesHostMachine {
     when: interpreter: Interpreter.created
 
     ensures: system_platform(interpreter) = interpreter.machine.operating_system
+    ensures: to_local_file_separator(interpreter) =
+        interpreter.machine.file_separator
+    ensures: access_os_process_number(interpreter) =
+        interpreter.machine.process_number
+}
+
+rule AnUnconfinedScriptSeesTheMachinesDirectories {
+    when: interpreter: Interpreter.created
+    requires: not the_file_port_confines(interpreter)
+
     ensures: system_options_home(interpreter) =
         directory_at(interpreter.machine.home_directory)
     ensures: system_options_path(interpreter) =
         directory_at(interpreter.machine.current_directory)
     ensures: system_options_data(interpreter) =
         directory_at(interpreter.machine.home_directory + "/.jebol")
-    ensures: to_local_file_separator(interpreter) =
-        interpreter.machine.file_separator
-    ensures: access_os_process_number(interpreter) =
-        interpreter.machine.process_number
+}
+
+-- A confined script's home is inside its root (decision 69).
+--
+-- Home is the machine's home written the way the script sees it: the path
+-- beneath the root when the machine's home really lies inside it, and the root
+-- itself, `/`, when it does not -- whether it lies elsewhere on the machine,
+-- or is reached through a link that leads out of the root. The machine's own
+-- path would name a copy of the machine's folders inside the root, and Rebol's
+-- `start` would build that copy to keep its data in, telling the script where
+-- its root sits as it did so. That breaks the promise of
+-- ALinkLeavingTheRootIsRefused and of the working directory, that a confined
+-- script never learns where its root is.
+--
+-- Only the filesystem port knows its root, so the port is asked: it turns a
+-- path on the machine into the script's own terms, or says the machine path
+-- lies outside what it reaches. The page's store and the carried files have no
+-- machine paths in them, so for them home is always `/`. The start directory
+-- follows the same rule, and data sits in home as it does unconfined.
+rule AConfinedScriptsHomeIsInsideItsRoot {
+    when: interpreter: Interpreter.created
+    requires: the_file_port_confines(interpreter)
+
+    ensures: system_options_home(interpreter) =
+        directory_at(the_script_path_of_or_the_root(interpreter.machine.home_directory))
+    ensures: system_options_path(interpreter) =
+        directory_at(the_script_path_of_or_the_root(interpreter.machine.current_directory))
+    ensures: system_options_data(interpreter) =
+        directory_at(the_script_path_of_or_the_root(interpreter.machine.home_directory) + "/.jebol")
+    ensures: nothing_is_made_beneath_the_root_at(interpreter.machine.home_directory)
+}
+
+-- And Rebol's own `start` hears the same home.
+--
+-- The borrowed `start` reads home from `get-env "HOME"`, then `USERPROFILE`,
+-- and works the data directory out from it, so a command line run under
+-- `--root` answers those two names with the confined home, written as a local
+-- path. `sys-start.reb` stays as borrowed, and GET-ENV cannot give the
+-- machine's home away either. `APPDATA`, which `start` prefers for data on
+-- Windows, is answered the same way when it lies inside the root and is not
+-- there at all when it does not, so data falls back to home there too.
+--
+-- A program CALL starts runs outside the sandbox, and it inherits the
+-- machine's real values: a path that means something only inside the root
+-- means nothing to it. A name the script sets itself with SET-ENV is the
+-- script's, and both see it.
+rule AConfinedCommandLineTellsStartTheConfinedHome {
+    when: a_command_line_run_starts(run)
+    requires: run.is_confined
+
+    ensures: get_env(run, "HOME") = local_form(system_options_home(run.interpreter))
+    ensures: get_env(run, "USERPROFILE") = local_form(system_options_home(run.interpreter))
+    ensures: system_options_data(run.interpreter) =
+        system_options_home(run.interpreter) + ".rebol/"
+    ensures: what_a_started_program_inherits(run, "HOME") = the_machines_own(run, "HOME")
 }
 
 -- `system/options/boot` is the launcher the machine makes, and only where a
@@ -795,6 +860,13 @@ rule ASecondInterpreterIsConfinedAsThisOneIs {
 -- does in the parent, so nothing has to be said about it separately: this is
 -- TheModulesDirectorySitsBesideTheData in spec/natives.allium, running in the
 -- child.
+--
+-- The command line moves the data directory only when it is given `--data`.
+-- Without it, Rebol's own `start` works data out from the environment after
+-- the launcher has been written, and the child it starts inherits the same
+-- environment and works out the same answer. So the command line's launcher
+-- names no data directory then: naming the one the interpreter held before
+-- `start` ran would send the child somewhere its parent never looked.
 rule ASecondInterpreterFindsTheSameApplicationData {
     when: run: ScriptRun.created
     requires: files in run.interpreter.bounds.granted_services

@@ -31,7 +31,6 @@ class TheSafeSchemeFromTheSourceTest {
         Interpreter interpreter = makeAnInterpreterReaching(directory);
         String withAPassword = """
                 set-env "REBOL_SAFE_PASS" "my-pass"
-                system/options/home: %./
                 """ + source;
         interpreter.defineNewWordsIn(withAPassword);
         return interpreter.display(interpreter.run(withAPassword));

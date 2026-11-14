@@ -1245,6 +1245,109 @@ invariant RefinementArgumentsHaveOwners {
 -- value reachable from it. Concurrency comes from running many instances.
 -- Series aliasing therefore needs no synchronisation, because nothing
 -- shares storage across a thread boundary. See docs/decisions.md item 4.
+-- A value that has to reach another interpreter crosses as a copy the
+-- receiver owns; the rules below say what that copy is.
+
+------------------------------------------------------------
+-- Values crossing between interpreters (decision 70)
+------------------------------------------------------------
+
+-- A value handed from one interpreter to another arrives as a copy the
+-- receiver owns, and nothing in it is shared with the sender.
+--
+-- R3 has no model to follow here. `INCLUDE_TASK` is off in `rebol3.nest`, so a
+-- real 3.22.5 never runs a task's body, and where it is on `Launch_Task` takes
+-- a shallow `Clone_Block` whose words stay bound to the sender's contexts --
+-- two threads in one set of contexts, which JEBOL cannot allow. A task's body
+-- used to cross as molded text, so anything MOLD and LOAD do not keep was lost
+-- or changed on the way: a function, an object, a series held twice, a cycle.
+--
+-- The copy is made on the sender's thread, when DO is called. After that a
+-- change in either interpreter never reaches the other. A task's body is the
+-- first user; goal 6's copied interpreter is the second.
+rule AValueCrossesAsACopyTheReceiverOwns {
+    when: a_value_crosses(value, sender, receiver)
+
+    ensures: the_copy_is_made_on_the_senders_thread_when_it_is_handed_over(value)
+    ensures: nothing_reachable_from_the_copy_is_reachable_from(sender)
+    ensures: no_later_change_in_either_reaches_the_other(value, sender, receiver)
+}
+
+-- Data copies deeply. Scalars; every series -- strings, binaries, blocks,
+-- parens, paths, hashes, images and vectors -- each nested series keeping its
+-- own position; maps, bitsets, structs, typesets and datatypes; objects,
+-- modules and tasks, as new contexts the receiver owns; and errors.
+--
+-- Sharing is kept. A series reached twice in the sender, at the same position
+-- or another, is one series reached twice in the copy, and a block that holds
+-- itself copies as a block that holds itself, so a copy is never larger than
+-- what it copies and a cycle is not followed for ever.
+rule DataCopiesDeeplyAndKeepsItsSharing {
+    when: a_value_crosses(value, sender, receiver)
+
+    ensures:
+        for series in the_series_reachable_from(value):
+            the_copy_of(series).position = series.position
+                and the_copy_of(series).items = the_copies_of(series.items)
+    ensures:
+        for first in the_series_reachable_from(value):
+            for second in the_series_reachable_from(value):
+                shares_storage(first, second)
+                    implies shares_storage(the_copy_of(first), the_copy_of(second))
+}
+
+-- A word loses the sender's binding and is bound in the receiver as LOAD
+-- would bind it: in the receiver's user context, holding what lib holds for a
+-- name the user context has not got. The one binding kept is to an object that
+-- crossed with it: a word bound to an object reached in the value is bound to
+-- that object's copy. So a body that worked through MOLD and LOAD answers the
+-- same as a copied one, and an object's function still finds the object's own
+-- words.
+rule AWordIsBoundInTheReceiverAsLoadWouldBindIt {
+    when: a_value_crosses(value, sender, receiver)
+
+    ensures:
+        for word in the_words_reachable_from(value):
+            if is_reached_in(value, the_object_bound_to(word)):
+                the_copy_of(word).binding = the_copy_of(the_object_bound_to(word))
+            else:
+                the_copy_of(word).binding = as_load_binds_it_in(receiver, word)
+}
+
+-- Functions and closures copy their spec and body, and their words are bound
+-- as above; their own arguments and locals are bound to their own frame again.
+-- Natives and actions cross as the receiver's own of the same name, refined
+-- or respecified the same way, because the receiver has its own and a native
+-- is the interpreter's code rather than the script's data.
+rule FunctionsCopyAndNativesAreTheReceiversOwn {
+    when: a_value_crosses(value, sender, receiver)
+
+    ensures:
+        for function in the_functions_reachable_from(value):
+            the_copy_of(function).spec = the_copy_of(function.spec)
+                and the_copy_of(function).body = the_copy_of(function.body)
+    ensures:
+        for native in the_natives_reachable_from(value):
+            the_copy_of(native) = the_native_named_in(receiver, native.name)
+}
+
+-- What stands for something outside the interpreter is refused: a port, a
+-- handle, a library, an event, a gob, a command and a java object. Each is a
+-- door to something the receiver cannot be handed a copy of -- an open file or
+-- connection, a host resource, a window, an extension's code -- and sharing
+-- the door is sharing the thing.
+--
+-- The sender is refused, with a catchable `invalid-type` naming the datatype,
+-- before anything starts. A body refused there has not run at all, rather
+-- than run without what it was given.
+rule WhatStandsOutsideTheInterpreterIsRefusedInTheSender {
+    when: a_value_crosses(value, sender, receiver)
+    requires: some_reachable_value_is_one_of(value,
+        port, handle, library, event, gob, command, java_object)
+
+    ensures: CallFails(error: invalid_type, arg1: the_first_refused_datatype_reached(value))
+    ensures: nothing_starts(receiver)
+}
 
 -- Resolved: the lexical types stay lexical, as in R3-Alpha. A tuple may
 -- hold 999.999.999 and an email is a shape rather than a checked address.

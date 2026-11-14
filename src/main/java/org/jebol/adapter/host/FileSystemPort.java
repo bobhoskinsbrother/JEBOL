@@ -64,6 +64,52 @@ public final class FileSystemPort implements FilePort {
     }
 
     @Override
+    public Optional<String> findScriptPath(String hostPath) {
+        if (confinesNothing()) {
+            return Optional.of(hostPath);
+        }
+        Optional<Path> asked = readAbsoluteHostPath(hostPath);
+        if (asked.isEmpty()) {
+            return Optional.empty();
+        }
+        Path realRoot = findRealRootPath();
+        Path landed = findRealLocation(asked.get());
+        if (!landed.startsWith(realRoot)) {
+            return Optional.empty();
+        }
+        String beneathRoot = withForwardSlashes(realRoot.relativize(landed));
+        return Optional.of(beneathRoot.isEmpty() ? "/" : "/" + beneathRoot);
+    }
+
+    private boolean confinesNothing() {
+        return root.getParent() == null;
+    }
+
+    private Optional<Path> readAbsoluteHostPath(String hostPath) {
+        try {
+            Path asked = Path.of(hostPath);
+            return asked.isAbsolute() ? Optional.of(asked.normalize()) : Optional.empty();
+        } catch (InvalidPathException malformed) {
+            return Optional.empty();
+        }
+    }
+
+    private Path findRealLocation(Path absolute) {
+        Path existing = absolute;
+        while (existing != null && !Files.exists(existing)) {
+            existing = existing.getParent();
+        }
+        if (existing == null) {
+            return absolute;
+        }
+        try {
+            return existing.toRealPath().resolve(existing.relativize(absolute));
+        } catch (IOException unreadable) {
+            return absolute;
+        }
+    }
+
+    @Override
     public void acceptFileFromOutsideRoot(String hostFile) {
         hostFilesOutsideRoot.add(hostFile);
     }

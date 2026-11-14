@@ -104,6 +104,11 @@ public final class WebFiles implements FilePort {
     }
 
     @Override
+    public Optional<String> findScriptPath(String hostPath) {
+        return Optional.empty();
+    }
+
+    @Override
     public void changeDirectory(String path) {
         String target = absolute(path);
         if (!directories.contains(target)) {

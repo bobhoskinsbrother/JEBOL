@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.ConfinedEnvironment;
 import org.jebol.adapter.host.ExtensionDescriptors;
 import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImage;
@@ -216,11 +217,12 @@ public final class Repl {
             boolean anythingWasAsked, Path root, ProcessEnvironment environment, ConsolePort console) {
 
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
+        FileSystemPort files = FileSystemPort.rootFileSystem(root);
         HostPorts ports = attachJavaImagesCodec(new JavaHost().ports()
                 .withConsole(console)
                 .withTasks(new ThreadTasks(bounds))
-                .withFiles(FileSystemPort.rootFileSystem(root))
-                .withEnvironment(environment)
+                .withFiles(files)
+                .withEnvironment(isWholeMachine(root) ? environment : ConfinedEnvironment.confine(environment, files))
                 .withProcesses(new JavaProcess())
                 .withClipboard(new JavaClipboard())
                 .withNetwork(new JavaSocket())
@@ -233,11 +235,16 @@ public final class Repl {
         return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
+    private static boolean isWholeMachine(Path root) {
+        return root.toAbsolutePath().normalize().getParent() == null;
+    }
+
     private static void applyDataSwitch(
             Interpreter interpreter, ProcessEnvironment environment, String[] arguments) {
 
         String written = readTrailingArgument(DATA_SWITCH, arguments);
         if (written.isEmpty()) {
+            interpreter.omitDataDirectoryFromLauncher();
             return;
         }
         environment.assign(REBOL_HOME, written);

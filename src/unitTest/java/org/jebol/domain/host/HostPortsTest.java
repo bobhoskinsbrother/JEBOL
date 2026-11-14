@@ -1,8 +1,11 @@
 package org.jebol.domain.host;
 
+import org.jebol.domain.eval.Crossing;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.TextRun;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.StringValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -101,8 +104,9 @@ class HostPortsTest {
                 .isInstanceOf(MidiDevices.Refused.class);
 
         StringBuilder written = new StringBuilder();
-        none.tasks().runBody("print \"never\"", written::append);
+        none.tasks().runBody(Crossing.prepare(BlockValue.of(StringValue.of("never"))), written::append);
         assertThat(written).isEmpty();
+        assertThat(none.tasks().runsBodies()).isFalse();
     }
 
     @Test
@@ -128,7 +132,7 @@ class HostPortsTest {
         HttpPort http = HttpPort.none();
         ClipboardPort clipboard = ClipboardPort.none();
         MidiDevices midiDevices = new NoMidiDevices();
-        TaskPort tasks = (bodyAsWritten, output) -> {
+        TaskPort tasks = (body, output) -> {
         };
 
         List<Replacement> everyReplacement = List.of(

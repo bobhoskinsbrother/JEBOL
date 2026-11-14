@@ -116,6 +116,11 @@ public final class PickedFiles implements FilePort {
     }
 
     @Override
+    public Optional<String> findScriptPath(String hostPath) {
+        return files.findScriptPath(hostPath);
+    }
+
+    @Override
     public void acceptFileFromOutsideRoot(String hostFile) {
         files.acceptFileFromOutsideRoot(hostFile);
     }

@@ -87,7 +87,7 @@ final class ProgramCalling {
 
     private Map<String, String> listWhatChildInherits(Evaluator evaluator) {
         try {
-            return evaluator.ports().environment().readAll();
+            return evaluator.ports().environment().listWhatProgramsInherit();
         } catch (FilePort.Denied noEnvironment) {
             return Map.of();
         }

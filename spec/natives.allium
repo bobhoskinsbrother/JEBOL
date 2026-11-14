@@ -1474,7 +1474,10 @@ rule DoOfATaskAnswersTheTask {
 -- On the JVM a host keeps as many interpreters as it has threads, one each.
 -- So a task's body runs in a fresh interpreter on a thread of its own. It
 -- sees none of the parent's contexts, because the parent's series cannot be
--- shared with a second thread safely; it writes where the parent writes; and
+-- shared with a second thread safely: the body crosses as a deep copy the
+-- child owns, made when DO is called, and values.allium's
+-- AValueCrossesAsACopyTheReceiverOwns says what that copy is. It writes where
+-- the parent writes; and
 -- what it raises or how long it takes stays at its own edge, because the
 -- parent answered the task and moved on before the body produced anything.
 rule TheFateOfATasksBodyIsTheHostsToDecide {

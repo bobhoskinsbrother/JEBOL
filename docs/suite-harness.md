@@ -320,15 +320,18 @@ from the thing it measures.
 wrong answer rather than a safe one.
 
 **A sandbox whose home lies outside the sandbox is an incoherent host, not a
-strict one.** The filesystem is confined to a temporary directory and
-`system/options/home` is read from the machine, so a suite file asking where home
-is got an answer it was then refused permission to write. Rebol's own SAFE tests
-do exactly that - `set-user` keeps a user's storage file at
+strict one.** The filesystem is confined to a temporary directory, and
+`system/options/home` used to be read from the machine, so a suite file asking
+where home is got an answer it was then refused permission to write. Rebol's own
+SAFE tests do exactly that - `set-user` keeps a user's storage file at
 `system/options/home` - and every assertion after it was lost to a path the run
-was never allowed to reach. `system/options/data` is the same incoherence one
-field along, and **the word `~` is bound while the library loads**, long before
-any of it, so moving the field alone leaves `cd ~` pointing at the old place.
-Both are set, which is what `mezz-tail.reb` does in one line.
+was never allowed to reach. The harness set home to `%./` to get round it; since
+decision 69 the interpreter asks the filesystem port, and a confined run's home
+is the root, so the harness no longer says anything about home.
+`system/options/data` is set still, because the harness puts it at `/data/`
+rather than beside home, and **the word `~` is bound while the library loads**,
+long before any of it, so moving the field alone leaves `cd ~` pointing at the
+old place. Both are set, which is what `mezz-tail.reb` does in one line.
 
 **The modules a suite file imports are put on disk, so no run fetches one.**
 IMPORT looks in three places - what is loaded, a file in the modules directory,

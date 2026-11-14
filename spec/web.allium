@@ -164,6 +164,23 @@ rule DismissingThePromptDeclines {
 }
 
 ------------------------------------------------------------
+-- Home
+------------------------------------------------------------
+
+-- A page's home is the root of its store, `/`, and its data directory is
+-- `/.jebol/` inside it. The store is the only filesystem a page script has,
+-- and no path on the machine running the browser names anything in it, so
+-- the page answers as embed.allium's AConfinedScriptsHomeIsInsideItsRoot does
+-- for a home that lies outside the root.
+rule APagesHomeIsTheRootOfItsStore {
+    when: a_page_interpreter_is_created(interpreter)
+
+    ensures: system_options_home(interpreter) = "/"
+    ensures: system_options_path(interpreter) = "/"
+    ensures: system_options_data(interpreter) = "/.jebol/"
+}
+
+------------------------------------------------------------
 -- Opening files
 ------------------------------------------------------------
 

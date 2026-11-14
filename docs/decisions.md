@@ -3065,6 +3065,37 @@ What does not change: under R3's default SECURE policy home is read-and-execute
 only (`sys-start.reb:224`), so `set-user/n` is refused at home in both
 interpreters unless the run is given `-s`.
 
+**How it was built.** `FilePort.findScriptPath` is the inverse of `hostPath`:
+`FileSystemPort` follows every link and answers the path beneath its root, or
+nothing for anywhere outside it, and a port rooted at the machine's own root
+answers the path as given. The page's store and the carried files have no
+machine paths, so they answer nothing and a page's home is `/`. The interpreter
+asks the port when it is built, for home, `data` beside it and the start
+directory, so an embedded host that confines a script gets the same answer as
+the command line, and the two `system/options/home: %./` workarounds in
+`SuiteHost` and `TheSafeSchemeFromTheSourceTest` are gone. The command line
+wraps its environment in `ConfinedEnvironment` under `--root`: `HOME` and
+`USERPROFILE` are the confined home where the machine sets them, `APPDATA` is
+translated when it lies inside the root and absent when it does not, a SET-ENV
+of any of them is the script's own, and `listWhatProgramsInherit` hands a
+started program the machine's values.
+
+Building it found a second leak of the same kind. The launcher written into
+`system/options/boot` was told the data directory the interpreter held before
+`start` ran, which was the machine's `user.home` plus `.jebol/`, so a child
+started through it disagreed with its parent about data and was told a machine
+path. The command line now names a data directory to its launcher only when it
+was given `--data`; otherwise the child's own `start` works data out from the
+environment it inherits, as its parent's did.
+
+**Held by** `AConfinedScriptsHomeIsInsideItsRoot`,
+`AConfinedCommandLineTellsStartTheConfinedHome` and
+`AnUnconfinedScriptSeesTheMachinesDirectories` in `spec/embed.allium`, and
+`APagesHomeIsTheRootOfItsStore` in `spec/web.allium`; tested by
+`HostMachineTest.AConfinedScriptsHomeIsInsideItsRoot`,
+`AConfinedCommandLineTellsStartItsHomeTest` and
+`AConfinedScriptsHomeEndToEndTest`.
+
 ## 70. Values cross between interpreters by deep copy
 
 Owner's decision, 2026-11-14 (goal 1j).
@@ -3084,8 +3115,11 @@ between threads. So the receiver gets a copy that it owns:
 - **Functions and closures copy** their spec and body, rebound as below.
   Natives and actions cross as the receiver's own of the same name.
 - **What stands for something outside the interpreter is refused**: ports,
-  handles, libraries, events, gobs and java objects. The sender gets a
-  catchable error naming the datatype, raised before anything starts.
+  handles, libraries, events, gobs, commands and java objects. The sender gets a
+  catchable error naming the datatype, raised before anything starts. Commands
+  were added while building it: a command is an extension's code reached
+  through a handle, not a native in lib, so there is no receiver's own of the
+  same name to hand over.
 - **Binding.** A word loses the sender's context and is bound in the receiver
   as LOAD would bind it: lib, then the receiver's user context. A word bound to
   a copied object stays bound to that object's copy. A task body that works
@@ -3095,3 +3129,28 @@ between threads. So the receiver gets a copy that it owns:
 
 The copier belongs to the domain, because goal 6's copied interpreter is its
 second user.
+
+**How it was built.** `Crossing` (`org.jebol.domain.eval`) works in two steps,
+both on the sender's thread. `Crossing.prepare` walks the value when DO is
+called, refuses what cannot cross before any interpreter is made, and notes the
+contexts of the objects, modules and tasks the value reaches. `copyInto` then
+copies it straight into the receiver -- `ThreadTasks` builds the child
+interpreter on the sender's thread already -- because a copied object is a
+child context of the receiver's user context, as an object made there would
+be, and a native is looked up in the receiver's lib; neither can be known
+without the receiver. The child's thread starts only after the copy is made.
+Line breaks travel with each copied block's storage, and are written again on
+the child's thread, because the mark a record carries is kept per thread.
+`TaskPort.runBody` takes the `Crossing`, and `runsBodies` lets a port that
+starts nothing -- a page's -- skip the walk, so DO there still answers the task
+whatever the body holds, as R3 does.
+
+What a script cannot build is not tested: a get-path such as `:append/only`
+answers the plain action in R3 and here, so a refined native never reaches the
+copier from a script, though the copier keeps the refinement if one does.
+
+**Held by** `AValueCrossesAsACopyTheReceiverOwns`,
+`DataCopiesDeeplyAndKeepsItsSharing`, `AWordIsBoundInTheReceiverAsLoadWouldBindIt`,
+`FunctionsCopyAndNativesAreTheReceiversOwn` and
+`WhatStandsOutsideTheInterpreterIsRefusedInTheSender` in `spec/values.allium`;
+tested by `AValueCrossingToATaskIsACopyTest` and `DoOfATaskFromTheSourceTest`.
