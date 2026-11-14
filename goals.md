@@ -43,33 +43,107 @@ Run it at the close of every Android stage and after any change to the core.
 
 #### 2a. The core runs on ART
 
-- **Java 21.** The whole project compiles at `release 21`, the level
-  TeaVM's build already holds the core to, with the toolchain staying 25
-  (decision 55: ArchUnit 1.4.1 reads nothing newer than 25). Decision 55's
-  other reason, the Foreign Function and Memory API, is stale -- nothing uses
-  `java.lang.foreign` -- and goes.
-- **The toolchain.** `scripts/setup-machine.sh` installs the Android SDK's
-  command-line tools, platform 35, the build tools, the emulator and the
-  x86_64 system images, and accepts the licences.
-- **The `android/` build.** Its own Gradle build with its own settings, which
-  takes the core through an included build, so the root build and
-  `allTests` never need the SDK. Android Gradle Plugin, and JUnit Jupiter on
-  the device through the android-junit5 plugin (Apache 2.0), since every
-  JEBOL test is Jupiter. Both checked against licensing before use.
-- **What Android does not have.** Compile the core against API 35's
-  `android.jar`; every symbol that does not resolve is the list. Known
-  already: `ProcessHandle` in `JavaMachine`, which is in `application`, not
-  an adapter. Each is replaced as the web build replaced its 26 (`docs/web-port.md`),
-  reusing its verified stand-ins where they fit (`HalfFloats`,
-  `UnsignedProducts`, `TextLines`).
-- **What Android does differently.** Running is the measure, not compiling.
+**What is true today (measured 2026-11-14).**
+
+- The main tree compiles at the toolchain's 25; only TeaVM's own compile is
+  held to `release 21`. Compiled at 21, the main tree fails on 23 unnamed
+  variables (`_`) in 14 files, and on one Java 25 call, `Inflater.close()` in
+  `Uts46$Tables` (`end()` is its 21 spelling). Every test tree and the SQLite
+  extension already reference nothing past 21.
+- The Android SDK is installed in `~/Android/Sdk` by hand (command-line tools
+  23, platform 35, build tools 37, platform-tools), with the licence accepted
+  by the owner. `/dev/kvm` is the owner's to use, so an x86_64 emulator runs
+  at full speed. No emulator or system image yet.
+- `javac` will not compile against `android.jar` as the platform at any level
+  past 8 (the Android Gradle Plugin builds a system image from it to get
+  round this), so the gaps were measured from the class files: a probe reads
+  every platform class and member the core's classes reference and looks
+  each up in `android.jar`, through supertypes. D8 at `--min-api 35` dexes the
+  whole core and rewrites away every Java 21 language bootstrap
+  (`SwitchBootstraps`, `MatchException`, `ConstantBootstraps`, lambdas,
+  string concatenation): none survives in the dex. What is left is library:
+
+  | Where | What Android 35 lacks |
+  | --- | --- |
+  | `domain`: `PlaceAddress`, `BinaryValue` | `ByteBuffer.flip()` and `CharBuffer.flip()` answering their own type (Java 9's overrides; Android's answer `Buffer`) |
+  | `application`: `JavaMachine` | `ProcessHandle` (pid, command), `Files.writeString` |
+  | `adapter.host`: `ThreadTasks`, `JavaSocket`, `JavaProcess` | `Thread.ofPlatform`, `Thread.ofVirtual`, `Thread.startVirtualThread` |
+  | `adapter.host`: `JavaProcess` | `ProcessHandle`, `Process.pid()`, `ProcessBuilder.Redirect.DISCARD` |
+  | `adapter.host`: `JavaSecureTransport` | `SSLEngineResult.HandshakeStatus.NEED_UNWRAP_AGAIN` |
+  | `adapter.host`: `Uts46` | `Inflater.close()` (goes with the move to 21) |
+  | desktop only: `DesktopScreen`, `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`, `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`, `SwingLeavingConfirmation`, `WindowStateReports`; `adapter.web.WebScreenServer` (`java.awt.Font`) | AWT, Swing, ImageIO: 93 classes, none of which Android has |
+  | command line only: `CommandLineConsole`, `SttyTerminal` | `Redirect.DISCARD` |
+
+  The domain's two are the only ones in code every platform runs, and both
+  are a call through `Buffer`. `JavaImage` is the picture codecs; Android's
+  are 2c's.
+
+**1. Java 21, everywhere.** The owner's call, 2026-11-14: every source set,
+main, tests, fixtures and extensions, compiles at `release 21`, so nothing
+newer can creep in on any platform. The toolchain stays 25 (decision 55). The
+23 `_` get names, `Uts46` calls `end()`, and the root build sets `release` for
+every `JavaCompile` (the launcher keeps its 8). Decision 55's FFM reason
+goes. The gate passes.
+
+**2. The gaps, closed on the JVM first.** Each with a test that fails first
+where one can:
+
+- `PlaceAddress` and `BinaryValue` flip through `Buffer`.
+- `JavaMachine`'s pid and command, and its file write, go behind the
+  `MachinePort` the host supplies (or `Files.write`), so `application` names
+  no `ProcessHandle`.
+- Threads are platform threads made by `new Thread(...)`, daemon and named as
+  now, in `ThreadTasks`, `JavaSocket` and `JavaProcess`. A virtual thread
+  bought nothing a phone can use, and `JavaSocket`'s count of connections is
+  small. `docs/standing.md`'s thread notes say so.
+- `JavaSecureTransport`'s handshake switch drops `NEED_UNWRAP_AGAIN` from its
+  `NEED_UNWRAP` case (line 235). It is DTLS's and an `SSLEngine` doing TLS never
+  answers it, but naming it in the switch is a field Android cannot resolve.
+- `JavaProcess` stays desktop and command line only: Android runs no
+  programs (`call` is 2c's to answer, as a browser's is).
+- **The task body runs on the host's ports** (below), which is a JVM defect
+  in its own right.
+
+**3. The probe becomes a check.** `scripts/AndroidApiGaps.java`, a single
+file run by `java` with no build, checked in with its output for the core as
+`scripts/android-api-gaps.txt`. `androidTests` runs it over exactly the
+classes the APK carries and fails on any gap, so a new call Android lacks is
+caught on the next run rather than on a phone.
+
+**4. What the APK carries.** The core jar minus the desktop and command-line
+classes above, which an Android process never loads: a `coreForAndroid` jar
+task in the root build excludes them by name, and step 3's check over it
+must come out empty. A class added later that reaches AWT fails the check
+until it is excluded or split.
+
+**5. The toolchain.** `scripts/setup-machine.sh` installs what was installed
+by hand above, plus the emulator and an x86_64 API 35 system image, and
+accepts the licences.
+
+**6. The `android/` build.** Its own Gradle build and settings; it takes the
+core through an included build, so the root build and `allTests` never need
+the SDK. The Android Gradle Plugin and the android-junit5 plugin (Apache
+2.0), both checked against licensing before use. `minSdk` and `compileSdk`
+35. A library module that carries the core and Android's own ports, and a
+test application to run the suites in, which 2b replaces with the app.
+
+**7. Running on ART.** The functional tests and Rebol's suite run on the
+emulator through android-junit5 as instrumentation tests. Running is the
+measure, not compiling. Known risks, each measured on the emulator:
   Known risks, each measured on the emulator: case folding through
   `Character` (Android's is ICU at its own Unicode version, the JDK 25's is
   16.0); the JCA algorithms the crypto asks for by name (`XDH`, `ChaCha20`,
   `DH`, `EC`, RSA, `AES/ECB/NoPadding`) and the digests `JvmDigests` offers;
   regular expressions and number formatting. Where the platform's table
-  decides an answer, the domain carries R3's own, as `Uts46` does.
-- **Fixed first, on the JVM: a task's body runs on the host's ports.**
+  decides an answer, the domain carries R3's own, as `Uts46` does. Each
+  difference found is fixed on the JVM side with a test that pins R3's
+  answer, then re-run on ART.
+
+**8. Docs.** Decision 73 gains the measured gaps and how each was closed;
+`docs/android-port.md` is the porting notes, as `docs/web-port.md` is the
+web's; `docs/standing.md` gets the APK's size and the suites' counts on ART.
+
+**The task body, in detail.**
   `ThreadTasks` (`src/main/java/org/jebol/adapter/host/ThreadTasks.java:32`)
   builds its child with `Interpreter.createWithOutput(...)`, which is
   `Interpreter.standardPorts()`, so a task body on Android would answer
@@ -78,16 +152,38 @@ Run it at the close of every Android stage and after any change to the core.
   parent's output and pause. It wants the parent's `HostPorts`, which also
   settles what a task body may reach: today it has no files, and a file port
   carries the directory it stands in, so the parent's cannot simply be
-  shared.
+  shared. The plan's proposal: the host hands `ThreadTasks` a way to make a
+  child's ports, which on the JVM is `JavaHost`'s own with a file port of its
+  own standing in the parent's current directory, and on Android will be
+  Android's. A functional test asserts a task body answers the parent's
+  `system/platform`, prints through the parent's output, and reads a file
+  beside the script.
 
 **Done when** `androidFunctionalTests` runs Rebol's suite and JEBOL's
 functional tests on ART with the same counts as the JVM, apart from tests
 that cannot run on a device by their nature (ArchUnit reads class files),
 each listed with why.
 
-**Its plan settles:** which of the functional tests run on ART (jqwik on the
-device, the fixtures' files); where the carried library and fonts live in
-an APK (Java resources or assets).
+**What the plan settles, the owner's decisions 2026-11-14:**
+
+- **The carried library, fonts and fixtures live in the APK as Java
+  resources, not assets.** The Android Gradle Plugin packages a jar's
+  resources into the APK and `getResourceAsStream` reads them on ART, so
+  `ClasspathFiles` and `LibrarySource` stay as they are, and the suites'
+  fixtures arrive the same way. Assets would need an `AssetManager` adapter
+  for no gain. The first functional test on ART is `Interpreter.create()`,
+  which reads the whole library, so a wrong answer here shows at once.
+- **Which functional tests run on ART: all of them, by default.** A test that
+  cannot run is listed in `android/not-on-a-device.txt` with why, as
+  `needs-the-network.txt` lists its twelve. Known before measuring: the
+  ArchUnit rules (they read class files, and a dex has none), and anything
+  reading a file by its path in the source tree rather than as a resource.
+  jqwik runs on the JUnit Platform and is tried on ART; if it will not start
+  there, its properties are listed, not rewritten.
+- **The suites' time.** About 16,300 interpreters per functional run on a JVM;
+  on an emulator that may be far slower. Measured first on Rebol's suite
+  alone, before deciding whether `androidFunctionalTests` shards across
+  emulators.
 
 #### 2b. The app: one screen, touch, the keyboard, the lifecycle, Back
 
