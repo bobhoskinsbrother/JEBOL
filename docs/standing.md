@@ -60,6 +60,16 @@ a baseline from the same machine rather than against the row.
   R3 has 47, on purpose.** `back` and `forward` come after the C's last, so no
   index the C fixed moves; `go`, `go-back`, `go-forward`, `current-place` and
   `unsaved-work` are JEBOL's own words. Decision 50 and `spec/nav.allium`.
+- **GUI-METRIC/SET arranges a window, where R3 answers `command-fail`, on
+  purpose.** `gui-metric/set 'minimize win`, `'maximize`, `'restore` and
+  `'activate` act on an open window gob and answer it; without `/set` the four
+  are still `command-fail`, as in both hosts. In a browser they act on the
+  page's surface, and `minimize`, `maximize` and `restore` reach a script
+  there as events, as on the desktop. `spec/screen.allium`, decision 72.
+- **DRAW's `effect` is `feature-na` at SHOW and `to image!`, where R3 paints
+  nothing, on purpose.** No Rebol 3 paints an effect; JEBOL says so rather than
+  show a picture missing something. An effect gob still shows and paints
+  nothing. `spec/draw.allium`, decision 72, goal 16.
 - **A task's body runs, where R3 never runs it, on purpose.** R3 makes a
   task and DO answers it, but nothing ever starts the body: an obvious bug.
   JEBOL runs it where a host supplies a way to: on a thread of its own in a

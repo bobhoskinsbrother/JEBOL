@@ -8,6 +8,7 @@ import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.host.WindowsOnOneSurface;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenEventType;
@@ -15,12 +16,17 @@ import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.LongSupplier;
@@ -35,6 +41,8 @@ public final class BrowserScreen extends GobScreen {
     private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
     private final Queue<ScreenPost> posts = new ConcurrentLinkedQueue<>();
     private final Queue<ScreenMeasurement> measurements = new ConcurrentLinkedQueue<>();
+    private final Map<GobStorage, PlaceBeforeMaximising> maximised = new IdentityHashMap<>();
+    private final Set<GobStorage> minimised = Collections.newSetFromMap(new IdentityHashMap<>());
     private PairValue viewport = PairValue.of(0, 0);
     private boolean isPictureRequired;
     private Optional<String> titleShown = Optional.empty();
@@ -179,12 +187,79 @@ public final class BrowserScreen extends GobScreen {
     @Override
     protected void closeWindowFor(GobValue gob) {
         gobValues.removeIf(gob::sharesStorageWith);
+        maximised.remove(gob.storage());
+        minimised.remove(gob.storage());
+    }
+
+    @Override
+    protected void arrangeOpenWindow(GobValue window, WindowArrangement arrangement) {
+        switch (arrangement) {
+            case MAXIMIZE -> maximise(window);
+            case MINIMIZE -> minimise(window);
+            case RESTORE -> restore(window);
+            case ACTIVATE -> activate(window);
+        }
+        isPictureRequired = true;
+    }
+
+    private void maximise(GobValue window) {
+        GobStorage held = window.storage();
+        if (maximised.containsKey(held) && !minimised.contains(held)) {
+            return;
+        }
+        minimised.remove(held);
+        maximised.putIfAbsent(held, new PlaceBeforeMaximising(held.size(), held.offset()));
+        fitToViewport(window);
+        queued.add(ScreenEventType.MAXIMIZE, window, new ScreenEventDetail.NothingMore());
+    }
+
+    private void fitToViewport(GobValue window) {
+        window.storage().setOffset(PairValue.of(0, 0));
+        window.storage().size(viewport);
+        queued.add(ScreenEventType.RESIZE, window,
+                new ScreenEventDetail.At((int) Math.round(viewport.x()), (int) Math.round(viewport.y())));
+    }
+
+    private void minimise(GobValue window) {
+        if (minimised.add(window.storage())) {
+            queued.add(ScreenEventType.MINIMIZE, window, new ScreenEventDetail.NothingMore());
+        }
+    }
+
+    private void restore(GobValue window) {
+        GobStorage held = window.storage();
+        boolean wasMinimised = minimised.remove(held);
+        PlaceBeforeMaximising before = maximised.remove(held);
+        if (!wasMinimised && before == null) {
+            return;
+        }
+        if (before != null) {
+            held.size(before.size());
+            held.setOffset(before.offset());
+        }
+        queued.add(ScreenEventType.RESIZE, window, new ScreenEventDetail.At(
+                (int) Math.round(held.size().x()), (int) Math.round(held.size().y())));
+        queued.add(ScreenEventType.RESTORE, window, new ScreenEventDetail.NothingMore());
+    }
+
+    private void activate(GobValue window) {
+        gobValues.removeIf(window::sharesStorageWith);
+        gobValues.add(window);
+        surface.giveKeyboardTo(window);
     }
 
     private List<DrawingCommand> paintPage() {
-        return PaintList.ofScreen(root,
+        return PaintList.ofScreen(root, listWhatIsPaintedFromBottomToTop(),
                 (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
                 drawDialect).calls(textMeasurement());
+    }
+
+    private List<GobValue> listWhatIsPaintedFromBottomToTop() {
+        List<GobValue> painted = new ArrayList<>(rootPaneChildren().stream()
+                .filter(child -> !hasWindow(child))
+                .toList());
+        painted.addAll(listWindowsFromBottomToTop());
+        return painted;
     }
 
     private void acceptMeasurements() {
@@ -207,13 +282,29 @@ public final class BrowserScreen extends GobScreen {
         if (root != null) {
             root.storage().size(viewport);
         }
+        refitMaximisedWindows();
+    }
+
+    private void refitMaximisedWindows() {
+        for (GobValue window : List.copyOf(gobValues)) {
+            if (maximised.containsKey(window.storage()) && !window.storage().size().equals(viewport)) {
+                fitToViewport(window);
+                isPictureRequired = true;
+            }
+        }
     }
 
     private List<GobValue> listWindowsFromBottomToTop() {
         if (root == null) {
             return List.of();
         }
-        return rootPaneChildren().stream().filter(this::hasWindow).toList();
+        return gobValues.stream()
+                .filter(this::isInRootsPane)
+                .filter(window -> !minimised.contains(window.storage()))
+                .toList();
+    }
+
+    private record PlaceBeforeMaximising(PairValue size, PairValue offset) {
     }
 
 

@@ -7,6 +7,7 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.render.TextExtent;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.value.GobValue;
@@ -28,6 +29,8 @@ final class RecordingScreen extends GobScreen {
     private final List<GobValue> closed = new ArrayList<>();
     private final List<GobValue> withWindows = new ArrayList<>();
     private final List<ScreenCursor> cursorsAskedFor = new ArrayList<>();
+    private final List<WindowArrangement> arrangementsAskedFor = new ArrayList<>();
+    private final List<GobValue> windowsArranged = new ArrayList<>();
 
     private RecordingScreen(boolean present) {
         super(() -> 0L, new WindowHistory());
@@ -139,6 +142,20 @@ final class RecordingScreen extends GobScreen {
         if (withWindows.removeIf(gob::sharesStorageWith)) {
             closed.add(gob);
         }
+    }
+
+    @Override
+    protected void arrangeOpenWindow(GobValue window, WindowArrangement arrangement) {
+        windowsArranged.add(window);
+        arrangementsAskedFor.add(arrangement);
+    }
+
+    List<WindowArrangement> listArrangementsAskedFor() {
+        return List.copyOf(arrangementsAskedFor);
+    }
+
+    List<GobValue> listWindowsArranged() {
+        return List.copyOf(windowsArranged);
     }
 
     void actAsTheOperator(ScreenEventType kind, GobValue window) {

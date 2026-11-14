@@ -25,7 +25,10 @@ public enum ScreenEventType {
     SCROLL_LINE("scroll-line"),
     SCROLL_PAGE("scroll-page"),
     BACK("back"),
-    FORWARD("forward");
+    FORWARD("forward"),
+    MINIMIZE("minimize"),
+    MAXIMIZE("maximize"),
+    RESTORE("restore");
 
     private final String spelling;
 

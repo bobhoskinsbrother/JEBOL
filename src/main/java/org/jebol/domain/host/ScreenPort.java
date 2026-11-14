@@ -69,6 +69,14 @@ public interface ScreenPort {
      */
     void show(GobValue gob);
 
+    default boolean isShowingWindow(GobValue gob) {
+        return false;
+    }
+
+    default void arrangeWindow(GobValue window, WindowArrangement arrangement) {
+        throw new Denied("no-service", "this interpreter was given no screen to arrange a window on");
+    }
+
     /**
      * Offers whatever has been shown since the last offer, and nothing when
      * nothing has.

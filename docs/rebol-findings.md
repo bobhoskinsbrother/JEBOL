@@ -6494,6 +6494,24 @@ unset, following the Windows host. Nothing in the library reads the answer.
 touching the slot, so a gob, `none` and a block all come back unchanged, and
 only a gob reaches `OS_Show_Gob`.
 
+**Neither host handles GUI-METRIC's last four words.** `boot/window.reb` hands
+both hosts `restore`, `minimize`, `maximize` and `activate` after the twelve
+metrics, and both `CMD_WINDOW_GUI_METRIC` switches end in `default: return
+RXR_BAD_ARGS`, which is `command-fail`. Neither ever reads `val`, with or
+without `/set`, and nothing in the library calls `/set`. What a window says
+about its state is in `os/win32/host-event.c`, `WM_SIZE`: `minimize` alone
+when it is minimised (the size is left alone), and `resize` followed by
+`maximize` or `restore` otherwise, after writing `gob->size`; `WM_MOVE`
+writes `gob->offset`. Nothing is queued for activation. JEBOL's answer is
+decision 72.
+
+**3.22 builds no DRAW and no effect.** `host-draw.c` and `host-effect.c` are
+in `src/os/` and in no list in `make/rebol3.nest`, and the `FX_*` routines
+`host-effect.c` calls are not in the tree at all. So no 3.22 build paints a
+draw block, and nothing in the tree paints an effect. JEBOL refuses DRAW's
+`effect` with `feature-na` at SHOW and `to image!` (decision 72); painting it
+is goal 16, a port from REBOL 2.
+
 ## 220. The output natives, swept against r3-head
 
 MOLD, FORM, PRINT, PRIN and QUIT were swept against r3-head: about three

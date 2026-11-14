@@ -63,6 +63,17 @@ public record PaintList(List<PaintInstruction> instructions) {
                 TITLE_TEXT_DEPTH, drawDialect);
     }
 
+    public static PaintList ofScreen(
+            GobValue root, List<GobValue> windowsBottomToTop, int wide, int high,
+            ObjectValue drawDialect) {
+
+        List<PaintInstruction> gathered = new ArrayList<>();
+        gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered, root.storage(),
+                List.copyOf(windowsBottomToTop), 0, 0, ClipRectangle.coverWholeSurface(wide, high),
+                Placement.OPAQUE, TITLE_TEXT_DEPTH, drawDialect);
+        return new PaintList(gathered);
+    }
+
     /** One window and its contents, with its own title left out. */
     public static PaintList ofWindow(GobValue window, ObjectValue drawDialect) {
         int wide = roundToWhole(window.storage().size().x());
@@ -133,13 +144,13 @@ public record PaintList(List<PaintInstruction> instructions) {
             ObjectValue drawDialect) {
 
         List<PaintInstruction> gathered = new ArrayList<>();
-        gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered,root.storage(), 0, 0, surface, Placement.OPAQUE,
-                titledDepths, drawDialect);
+        gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered, root.storage(), root.storage().pane(),
+                0, 0, surface, Placement.OPAQUE, titledDepths, drawDialect);
         return new PaintList(gathered);
     }
 
     private static void gatherParentBeforeChildrenWhichIsWhatInFrontMeans(
-            List<PaintInstruction> gathered, GobStorage gob,
+            List<PaintInstruction> gathered, GobStorage gob, List<? extends Value> children,
             int across, int down, ClipRectangle within, int inheritedOpacity,
             int titledDepths, ObjectValue drawDialect) {
 
@@ -168,9 +179,9 @@ public record PaintList(List<PaintInstruction> instructions) {
             makeInstructionFor(gob, where).ifPresent(gathered::add);
         }
 
-        for (Value child : gob.pane()) {
+        for (Value child : children) {
             if (child instanceof GobValue held) {
-                gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered,held.storage(),
+                gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered, held.storage(), held.storage().pane(),
                         across + roundToWhole(held.storage().offset().x()),
                         down + roundToWhole(held.storage().offset().y()),
                         own, opacity, titledDepths - 1, drawDialect);

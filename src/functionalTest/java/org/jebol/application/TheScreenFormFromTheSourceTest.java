@@ -10,6 +10,7 @@ import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.render.TextMeasurement;
@@ -356,6 +357,10 @@ class TheScreenFormFromTheSourceTest {
         @Override
         protected void closeWindowFor(GobValue gob) {
             showing.removeIf(gob::sharesStorageWith);
+        }
+
+        @Override
+        protected void arrangeOpenWindow(GobValue window, WindowArrangement arrangement) {
         }
 
         private void recordTextIn(GobStorage storage) {

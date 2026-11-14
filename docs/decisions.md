@@ -3255,3 +3255,42 @@ library calls `/set`, and the C never reads `val`. So:
   whether the script changed the window or the operator did, on the desktop
   and in a browser. Neither host queues anything for `activate`, and nor does
   JEBOL.
+- **A desktop window's gob follows the window**, as `WM_SIZE` and `WM_MOVE`
+  write `gob->size` and `gob->offset` in `host-event.c`. When the interpreter
+  takes a desktop `resize` or `offset`, it writes the window gob's size or
+  offset on its own thread; minimising writes neither. Owner's choice,
+  2026-11-14: goal 1l's plan assumed this already happened, and it did not.
+- **A browser keeps its own stacking order.** The page paints its windows,
+  and addresses events to them, bottom to top in an order `BrowserScreen`
+  keeps: a window opens on top and `activate` lifts it there. The screen
+  gob's pane is never reordered, as no desktop reorders it. Reordering the
+  pane was offered and declined, 2026-11-14.
+
+**What a desktop toolkit forced.** Swing reports a window's new state and its
+new size as two events in no promised order, so `WindowStateReports` holds a
+maximize or a restore until the resize that belongs to it arrives, and says
+`resize` then the state; a resize that came just before stands for it if
+none follows within half a second. Under GNOME on Wayland the compositor
+ignores a program asking to un-minimise its own window, though it honours
+minimising, maximising and restoring from maximised; so DesktopScreen shows a
+minimised window again by hiding it and showing it, maximising it after if
+asked, and says what it settled as once it has, holding back the state flips
+the compositor makes on the way.
+
+**A real window needs its own suite.** Every test JVM runs headless, and AWT
+decides that once. The end-to-end tests tagged `opens-a-real-window` run in
+`desktopWindowTests`, one fork with the toolkit on, part of `allTests`, and
+fail rather than skip on a machine with no display. An operator un-minimising
+from the dock cannot be acted out there, because the compositor refuses it to
+a program; the test acts out the other three and has the script restore.
+
+**Held by** `ShowRefusesADrawBlockThatUsesEffect`,
+`AnImageOfAGobRefusesEffectToo` and `AnEffectGobPaintsNothingAndKeepsItsBlock`
+in `spec/draw.allium`; `GuiMetricSetArrangesAnOpenWindow`,
+`OnlyAnOpenWindowCanBeArranged`, `TheFourWordsNeedSet`,
+`ABrowserArrangesAWindowOnItsPage`, `AWindowSaysWhenItsStateChanges` and
+`ADesktopWindowsGobFollowsTheWindow` in `spec/screen.allium`. Standing alone:
+`DrawRefusesEffectFromTheSourceTest`, `GuiMetricSetFromTheSourceTest`,
+`ABrowsersWindowsArrangedOnThePageFromTheSourceTest`,
+`WindowStateReportsTest`, `ArrangingAWindowEndToEndTest` and
+`ArrangingAWindowOnAPageEndToEndTest`.

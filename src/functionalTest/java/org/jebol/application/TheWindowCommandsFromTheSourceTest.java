@@ -142,11 +142,11 @@ class TheWindowCommandsFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"restore", "minimize", "maximize", "activate"})
-        @DisplayName("and /set changes nothing about that, because neither host reads the value")
-        void raisesCommandFailUnderSet(String word) {
+        @DisplayName("under /set the four arrange a window instead, so a value that is not one is invalid-arg (decision 72)")
+        void refusesAValueThatIsNoWindowUnderSet(String word) {
             Interpreter interpreter = grantedInterpreterOn(screen);
             answerFrom(interpreter, "failed: try [gui-metric/set '" + word + " true]");
-            assertThat(answerFrom(interpreter, "failed/id")).isEqualTo("command-fail");
+            assertThat(answerFrom(interpreter, "failed/id")).isEqualTo("invalid-arg");
         }
     }
 

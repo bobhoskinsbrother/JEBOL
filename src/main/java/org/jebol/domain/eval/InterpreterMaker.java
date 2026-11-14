@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.ImagePort;
+import org.jebol.domain.render.EffectRefusal;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyFunctionValue;
 import org.jebol.domain.value.AnyWordValue;
@@ -87,6 +88,7 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Optional<ImageValue> paintGob(GobValue gob) {
+        EffectRefusal.refuseAnyUnder(gob, evaluator.systemContext().readValueAt("system", "dialects", "draw"));
         return evaluator.ports().screen().paintGob(gob).map(InterpreterMaker::imageFromPixels);
     }
 

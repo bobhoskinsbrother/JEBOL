@@ -273,6 +273,7 @@ each its own task, and all but one its own source set:
 | `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
 | `heapExhaustionTests` | `src/functionalTest` | The functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
+| `desktopWindowTests` | `src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
 | `:extensions:<name>:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11 |
 
 Every test fork leaves a GC log in `build/test-results/<suite>/jvm/`, and an

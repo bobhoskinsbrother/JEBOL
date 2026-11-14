@@ -21,9 +21,13 @@ public final class WindowsOnOneSurface {
                     findWhoHearsPointer(kind, detail, showingFromBottomToTop);
             case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
-            case RESIZE, OFFSET, BACK, FORWARD -> List.of();
+            case RESIZE, OFFSET, BACK, FORWARD, MINIMIZE, MAXIMIZE, RESTORE -> List.of();
         };
         return makeEvents(heardBy, kind, detail);
+    }
+
+    public void giveKeyboardTo(GobValue window) {
+        keyboardWith = Optional.of(window);
     }
 
     private void forgetWindowsNoLongerShowing(List<GobValue> showing) {

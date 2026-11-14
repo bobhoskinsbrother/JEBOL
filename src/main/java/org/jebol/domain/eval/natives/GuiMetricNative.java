@@ -5,6 +5,8 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.WindowArrangement;
+import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
@@ -16,11 +18,13 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class GuiMetricNative extends ScreenNative {
 
     private static final int FIRST_DISPLAY = 0;
+    private static final String NO_SERVICE = "no-service";
 
     public GuiMetricNative(GrantedServices granted) {
         super(granted);
@@ -48,10 +52,32 @@ public class GuiMetricNative extends ScreenNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
+            Optional<Value> setTo = refinementArgument("set", 0, arguments, refinements);
+            Optional<WindowArrangement> arrangement = findArrangementNamedBy(arguments.getFirst());
+            if (setTo.isPresent() && arrangement.isPresent()) {
+                return arrange(evaluator.ports().screen(), setTo.get(), arrangement.get());
+            }
             ScreenMetric metric = readMetricNamedBy(arguments.getFirst());
             int display = displayAskedFor(arguments, refinements);
             return measure(evaluator.ports().screen(), metric, display);
         };
+    }
+
+    private static Optional<WindowArrangement> findArrangementNamedBy(Value asked) {
+        return asked instanceof WordValue word
+                ? WindowArrangement.findArrangementNamed(word.canonical())
+                : Optional.empty();
+    }
+
+    private Value arrange(ScreenPort screen, Value window, WindowArrangement arrangement) {
+        if (!screen.hasDisplay()) {
+            throw refuseForHost(NO_SERVICE, "there is no display to arrange a window on");
+        }
+        if (!(window instanceof GobValue gob) || !screen.isShowingWindow(gob)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, window);
+        }
+        runThroughScreen(() -> screen.arrangeWindow(gob, arrangement));
+        return window;
     }
 
     private ScreenMetric readMetricNamedBy(Value asked) {

@@ -9,6 +9,7 @@ import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenMetric;
@@ -36,7 +37,10 @@ public final class DesktopScreen extends GobScreen {
     private final boolean present;
     private final DefaultFont font;
     private final Font face;
+    private static final int MILLISECONDS_A_REMAP_TAKES_TO_SETTLE = 750;
+
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
+    private final Map<JFrame, WindowStateReports> stateReports = new IdentityHashMap<>();
     private final List<GobValue> openedInOrder = new ArrayList<>();
     private final LeavingConfirmation leaving;
     private final BackForwardChords chords;
@@ -234,8 +238,57 @@ public final class DesktopScreen extends GobScreen {
         openedInOrder.removeIf(gob::sharesStorageWith);
         findWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
-            onToolkitThreadAndWaitedFor(standing::dispose);
+            onToolkitThreadAndWaitedFor(() -> {
+                stateReports.remove(standing);
+                standing.dispose();
+            });
         });
+    }
+
+    @Override
+    protected void arrangeOpenWindow(GobValue window, WindowArrangement arrangement) {
+        findWindowFor(window).ifPresent(frame -> onToolkitThreadAndWaitedFor(() -> {
+            switch (arrangement) {
+                case MINIMIZE -> frame.setExtendedState(frame.getExtendedState() | Frame.ICONIFIED);
+                case MAXIMIZE -> showInState(frame, window, Frame.MAXIMIZED_BOTH);
+                case RESTORE -> showInState(frame, window, Frame.NORMAL);
+                case ACTIVATE -> {
+                    frame.toFront();
+                    frame.requestFocus();
+                }
+            }
+        }));
+    }
+
+    private void showInState(JFrame frame, GobValue window, int state) {
+        if ((frame.getExtendedState() & Frame.ICONIFIED) == 0) {
+            frame.setExtendedState(state);
+            return;
+        }
+        WindowStateReports reports = stateReports.get(frame);
+        reports.beginRemap();
+        frame.setVisible(false);
+        frame.setExtendedState(Frame.NORMAL);
+        frame.setVisible(true);
+        afterRemapSettles(() -> {
+            if (state == Frame.NORMAL) {
+                endRemap(frame, window, reports);
+                return;
+            }
+            frame.setExtendedState(state);
+            afterRemapSettles(() -> endRemap(frame, window, reports));
+        });
+    }
+
+    private void endRemap(JFrame frame, GobValue window, WindowStateReports reports) {
+        Dimension drawable = frame.getContentPane().getSize();
+        postEach(reports.endRemap(frame.getExtendedState(), drawable.width, drawable.height), window);
+    }
+
+    private static void afterRemapSettles(Runnable next) {
+        javax.swing.Timer settled = new javax.swing.Timer(MILLISECONDS_A_REMAP_TAKES_TO_SETTLE, done -> next.run());
+        settled.setRepeats(false);
+        settled.start();
     }
 
     private boolean isFirstOpenWindow(GobValue gob) {
@@ -304,7 +357,14 @@ public final class DesktopScreen extends GobScreen {
         return surface;
     }
 
+    private void postEach(List<WindowStateReports.Report> reports, GobValue gob) {
+        reports.forEach(report -> post(report.kind(), gob, report.detail()));
+    }
+
     private void attachListenersThatOnlyQueue(JFrame frame, GobValue gob) {
+        WindowStateReports states = new WindowStateReports(
+                () -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND);
+        stateReports.put(frame, states);
         frame.addWindowListener(new WindowAdapter() {
 
             @Override
@@ -312,13 +372,24 @@ public final class DesktopScreen extends GobScreen {
                 requestClose(gob);
             }
         });
+        frame.addWindowStateListener(changed -> {
+            Dimension drawable = frame.getContentPane().getSize();
+            postEach(states.stateChanged(changed.getOldState(), changed.getNewState(),
+                    drawable.width, drawable.height), gob);
+            javax.swing.Timer overdue = new javax.swing.Timer(
+                    (int) WindowStateReports.MILLISECONDS_A_STATE_WAITS_FOR_ITS_RESIZE, late -> {
+                        Dimension standing = frame.getContentPane().getSize();
+                        postEach(states.takeOverdue(standing.width, standing.height), gob);
+                    });
+            overdue.setRepeats(false);
+            overdue.start();
+        });
         frame.addComponentListener(new ComponentAdapter() {
 
             @Override
             public void componentResized(ComponentEvent changed) {
                 Dimension drawable = frame.getContentPane().getSize();
-                post(ScreenEventType.RESIZE, gob,
-                        new ScreenEventDetail.At(drawable.width, drawable.height));
+                postEach(states.resized(drawable.width, drawable.height), gob);
             }
 
             @Override

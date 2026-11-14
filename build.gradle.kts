@@ -308,6 +308,7 @@ testSuites.forEach { suite ->
 }
 
 val testsThatExhaustTheHeap = "exhausts-the-heap"
+val testsThatOpenARealWindow = "opens-a-real-window"
 
 fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
     val resultsOfThisRun = reports.junitXml.outputLocation.get().asFile
@@ -443,8 +444,23 @@ val endToEndTests = tasks.register<Test>("endToEndTests") {
         javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
             .get().metadata.installationPath.asFile.path,
     )
+    useJUnitPlatform { excludeTags(testsThatOpenARealWindow) }
     outputs.upToDateWhen { false }
     mustRunAfter(functionalTests)
+}
+
+// Every other suite runs headless, and a JVM decides that once, when AWT
+// starts. A test that opens a real desktop window -- tagged
+// `opens-a-real-window` -- runs here instead, in one fork with the toolkit
+// switched on, and fails on a machine with no display rather than skipping.
+val desktopWindowTests = tasks.register<Test>("desktopWindowTests") {
+    description = "The end-to-end tests that open a real desktop window, in one fork that is not headless"
+    runsTheTestsIn(endToEndTest)
+    useJUnitPlatform { includeTags(testsThatOpenARealWindow) }
+    systemProperty("java.awt.headless", "false")
+    maxParallelForks = 1
+    outputs.upToDateWhen { false }
+    mustRunAfter(endToEndTests)
 }
 
 // Rebol's own assertions that reach a host on the internet live in a gate of
@@ -565,7 +581,7 @@ val extensionSuiteTasks = extensionProjects.flatMap { name ->
     listOf(":extensions:$name:functionalTests", ":extensions:$name:endToEndTests")
 }
 
-val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests") +
+val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests", "desktopWindowTests") +
     extensionProjects.flatMap { name -> listOf("${name}FunctionalTests", "${name}EndToEndTests") }
 
 val gateWasAskedFor = gradle.startParameter.taskNames
@@ -584,9 +600,9 @@ val archiveTestResults = tasks.register<ArchiveTestResults>("archiveTestResults"
 
 val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests and endToEndTests, " +
+    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests, endToEndTests and desktopWindowTests, " +
         "then each extension's functional and end-to-end tests, then archiveTestResults"
-    dependsOn(checkSpec, unitTests, functionalTests, heapExhaustionTests, endToEndTests)
+    dependsOn(checkSpec, unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests)
     dependsOn(extensionSuiteTasks)
     finalizedBy(archiveTestResults)
 }
@@ -595,7 +611,7 @@ extensionSuiteTasks.forEach { suite ->
     project.tasks.named("archiveTestResults") { mustRunAfter(suite) }
 }
 
-listOf(unitTests, functionalTests, heapExhaustionTests, endToEndTests).forEach { suite ->
+listOf(unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests).forEach { suite ->
     suite { finalizedBy(archiveTestResults) }
 }
 
@@ -612,8 +628,9 @@ tasks.check {
 }
 
 tasks.jacocoTestReport {
-    dependsOn(unitTests, functionalTests, heapExhaustionTests, endToEndTests)
-    executionData(unitTests.get(), functionalTests.get(), heapExhaustionTests.get(), endToEndTests.get())
+    dependsOn(unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests)
+    executionData(unitTests.get(), functionalTests.get(), heapExhaustionTests.get(), endToEndTests.get(),
+        desktopWindowTests.get())
     reports {
         xml.required = true
         html.required = true

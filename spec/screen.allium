@@ -98,6 +98,19 @@ enum ScreenEventKind {
                    -- machine counts its wheel in pages
     | back         -- the app's history moved back; JEBOL's own, nav.allium
     | forward      -- the app's history moved forward; JEBOL's own, nav.allium
+    | minimize     -- the window was minimised
+    | maximize     -- the window was maximised, after the resize it made
+    | restore      -- the window went back to its own size, after the resize
+}
+
+-- What GUI-METRIC/SET can do to a window. The four words boot/window.reb
+-- hands both hosts after the twelve metrics, and neither host handles: each
+-- reaches RXR_BAD_ARGS. JEBOL goes past the C here (decision 72).
+enum WindowArrangement {
+    restore        -- back to the size and place it had before
+    | minimize     -- out of sight, still open
+    | maximize     -- as big as the screen lets it be
+    | activate     -- on top, with the keyboard
 }
 
 ------------------------------------------------------------
@@ -318,6 +331,117 @@ rule AMetricNameNoHostServesIsRefused {
     ensures: run.conclusion = raised
     ensures: raised_error_id(run) = "command-fail"
     ensures: raised_error_arg1(run) = none
+}
+
+------------------------------------------------------------
+-- Arranging a window
+------------------------------------------------------------
+
+-- `gui-metric/set 'maximize win` arranges an open window and answers it, as
+-- SHOW answers its argument. The C never reads `val`, and nothing in the
+-- library calls /set, so `val` being the window gob is JEBOL's (decision 72):
+-- a logic acting on the newest window was rejected because a script may have
+-- several. /display is ignored by the four.
+rule GuiMetricSetArrangesAnOpenWindow {
+    when: script_sets_a_metric(run, word, window)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: the_word_names_an_arrangement(word)
+    requires: the_window_for(window).standing = showing
+
+    ensures: the_screen_arranges(the_window_for(window), the_arrangement_named(word))
+    ensures: ArrangeResult(value: window)
+}
+
+-- Anything but an open window -- a gob with no window, an integer, none -- is
+-- invalid-arg naming it. With no display at all the answer is no-service,
+-- as SHOW's is, whatever was given.
+rule OnlyAnOpenWindowCanBeArranged {
+    when: script_sets_a_metric(run, word, given)
+    requires: windows_are_granted(run)
+    requires: the_word_names_an_arrangement(word)
+
+    ensures:
+        if not run.interpreter.screen_port.has_a_display:
+            raised_error_id(run) = "no-service"
+        else if not is_an_open_window(given):
+            raised_error_id(run) = "invalid-arg"
+            raised_error_arg1(run) = given
+}
+
+-- Without /set the four are what the C answers for them: command-fail with
+-- arg1 none, as AMetricNameNoHostServesIsRefused says of any word it does not
+-- measure. The twelve metrics keep ignoring /set, as the C does.
+rule TheFourWordsNeedSet {
+    when: script_asks_for_a_metric(run, word, display)
+    requires: windows_are_granted(run)
+    requires: the_word_names_an_arrangement(word)
+
+    ensures: raised_error_id(run) = "command-fail"
+    ensures: raised_error_arg1(run) = none
+}
+
+-- In a browser every window is painted on one page, and a page can neither
+-- minimise its tab nor go full screen unasked, so the four act on the page's
+-- surface. Maximize remembers the window's size and offset, puts it at 0x0
+-- the viewport's size, and keeps it fitted when the viewport changes, saying
+-- resize each time. Minimize leaves it open but unpainted and deaf to every
+-- event. Restore puts back what was remembered and shows it again, and
+-- changes nothing for a window that is neither. Activate lifts it to the top
+-- of the page's own stacking order and gives it the keyboard.
+--
+-- The page keeps that order itself: a window opens on top and activate lifts
+-- one, and the root's pane is never reordered, as no desktop reorders it.
+-- Painting and addressing follow it.
+rule ABrowserArrangesAWindowOnItsPage {
+    when: the_screen_arranges(window, arrangement)
+    requires: is_a_browser(window.port)
+
+    ensures:
+        if arrangement = maximize:
+            the_window_fills(window, the_viewport)
+        if arrangement = minimize:
+            the_window_is_neither_painted_nor_addressed(window)
+        if arrangement = restore:
+            the_window_has_the_size_and_offset_it_had_before(window)
+        if arrangement = activate:
+            the_window_is_topmost(window)
+            window.port.keyboard_with = window
+}
+
+-- A window says what happened to it, whether the script changed it or the
+-- operator did, on the desktop and in a browser. That is WM_SIZE in R3's
+-- win32 host-event.c: minimize alone on minimising, and resize followed by
+-- maximize or restore otherwise. One resize, not two. Activate says nothing,
+-- as in both hosts.
+rule AWindowSaysWhenItsStateChanges {
+    when: the_window_state_changes(window, from_state, to_state)
+
+    ensures:
+        if to_state = minimize:
+            the_screen_reports(window.port, minimize, window)
+        if to_state = maximize:
+            the_screen_reports(window.port, resize, window)
+            the_screen_reports(window.port, maximize, window)
+        if to_state = restore:
+            the_screen_reports(window.port, resize, window)
+            the_screen_reports(window.port, restore, window)
+}
+
+-- A desktop window's gob follows the window, as WM_SIZE and WM_MOVE write
+-- gob->size and gob->offset. When the interpreter takes a resize or an
+-- offset from the desktop, it writes the window gob's size or offset on its
+-- own thread; a minimise writes neither (decision 72).
+rule ADesktopWindowsGobFollowsTheWindow {
+    when: the_interpreter_takes(event)
+    requires: is_a_desktop(event.port)
+    requires: event.kind = resize or event.kind = offset
+
+    ensures:
+        if event.kind = resize:
+            event.window.gob.size = the_size_in(event)
+        if event.kind = offset:
+            event.window.gob.offset = the_place_in(event)
 }
 
 -- CURSOR takes an id, an image or none, and answers unset.
@@ -1690,6 +1814,7 @@ surface TheScreen {
     exposes:
         ScreenMetric
         WindowStanding
+        WindowArrangement
         ScreenEventKind
         SurfaceCall
 

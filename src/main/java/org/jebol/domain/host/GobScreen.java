@@ -5,6 +5,7 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ObjectValue;
+import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
@@ -90,7 +91,21 @@ public abstract class GobScreen implements ScreenPort {
         for (ScreenEvent next = postedFromAnotherThread.poll();
                 next != null;
                 next = postedFromAnotherThread.poll()) {
+            followWindowWithGob(next);
             queued.add(next.type(), next.window(), next.detail());
+        }
+    }
+
+    private static void followWindowWithGob(ScreenEvent posted) {
+        if (posted.window() == null
+                || !(posted.detail() instanceof ScreenEventDetail.At(int across, int down))) {
+            return;
+        }
+        switch (posted.type()) {
+            case RESIZE -> posted.window().storage().size(PairValue.of(across, down));
+            case OFFSET -> posted.window().storage().setOffset(PairValue.of(across, down));
+            default -> {
+            }
         }
     }
 
@@ -116,6 +131,23 @@ public abstract class GobScreen implements ScreenPort {
         }
         findWindowHolding(gob).filter(this::hasWindow).ifPresent(this::repaintWindowFor);
     }
+
+    @Override
+    public boolean isShowingWindow(GobValue gob) {
+        return root != null && isInRootsPane(gob) && hasWindow(gob);
+    }
+
+    @Override
+    public void arrangeWindow(GobValue window, WindowArrangement arrangement) {
+        if (!hasDisplay()) {
+            throw refuseWithNoService();
+        }
+        if (isShowingWindow(window)) {
+            arrangeOpenWindow(window, arrangement);
+        }
+    }
+
+    protected abstract void arrangeOpenWindow(GobValue window, WindowArrangement arrangement);
 
     protected abstract Denied refuseWithNoService();
 

@@ -103,7 +103,7 @@ final class PageEvent {
                     .map(ScreenEventDetail.NamedKey::new);
             case CLOSE, RESIZE, OFFSET -> Optional.of(new ScreenEventDetail.NothingMore());
             case SCROLL_LINE, SCROLL_PAGE -> wheelTurn();
-            case BACK, FORWARD -> Optional.empty();
+            case BACK, FORWARD, MINIMIZE, MAXIMIZE, RESTORE -> Optional.empty();
         };
     }
 

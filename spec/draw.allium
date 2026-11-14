@@ -31,14 +31,13 @@
 -- drift, and the awkward cases cost instructions rather than fidelity.
 --
 -- Excluded, and each is named rather than hidden:
---   - effect. No R3 has ever painted it. The draw table lists it and DELECT
---     reads it, and then nothing happens: in R3 A110, Carl's 2010 host kit
---     and the build the 2010 GUI ran on, the code that applied an effect
---     inside DRAW is under `#ifdef TEMP_REMOVED` in `agg_graphics.cpp`, and
---     in 3.22 the compositor paints neither a draw gob nor an effect gob
---     ("not implemented", `host-compositor.c`). The effect routines
---     themselves were AGG code that 3.22 does not carry. Painting it would
---     answer something no real Rebol answers.
+--   - effect. No R3 has ever painted it: A110 and the 2010 host kit compiled
+--     DRAW's effect out under `#ifdef TEMP_REMOVED` in `agg_graphics.cpp`,
+--     and 3.22 builds neither `host-draw.c` nor `host-effect.c`, whose
+--     `FX_*` routines are not in the tree at all. The behaviour lived in
+--     REBOL 2's View, so painting it is a port from R2, and that is goal 16.
+--     Until then SHOW and `to image!` refuse a draw block that uses it with
+--     feature-na (decision 72): ShowRefusesADrawBlockThatUsesEffect.
 --   - image-options and image-pattern. Declared in draw.reb, absent from
 --     dial-draw.reb, so DELECT cannot read either of them in any Rebol.
 --
@@ -830,10 +829,11 @@ rule TextWithNothingToWriteWithWritesNothing {
 --     Java2D has no such knob and a canvas has none either, so there is
 --     nothing to set. Obeying it would mean rasterising in JEBOL rather than
 --     in the toolkits.
---   * `effect` is read and paints nothing, which is what every R3 has done
---     with it: A110 compiled its painting out under `TEMP_REMOVED`, and 3.22
---     has no effect routines at all. A gob whose content is an effect block
---     paints nothing either, for the same reason, and keeps the block.
+--   * `effect` is refused before it gets here, by SHOW and by `to image!`
+--     (the rules below). Painting reads a draw block on a toolkit's thread
+--     or between script steps, where no script can hear an error, so a block
+--     changed after SHOW without another SHOW still reaches this rule, and
+--     the effect is skipped rather than taking the window down.
 --
 -- Two more are in the table's declaration and unreachable from any draw block
 -- at all, here and in a real Rebol: `image-options` and `image-pattern` are
@@ -864,6 +864,56 @@ rule ACommandThisBuildDoesNotPaintIsSkipped {
     ensures:
         no_instruction_is_produced_for(command)
         every_other_command_still_paints
+}
+
+------------------------------------------------------------
+-- Effect, which no Rebol 3 paints
+------------------------------------------------------------
+
+-- SHOW reads every draw block it is about to show, on the interpreter's
+-- thread, and the first `effect` command in any of them refuses the whole
+-- show with feature-na before the screen is asked for anything. What it is
+-- about to show is the gob, every gob of a block, or with none every window
+-- under the root; and in each, the gob's own draw block, every child's down
+-- every pane, and every `push` block inside them.
+--
+-- feature-na is what R3 raises for something its build left out. The C's
+-- shape for a draw block it cannot read, `dialect`, was rejected because it
+-- says the script is wrong when the script is right (decision 72). Rebol's
+-- suite asserts neither. The word `effect` where it is an argument -- inside
+-- a `text` or a `shape` block, or as a word argument -- is not a command and
+-- is not refused.
+rule ShowRefusesADrawBlockThatUsesEffect {
+    when: script_shows(run, shown)
+    requires: a_draw_block_under_uses_effect_as_a_command(shown)
+
+    ensures:
+        run.conclusion = raised
+        raised_error_id(run) = "feature-na"
+        nothing_is_asked_of_the_screen
+}
+
+-- Painting a gob into an image is the other place a script hears a draw
+-- block read, and it makes the same walk over that gob first.
+rule AnImageOfAGobRefusesEffectToo {
+    when: script_converts_to_image(run, gob)
+    requires: a_draw_block_under_uses_effect_as_a_command(gob)
+
+    ensures:
+        run.conclusion = raised
+        raised_error_id(run) = "feature-na"
+}
+
+-- A gob whose content is an effect block is not a draw block, and every R3
+-- has shown it and painted nothing. It still does, and keeps its block.
+-- Raising here too was offered and declined (decision 72).
+rule AnEffectGobPaintsNothingAndKeepsItsBlock {
+    when: script_shows(run, gob)
+    requires: gob.content_kind = effect
+
+    ensures:
+        no_instruction_is_produced_for(gob)
+        gob.effect = the_block_it_was_given
 }
 
 ------------------------------------------------------------
@@ -917,10 +967,10 @@ surface TheDrawDialect {
         -- visible in the source we vendor: there is a win32 host-draw.c and no
         -- posix one, so a stock R3 on macOS or Linux draws nothing at all.
 
-    @guarantee WhatIsNotPaintedYetIsNamedRatherThanHidden
+    @guarantee WhatIsNotPaintedYetIsRefusedRatherThanHidden
         -- Of the 34 commands in dial-draw.reb, EFFECT is the one not painted,
-        -- and it is skipped so that the rest of a block still draws. Goal 1l
-        -- makes it raise until it is built.
+        -- and SHOW refuses it with feature-na rather than show a picture
+        -- missing something. Painting it is goal 16, a port from REBOL 2.
         --
         -- The gap is the same gap everywhere, because it is decided in one
         -- place. A renderer cannot quietly support something the others do
