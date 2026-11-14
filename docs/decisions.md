@@ -3361,8 +3361,10 @@ app is to be looked at once it builds for the platform.
 
 **An `android/` build in this repo, in Java.** Its own Gradle build, so the
 root build, `allTests` and the shipped jar need no Android SDK and take no
-dependency. The desktop and the web are moved into builds of their own the
-same way once Android's is done (goal 2i): three is the pattern.
+dependency. The desktop and the web move into subprojects of their own
+first (goal 2a step 4, the owner's call 2026-11-14), so the root is the core
+every platform shares and Android takes it whole rather than a jar that
+leaves the desktop out by name.
 
 **Android's suites match the other platforms'.** Unit, functional and
 end-to-end, run on an emulator by `androidTests`, which is a gate of its own

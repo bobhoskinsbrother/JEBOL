@@ -38,15 +38,15 @@ public class AndroidApiGaps {
             "java/lang/invoke/VarHandle");
 
     private static final List<String> PLATFORM_PREFIXES = List.of(
-            "java/", "javax/", "jdk/", "sun/", "org/w3c/", "org/xml/");
+            "java/", "javax/", "jdk/", "sun/", "com/sun/", "org/w3c/", "org/xml/", "org/ietf/");
 
     private static final int USERS_SHOWN = 4;
 
     record Gaps(Map<String, TreeSet<String>> classes, Map<String, TreeSet<String>> members,
-                Map<String, TreeSet<String>> rewritten) {
+                Map<String, TreeSet<String>> notCarried, Map<String, TreeSet<String>> rewritten) {
 
         boolean isEmpty() {
-            return classes.isEmpty() && members.isEmpty();
+            return classes.isEmpty() && members.isEmpty() && notCarried.isEmpty();
         }
     }
 
@@ -118,13 +118,25 @@ public class AndroidApiGaps {
     static Gaps findGaps(List<ClassModel> users, Platform platform) {
         Map<String, TreeSet<String>> classes = new TreeMap<>();
         Map<String, TreeSet<String>> members = new TreeMap<>();
+        Map<String, TreeSet<String>> notCarried = new TreeMap<>();
         Map<String, TreeSet<String>> rewritten = new TreeMap<>();
+        Set<String> carried = new TreeSet<>();
+        users.forEach(user -> carried.add(user.thisClass().asInternalName()));
         for (ClassModel user : users) {
             String userName = user.thisClass().asInternalName();
             for (PoolEntry entry : user.constantPool()) {
                 if (entry instanceof ClassEntry referenced) {
                     String name = elementName(referenced.asInternalName());
-                    if (!isPlatform(name) || platform.has(name)) {
+                    if (isPrimitive(name)) {
+                        continue;
+                    }
+                    if (!isPlatform(name)) {
+                        if (!carried.contains(name)) {
+                            notCarried.computeIfAbsent(name, key -> new TreeSet<>()).add(userName);
+                        }
+                        continue;
+                    }
+                    if (platform.has(name)) {
                         continue;
                     }
                     (REWRITTEN_BY_D8.contains(name) ? rewritten : classes)
@@ -144,13 +156,14 @@ public class AndroidApiGaps {
                 }
             }
         }
-        return new Gaps(classes, members, rewritten);
+        return new Gaps(classes, members, notCarried, rewritten);
     }
 
     static String report(Gaps gaps) {
         StringBuilder written = new StringBuilder();
         section(written, "Classes the platform does not have", gaps.classes());
         section(written, "Members the platform does not have", gaps.members());
+        section(written, "Classes referenced but not carried", gaps.notCarried());
         section(written, "Rewritten away by D8, so not gaps", gaps.rewritten());
         return written.toString();
     }
@@ -174,6 +187,10 @@ public class AndroidApiGaps {
             name = name.substring(1);
         }
         return name.startsWith("L") && name.endsWith(";") ? name.substring(1, name.length() - 1) : name;
+    }
+
+    private static boolean isPrimitive(String name) {
+        return name.length() == 1;
     }
 
     private static boolean isPlatform(String name) {

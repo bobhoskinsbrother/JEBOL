@@ -24,7 +24,7 @@ project's level is Java 21; Android draws the one way every platform draws
 has unit, functional and end-to-end suites as the other platforms do, run
 by an `androidTests` gate.
 
-Nine stages, in this order. Each is planned in full -- what is true today,
+Eight stages, in this order. Each is planned in full -- what is true today,
 spec, failing tests, code, docs -- in its own plan commit before work on it
 starts, as 1l was; what follows is each stage's reach, its done-when and the
 questions its plan has to settle. A defect that would hurt a stage is fixed
@@ -72,13 +72,61 @@ Run it at the close of every Android stage and after any change to the core.
   own machine; it runs no programs (`call` is 2c's to answer, as a browser's
   is). `JavaImage` is the picture codecs; Android's are 2c's.
 
-**4. What the APK carries.** The core jar minus the JVM host's, the desktop's
-and the command line's classes above, which an Android process never loads: a `coreForAndroid` jar
-task in the root build excludes them by name, and
-`scripts/AndroidApiGaps.java --fail-on-gaps` over it must come out empty. A
-class added later that reaches AWT fails the check until it is excluded or
-split. The root build's `androidApiGaps` writes the whole core's list to
-`scripts/android-api-gaps.txt`.
+**4. The core, the desktop and the web: three builds, so Android takes the
+core whole.** What was stage 2i, brought forward by the owner 2026-11-14 in
+place of a jar that left the desktop out by name. The root build is the core, and
+`desktop/` and `web/` are subprojects of it, as `extensions/sqlite` is, so
+one `./gradlew allTests` still runs everything and nothing needs the SDK.
+`android/` stays a build of its own (step 6). Packages keep their names;
+only where the files sit changes.
+
+What is true today: `domain` and `application` import no adapter at all.
+The only line from one adapter package into another is `ChosenScreen`, the
+command line's `--screen=web`, into `adapter.web`. `AnInterpreter`, which
+almost every functional test builds on, uses `JavaHost`. Of the test files,
+the unit tests have 10 on the command line, 17 on the page and 13 on the
+desktop or the JVM's host; the functional tests 2, 11 and 18; the
+end-to-end tests 40, 31 and 7; the fixtures 1, 1 and 4.
+
+- **The core** (root): `domain`, `application`, and the adapters every
+  platform shares: `ClasspathFiles`, `FileSystemPort`, `ConfinedEnvironment`,
+  `ProcessEnvironment`, `JavaSocket`, `WritesInFlight`, `JavaSecureTransport`,
+  `JavaCertificateAuthority`, `JavaTrustAnchors`, `ThreadTasks`,
+  `DaemonThreads`, `WakeablePause`, `Uts46`, `Uts46Tables`,
+  `ExtensionDescriptors`. The carried library and font are its resources.
+- **`desktop/`**: `adapter.cli`, the desktop's window (`DesktopScreen`,
+  `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`,
+  `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`,
+  `DesktopSystem`, `LeavingConfirmation`, `SwingLeavingConfirmation`,
+  `WindowStateReports`) and the JVM's own host (`JavaHost`, `JavaMachine`,
+  `JavaProcess`, `ExecutableFile`). It builds the shipped jar, the launcher
+  source set and the distribution, and depends on the core and on `web/`
+  for `--screen=web`.
+- **`web/`**: `adapter.web` (the page's ports and the JVM's page server),
+  the TeaVM source set and its substitutions, `jebol-page/`, the site and the
+  extensions' web halves. It depends on the core.
+- **Tests go with what they test.** A test that exercises only the command
+  line, the desktop or the page moves to that build's source set of the
+  same name; everything else stays in the core. The core's tests still need
+  a host to build an interpreter on, and step 7 runs them on ART, so the
+  fixture's host stops being `JavaHost` by name: `AnInterpreter` asks for
+  the platform's host through `ServiceLoader`, which the core's JVM run gets
+  from `desktop/` as a test-only dependency and `android/` from its own.
+- **The gate.** `allTests` runs every project's suites and
+  `archiveTestResults` gathers them, as it does the extension's. The
+  architecture tests read every project's classes. `checkSpec`, the timing
+  and parity scripts and `scripts/` keep working from the root.
+- **The check that proves it.** `scripts/AndroidApiGaps.java --fail-on-gaps`
+  over the core's own jar comes out empty: nothing Android 35 lacks, and no
+  class the core does not carry. It now also reports a carried class
+  reaching one left out, and counts `com/sun/` as the platform's. A
+  `checkCoreForAndroid` task runs it, outside `allTests` because it needs the
+  SDK; `androidTests` runs it first.
+
+**Done when** the three projects build, `allTests` passes with the same
+counts as before the move (suites move between projects, none is lost), the
+shipped jar and the site are byte-for-byte what they were apart from build
+stamps, and `checkCoreForAndroid` passes on the core's jar.
 
 **5. The toolchain.** `scripts/setup-machine.sh` installs what was installed
 by hand above, plus the emulator and an x86_64 API 35 system image, and
@@ -90,14 +138,14 @@ the SDK. The Android Gradle Plugin and the android-junit5 plugin (Apache
 2.0), both checked against licensing before use. `minSdk` and `compileSdk`
 35. A library module that carries the core and Android's own ports, and a
 test application to run the suites in, which 2b replaces with the app.
-`androidTests` runs the gap check over `coreForAndroid` first and stops on
-any gap, so a new call Android lacks is caught on the next run rather than
-on a phone.
+The library module carries the core's own jar, and `androidTests` runs
+`checkCoreForAndroid` first and stops on any gap, so a new call Android
+lacks, or a carried class reaching one left out, is caught on the next run
+rather than on a phone.
 
 **7. Running on ART.** The functional tests and Rebol's suite run on the
 emulator through android-junit5 as instrumentation tests. Running is the
-measure, not compiling. Known risks, each measured on the emulator:
-  Known risks, each measured on the emulator: case folding through
+measure, not compiling. Known risks, each measured on the emulator: case folding through
   `Character` (Android's is ICU at its own Unicode version, the JDK 25's is
   16.0); the JCA algorithms the crypto asks for by name (`XDH`, `ChaCha20`,
   `DH`, `EC`, RSA, `AES/ECB/NoPadding`) and the digests `JvmDigests` offers;
@@ -224,12 +272,6 @@ moment of use, and where it can come to the web or the desktop too -- the
 camera and location in a browser, notifications on both -- it comes there
 as well. Each plan searches Rebol's suite and the C for a shape to follow
 before inventing one.
-
-#### 2i. The desktop and the web get builds of their own
-
-Android's build is the third platform build, and the pattern: the desktop
-and the web move out of the root build into their own, as `android/` is,
-with the core in the root. Cleanup, after 2h, planned then.
 
 ### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 

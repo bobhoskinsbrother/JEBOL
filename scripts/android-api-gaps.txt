@@ -1,4 +1,7 @@
-== Classes the platform does not have: 85
+== Classes the platform does not have: 88
+com/sun/net/httpserver/Headers  <- 1 [WebScreenServer]
+com/sun/net/httpserver/HttpExchange  <- 1 [WebScreenServer]
+com/sun/net/httpserver/HttpServer  <- 1 [WebScreenServer]
 java/awt/AlphaComposite  <- 1 [Java2DSurface]
 java/awt/BasicStroke  <- 1 [Java2DSurface]
 java/awt/Color  <- 3 [DesktopWindows, Java2DSurface, JebolIcon]
@@ -89,6 +92,8 @@ javax/swing/filechooser/FileNameExtensionFilter  <- 1 [DesktopWindows]
 field java/lang/ProcessBuilder$Redirect.DISCARDLjava/lang/ProcessBuilder$Redirect;  <- 3 [CommandLineConsole, SttyTerminal, JavaProcess]
 java/lang/Process.pid()J  <- 1 [JavaProcess]
 java/nio/file/Files.writeString(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;  <- 1 [JavaMachine]
+
+== Classes referenced but not carried: 0
 
 == Rewritten away by D8, so not gaps: 4
 java/lang/MatchException  <- 145 [CommandLineConsole, Repl, TerminalKeyDecoder, AwtCursors] ...
