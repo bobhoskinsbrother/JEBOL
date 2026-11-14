@@ -2367,6 +2367,11 @@ daemon opens no socket at all.
 
 ## 55. The toolchain is 25 because ArchUnit reads a 26's classes as nothing
 
+**Amended 2026-11-14 (decision 73): the project's level is 21, the toolchain
+stays 25.** ArchUnit caps the class files at 25's and puts no floor under
+them, so compiling at `release 21` costs it nothing. The Foreign Function and
+Memory API reason below is stale: nothing in the tree uses `java.lang.foreign`.
+
 **ArchUnit 1.4.1 carries an ASM that stops at class file 69.** Java 25 writes
 69 and Java 26 writes 70, so a test tree compiled by a 26 is a tree
 `ClassFileImporter` imports as empty, and every architecture rule over it
@@ -3307,3 +3312,37 @@ in `spec/draw.allium`; `GuiMetricSetArrangesAnOpenWindow`,
 `ABrowsersWindowsArrangedOnThePageFromTheSourceTest`,
 `WindowStateReportsTest`, `ArrangingAWindowEndToEndTest` and
 `ArrangingAWindowOnAPageEndToEndTest`.
+
+## 73. Android: API 35, Java 21, the one way of drawing, and a build of its own
+
+Owner's decisions, 2026-11-14, planning goal 2.
+
+**API 35 at the least.** Android 15, about 41% of active devices in Google's
+October 2026 figures: Pixel 6 and Galaxy S21 onwards. It is the first level
+with `SequencedCollection`, which the core calls about four hundred times
+through `getFirst`, `getLast` and `reversed`; anything older would have meant
+replacing every one. Taken knowing it leaves most phones out today.
+
+**The project's level is Java 21.** The core already compiles at `release
+21` for TeaVM, so the language JEBOL is written in is 21's; the project says
+so, and Android's compiler reads it. The toolchain stays 25 (decision 55).
+
+**One way of drawing, still.** Building Android's screen from its own
+widgets was considered, since Android's toolkit is close to Swing's, and set
+aside: the 2010 GUI draws every widget itself in REBOL, and decision 35's
+one executor and one adapter per platform holds. An Android look for the
+app is to be looked at once it builds for the platform.
+
+**An `android/` build in this repo, in Java.** Its own Gradle build, so the
+root build, `allTests` and the shipped jar need no Android SDK and take no
+dependency. The desktop and the web are moved into builds of their own the
+same way once Android's is done (goal 2i): three is the pattern.
+
+**Android's suites match the other platforms'.** Unit, functional and
+end-to-end, run on an emulator by `androidTests`, which is a gate of its own
+beside `allTests`, as `networkTests` is. Installing the SDK, the emulator and
+its system images is part of setting up a machine.
+
+**Rejected:** a lower API level with the sequenced calls replaced; native
+widgets; a Kotlin app; the Android build inside the root build, which would
+make every machine install the SDK.

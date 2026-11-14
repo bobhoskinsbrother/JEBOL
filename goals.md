@@ -131,40 +131,171 @@ chosen by posting the event the toolkit would.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
-1. **Check JEBOL's Java against Android's.** JEBOL is text for Java 25.
-   Find the language features and library calls Android's compiler and
-   runtime do not have, and replace them or choose the oldest Android version
-   that does.
-2. **The app.** An Android project of its own, so the jar keeps no
-   dependencies. One screen draws the domain's surface calls on Android's own
-   canvas and turns touches and the on-screen keyboard into JEBOL's events.
-   Pausing and resuming the app are handled. The system back gesture (and
-   the back button) moves the app's history back, through Android's back
-   handler, as a swipe does in a browser (`spec/nav.allium`).
-3. **Android's adapters.** Files in the app's own storage, real sockets, a
-   console view. CALL is refused. And a task's body must run on the host's
-   ports too: `ThreadTasks`
-   (`src/main/java/org/jebol/adapter/host/ThreadTasks.java:32`) builds its
-   child interpreter with `Interpreter.createWithOutput(...)`, which is
-   `Interpreter.standardPorts()`, so a task body on Android would answer
-   `system/platform` with `Linux` and reach nothing the host supplied, where
-   `TheFateOfATasksBodyIsTheHostsToDecide` already says the child inherits
-   the parent's output and pause. `ThreadTasks` wants the parent's
-   `HostPorts`, which also settles what a task body may reach, since today it
-   has no files at all and a file port carries the directory it is standing
-   in, so the parent's own cannot simply be shared.
-4. **Touch in the 2010 GUI.** A tap is a click; a drag scrolls; focusing a
-   field brings up the keyboard; layouts scale with the screen's size and
-   density. This is done once, in the GUI's REBOL --
-   `src/main/resources/org/jebol/modules/r3-gui.reb`, with each edit listed
-   in ORDER.txt -- and iOS and the web on a phone use it too.
-5. **Android's own features**, one extension each (using-jebol.md, section
-   4): the camera, location, notifications. Where a feature can come to the
-   web or the desktop too -- the camera, location -- it comes there as well.
-6. **A gate on an emulator.** The examples are driven on an Android emulator
-   the way the browser gate drives Chrome: a gate of its own, never a skipped
-   test. It also drives Chrome on the emulator, and checks that a swipe from
-   the screen's edge moves a page's history (goal 1n).
+Owner's decisions 2026-11-14, decision 73: API 35 at the least; the
+project's level is Java 21; Android draws the one way every platform draws
+(decision 35); the app is an `android/` build in this repo, in Java; Android
+has unit, functional and end-to-end suites as the other platforms do, run
+by an `androidTests` gate.
+
+Nine stages, in this order. Each is planned in full -- what is true today,
+spec, failing tests, code, docs -- in its own plan commit before work on it
+starts, as 1l was; what follows is each stage's reach, its done-when and the
+questions its plan has to settle. A defect that would hurt a stage is fixed
+on the JVM before that stage, not on Android after it.
+
+**The suites, from 2a on.** `android/` holds three source sets that match the
+JVM's: `androidUnitTests` (Android's adapters on their own, no interpreter),
+`androidFunctionalTests` (an interpreter on ART with Android's ports, running
+REBOL, Rebol's suite included) and `androidEndToEndTests` (the installed app
+driven from outside, by UI Automator). All three run on the device, because
+ART and Android's own classes are what they test. `androidTests` runs the
+three on an emulator Gradle starts and stops itself (Gradle Managed Devices),
+x86_64 under KVM, and archives into `test-history/` as `allTests` does. It is
+not part of `allTests`: it needs the Android SDK, which not every machine has.
+Run it at the close of every Android stage and after any change to the core.
+
+#### 2a. The core runs on ART
+
+- **Java 21.** The whole project compiles at `release 21`, the level
+  TeaVM's build already holds the core to, with the toolchain staying 25
+  (decision 55: ArchUnit 1.4.1 reads nothing newer than 25). Decision 55's
+  other reason, the Foreign Function and Memory API, is stale -- nothing uses
+  `java.lang.foreign` -- and goes.
+- **The toolchain.** `scripts/setup-machine.sh` installs the Android SDK's
+  command-line tools, platform 35, the build tools, the emulator and the
+  x86_64 system images, and accepts the licences.
+- **The `android/` build.** Its own Gradle build with its own settings, which
+  takes the core through an included build, so the root build and
+  `allTests` never need the SDK. Android Gradle Plugin, and JUnit Jupiter on
+  the device through the android-junit5 plugin (Apache 2.0), since every
+  JEBOL test is Jupiter. Both checked against licensing before use.
+- **What Android does not have.** Compile the core against API 35's
+  `android.jar`; every symbol that does not resolve is the list. Known
+  already: `ProcessHandle` in `JavaMachine`, which is in `application`, not
+  an adapter. Each is replaced as the web build replaced its 26 (`docs/web-port.md`),
+  reusing its verified stand-ins where they fit (`HalfFloats`,
+  `UnsignedProducts`, `TextLines`).
+- **What Android does differently.** Running is the measure, not compiling.
+  Known risks, each measured on the emulator: case folding through
+  `Character` (Android's is ICU at its own Unicode version, the JDK 25's is
+  16.0); the JCA algorithms the crypto asks for by name (`XDH`, `ChaCha20`,
+  `DH`, `EC`, RSA, `AES/ECB/NoPadding`) and the digests `JvmDigests` offers;
+  regular expressions and number formatting. Where the platform's table
+  decides an answer, the domain carries R3's own, as `Uts46` does.
+- **Fixed first, on the JVM: a task's body runs on the host's ports.**
+  `ThreadTasks` (`src/main/java/org/jebol/adapter/host/ThreadTasks.java:32`)
+  builds its child with `Interpreter.createWithOutput(...)`, which is
+  `Interpreter.standardPorts()`, so a task body on Android would answer
+  `system/platform` with `Linux` and reach nothing the host supplied, where
+  `TheFateOfATasksBodyIsTheHostsToDecide` says the child inherits the
+  parent's output and pause. It wants the parent's `HostPorts`, which also
+  settles what a task body may reach: today it has no files, and a file port
+  carries the directory it stands in, so the parent's cannot simply be
+  shared.
+
+**Done when** `androidFunctionalTests` runs Rebol's suite and JEBOL's
+functional tests on ART with the same counts as the JVM, apart from tests
+that cannot run on a device by their nature (ArchUnit reads class files),
+each listed with why.
+
+**Its plan settles:** which of the functional tests run on ART (jqwik on the
+device, the fixtures' files); where the carried library and fonts live in
+an APK (Java resources or assets).
+
+#### 2b. The app: one screen, touch, the keyboard, the lifecycle, Back
+
+- One Activity, one View. An `AndroidScreen`, a `GobScreen` as
+  `DesktopScreen` and `BrowserScreen` are, and an `AndroidSurface` that
+  carries out the domain's `DrawingCommand`s on `Canvas`; text is measured by
+  the domain's `DefaultFont` as on every screen, and painted with the carried
+  font as a `Typeface`. An `AndroidPixelSurface` over an `ARGB_8888`
+  `Bitmap` (decision 20's table). The interpreter runs on its own thread.
+- Sizes are density-independent pixels, as a page's are CSS pixels, so the
+  GUI is the same size on every phone; the surface scales by the display's
+  density.
+- Touch is the pointer, as a browser's pointer events make it. The soft
+  keyboard comes up on `takeTyping` and goes on `releaseTyping` (the
+  `ScreenPort` calls a page already answers), and arrives through an
+  `InputConnection`.
+- Back, the gesture and the button, is the history's `Back` through
+  Android's back handling (`OnBackInvokedCallback`); at the first place it
+  leaves the app, and asks first when the unsaved-work flag is set (decision
+  50). Android has no Forward.
+- **Pixel parity.** The same paint list drawn by `Java2DSurface` and by
+  `AndroidSurface` is compared pixel for pixel, as the browser's is.
+- `androidEndToEndTests` starts here: a script prints, a tap clicks, typing
+  reaches a field, Back moves the history, a rotation resizes. And Chrome on
+  the emulator (an image that carries it) opens the shipped site served from
+  the host and a swipe from the screen's edge moves its history (goal 1n).
+
+**Done when** `examples/r3-gui` runs in the app on the emulator and the
+parity test passes.
+
+**Its plan settles:** what a script hears when the app goes to the
+background and comes back (decision 72's `minimize` and `restore` are the
+candidates) and when Android ends the process with no warning; whether a
+rotation recreates the Activity or is a resize.
+
+#### 2c. Android's adapters
+
+Every port in `HostPorts`, Android's: files in the app's own storage, the
+script's home inside its root (decision 69); real sockets, on platform
+threads where the desktop's take virtual ones (Android has none); TLS
+through Android's own (decision 65) and its trust store; IDNA through
+`android.icu.text.IDNA`, so `Uts46` stays the desktop's; pictures through
+`BitmapFactory` and `Bitmap.compress`, which brings WebP to Android (goal
+10); the clipboard; the machine; CALL refused; MIDI none for now. What a
+script prints goes to logcat, as a site's goes to the browser's console
+(decision 64). A port Android cannot supply refuses as a page's does, never
+with a host exception (`NoFailureEscapesAsAHostException`).
+
+**Done when** each port has a `spec/android.allium` rule, an
+`androidUnitTests` test of the adapter and an `androidFunctionalTests` test
+through REBOL.
+
+**Its plan settles:** whether printing also shows on the screen (the first
+goal text said a console view; decision 64 says an app owns its whole
+screen).
+
+#### 2d. Touch in the 2010 GUI
+
+A tap is a click; a drag scrolls; focusing a field brings up the keyboard;
+layouts scale with the screen's size. Done once, in the GUI's REBOL --
+`src/main/resources/org/jebol/modules/r3-gui.reb`, each edit listed in
+ORDER.txt -- and iOS and the web on a phone use it too, so it is driven
+in Chrome with touch emulation as well as on the emulator.
+
+**Done when** every example works by touch alone, on the emulator and in
+Chrome's phone emulation.
+
+#### 2e. An app of one's own
+
+`./gradlew assembleApk -PappDir=my-app` is `assembleSite` for Android: the
+app's files and its `app.json` entry, the extensions it names (decision 63)
+inside the APK, signed. The gate drives `examples/r3-gui` in the APK it
+built, as the browser gate drives the assembled site. `using-jebol.md` says
+how.
+
+**Done when** an APK built from a directory of REBOL installs and runs on
+the emulator, and the gate drives that APK.
+
+**Its plan settles:** the app's name, icon and identity, and where the
+signing key comes from.
+
+#### 2f, 2g, 2h. The camera, location, notifications
+
+One extension each (`using-jebol.md`, section 4; decision 63), each its own
+stage and plan: the REBOL it offers, Android's permission asked at the
+moment of use, and where it can come to the web or the desktop too -- the
+camera and location in a browser, notifications on both -- it comes there
+as well. Each plan searches Rebol's suite and the C for a shape to follow
+before inventing one.
+
+#### 2i. The desktop and the web get builds of their own
+
+Android's build is the third platform build, and the pattern: the desktop
+and the web move out of the root build into their own, as `android/` is,
+with the core in the root. Cleanup, after 2h, planned then.
 
 ### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 
@@ -182,7 +313,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    of this step.
 3. **The app.** One view draws the domain's surface calls with iOS's own
    drawing; touches, the keyboard, and pausing and resuming are handled as
-   on Android, using goal 2 step 4's work in the 2010 GUI. iOS has no system
+   on Android, using goal 2d's work in the 2010 GUI. iOS has no system
    back gesture, so the app recognises a swipe from the left edge as back
    and from the right edge as forward, the way a browser on the phone
    does (`spec/nav.allium`).
