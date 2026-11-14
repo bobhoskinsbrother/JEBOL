@@ -19,24 +19,115 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Two pieces of work, in the order to do them.
+Two pieces of work, in the order to do them. Each is spec, failing tests,
+code, docs, as everywhere.
 
-**A browser's swipe is proven to move the app's history.** The browser's
-own swipe moves its history, and JEBOL's history is the browser's (decision
-50, `spec/nav.allium`), so it should work today. Prove it with an end-to-end
-test, and check a mobile browser's edge swipe takes the same path. How a
-desktop window hears a swipe is the open question in `spec/nav.allium`.
+#### 1m. JEBOL bootstraps `./r3-head`
 
-**And one Rebol file that does not run here is this project's own**:
-`scripts/resolve-nest.r3`, the pre-make step `scripts/build-r3.sh` needs, so
-JEBOL cannot bootstrap `./r3-head` and a release has to be fetched to get the
-first one (the script says how). It stops at `foreach key listed [spec/:key:
-copy []]` with `invalid-path`, naming `:key`. Measured on 2026-10-25: the same
-write works on a fresh map, in a `foreach`, after `secure [file allow]`, and
-with `scan-names` run over a small literal block -- it fails only once
-`scan-names` has walked the real `rebol3-source/make/rebol3.nest`, which is
-1,200 lines of `set-word!` and `to word!`. Shrink that input until the
-smallest failing case is one line before reading any code.
+Owner's decision 2026-11-14, decision 71: R3's UTF-8 decoder bug below is
+matched, not fixed.
+
+**What is true today.** Measured 2026-11-14 on the jar and `./r3-head`.
+
+- `scripts/resolve-nest.r3` runs on JEBOL. The `invalid-path` it stopped at
+  on 2026-10-25 is gone, and for `bulk` and `base-core` its spec is byte for
+  byte r3's.
+- The next step, `rebol3-source/make/pre-make.r3`, fails in
+  `make/tools/make-boot.reb:638` with `lowercase does not allow
+  #(binary!)`. The symbols `make-headers.reb` collects from `u-parse.c` and
+  `t-struct.c` are binaries, because `read/string` answered binary: neither
+  file is UTF-8 (`u-parse.c` has `\xe1` three times, `t-struct.c` has
+  `\x97` four times).
+- r3 answers a string for both, by a bug. `UTF8_Copy_Surrogates`
+  (`rebol3-source/src/core/s-unicode.c:479`) rejects an invalid byte and
+  the DFA stays rejected, but on every later byte it tries
+  `Decode_Surrogate_Pair(str - 1)`, which masks bits without checking that
+  the six bytes are `ED` sequences. Six ASCII bytes of the right shape pass,
+  the state goes back to accepted, and the decoder answers a string. The
+  smallest case, in both through `read/string` and `to string!`:
+  `#{E1626320}` then `-a!=p! ok` is a string in r3 where `-a!=p!` became
+  U+28421; `#{E1626320}` then `hello ok` is binary in both, and `to
+  string!` of it `invalid-utf` in JEBOL as in r3. `u-parse.c` has such a run
+  after its first `\xe1`; that is the only reason Rebol's own pre-make runs.
+- R3's string from that path is not consistent with itself, because the
+  invalid bytes stay in the series raw: on the case above `length?` says 8,
+  walking it gives six characters with the `c` gone, MOLD shows the `c` and
+  drops the closing quote, and `to binary!` answers the stored bytes
+  `#{E1626320F0A890A1206F6B}`. JEBOL's strings are code points and cannot
+  hold an invalid byte.
+- Rebol's suite asserts nothing about `read/string` or `to string!` on
+  invalid UTF-8. `invalid-utf?` uses `UTF8_Check`, which returns at the first
+  reject that is not a pair, and answers the same in both.
+- JEBOL decodes in four places, each strict: `FileReading` (line 189),
+  `BinaryValue` (lines 353, 375, 441). `spec/natives.allium` has
+  `BytesThatDoNotDecodeComeBackAsBytes`.
+- Before failing, pre-make ran for 2m22s on the jar; the whole of it takes
+  0.17s on r3.
+
+**1. Decode as `UTF8_Copy_Surrogates` decides.** One decoder in the domain,
+called from all four places, that answers what the C answers on whether the
+bytes are text: real `ED` surrogate pairs joined (finding 99), and the false
+pair that resets a rejected decode. Where R3's answer is a string, its
+characters are the stored bytes decoded with U+FFFD for each invalid
+sequence, which is what MOLD and `to binary!` show; R3's `length?` and walk
+over the same string are not matched, since they disagree with each other.
+Every caller of `Decode_UTF_String` gets it: `read/string` and `/lines`,
+`to string!` of a binary, the console's read, and the codecs that decode
+text (`b-init.c:702`).
+
+**2. Pre-make runs to the end.** Run it again from a copy of
+`rebol3-source/` with the spec's `root:` pointed at the copy (it is absolute,
+and pre-make writes into it). Shrink each further failure until it is one
+line, then fix it, each with its own test.
+
+**3. The 840 times.** Profile pre-make on the jar. If one pathology is most
+of it, fix it here with a test that bounds it; otherwise the figures go to
+goal 9.
+
+**Spec, before tests.** `spec/natives.allium`: amend
+`BytesThatDoNotDecodeComeBackAsBytes` so "decode" is the C's, and a rule
+`AFalseSurrogatePairResetsARejectedDecode`, citing decision 71. The probes
+join `src/testFixtures/resources/r3-bugs/probes.r3`, matched, so
+`TheRebolBugsTranscriptFromTheSourceTest` holds them; standing alone, a
+`DecodingAsTheCDecidesFromTheSourceTest` covers the boundaries: an invalid
+byte at the start, in the middle and last; the pair-shaped run before and
+after it; a real pair; a cut sequence at the end; an empty input.
+
+**Done when** `scripts/build-r3.sh`, with no `./r3-head`, uses the jar as
+its bootstrap, and every file pre-make generates equals the one r3
+generates. The script's note about fetching a release goes.
+
+#### 1n. A swipe moves the app's history
+
+Owner's decisions 2026-11-14: a phone browser's edge swipe is checked in
+goal 2's emulator gate; the desktop swipe is tried on the owner's MacBook.
+
+**What is true today.**
+
+- A page's Back and Forward are the browser's (decision 50,
+  `APageUsesTheBrowsersOwnHistory`), and the end-to-end suite drives the
+  browser's buttons through `AnOperatorAtThePage.pressesBack` and
+  `pressesForward`. A swipe reaches the page the same way, as `popstate`.
+- A desktop window moves its history on Alt+Left and Alt+Right, Cmd+[ and
+  Cmd+], and the mouse's side buttons (decision 50). The trackpad's swipe is
+  `spec/nav.allium`'s open question: on macOS Java hears a real swipe only
+  through a part of the JDK that is not public; everywhere a sideways scroll
+  could stand for it, but cannot be told from scrolling sideways.
+
+**1. A swipe in Chrome.** Try CDP's `Input.synthesizeScrollGesture` as a
+touchpad swipe against the shipped page. If Chrome moves its history, an
+end-to-end test asserts the app hears `Back` and `Forward` from it. If it
+does not, that is recorded in decision 50 and the button tests stand for it.
+
+**2. A swipe in a window.** A probe, checked in under
+`src/testFixtures/resources/nav/probe/` with a script that runs it, opens a
+window and prints what Java hears: the swipe through the non-public macOS
+path, and the sideways scroll everywhere. The owner runs it on the MacBook
+and chooses; the choice replaces the open question with a rule, and the
+window hears a swipe as it hears Alt+Left. A test drives whichever is
+chosen by posting the event the toolkit would.
+
+**Done when** the open question is a rule, and both halves have a test.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
@@ -72,7 +163,8 @@ smallest failing case is one line before reading any code.
    web or the desktop too -- the camera, location -- it comes there as well.
 6. **A gate on an emulator.** The examples are driven on an Android emulator
    the way the browser gate drives Chrome: a gate of its own, never a skipped
-   test.
+   test. It also drives Chrome on the emulator, and checks that a swipe from
+   the screen's edge moves a page's history (goal 1n).
 
 ### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 

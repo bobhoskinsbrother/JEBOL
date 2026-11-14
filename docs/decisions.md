@@ -3192,6 +3192,19 @@ Raising where bytes vanish was offered and declined; JEBOL matches R3,
 including the three CCM shapes it got wrong, and the shapes are rules and a
 finding.
 
+**Matched too, owner's decision 2026-11-14 (goal 1m): a false surrogate pair
+resets a rejected UTF-8 decode.** `UTF8_Copy_Surrogates` retries
+`Decode_Surrogate_Pair` at every byte after a reject, and the pair check only
+masks bits, so six ASCII bytes of the right shape turn bytes that are not
+UTF-8 into a string. Rebol's own pre-make depends on it: `u-parse.c` is not
+UTF-8 and reads as a string only through this. Fixing it, so such bytes are
+always binary, would leave JEBOL unable to run Rebol's build tools; decoding
+every invalid byte as U+FFFD would differ from R3 on every file R3 answers as
+binary. Where R3 answers a string its characters are the stored bytes with
+U+FFFD for each invalid sequence, which is what its MOLD and `to binary!`
+show; its `length?` and its walk over that string disagree with each other
+and are not matched.
+
 **What holds it.** `TheRebolBugsTranscriptFromTheSourceTest` runs
 `r3-bugs/probes.r3` through JEBOL and compares it with `probes.txt`, line by
 line: every line equals R3's except the deliberate ones it names, each of which
