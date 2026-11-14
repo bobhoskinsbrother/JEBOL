@@ -2134,7 +2134,11 @@ app was closed when it was hidden.
 
 **In a window the keys a browser uses move the history too**: Alt+Left and
 Alt+Right on Windows and Linux, Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS,
-and the mouse's side buttons. They still reach the app as key presses. The
+and the mouse's side buttons. They still reach the app as key presses. Java
+numbers the side buttons four and five on Windows and macOS and six and seven
+on X11, where four and five are a sideways scroll; a sideways scroll posts
+nothing anywhere, as in R3, and so neither does Shift over the wheel, which
+Java on Windows and macOS cannot tell from it (finding 250, 2026-11-14). The
 trackpad's swipe in a window is an open question in the spec: Java has no
 public way to hear it.
 

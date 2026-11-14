@@ -70,6 +70,12 @@ a baseline from the same machine rather than against the row.
   nothing, on purpose.** No Rebol 3 paints an effect; JEBOL says so rather than
   show a picture missing something. An effect gob still shows and paints
   nothing. `spec/draw.allium`, decision 72, goal 16.
+- **Shift held over the wheel scrolls nothing in a window, where R3 scrolls a
+  line, on purpose.** Java on Windows and macOS hands a sideways scroll over
+  as a wheel turn with Shift held, and cannot tell the two apart; R3 posts
+  nothing for a sideways scroll, so JEBOL posts nothing for either.
+  `ASidewaysTurnInAWindowPostsNothing` in `spec/screen.allium`, decision 50,
+  finding 250.
 - **A task's body runs, where R3 never runs it, on purpose.** R3 makes a
   task and DO answers it, but nothing ever starts the body: an obvious bug.
   JEBOL runs it where a host supplies a way to: on a thread of its own in a

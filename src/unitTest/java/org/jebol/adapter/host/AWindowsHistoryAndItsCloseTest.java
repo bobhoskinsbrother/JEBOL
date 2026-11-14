@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 class AWindowsHistoryAndItsCloseTest {
 
@@ -51,7 +52,11 @@ class AWindowsHistoryAndItsCloseTest {
     }
 
     private DesktopScreen screenAsking(LeavingConfirmation asking) {
-        return DesktopScreen.confirmingWith(new ClasspathFiles(), asking, false);
+        return DesktopScreen.confirmingWith(new ClasspathFiles(), asking, DesktopSystem.WINDOWS);
+    }
+
+    private DesktopScreen screenOnLinux() {
+        return DesktopScreen.confirmingWith(new ClasspathFiles(), new AnOperatorAskedToConfirm(true), DesktopSystem.X11);
     }
 
     @Nested
@@ -178,6 +183,47 @@ class AWindowsHistoryAndItsCloseTest {
 
             assertThat(everyEventOn(screen)).extracting(ScreenEvent::type)
                     .containsExactlyInAnyOrder(ScreenEventType.DOWN, ScreenEventType.BACK);
+        }
+
+        @Test
+        @DisplayName("on Linux the mouse's back button is button six: it moves back, and is still a press")
+        void onLinuxTheBackButtonIsSix() {
+            DesktopScreen screen = screenOnLinux();
+            screen.navigation().goTo(place("a"));
+
+            screen.pressButton(6, 5, 6, window);
+
+            assertThat(everyEventOn(screen)).extracting(ScreenEvent::type)
+                    .containsExactlyInAnyOrder(ScreenEventType.DOWN, ScreenEventType.BACK);
+        }
+
+        @Test
+        @DisplayName("on Linux buttons four and five are a sideways turn: no press, no release, and no move")
+        void onLinuxFourAndFiveAreASidewaysTurn() {
+            DesktopScreen screen = screenOnLinux();
+            screen.navigation().goTo(place("a"));
+            screen.navigation().goTo(place("b"));
+            screen.navigation().goBack();
+            everyEventOn(screen);
+
+            screen.pressButton(4, 5, 6, window);
+            screen.releaseButton(4, 5, 6, window);
+            screen.pressButton(5, 5, 6, window);
+            screen.releaseButton(5, 5, 6, window);
+
+            assertThat(everyEventOn(screen)).isEmpty();
+            assertThat(screen.navigation().current()).isEqualTo(place("a"));
+        }
+
+        @Test
+        @DisplayName("releasing an ordinary button is an up where the pointer is")
+        void releasingIsAnUp() {
+            DesktopScreen screen = screenOnLinux();
+
+            screen.releaseButton(1, 5, 6, window);
+
+            assertThat(everyEventOn(screen)).extracting(ScreenEvent::type, ScreenEvent::detail)
+                    .containsExactly(tuple(ScreenEventType.UP, new ScreenEventDetail.At(5, 6)));
         }
 
         @Test

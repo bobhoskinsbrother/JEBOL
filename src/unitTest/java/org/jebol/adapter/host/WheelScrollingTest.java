@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.awt.event.InputEvent;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class WheelScrollingTest {
@@ -87,6 +89,45 @@ class WheelScrollingTest {
             WheelScrolling wheel = new WheelScrolling();
             assertThat(wheel.take(0.0, false)).isEmpty();
             assertThat(wheel.take(0.0, true)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("a turn read from the toolkit's modifiers")
+    class FromTheModifiers {
+
+        @Test
+        @DisplayName("is a line with no modifier held")
+        void plainIsALine() {
+            WheelScrolling wheel = new WheelScrolling();
+            WheelScrolling.Turning turning = wheel.take(-1.0, 0, false).orElseThrow();
+            assertThat(turning.kind()).isEqualTo(ScreenEventType.SCROLL_LINE);
+            assertThat(turning.amount()).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("is a page with Control held, or when the machine scrolls by blocks")
+        void controlOrABlockIsAPage() {
+            assertThat(new WheelScrolling().take(-1.0, InputEvent.CTRL_DOWN_MASK, false).orElseThrow().kind())
+                    .isEqualTo(ScreenEventType.SCROLL_PAGE);
+            assertThat(new WheelScrolling().take(-1.0, 0, true).orElseThrow().kind())
+                    .isEqualTo(ScreenEventType.SCROLL_PAGE);
+        }
+
+        @Test
+        @DisplayName("is nothing with Shift, which is how Java hands over a sideways turn, as R3 posts nothing for one")
+        void shiftIsASidewaysTurnAndNothing() {
+            WheelScrolling wheel = new WheelScrolling();
+            assertThat(wheel.take(-1.0, InputEvent.SHIFT_DOWN_MASK, false)).isEmpty();
+            assertThat(wheel.take(3.0, InputEvent.SHIFT_DOWN_MASK | InputEvent.CTRL_DOWN_MASK, true)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("and a sideways turn is not kept toward the next vertical notch")
+        void aSidewaysTurnIsNotKept() {
+            WheelScrolling wheel = new WheelScrolling();
+            assertThat(wheel.take(-0.6, InputEvent.SHIFT_DOWN_MASK, false)).isEmpty();
+            assertThat(wheel.take(-0.6, 0, false)).isEmpty();
         }
     }
 

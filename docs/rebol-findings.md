@@ -7370,3 +7370,19 @@ text (decision 71); `UtfStringDecoder` is the port and
   zero, and `UTF8_Copy_Surrogates` answers nothing for zero bytes, which is
   failure: `to string! #{EFBBBF}` is `invalid-utf`, `read/string` of the file
   is the three bytes. A UTF-16 mark alone is the empty string.
+
+## 250. R3's window reads only the vertical wheel
+
+`host-event.c` handles `WM_MOUSEWHEEL` and nothing else of the wheel's:
+`WM_MOUSEHWHEEL`, a sideways scroll or a tilted wheel, falls through to the
+default and posts no event. Shift held over the vertical wheel is a
+`scroll-line`, because the page test reads only `MK_CONTROL`. Java hands a
+window a sideways scroll three ways: Windows and macOS as a wheel turn with
+Shift held, and X11 as a press of buttons four and five, since its toolkit
+counts only X's buttons four and five as the wheel and numbers the rest from
+four (`XWindow.handleButtonPressRelease`), so the mouse's back and forward
+buttons are six and seven there. JEBOL posts nothing for any of them
+(`ASidewaysTurnInAWindowPostsNothing`), which costs Shift and the wheel its
+line on Windows and macOS (`docs/standing.md`).
+`WheelScrollingTest`, `TheBrowsersBackAndForwardKeysTest`,
+`AWindowsHistoryAndItsCloseTest`, `TurningAWheelSidewaysInAWindowEndToEndTest`.

@@ -714,6 +714,21 @@ rule AScreenEventCarriesItsPositionOrItsKey {
             the_event_offset_is(the_turn_of_the_wheel)
 }
 
+-- A sideways turn in a window posts nothing. R3's host reads only the
+-- vertical wheel, `WM_MOUSEWHEEL`; a sideways scroll or a tilted wheel is
+-- `WM_MOUSEHWHEEL`, which it does not handle. Java on Windows and macOS hands
+-- a window a sideways turn as a wheel turn with Shift held, and cannot tell
+-- it from Shift held over the vertical wheel, so a window posts nothing for
+-- either: where R3 scrolls a line for Shift and the wheel, JEBOL does not.
+-- Java on Linux hands it over as a press of button four or five, so there
+-- those two presses post nothing either -- no down, no up, and no move in the
+-- history (nav.allium's TheBrowsersBackKeysMoveAWindowsHistory).
+rule ASidewaysTurnInAWindowPostsNothing {
+    when: the_operator_turns_sideways(window)
+
+    ensures: nothing_is_queued
+}
+
 -- A browser keeps the rule above the same way a desktop window does. The page
 -- posts each pointer event -- down, up and move, move included -- with where
 -- the pointer is on the page, in whole pixels; JEBOL takes the window's own

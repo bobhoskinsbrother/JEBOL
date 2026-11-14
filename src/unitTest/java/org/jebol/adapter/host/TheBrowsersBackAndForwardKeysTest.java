@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.awt.event.InputEvent;
@@ -23,13 +24,15 @@ class TheBrowsersBackAndForwardKeysTest {
     @DisplayName("on Windows and Linux")
     class OnWindowsAndLinux {
 
-        private final BackForwardChords chords = new BackForwardChords(false);
+        private final BackForwardChords chords = new BackForwardChords(DesktopSystem.WINDOWS);
 
-        @Test
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(value = DesktopSystem.class, names = {"WINDOWS", "X11"})
         @DisplayName("Alt+Left is back and Alt+Right is forward")
-        void altArrowsMove() {
-            assertThat(chords.keyDirection(KeyEvent.VK_LEFT, ALT)).contains(ScreenEventType.BACK);
-            assertThat(chords.keyDirection(KeyEvent.VK_RIGHT, ALT)).contains(ScreenEventType.FORWARD);
+        void altArrowsMove(DesktopSystem system) {
+            BackForwardChords onThatSystem = new BackForwardChords(system);
+            assertThat(onThatSystem.keyDirection(KeyEvent.VK_LEFT, ALT)).contains(ScreenEventType.BACK);
+            assertThat(onThatSystem.keyDirection(KeyEvent.VK_RIGHT, ALT)).contains(ScreenEventType.FORWARD);
         }
 
         @Test
@@ -60,7 +63,7 @@ class TheBrowsersBackAndForwardKeysTest {
     @DisplayName("on macOS")
     class OnMacOs {
 
-        private final BackForwardChords chords = new BackForwardChords(true);
+        private final BackForwardChords chords = new BackForwardChords(DesktopSystem.MACOS);
 
         @Test
         @DisplayName("Cmd+[ and Cmd+Left are back, Cmd+] and Cmd+Right are forward")
@@ -88,24 +91,62 @@ class TheBrowsersBackAndForwardKeysTest {
     }
 
     @Nested
-    @DisplayName("the mouse")
-    class TheMouse {
+    @DisplayName("the mouse on Windows and macOS")
+    class TheMouseOnWindowsAndMacOs {
 
-        private final BackForwardChords chords = new BackForwardChords(false);
-
-        @Test
-        @DisplayName("button four is back and button five forward, on every system")
-        void theSideButtonsMove() {
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(value = DesktopSystem.class, names = {"WINDOWS", "MACOS"})
+        @DisplayName("button four is back and button five forward")
+        void theSideButtonsMove(DesktopSystem system) {
+            BackForwardChords chords = new BackForwardChords(system);
             assertThat(chords.buttonDirection(4)).contains(ScreenEventType.BACK);
             assertThat(chords.buttonDirection(5)).contains(ScreenEventType.FORWARD);
-            assertThat(new BackForwardChords(true).buttonDirection(4)).contains(ScreenEventType.BACK);
         }
 
         @ParameterizedTest(name = "button {0}")
-        @ValueSource(ints = {0, 1, 2, 3, 6, -1})
+        @ValueSource(ints = {0, 1, 2, 3, 6, 7, -1})
+        @DisplayName("every other button is only a press")
+        void otherButtonsArePresses(int button) {
+            assertThat(new BackForwardChords(DesktopSystem.WINDOWS).buttonDirection(button)).isEmpty();
+            assertThat(new BackForwardChords(DesktopSystem.MACOS).buttonDirection(button)).isEmpty();
+        }
+
+        @ParameterizedTest(name = "button {0}")
+        @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7})
+        @DisplayName("no button is a sideways turn, because a sideways turn arrives as a wheel")
+        void noButtonIsASidewaysTurn(int button) {
+            assertThat(new BackForwardChords(DesktopSystem.WINDOWS).isSidewaysTurn(button)).isFalse();
+            assertThat(new BackForwardChords(DesktopSystem.MACOS).isSidewaysTurn(button)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("the mouse on Linux, where Java numbers X's buttons six to nine as four to seven")
+    class TheMouseOnLinux {
+
+        private final BackForwardChords chords = new BackForwardChords(DesktopSystem.X11);
+
+        @Test
+        @DisplayName("button six is back and button seven forward")
+        void theSideButtonsMove() {
+            assertThat(chords.buttonDirection(6)).contains(ScreenEventType.BACK);
+            assertThat(chords.buttonDirection(7)).contains(ScreenEventType.FORWARD);
+        }
+
+        @ParameterizedTest(name = "button {0}")
+        @ValueSource(ints = {4, 5})
+        @DisplayName("buttons four and five are a sideways turn, and move nothing")
+        void fourAndFiveAreASidewaysTurn(int button) {
+            assertThat(chords.isSidewaysTurn(button)).isTrue();
+            assertThat(chords.buttonDirection(button)).isEmpty();
+        }
+
+        @ParameterizedTest(name = "button {0}")
+        @ValueSource(ints = {0, 1, 2, 3, 8, -1})
         @DisplayName("every other button is only a press")
         void otherButtonsArePresses(int button) {
             assertThat(chords.buttonDirection(button)).isEmpty();
+            assertThat(chords.isSidewaysTurn(button)).isFalse();
         }
     }
 }

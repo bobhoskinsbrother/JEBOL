@@ -485,7 +485,10 @@ rule MovingBetweenTheAppsOwnPlacesIsNotGuarded {
 -- The keys and buttons each system's browser uses for Back and Forward move
 -- the history in a window too: Alt+Left and Alt+Right on Windows and Linux;
 -- Cmd+[, Cmd+], Cmd+Left and Cmd+Right on macOS, where Alt+Left moves a word
--- in a text field; the mouse's back and forward buttons everywhere. Only the
+-- in a text field; the mouse's back and forward buttons everywhere, which
+-- Java numbers four and five on Windows and macOS and six and seven on Linux,
+-- where four and five are a sideways scroll
+-- (screen.allium's ASidewaysTurnInAWindowPostsNothing). Only the
 -- chord exactly: a second modifier held makes it some other key. They still
 -- reach the app as key presses, so an app that reads them keeps working.
 rule TheBrowsersBackKeysMoveAWindowsHistory {

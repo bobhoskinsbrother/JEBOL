@@ -2,6 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.domain.host.ScreenEventType;
 
+import java.awt.event.InputEvent;
 import java.util.Optional;
 
 final class WheelScrolling {
@@ -10,6 +11,13 @@ final class WheelScrolling {
     private static final int PAGE_SCROLL_PIXELS = 10;
 
     private double turned;
+
+    Optional<Turning> take(double wheelRotation, int modifiersEx, boolean scrollsByBlock) {
+        if ((modifiersEx & InputEvent.SHIFT_DOWN_MASK) != 0) {
+            return Optional.empty();
+        }
+        return take(wheelRotation, (modifiersEx & InputEvent.CTRL_DOWN_MASK) != 0 || scrollsByBlock);
+    }
 
     Optional<Turning> take(double wheelRotation, boolean wholePage) {
         turned += wheelRotation;

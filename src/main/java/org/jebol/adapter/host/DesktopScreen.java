@@ -30,7 +30,6 @@ public final class DesktopScreen extends GobScreen {
 
     private static final String UNTITLED = "REBOL: untitled";
     private static final String OPERATING_SYSTEM_PROPERTY = "os.name";
-    private static final String MACOS_NAME_STARTS = "mac";
     private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000;
 
     private final JebolIcon icon = new JebolIcon();
@@ -57,13 +56,12 @@ public final class DesktopScreen extends GobScreen {
 
     public static DesktopScreen onThisMachine(FilePort files) {
         System.setProperty(MACOS_APP_NAME_PROPERTY, JebolIcon.APPLICATION_NAME);
-        boolean onMac = System.getProperty(OPERATING_SYSTEM_PROPERTY, "")
-                .toLowerCase(Locale.ROOT).startsWith(MACOS_NAME_STARTS);
-        return confirmingWith(files, new SwingLeavingConfirmation(), onMac);
+        DesktopSystem system = DesktopSystem.named(System.getProperty(OPERATING_SYSTEM_PROPERTY, ""));
+        return confirmingWith(files, new SwingLeavingConfirmation(), system);
     }
 
-    static DesktopScreen confirmingWith(FilePort files, LeavingConfirmation asking, boolean onMac) {
-        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless(), asking, new BackForwardChords(onMac));
+    static DesktopScreen confirmingWith(FilePort files, LeavingConfirmation asking, DesktopSystem system) {
+        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless(), asking, new BackForwardChords(system));
     }
 
     void requestClose(GobValue gob) {
@@ -79,8 +77,18 @@ public final class DesktopScreen extends GobScreen {
     }
 
     void pressButton(int button, int across, int down, GobValue window) {
+        if (chords.isSidewaysTurn(button)) {
+            return;
+        }
         post(ScreenEventType.DOWN, window, new ScreenEventDetail.At(across, down));
         chords.buttonDirection(button).ifPresent(navigation()::reportMoveRequest);
+    }
+
+    void releaseButton(int button, int across, int down, GobValue window) {
+        if (chords.isSidewaysTurn(button)) {
+            return;
+        }
+        post(ScreenEventType.UP, window, new ScreenEventDetail.At(across, down));
     }
 
     private void showJebolIcon(JFrame frame) {
@@ -423,7 +431,7 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                post(ScreenEventType.UP, gob, locatePointer(up));
+                releaseButton(up.getButton(), up.getX(), up.getY(), gob);
             }
 
             @Override
@@ -456,9 +464,8 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseWheelMoved(MouseWheelEvent turnedBy) {
-                boolean wholePage = turnedBy.isControlDown()
-                        || turnedBy.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL;
-                wheel.take(turnedBy.getPreciseWheelRotation(), wholePage)
+                boolean scrollsByBlock = turnedBy.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL;
+                wheel.take(turnedBy.getPreciseWheelRotation(), turnedBy.getModifiersEx(), scrollsByBlock)
                         .ifPresent(turning -> post(turning.kind(), gob,
                                 new ScreenEventDetail.Scrolled(
                                         turnedBy.getX(), turnedBy.getY(), turning.amount())));
