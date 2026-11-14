@@ -33,4 +33,10 @@ public final class ProcessEnvironment implements EnvironmentPort {
     public void assign(String name, String value) {
         keyValues.put(name, value);
     }
+
+    public ProcessEnvironment copy() {
+        ProcessEnvironment copy = new ProcessEnvironment();
+        copy.keyValues.putAll(keyValues);
+        return copy;
+    }
 }

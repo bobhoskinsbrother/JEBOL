@@ -28,7 +28,8 @@ class AValueCrossingToATaskIsACopyTest {
 
     private static Interpreter makeParentWritingTo(StringBuffer written) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutTimeLimit())),
+                AnInterpreter.standardPorts().withTasks(
+                        new ThreadTasks(Bounds.standard().withoutTimeLimit(), AnInterpreter::standardPorts)),
                 written::append,
                 Bounds.standard());
     }

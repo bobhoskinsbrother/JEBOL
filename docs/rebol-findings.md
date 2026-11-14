@@ -7386,3 +7386,18 @@ buttons are six and seven there. JEBOL posts nothing for any of them
 line on Windows and macOS (`docs/standing.md`).
 `WheelScrollingTest`, `TheBrowsersBackAndForwardKeysTest`,
 `AWindowsHistoryAndItsCloseTest`, `TurningAWheelSidewaysInAWindowEndToEndTest`.
+
+## 251. A small write is `wrote` before anything can read it
+
+R3 sends from inside WRITE: `dev-net.c`'s socket write calls `send()` on the
+interpreter's own thread, at most `MAX_TRANSFER` (32,000, `sys-net.h`) bytes
+at a time, and when everything went it signals `EVT_WROTE` in that same call.
+So with both ends of a connection in one script, a write of 32,000 bytes or
+fewer is `wrote` on the sender before the receiver's `read` can be queued;
+a longer one goes over several polls, and the receiver may read first.
+JEBOL writes on a thread of its own and its bytes are at the peer before that
+thread reports, so the peer's `read` could be queued first. A read now waits,
+for at most a second, for a write of 32,000 bytes or fewer from its own peer
+in the same process to report. Hidden while JEBOL used virtual threads,
+whose blocked reader woke later; shown by the move to platform threads for
+Android (goal 2a). `AWriteIsHeardBeforeItsPeerReadsItTest`, `WritesInFlightTest`.

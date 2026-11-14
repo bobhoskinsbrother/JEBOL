@@ -1,6 +1,5 @@
 package org.jebol.adapter.host;
 
-import org.jebol.application.JavaMachine;
 import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.host.ProcessPort;
 
@@ -50,7 +49,7 @@ public final class JavaProcess implements ProcessPort {
             return new ProgramResult(0, Optional.empty(), Optional.empty(),
                     Optional.empty(), Optional.of(parseException(refused)));
         }
-        Thread feeding = Thread.startVirtualThread(
+        Thread feeding = DaemonThreads.start("jebol-feeding-a-program",
                 () -> writeBytesAndCloseStdin(program, child));
         if (!program.isWaitedFor()) {
             return new ProgramResult(child.pid(), Optional.empty(),
@@ -70,7 +69,7 @@ public final class JavaProcess implements ProcessPort {
 
     private ProgramResult waitFor(Program program, Process child, Thread feeding) {
         AtomicReference<byte[]> errors = new AtomicReference<>();
-        Thread draining = Thread.startVirtualThread(() -> errors.set(
+        Thread draining = DaemonThreads.start("jebol-draining-a-program", () -> errors.set(
                 capture(child.getErrorStream(), program.standardError())
                         .orElse(null)));
         Optional<byte[]> output = capture(

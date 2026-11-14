@@ -48,6 +48,13 @@ public final class FileSystemPort implements FilePort {
         return new FileSystemPort(root, false);
     }
 
+    public FileSystemPort copyInWorkingDirectory() {
+        FileSystemPort copy = new FileSystemPort(root, writable);
+        copy.relativePathRoot = relativePathRoot;
+        copy.hostFilesOutsideRoot.addAll(hostFilesOutsideRoot);
+        return copy;
+    }
+
     @Override
     public String workingDirectory() {
         return workingDirectory(relativePathRoot);

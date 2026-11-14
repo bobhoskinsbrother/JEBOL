@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
-import org.jebol.application.JavaMachine;
+import org.jebol.adapter.host.JavaMachine;
 import org.jebol.domain.eval.natives.LimitUsageNative;
 import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.*;

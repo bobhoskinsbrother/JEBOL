@@ -13,7 +13,7 @@ public class WebSubstitutions extends SimpleSubstitutionPolicy {
         sink.selectClasses(named("java.security.InvalidKeyException"))
                 .packagePrefix("org.teavm.classlib.")
                 .simpleNamePrefix("T");
-        sink.selectClasses(named("org.jebol.application.ExecutableFile"))
+        sink.selectClasses(named("org.jebol.adapter.host.ExecutableFile"))
                 .simpleNamePrefix("Web");
         sink.selectClasses(named("org.jebol.domain.eval.compression.brotli.FusedMultiplyAdd"))
                 .simpleNamePrefix("Exact");

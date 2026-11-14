@@ -1498,6 +1498,12 @@ rule TheFateOfATasksBodyIsTheHostsToDecide {
         -- its contexts; the web build supplies none, and a worker's page
         -- cannot either. A body that raises stops that thread; nothing
         -- crosses back to the parent, which already answered.
+        --
+        -- The fresh interpreter stands on the host's own services, made for
+        -- it when DO is called: the machine the host supplies, a file port of
+        -- its own standing where the parent's stands then, and the
+        -- environment as the parent had it then, as a child process inherits
+        -- its parent's. No console and no screen: those are the parent's.
 }
 
 -- === Reading and writing the bits of a set =================

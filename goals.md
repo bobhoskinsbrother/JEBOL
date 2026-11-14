@@ -62,36 +62,14 @@ Run it at the close of every Android stage and after any change to the core.
 
   | Where | What Android 35 lacks |
   | --- | --- |
-  | `domain`: `PlaceAddress`, `BinaryValue` | `ByteBuffer.flip()` and `CharBuffer.flip()` answering their own type (Java 9's overrides; Android's answer `Buffer`) |
-  | `application`: `JavaMachine` | `ProcessHandle` (pid, command), `Files.writeString` |
-  | `adapter.host`: `ThreadTasks`, `JavaSocket`, `JavaProcess` | `Thread.ofPlatform`, `Thread.ofVirtual`, `Thread.startVirtualThread` |
-  | `adapter.host`: `JavaProcess` | `ProcessHandle`, `Process.pid()`, `ProcessBuilder.Redirect.DISCARD` |
-  | `adapter.host`: `JavaSecureTransport` | `SSLEngineResult.HandshakeStatus.NEED_UNWRAP_AGAIN` |
+  | the JVM's host: `JavaMachine`, `JavaProcess` (and `JavaHost`, which builds the machine) | `ProcessHandle`, `Process.pid()`, `ProcessBuilder.Redirect.DISCARD`, `Files.writeString` |
   | desktop only: `DesktopScreen`, `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`, `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`, `SwingLeavingConfirmation`, `WindowStateReports`; `adapter.web.WebScreenServer` (`java.awt.Font`) | AWT, Swing, ImageIO: 93 classes, none of which Android has |
   | command line only: `CommandLineConsole`, `SttyTerminal` | `Redirect.DISCARD` |
 
-  The domain's two are the only ones in code every platform runs, and both
-  are a call through `Buffer`. `JavaImage` is the picture codecs; Android's
-  are 2c's.
-
-**2. The gaps, closed on the JVM first.** Each with a test that fails first
-where one can:
-
-- `PlaceAddress` and `BinaryValue` flip through `Buffer`.
-- `JavaMachine`'s pid and command, and its file write, go behind the
-  `MachinePort` the host supplies (or `Files.write`), so `application` names
-  no `ProcessHandle`.
-- Threads are platform threads made by `new Thread(...)`, daemon and named as
-  now, in `ThreadTasks`, `JavaSocket` and `JavaProcess`. A virtual thread
-  bought nothing a phone can use, and `JavaSocket`'s count of connections is
-  small. `docs/standing.md`'s thread notes say so.
-- `JavaSecureTransport`'s handshake switch drops `NEED_UNWRAP_AGAIN` from its
-  `NEED_UNWRAP` case (line 235). It is DTLS's and an `SSLEngine` doing TLS never
-  answers it, but naming it in the switch is a field Android cannot resolve.
-- `JavaProcess` stays desktop and command line only: Android runs no
-  programs (`call` is 2c's to answer, as a browser's is).
-- **The task body runs on the host's ports** (below), which is a JVM defect
-  in its own right.
+  Nothing every platform runs is left on the list: the domain, `application`
+  and the shared adapters reach only what Android has. Android supplies its
+  own machine; it runs no programs (`call` is 2c's to answer, as a browser's
+  is). `JavaImage` is the picture codecs; Android's are 2c's.
 
 **3. The probe becomes a check.** `scripts/AndroidApiGaps.java`, a single
 file run by `java` with no build, checked in with its output for the core as
@@ -99,8 +77,8 @@ file run by `java` with no build, checked in with its output for the core as
 classes the APK carries and fails on any gap, so a new call Android lacks is
 caught on the next run rather than on a phone.
 
-**4. What the APK carries.** The core jar minus the desktop and command-line
-classes above, which an Android process never loads: a `coreForAndroid` jar
+**4. What the APK carries.** The core jar minus the JVM host's, the desktop's
+and the command line's classes above, which an Android process never loads: a `coreForAndroid` jar
 task in the root build excludes them by name, and step 3's check over it
 must come out empty. A class added later that reaches AWT fails the check
 until it is excluded or split.
@@ -131,22 +109,6 @@ measure, not compiling. Known risks, each measured on the emulator:
 **8. Docs.** Decision 73 gains the measured gaps and how each was closed;
 `docs/android-port.md` is the porting notes, as `docs/web-port.md` is the
 web's; `docs/standing.md` gets the APK's size and the suites' counts on ART.
-
-**The task body, in detail.**
-  `ThreadTasks` (`src/main/java/org/jebol/adapter/host/ThreadTasks.java:32`)
-  builds its child with `Interpreter.createWithOutput(...)`, which is
-  `Interpreter.standardPorts()`, so a task body on Android would answer
-  `system/platform` with `Linux` and reach nothing the host supplied, where
-  `TheFateOfATasksBodyIsTheHostsToDecide` says the child inherits the
-  parent's output and pause. It wants the parent's `HostPorts`, which also
-  settles what a task body may reach: today it has no files, and a file port
-  carries the directory it stands in, so the parent's cannot simply be
-  shared. The plan's proposal: the host hands `ThreadTasks` a way to make a
-  child's ports, which on the JVM is `JavaHost`'s own with a file port of its
-  own standing in the parent's current directory, and on Android will be
-  Android's. A functional test asserts a task body answers the parent's
-  `system/platform`, prints through the parent's output, and reads a file
-  beside the script.
 
 **Done when** `androidFunctionalTests` runs Rebol's suite and JEBOL's
 functional tests on ART with the same counts as the JVM, apart from tests

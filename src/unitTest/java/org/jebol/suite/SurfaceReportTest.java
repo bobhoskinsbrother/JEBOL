@@ -1,6 +1,6 @@
 package org.jebol.suite;
 
-import org.jebol.application.JavaMachine;
+import org.jebol.adapter.host.JavaMachine;
 import org.jebol.domain.eval.Boot;
 import org.jebol.domain.eval.BootSources;
 import org.jebol.domain.host.JvmDigests;

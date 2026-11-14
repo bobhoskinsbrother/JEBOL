@@ -2,7 +2,6 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.application.JavaMachine;
 import org.jebol.application.ThreadPause;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.JvmDigests;

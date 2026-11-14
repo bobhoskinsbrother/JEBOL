@@ -1,4 +1,4 @@
-package org.jebol.application;
+package org.jebol.adapter.host;
 
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.NoneValue;

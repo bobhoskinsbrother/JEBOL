@@ -392,7 +392,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                     Arrays.copyOfRange(joined, reading.position(), joined.length)));
         }
         strictly.flush(written);
-        return written.flip().toString();
+        return Buffers.flip(written).toString();
     }
 
     private byte[] withSurrogatePairsJoined(byte[] bytes) {

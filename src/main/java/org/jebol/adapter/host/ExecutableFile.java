@@ -1,4 +1,4 @@
-package org.jebol.application;
+package org.jebol.adapter.host;
 
 import java.io.File;
 

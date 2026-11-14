@@ -6,6 +6,7 @@ import org.jebol.domain.host.RsaServerKey;
 import org.jebol.domain.host.SecureSession;
 import org.jebol.domain.host.SecureTransport;
 import org.jebol.domain.host.ServerCheck;
+import org.jebol.domain.value.Buffers;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -187,7 +188,7 @@ public final class JavaSecureTransport implements SecureTransport {
         @Override
         public Exchange receive(byte[] bytes) {
             ByteBuffer joined = ByteBuffer.allocate(fromNetwork.remaining() + bytes.length);
-            joined.put(fromNetwork).put(bytes).flip();
+            Buffers.flip(joined.put(fromNetwork).put(bytes));
             fromNetwork = joined;
             return pump();
         }
@@ -232,7 +233,7 @@ public final class JavaSecureTransport implements SecureTransport {
                 case NEED_WRAP -> {
                     return wrap(ByteBuffer.allocate(0), toNetwork);
                 }
-                case NEED_UNWRAP, NEED_UNWRAP_AGAIN -> {
+                case NEED_UNWRAP -> {
                     return unwrap(arrived);
                 }
                 default -> {
@@ -262,7 +263,7 @@ public final class JavaSecureTransport implements SecureTransport {
         private boolean wrap(ByteBuffer plaintext, ByteArrayOutputStream toNetwork) throws SSLException {
             ByteBuffer room = ByteBuffer.allocate(engine.getSession().getPacketBufferSize());
             SSLEngineResult result = engine.wrap(plaintext, room);
-            room.flip();
+            Buffers.flip(room);
             toNetwork.write(room.array(), 0, room.limit());
             noteHandshake(result);
             return result.getStatus() == SSLEngineResult.Status.OK && (result.bytesProduced() > 0 || result.bytesConsumed() > 0
@@ -272,7 +273,7 @@ public final class JavaSecureTransport implements SecureTransport {
         private boolean unwrap(ByteArrayOutputStream arrived) throws SSLException {
             ByteBuffer room = ByteBuffer.allocate(engine.getSession().getApplicationBufferSize());
             SSLEngineResult result = engine.unwrap(fromNetwork, room);
-            room.flip();
+            Buffers.flip(room);
             arrived.write(room.array(), 0, room.limit());
             noteHandshake(result);
             return switch (result.getStatus()) {
@@ -309,7 +310,7 @@ public final class JavaSecureTransport implements SecureTransport {
                 engine.closeOutbound();
                 ByteBuffer room = ByteBuffer.allocate(engine.getSession().getPacketBufferSize());
                 engine.wrap(ByteBuffer.allocate(0), room);
-                room.flip();
+                Buffers.flip(room);
                 toNetwork.write(room.array(), 0, room.limit());
             } catch (SSLException | RuntimeException nothingMoreToSay) {
                 toNetwork.reset();

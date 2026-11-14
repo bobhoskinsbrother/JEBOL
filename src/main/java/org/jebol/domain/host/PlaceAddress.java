@@ -3,6 +3,7 @@ package org.jebol.domain.host;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.Buffers;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
 
@@ -70,7 +71,7 @@ final class PlaceAddress {
             octets.put(escaped.get().byteValue());
             at += ESCAPE_LENGTH;
         }
-        return Optional.of(octets.flip());
+        return Optional.of(Buffers.flip(octets));
     }
 
     private Optional<Integer> readEscapeAt(String address, int at) {

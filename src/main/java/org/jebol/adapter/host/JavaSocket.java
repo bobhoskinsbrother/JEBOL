@@ -14,9 +14,11 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -29,6 +31,22 @@ public final class JavaSocket implements NetworkPort {
     private static final int MAX_BYTES = 65_536;
 
     private static final int LAST_ASCII_PLUS_ONE = 0x80;
+
+    private static final Duration LONGEST_WAIT_FOR_A_PEERS_WRITE = Duration.ofSeconds(1);
+
+    private static final int LARGEST_WRITE_R3_SENDS_AT_ONCE = 32_000;
+
+    private final Runnable afterBytesLeave;
+    private final WritesInFlight inFlight = new WritesInFlight(LONGEST_WAIT_FOR_A_PEERS_WRITE);
+
+    public JavaSocket() {
+        this(() -> {
+        });
+    }
+
+    JavaSocket(Runnable afterBytesLeave) {
+        this.afterBytesLeave = afterBytesLeave;
+    }
 
     @Override
     public Optional<String> resolveFirstIpv4Address(String hostName) {
@@ -70,7 +88,7 @@ public final class JavaSocket implements NetworkPort {
 
     @Override
     public void lookUp(String hostName, Lookup answer) {
-        Thread.ofVirtual().start(() -> resolveFirstIpv4Address(hostName).ifPresentOrElse(
+        DaemonThreads.start("jebol-lookup", () -> resolveFirstIpv4Address(hostName).ifPresentOrElse(
                 answer::found, () -> answer.missing("no host of that name")));
     }
 
@@ -85,7 +103,7 @@ public final class JavaSocket implements NetworkPort {
     public Listener listen(int portNumber, Accepting accepting) {
         try {
             ServerSocket listening = new ServerSocket(portNumber);
-            Thread.ofVirtual().start(() -> acceptEachClient(listening, accepting));
+            DaemonThreads.start("jebol-listening", () -> acceptEachClient(listening, accepting));
             return new Listener() {
 
                 @Override
@@ -192,8 +210,9 @@ public final class JavaSocket implements NetworkPort {
     private final class SocketConnection implements Connection {
 
         private final Socket socket;
-        private final ExecutorService connectingThenWriting = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
-        private final ExecutorService reading = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
+        private final ExecutorService connectingThenWriting =
+                Executors.newSingleThreadExecutor(DaemonThreads.factory("jebol-connecting-then-writing"));
+        private final ExecutorService reading = Executors.newSingleThreadExecutor(DaemonThreads.factory("jebol-reading"));
         private final CompletableFuture<Boolean> connected = new CompletableFuture<>();
         private volatile ConnectionEvents events;
         private volatile boolean closedByScript;
@@ -234,6 +253,7 @@ public final class JavaSocket implements NetworkPort {
                         report(ConnectionEvents::closed);
                     } else {
                         byte[] bytes = Arrays.copyOf(room, arrived);
+                        inFlight.awaitPeerOf(ends());
                         report(happened -> happened.arrived(bytes));
                     }
                 } catch (IOException broken) {
@@ -249,13 +269,20 @@ public final class JavaSocket implements NetworkPort {
                 if (!connected.join()) {
                     return;
                 }
+                WritesInFlight.Ends writer = ends();
+                Optional<CountDownLatch> heldForThePeer = sending.length <= LARGEST_WRITE_R3_SENDS_AT_ONCE
+                        ? Optional.of(inFlight.begin(writer))
+                        : Optional.empty();
                 try {
                     OutputStream output = socket.getOutputStream();
                     output.write(sending);
                     output.flush();
+                    afterBytesLeave.run();
                     report(ConnectionEvents::wrote);
                 } catch (IOException broken) {
                     report(happened -> happened.failed(explain(broken, "the connection broke while writing")));
+                } finally {
+                    heldForThePeer.ifPresent(reported -> inFlight.end(writer, reported));
                 }
             });
         }
@@ -275,6 +302,10 @@ public final class JavaSocket implements NetworkPort {
                     Math.max(socket.getLocalPort(), 0),
                     socket.getInetAddress() == null ? "0.0.0.0" : socket.getInetAddress().getHostAddress(),
                     socket.getPort());
+        }
+
+        private WritesInFlight.Ends ends() {
+            return new WritesInFlight.Ends(socket.getLocalPort(), socket.getPort());
         }
 
         private void report(Consumer<ConnectionEvents> happened) {

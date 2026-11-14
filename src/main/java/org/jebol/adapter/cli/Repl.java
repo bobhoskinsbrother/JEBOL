@@ -20,6 +20,7 @@ import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.PausePort;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.AnyBlockValue;
@@ -217,22 +218,28 @@ public final class Repl {
             boolean anythingWasAsked, Path root, ProcessEnvironment environment, ConsolePort console) {
 
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
-        FileSystemPort files = FileSystemPort.rootFileSystem(root);
-        HostPorts ports = attachJavaImagesCodec(new JavaHost().ports()
-                .withConsole(console)
-                .withTasks(new ThreadTasks(bounds))
+        HostPorts ports = hostServicesFor(bounds, FileSystemPort.rootFileSystem(root), environment,
+                isWholeMachine(root), new WakeablePause(), cafile)
+                .withConsole(console);
+        ChosenScreen chosen = new ChosenScreen(arguments);
+        return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
+    }
+
+    private static HostPorts hostServicesFor(Bounds bounds, FileSystemPort files, ProcessEnvironment environment,
+                                             boolean wholeMachine, PausePort pause, String cafile) {
+        return attachJavaImagesCodec(new JavaHost().ports()
+                .withTasks(new ThreadTasks(bounds, () -> hostServicesFor(bounds, files.copyInWorkingDirectory(),
+                        environment.copy(), wholeMachine, pause, cafile)))
                 .withFiles(files)
-                .withEnvironment(isWholeMachine(root) ? environment : ConfinedEnvironment.confine(environment, files))
+                .withEnvironment(wholeMachine ? environment : ConfinedEnvironment.confine(environment, files))
                 .withProcesses(new JavaProcess())
                 .withClipboard(new JavaClipboard())
                 .withNetwork(new JavaSocket())
                 .withSecureTransport(new JavaSecureTransport())
-                .withPause(new WakeablePause())
+                .withPause(pause)
                 .withCertificateAuthority(cafile.isEmpty()
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));
-        ChosenScreen chosen = new ChosenScreen(arguments);
-        return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
     private static boolean isWholeMachine(Path root) {

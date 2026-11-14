@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.adapter.host.JavaMachine;
 import org.jebol.adapter.web.WebFiles;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.MachinePort;
