@@ -531,7 +531,9 @@ fails there and names itself, rather than quietly defining less than it used to.
 ## What the assertions Rebol fails too are, and which of them Rebol knows about
 
 `fails-on-rebol-too.txt` holds 160 assertions a real 3.22.5 does not pass, each
-with the evidence above it. Read against the suite files on 24 October 2026, they
+with the evidence above it, and under a last heading of its own one that a real
+3.22.5 passes and JEBOL fails on purpose (decision 71), which this section does
+not count. Read against the suite files on 24 October 2026, they
 fall into three kinds, and the split that matters for anyone reporting upstream is
 whether Rebol's own file links an issue for them. Rebol marks a tracked failure
 with a `;@@ https://github.com/Oldes/Rebol-issues/issues/NNN` line on the test or

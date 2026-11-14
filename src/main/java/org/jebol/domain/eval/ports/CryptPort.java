@@ -17,12 +17,12 @@ import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public final class CryptPort {
 
     private final JoinedOctets joined = new JoinedOctets();
-    private final CounterWithCbcMac counterWithCbcMac = new CounterWithCbcMac();
 
     static final String HANDLE_TYPE = "crypt";
 
@@ -227,6 +227,10 @@ public final class CryptPort {
 
         private boolean wouldNotRun;
 
+        private boolean lastWriteFailed;
+
+        private CounterWithCbcMac countingWithCbcMac = new CounterWithCbcMac();
+
         private Cipherworks works() {
             return SERVED.get(algorithm);
         }
@@ -306,6 +310,7 @@ public final class CryptPort {
             return false;
         }
         working.algorithm = asked.canonical();
+        working.countingWithCbcMac = new CounterWithCbcMac();
         return true;
     }
 
@@ -372,6 +377,10 @@ public final class CryptPort {
         if (working.needsStarting) {
             startCipher(working);
         }
+        if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
+            working.lastWriteFailed = !cipherOneMessage(working, octets);
+            return;
+        }
         if (working.wouldNotRun) {
             return;
         }
@@ -411,6 +420,9 @@ public final class CryptPort {
         }
         if (working.works() != null
                 && gathersEverythingAndAnswersTagBesideIt(working.works().mode())) {
+            if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
+                working.lastWriteFailed = false;
+            }
             if (working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
                 finishGalois(working);
             }
@@ -433,7 +445,8 @@ public final class CryptPort {
 
     public Value read(PortValue port) {
         Working working = findWorkInProgress(port);
-        if (working == null || working.wouldNotRun || !working.somethingIsReady) {
+        if (working == null || working.wouldNotRun || working.lastWriteFailed
+                || !working.somethingIsReady) {
             return NoneValue.none();
         }
         Value answered = wrapInBinary(working.ready);
@@ -463,12 +476,16 @@ public final class CryptPort {
         working.nextWriteIsHeader = true;
         working.needsStarting = false;
         working.wouldNotRun = false;
+        working.lastWriteFailed = false;
         if (works.mode() == Mode.COUNTER_WITH_GALOIS) {
             working.wouldNotRun = working.vector.length == 0;
             return;
         }
-        if (works.mode() == Mode.COUNTER_WITH_CBC_MAC
-                || works.mode() == Mode.CHACHA_WITH_POLY1305) {
+        if (works.mode() == Mode.COUNTER_WITH_CBC_MAC) {
+            startCountingWithCbcMac(working);
+            return;
+        }
+        if (works.mode() == Mode.CHACHA_WITH_POLY1305) {
             return;
         }
         if (works.family() == Family.CAMELLIA || works.family() == Family.ARIA) {
@@ -571,10 +588,6 @@ public final class CryptPort {
                     octets.length);
         }
         working.gatheredForGalois = joined.of(working.gatheredForGalois, rest);
-        if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
-            runThroughCounterWithCbcMac(working);
-            return;
-        }
         addToWhatIsReady(working, takeOctetsNotHandedOutYet(working));
     }
 
@@ -595,24 +608,60 @@ public final class CryptPort {
         addToWhatIsReady(working, takeOctetsNotHandedOutYet(working));
     }
 
-    private void runThroughCounterWithCbcMac(Working working) {
-        OneBlock cipher =
-                makeBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
-        CounterWithCbcMac.Sealed answer = working.decrypting
-                ? counterWithCbcMac.decipher(cipher, working.vector,
-                        working.tagOctets, working.authenticated,
-                        working.gatheredForGalois)
-                : counterWithCbcMac.encipher(cipher, working.vector,
-                        working.tagOctets, working.authenticated,
-                        working.gatheredForGalois);
-        if (!answer.worked()) {
-            working.wouldNotRun = true;
-            return;
+    private void startCountingWithCbcMac(Working working) {
+        CounterWithCbcMac counting = working.countingWithCbcMac;
+        counting.useKey(makeBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE));
+        boolean started = counting.start(!working.decrypting,
+                CounterWithCbcMac.clampNonce(working.vector));
+        if (working.tagOctets == NO_TAG_AT_ALL && working.toAuthenticateOctets == 0) {
+            counting.allowNoTag();
         }
-        working.ready = answer.octets();
-        working.handedOut = answer.octets().length;
-        working.somethingIsReady = true;
+        working.wouldNotRun = !started;
     }
+
+    private boolean cipherOneMessage(Working working, byte[] octets) {
+        if (working.wouldNotRun) {
+            return false;
+        }
+        if (octets.length == 0) {
+            return true;
+        }
+        CounterWithCbcMac counting = working.countingWithCbcMac;
+        long header = asUnsignedLength(working.toAuthenticateOctets);
+        long tag = working.decrypting ? asUnsignedLength(working.tagOctets) : 0;
+        long message = asUnsignedLength(octets.length - header - tag);
+        if (!counting.setLengths(header, message, working.tagOctets)) {
+            return false;
+        }
+        if (header + message + tag != octets.length) {
+            return false;
+        }
+        if (!counting.authenticate(octets, 0, (int) header)) {
+            return false;
+        }
+        byte[] out = new byte[(int) message];
+        if (!counting.update(octets, (int) header, (int) message, out, 0)) {
+            return false;
+        }
+        addToWhatIsReady(working, out);
+        Optional<byte[]> computed = counting.finish(working.tagOctets);
+        if (computed.isEmpty()) {
+            return false;
+        }
+        if (working.decrypting) {
+            return CounterWithCbcMac.agreeInConstantTime(
+                    Arrays.copyOfRange(octets, (int) (header + message), octets.length),
+                    computed.get());
+        }
+        addToWhatIsReady(working, computed.get());
+        return true;
+    }
+
+    private long asUnsignedLength(long length) {
+        return length & UNSIGNED_LENGTH;
+    }
+
+    private static final long UNSIGNED_LENGTH = 0xFFFF_FFFFL;
 
     private void finishGalois(Working working) {
         if (working.tagOctets == NO_TAG_AT_ALL) {

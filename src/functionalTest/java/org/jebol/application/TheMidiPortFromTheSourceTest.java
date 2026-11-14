@@ -487,11 +487,31 @@ class TheMidiPortFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("opening a port that is already open asks the host again, as the C does")
-        void asksAgainOnOpeningAnOpenPort() {
+        @DisplayName("opening a port that is already open is already-open, and the host is asked once")
+        void refusesToOpenAnOpenPort() {
             AnAttachedRig rig = attachAKeyboardAndTwoSynths();
-            assertThat(answerWith(rig, "p: open midi://1 open? open p")).isEqualTo("#(true)");
+            assertThat(answerWith(rig, "p: open midi://1 " + readTheRefusalOf("open p")))
+                    .isEqualTo("[already-open midi://1 _]");
+            assertThat(rig.connected).hasSize(1);
+            assertThat(rig.closings).isZero();
+        }
+
+        @Test
+        @DisplayName("and the port stays open on the first connection")
+        void staysOpenOnTheFirstConnection() {
+            AnAttachedRig rig = attachAKeyboardAndTwoSynths().addArriving("903C7F");
+            assertThat(answerWith(rig, "p: open midi://1 try [open p] reduce [open? p read p]"))
+                    .isEqualTo("[#(true) #{903C7F}]");
+            assertThat(rig.connected).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("but opens again once closed")
+        void opensAgainOnceClosed() {
+            AnAttachedRig rig = attachAKeyboardAndTwoSynths();
+            assertThat(answerWith(rig, "p: open midi://1 close p port? open p")).isEqualTo("#(true)");
             assertThat(rig.connected).hasSize(2);
+            assertThat(rig.closings).isEqualTo(1);
         }
 
         @Test

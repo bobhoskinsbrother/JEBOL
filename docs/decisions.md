@@ -3191,3 +3191,17 @@ too short to hold the header, and CCM treats each write as a whole message.
 Raising where bytes vanish was offered and declined; JEBOL matches R3,
 including the three CCM shapes it got wrong, and the shapes are rules and a
 finding.
+
+**What holds it.** `TheRebolBugsTranscriptFromTheSourceTest` runs
+`r3-bugs/probes.r3` through JEBOL and compares it with `probes.txt`, line by
+line: every line equals R3's except the deliberate ones it names, each of which
+must differ from R3 and equal `probes-fixed.txt`, the same probes through an R3
+built with `r3-bugs/fixes.patch`. Standing alone: `BinarySearchBoundsTest`,
+`MakingAnImageFromABlockOfTuplesFromTheSourceTest`,
+`ImageDiffPartClipsAtTheEdgeFromTheSourceTest`,
+`AuthenticatedCipherShapesFromTheSourceTest`,
+`APortsStateGatesItsVerbsFromTheSourceTest` and
+`TheMidiPortFromTheSourceTest`. The rules are `FindingAByteInABinaryFindsEveryByte`,
+`ABlockOfTuplesIsOneTupleAPixel`, `ARectanglePastTheEdgeIsClippedToIt`,
+`OpeningAnOpenMidiPortIsRefused`, `TheClipboardRefusesToBeOpenedAgain` and
+`CounterWithCbcMacIsOneMessageAWrite`; finding 248 has the cipher shapes.

@@ -18,8 +18,6 @@ import java.util.Set;
 
 public class CreateAction extends PortAction {
 
-    private static final boolean NOT_ITS_PARENTS = false;
-
     public CreateAction(GrantedServices granted, Ports ports) {
         super(granted, ports);
     }
@@ -50,13 +48,16 @@ public class CreateAction extends PortAction {
         }
         granted.require(HostService.FILES);
         String path = ports.portPath(port);
+        if (path.endsWith("/")) {
+            ports.createDirectory(port, evaluator);
+            return port;
+        }
+        if (port.isOpen()) {
+            return port;
+        }
         ports.requireFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
         return ports.runThroughFileSystem(() -> {
-            if (path.endsWith("/")) {
-                evaluator.ports().files().makeDirectory(path, NOT_ITS_PARENTS);
-            } else {
-                evaluator.ports().files().write(path, new byte[0]);
-            }
+            evaluator.ports().files().write(path, new byte[0]);
             return port;
         });
     }

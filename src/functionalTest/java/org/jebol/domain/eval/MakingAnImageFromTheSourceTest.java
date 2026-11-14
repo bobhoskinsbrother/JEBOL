@@ -179,13 +179,12 @@ class MakingAnImageFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a block of colours is refused however well formed it is")
-        void aBlockOfColoursIsRefused() {
-            assertThat(errorIdFrom("make image! [2x1 [1.1.1 2.2.2]]"))
-                    .isEqualTo("malconstruct");
-            assertThat(errorIdFrom("make image! [2x1 []]")).isEqualTo("malconstruct");
-            assertThat(errorIdFrom("load {#(image! 2x1 [1.1.1 2.2.2])}"))
-                    .isEqualTo("malconstruct");
+        @DisplayName("and a block of colours is read as pixels, written or made, on purpose")
+        void aBlockOfColoursIsRead() {
+            assertThat(errorIdFrom("make image! [2x1 [1.1.1 2.2.2]]")).isEqualTo("no-error");
+            assertThat(errorIdFrom("make image! [2x1 []]")).isEqualTo("no-error");
+            assertThat(errorIdFrom("load {#(image! 2x1 [1.1.1 2.2.2])}")).isEqualTo("no-error");
+            assertThat(errorIdFrom("make image! [2x1 [1.1.1 x]]")).isEqualTo("invalid-arg");
         }
     }
 

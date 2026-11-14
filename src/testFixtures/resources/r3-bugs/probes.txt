@@ -47,6 +47,14 @@ image binary and alpha | [image 2x1 #{010203040506} #{0A0B}]
 image pixel set four-tuple | [image 1x1 #{010203} #{04}]
 image append block | [image 1x3 #{000000010203040506} #{FFFFF8}]
 image change block | [image 2x1 #{010203040506} #{FFF8}]
+image insert block | [image 2x1 #{010203000000000000} #{FBFFFF}]
+image change/only block | [image 2x1 #{010203050607} #{FBFF}]
+image change/dup block | [image 2x1 #{010203010203} #{FBFB}]
+image append block word | [error invalid-arg x]
+image append block integer | [error invalid-arg 7]
+image change block word | [error invalid-arg x]
+image block from its index | [error malconstruct [2x1 [4.5.6 7.8.9]]]
+image block integer | [error invalid-arg]
 diff whole | 49.9999999999999%
 diff 0x0 1x1 | 0%
 diff 0x0 1x2 | 49.9999999999999%
@@ -97,7 +105,7 @@ file open? after | #(true)
 file delete while open | [error no-delete %held.txt]
 file there after delete | file
 file rename while open | [error no-rename %held.txt]
-file there after rename | [file file]
+file there after rename | [file _]
 file create while open | port
 file close | port
 file close again | port
@@ -107,13 +115,30 @@ file delete when closed | [error no-delete %gone.txt]
 file delete closed port | port
 file deleted closed port | _
 file delete missing | #(false)
+file open in missing folder | [error cannot-open %missing-dir/x]
+file open/read missing | [error cannot-open %missing-dir/x]
+file write missing folder | [error cannot-open %missing-dir/x]
+file append missing folder | [error cannot-open %missing-dir/x]
+file create missing folder | [error cannot-open %missing-dir/x]
+file url open missing | [cannot-open #(true) 3]
+file url open twice | [already-open #(true)]
+file url delete while open | [no-delete #(true) file]
+file rename by name of open | [_ file]
 dir open twice | port
 dir create while open | [error already-open %d/]
 dir delete while open | port
 dir there after delete | _
+dir open? after delete | #(false)
+dir rename while open | [_ dir]
 dir close | port
 dir create when closed | [error cannot-open %e/]
 dir created when closed | _
+dir create opens the port | [#(true) #(true) dir]
+dir open/new makes it | [#(true) dir]
+dir open/new existing | [error no-create %n2/]
+dir open/new no parent | [error no-create %deep/er/]
+dir open/new while open | [error already-open %n3/]
+dir create existing | [error no-create %n2/]
 crypt open twice | [error already-open crypt://aes-128-ecb]
 checksum open twice | port
 clipboard open twice | [error expect-arg open]

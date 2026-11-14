@@ -1,0 +1,37 @@
+--- a/rebol3-source/src/core/n-image.c
++++ b/rebol3-source/src/core/n-image.c
+@@ -277,8 +277,8 @@
+ 			if (ofsx < 0) {wide += ofsx; ofsx = 0;}
+ 			if (ofsy < 0) {high += ofsy; ofsy = 0;}
+ 
+-			if ((ofsx + wide) > maxx) wide = maxx - ofsx - wide;
+-			if ((ofsy + high) > maxy) high = maxy - ofsy - high;
++			if ((ofsx + wide) > maxx) wide = (ofsx < maxx) ? maxx - ofsx : maxx - ofsx - wide;
++			if ((ofsy + high) > maxy) high = (ofsy < maxy) ? maxy - ofsy : maxy - ofsy - high;
+ 			
+ 			if (wide == 0 || high == 0)
+ 				Trap1(RE_INVALID_DATA, D_ARG(5));
+--- a/rebol3-source/src/core/s-find.c
++++ b/rebol3-source/src/core/s-find.c
+@@ -678,7 +678,7 @@
+ 		}
+ 	}
+ 	else {
+-		if (c2 > 0x7F) return NOT_FOUND;
++		if (c2 > 0xFF) return NOT_FOUND;
+ 		bp = BIN_HEAD(ser);
+ 		for (; index >= head && index < tail; index += skip) {
+ 			c1 = bp[index];
+--- a/rebol3-source/src/core/t-image.c
++++ b/rebol3-source/src/core/t-image.c
+@@ -705,8 +705,9 @@
+ 		}
+ 	}
+ 	else if (IS_BLOCK(block)) {
+-		if ((w = Valid_Tuples(block))) Trap_Arg(block+w-1);
++		if ((w = Valid_Tuples(block))) Trap_Arg(VAL_BLK_SKIP(block, w-1));
+ 		Tuples_To_RGBA(ip, size, VAL_BLK_DATA(block), VAL_LEN(block));
++		block++;
+ 	}
+ 	if (!IS_END(block)) return 0;
+ 

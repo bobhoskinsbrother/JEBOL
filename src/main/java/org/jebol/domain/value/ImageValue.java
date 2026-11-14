@@ -237,6 +237,9 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                     }
                     at++;
                 }
+            } else if (at < parts.size() && parts.get(at) instanceof BlockValue tuples) {
+                fillFromTuples(made, tuples);
+                at++;
             }
             if (at != parts.size()) {
                 throw refuseAsMalconstructed(specification);
@@ -273,6 +276,14 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             int pixels = Math.min(made.storageLength(), alphas.lengthFromHere());
             for (int pixel = 1; pixel <= pixels; pixel++) {
                 made.storage().setAlphaAt(pixel, alphas.storage().at(alphas.index() + pixel - 1));
+            }
+        }
+
+        private void fillFromTuples(ImageValue made, BlockValue tuples) {
+            List<PixelWrite> pixels = readTuplesWithTransparency(tuples);
+            int filled = Math.min(made.storageLength(), pixels.size());
+            for (int pixel = 1; pixel <= filled; pixel++) {
+                pixels.get(pixel - 1).writeInto(made.storage(), pixel);
             }
         }
 
@@ -486,13 +497,22 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         if (given instanceof BinaryValue bytes) {
             return readBytesFourAtTime(bytes, colourOnly);
         }
-        List<Value> named = given instanceof BlockValue block
-                ? block.remaining()
-                : List.of(given);
+        if (given instanceof BlockValue tuples) {
+            return readTuplesWithTransparency(tuples);
+        }
+        return List.of(asPixel(given, colourOnly).orElseThrow(() -> Raised.of(
+                EvaluationFailure.INVALID_TYPE, given.datatype())));
+    }
+
+    private static List<PixelWrite> readTuplesWithTransparency(BlockValue tuples) {
         List<PixelWrite> pixels = new ArrayList<>();
-        for (Value one : named) {
-            pixels.add(asPixel(one, colourOnly).orElseThrow(() -> Raised.of(
-                    EvaluationFailure.INVALID_TYPE, one.datatype())));
+        for (Value one : tuples.remaining()) {
+            if (!(one instanceof TupleValue colour)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, one);
+            }
+            int[] parts = colour.segments();
+            pixels.add(new PixelWrite(partOr(parts, 0, 0), partOr(parts, 1, 0), partOr(parts, 2, 0),
+                    WHOLLY - partOr(parts, 3, 0), WRITTEN, WRITTEN));
         }
         return pixels;
     }
@@ -529,7 +549,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         pixel.writeInto(storage, at);
     }
 
-    private int partOr(int[] parts, int which, int missing) {
+    private static int partOr(int[] parts, int which, int missing) {
         return which < parts.length ? parts[which] : missing;
     }
 

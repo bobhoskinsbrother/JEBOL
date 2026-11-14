@@ -59,6 +59,16 @@ metrics SIZE-TEXT, wrapping and carets are answered from.
 
 ------------------------------------------------------------------------
 
+This product includes a port of the CCM implementation in Mbed TLS
+(https://github.com/Mbed-TLS/mbedtls), Copyright The Mbed TLS
+Contributors, as vendored in rebol3-source/src/core/mbedtls/ccm.c. Mbed TLS
+is offered under the Apache License, Version 2.0 or the GNU General Public
+License version 2 or later; JEBOL takes it under the Apache License,
+Version 2.0. src/main/java/org/jebol/domain/cipher/CounterWithCbcMac.java is
+written from it and ships inside the jar.
+
+------------------------------------------------------------------------
+
 This product includes a port of Rebol-Easing 1.0.0
 (https://github.com/Siskin-framework/Rebol-Easing), whose easing
 functions come from Warren Moore's AHEasing.

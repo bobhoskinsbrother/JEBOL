@@ -13,7 +13,7 @@ a baseline from the same machine rather than against the row.
 
 | Measure                       | Reads                                                                                                                                                                                                             |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `fails-on-rebol-too.txt`      | 160 a real 3.22.5 also fails or never runs                                                                                                                                                                        |
+| `fails-on-rebol-too.txt`      | 160 a real 3.22.5 also fails or never runs, and apart from them 1 JEBOL fails on purpose (`image-diff/part`, below)                                                                                               |
 | `scripts/c-parity.py`         | 279 of 279 C functions match R3's surface                                                                                                                                                                         |
 | `scripts/runtime-parity.py`   | 0 of 582 absent; 3 differ, all deliberate -- see below                                                                                                                                                            |
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
@@ -102,3 +102,29 @@ a baseline from the same machine rather than against the row.
   so there is nothing to walk. CHECK is a debugging native that asks about
   memory rather than data, and the owner dropped a byte-exact one.
   `CheckAnswersTheSeriesItWasGiven` in `spec/natives.allium`.
+- **`find` and `select` in a binary find every byte, where R3 finds none above
+  127, on purpose.** `Find_Str_Char` gives up on any number above `0x7F`
+  before it looks, so `find #{00FF} 255` and `select #{FF01} 255` are none in a
+  real 3.22.5, under every refinement. A char or a binary needle finds 255 in
+  both. Decision 71; `FindingAByteInABinaryFindsEveryByte` in
+  `spec/natives.allium`.
+- **`make image!` reads a block of tuples, where R3 refuses every block, on
+  purpose.** `Create_Image` reads the block and never steps past it, so
+  `make image! [2x1 [1.2.3 4.5.6]]` is `malconstruct` there. The block means
+  what `Tuples_To_RGBA` makes it mean in APPEND and CHANGE: one tuple a pixel,
+  a fourth byte as transparency (alpha 255 less the byte). A block holding
+  anything else is `invalid-arg` naming that value, where R3's points past the
+  block and names nothing. Decision 71; `ABlockOfTuplesIsOneTupleAPixel` and
+  `ABlockOfTuplesHoldingAnythingElseNamesIt`.
+- **`image-diff/part` clips a rectangle at the edge, where R3 answers 0%, on
+  purpose.** `n-image.c` subtracts the size twice, so any rectangle running
+  past the right or bottom compares nothing. A corner past the far edge is
+  refused exactly as R3 refuses it. Rebol's own `image-test.r3` asserts the
+  0%, and that one assertion is under "Assertions JEBOL fails on purpose" in
+  `fails-on-rebol-too.txt`. Decision 71; `ARectanglePastTheEdgeIsClippedToIt`.
+- **A second OPEN of MIDI or the clipboard is `already-open`, on purpose.** R3's
+  MIDI actor connects again and drops the first connection without closing
+  it; its clipboard on Linux refuses every action after the first OPEN with
+  `expect-arg`. File, directory CREATE and crypt already refuse in both, and
+  checksum, dns, console and event answer the port in both. Decision 71;
+  `OpeningAnOpenMidiPortIsRefused` and `TheClipboardRefusesToBeOpenedAgain`.

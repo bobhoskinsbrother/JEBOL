@@ -249,12 +249,8 @@ public final class ImageOperations {
             high += fromY;
             fromY = 0;
         }
-        if (fromX + wide > widestOfTwo) {
-            wide = widestOfTwo - fromX - wide;
-        }
-        if (fromY + high > tallestOfTwo) {
-            high = tallestOfTwo - fromY - high;
-        }
+        wide = clipToFarEdge(fromX, wide, widestOfTwo);
+        high = clipToFarEdge(fromY, high, tallestOfTwo);
         if (wide == 0 || high == 0) {
             throw Raised.of(EvaluationFailure.INVALID_DATA,
                     PairValue.of(rectangleWide, rectangleHigh));
@@ -264,6 +260,20 @@ public final class ImageOperations {
                     PairValue.of(cornerX, cornerY));
         }
         return measureHowFarApart(left, right, fromX, fromY, wide, high);
+    }
+
+    private static int clipToFarEdge(int from, int size, int edge) {
+        if (from + size <= edge) {
+            return size;
+        }
+        if (from < edge) {
+            return edge - from;
+        }
+        return subtractSizeTwice(from, size, edge);
+    }
+
+    private static int subtractSizeTwice(int from, int size, int edge) {
+        return edge - from - size;
     }
 
     private static double measureHowFarApart(ImageStorage left, ImageStorage right,

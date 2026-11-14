@@ -25,7 +25,7 @@ class AssertionsRebolFailsTooTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("listEveryEntry")
-    @DisplayName("a real 3.22.5 does not pass this either")
+    @DisplayName("JEBOL does not pass this, as a real 3.22.5 does not, or on purpose")
     void failsHereToo(String entry) {
         SuiteFile.Assertion assertion = indexTheSuiteByName().get(entry);
         assertThat(assertion)
@@ -33,11 +33,12 @@ class AssertionsRebolFailsTooTest {
                         + "it off the list; delete the entry", entry)
                 .isNotNull();
         assertThat(SuiteGrading.holds(assertion))
-                .as("%s%n  passes here now, and a real 3.22.5 does not pass it. "
-                        + "While there are goals left that is a divergence and so "
-                        + "a defect: find out why JEBOL answers differently. Only "
-                        + "once the goals are done does this become the target, "
-                        + "and only then does the entry come off the list.%n  %s",
+                .as("%s%n  passes here now. Above the file's last heading a real "
+                        + "3.22.5 does not pass it: while there are goals left that "
+                        + "is a divergence and so a defect, so find out why JEBOL "
+                        + "answers differently. Under the last heading JEBOL fails "
+                        + "it on purpose: passing means a deliberate fix in "
+                        + "docs/standing.md has been undone.%n  %s",
                         entry, assertion.source())
                 .isFalse();
     }

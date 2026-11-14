@@ -78,10 +78,10 @@ class DirectoryNativesTest {
     }
 
     @Test
-    @DisplayName("without /DEEP a missing parent is a failure")
+    @DisplayName("without /DEEP a missing parent is no-create, as a real 3.22.5 answers")
     void failsForAMissingParent(@TempDir Path directory) {
         Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
-        assertThat(readTheErrorIdOf(interpreter, "make-dir %x/y/")).isEqualTo("cannot-open");
+        assertThat(readTheErrorIdOf(interpreter, "make-dir %x/y/")).isEqualTo("no-create");
     }
 
     @Test

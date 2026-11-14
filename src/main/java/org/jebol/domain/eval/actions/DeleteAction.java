@@ -52,8 +52,10 @@ public class DeleteAction extends PortAction {
             throw ports.refuseWithNoActionFor(nativeName());
         }
         granted.require(HostService.FILES);
+        ports.refuseWhenFileIsOpen(port, EvaluationFailure.NO_DELETE);
         if (port.schemeName().equals("dir")) {
             ports.requireFilePolicy(ports.portPath(port), evaluator, Set.of(PolicyAccess.WRITE));
+            markDirectoryClosed(port);
         }
         try {
             return evaluator.ports().files().delete(ports.portPath(port)) ? port : LogicValue.of(false);
@@ -61,7 +63,17 @@ public class DeleteAction extends PortAction {
             if (refused.isRefusedByHost()) {
                 throw refused.raise();
             }
-            throw Raised.of(EvaluationFailure.NO_DELETE, target);
+            throw Raised.of(EvaluationFailure.NO_DELETE, nameInRefusal(target, port));
         }
+    }
+
+    private void markDirectoryClosed(PortValue port) {
+        if (port.isOpen()) {
+            port.markOpen(false);
+        }
+    }
+
+    private Value nameInRefusal(Value target, PortValue port) {
+        return target instanceof PortValue ? ports.fileReference(port) : target;
     }
 }

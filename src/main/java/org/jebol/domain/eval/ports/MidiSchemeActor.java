@@ -96,6 +96,9 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private Value open(PortValue port, Set<String> refinements, Evaluator evaluator) {
         granted.require(HostService.MIDI);
+        if (findConnectionBehind(port).isPresent()) {
+            throw Raised.of(EvaluationFailure.ALREADY_OPEN, portReference(port));
+        }
         ObjectValue spec = portSpec(port);
         if (refinements.contains("write") && !refinements.contains("read")
                 && !(spec.readFieldValue("device-out") instanceof IntegerValue)) {

@@ -63,6 +63,7 @@ class UpgradingAConnectionToTlsFromTheSourceTest {
                 fixtures.readTheKey("localhost-rsa-key", "RSA"));
         try (LocalSmtpServer server = new LocalSmtpServer(trusted)) {
             assertThat(sendMailThrough(server)).isEqualTo("\"sent\"");
+            server.awaitConversationEnd();
             assertThat(server.commandsInTheClear()).containsExactly("EHLO jebol.test", "STARTTLS");
             assertThat(server.commandsInsideTls()).containsExactly(
                     "EHLO jebol.test", "AUTH PLAIN bWUAbWUAc2VjcmV0", "MAIL FROM: <me@jebol.test>",

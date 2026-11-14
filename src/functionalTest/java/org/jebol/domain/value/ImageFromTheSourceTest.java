@@ -95,11 +95,11 @@ class ImageFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a block of colours is read as pixels and then refused anyway")
-        void refusesABlockOfTuples() {
+        @DisplayName("a block of colours is read as pixels, on purpose")
+        void readsABlockOfTuples() {
             assertThat(answerTo("""
-                    e: try [make image! [2x1 [255.0.0 0.255.0]]] e/id"""))
-                    .isEqualTo("malconstruct");
+                    i: make image! [2x1 [255.0.0 0.255.0]] i/rgb"""))
+                    .isEqualTo("#{FF000000FF00}");
         }
 
         @Test

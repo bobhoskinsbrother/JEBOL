@@ -5382,10 +5382,11 @@ divergence and is not one.
 **Measure base36 and base85 in small invocations, one or a few expressions at a
 time.** It is slower and it is the only way to trust the answers.
 
-This is the third place the canonical reference has been caught being
+This is the second place the canonical reference has been caught being
 unreliable, after `checksum-test.r3` failing thirteen assertions in roughly one
-run in eight, and `open/new` on a missing directory answering differently on
-consecutive runs.
+run in eight. It used to say third, counting `open/new` on a missing directory
+answering differently on consecutive runs; finding 246 says why that one was
+the probe's fault, not R3's.
 
 ## 186. ECDH/INIT refills the handle it was given rather than making a new one
 
@@ -7246,17 +7247,28 @@ e`, `compose` and `reduce` take it. `./r3-head` answers, all in
 JEBOL carries it as `EndValue` and does each of these; decision 67 says why.
 `AnErrorsArgumentsAreValuesFromTheSourceTest` holds them.
 
-## 246. `open/new` on a missing directory answers two ways on two identical runs
+## 246. `open/new` on a directory is CREATE, and a real 3.22.5 runs a script in the script's folder
 
-On a real 3.22.5, in a fresh directory both times and with byte-identical
-input, `open/new` on a directory that is not there answers a port on the first
-run and raises `no-create` naming the directory on the second. The directory
-exists afterwards either way, so it is made, and then something after the
-making disagrees about whether that counts. It is the second place the
-reference has been caught answering differently on the same input, the first
-being `checksum-test.r3`, so a single run is never taken as settling either.
-JEBOL refuses to open a directory that is not there unless asked for `new`
-(`OpeningADirectoryThatIsNotThereIsRefused`).
+This finding first read "`open/new` on a missing directory answers two ways on
+two identical runs": a port on the first run, `no-create` on the second. That
+was wrong, and the cause is worth more than the finding was. **`r3 script.r3`
+changes into the folder that holds the script before running it**, so a probe
+kept in one folder and run from a fresh one makes its files beside the script,
+and the second run finds what the first left. Goal 1k caught the same thing in
+`r3-bugs/probes.txt`, where `file there after rename` answered differently on
+its first run. Copy the script into the fresh folder; `r3-bugs/generate.sh`
+does.
+
+What R3 does, every time: `A_OPEN` with /new jumps to the CREATE arm, so
+`open/new %d/` makes the directory, one level only, and answers the port open;
+a directory already there, or one whose parent is missing, is `no-create`
+naming the reference; and an open port is `already-open`. CREATE does the same
+and also leaves the port open. JEBOL refused `open/new` as `cannot-open` and
+made nothing, and CREATE of a directory already there answered the port;
+goal 1k matched both (`CreatingADirectoryMakesItAndOpensThePort`,
+`APortsStateGatesItsVerbsFromTheSourceTest`). The `checksum-test.r3` case this
+finding cited as the first of two is worth re-reading with the same cause in
+mind.
 
 ## 247. `change/part` on an image with a count changes nothing
 
@@ -7266,3 +7278,45 @@ that counts what was given and leaves the rectangle's width and height at
 nought, so the copy returns before writing a pixel. Only a pair, a shape, says
 how much to write. JEBOL copies it (owner's answer, goal 1k), as
 `PartAsACountOnAnImageWritesNothing`. `ImageAsASeriesFromTheSourceTest`.
+
+## 248. The three authenticated ciphers take a header three different ways, and CCM is one message a write
+
+Read from `p-crypt.c` and `ccm.c`, and measured through `./r3-head` in
+`src/testFixtures/resources/r3-bugs/probes.txt` and
+`AuthenticatedCipherShapesFromTheSourceTest`. JEBOL matches all of it
+(decision 71).
+
+- **ChaCha20-Poly1305 never reads `aad-length`.** Its first write after the
+  port starts, or after a READ, is the header, whole, and folds its first eight
+  bytes into the nonce. Writing a message first makes the message a header:
+  READ answers none and TAKE only a tag. A header on the front of a message is
+  lost the same way. Write the header as a write of its own, as prot-tls and
+  Rebol's suite do.
+- **GCM takes the header from the front of the first write long enough to hold
+  it.** A shorter write returns an error the port remembers and is dropped, and
+  the next write's first `aad-length` bytes become the header. A four-byte
+  header, a two-byte write and a thirty-two byte message give twenty-eight bytes
+  of cipher text.
+- **CCM is a whole message to every WRITE.** Each write calls
+  `mbedtls_ccm_set_lengths` with the header length and the rest of the write,
+  authenticates its own front, enciphers the rest and finishes with its own tag.
+  Finishing calls `mbedtls_ccm_clear_state`, which zeroes the CBC-MAC state and
+  the counter and clears "started", and nothing calls `mbedtls_ccm_starts`
+  again until the key, vector, direction or algorithm is set. So a second
+  write is a message whose tag has no nonce block and whose counter runs from
+  an all-zero block: two writes of sixteen bytes give sixteen, a tag, sixteen
+  unlike the single message's second block, and a second tag. READ between
+  them does not restart anything.
+- **A CCM write shorter than its header stops the port.** The message length
+  is the write's length less the header's as an unsigned 32-bit number, which
+  wraps; with the usual twelve-byte vector there are three bytes to write it in,
+  so `ccm_calculate_first_block_if_ready` sets the error state. Nothing but
+  `mbedtls_ccm_init` clears that state, and only setting the algorithm calls
+  it, so every later write fails too. With a vector of eleven bytes or fewer
+  the wrapped length fits and the C reads past the end of the write; JEBOL
+  refuses that write instead.
+- **A failed write hides everything from READ, not from TAKE.** READ answers
+  none while the last write's error is set; TAKE calls UPDATE first, which for
+  CCM answers success and clears the error, so it hands over whatever was made,
+  a message whose tag did not agree included. A later write that works, an
+  empty one included, clears it the same way.

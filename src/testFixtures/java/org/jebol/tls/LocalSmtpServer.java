@@ -44,6 +44,10 @@ public final class LocalSmtpServer implements AutoCloseable {
         return listening.getLocalPort();
     }
 
+    public void awaitConversationEnd() throws InterruptedException {
+        acceptor.join(READ_TIMEOUT_MILLISECONDS);
+    }
+
     public synchronized List<String> commandsInTheClear() {
         return List.copyOf(commandsInTheClear);
     }

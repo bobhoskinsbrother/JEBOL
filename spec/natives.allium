@@ -3077,6 +3077,23 @@ rule TheClipboardOpensItselfForOneCallAndCloses {
     ensures: the_port_is_closed_again_afterwards()
 }
 
+-- Opening the clipboard when it is already open is refused as already-open.
+--
+-- This is a place JEBOL answers what a real 3.22.5 does not, on purpose
+-- (decision 71, docs/standing.md). A real 3.22.5 on Linux refuses too, but
+-- as `expect-arg open`, an error about an argument nobody gave -- and it
+-- answers CLOSE and OPEN? the same way once the port is open, so the refusal
+-- is its Linux clipboard device turning every action away, not a check for
+-- a second open. Already-open says what happened, and it is what the crypt
+-- and file ports say.
+rule TheClipboardRefusesToBeOpenedAgain {
+    when: EvaluateCall(open, target)
+    requires: names_the_clipboard_scheme(target)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: already_open, about: the_reference_of(target))
+}
+
 -- /PART limits how much is read, and /LINES answers the text split into a
 -- block of lines instead of one string.
 rule ReadingPartOfTheClipboardLimitsTheLength {
@@ -3259,9 +3276,30 @@ rule OpeningMidiConnectsTheDevices {
     requires: midi in granted_services()
     requires: every_device_named_is_one_the_host_lists(target)
 
+    requires: not the_port_is_open(target)
+
     ensures: CallResult(value: target)
     ensures: the_port_is_open(target)
     ensures: an_open_event_is_queued_for(target)
+}
+
+-- Opening a MIDI port that is already open is refused as already-open, and
+-- the host is not asked again.
+--
+-- This is a place JEBOL answers what a real 3.22.5 does not, on purpose
+-- (decision 71, docs/standing.md). The C's `A_OPEN` asks the device to open
+-- whatever state the port is in, so a second OPEN connects again and the
+-- first connection is dropped without being closed -- a leak of a device the
+-- operator can see. The refusal comes after the grant is checked and before
+-- the spec is touched.
+rule OpeningAnOpenMidiPortIsRefused {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: the_port_is_open(target)
+
+    ensures: CallFails(error: already_open, about: the_ref_of(target))
+    ensures: the_host_connected_once()
 }
 
 -- A host that lists the devices may still fail to start them, and then the
@@ -3530,6 +3568,83 @@ rule ARenameThatCouldNotBeDoneNamesWhatItWasToMove {
     requires: not the_host_could_move_it(from, to)
 
     ensures: CallFails(error: no_rename, about: from)
+}
+
+-- A file port that is open holds its file, and the verbs that would take the
+-- file away from under it are refused, naming the file rather than the port.
+--
+-- The C checks before it does anything: `if (IS_OPEN(file))
+-- Trap1(RE_NO_DELETE, path)` and the same for RENAME, so the file stays where
+-- it was and the port can go on reading it. The name in the error is the
+-- port's reference, the file it was opened on -- `path` in the C -- and not
+-- the port, which molds as a page of fields. A closed port is no different
+-- from its file: DELETE and RENAME work on it as they would on the file named.
+--
+-- OPEN of an open file port is refused the same way, as already-open. A
+-- second open would make a second handle on the same file and leak the
+-- first.
+rule AnOpenFilePortRefusesToBeOpenedAgain {
+    when: EvaluateCall(open, target)
+    requires: names_the_file_scheme(target)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: already_open, about: the_reference_of(target))
+}
+
+rule AnOpenFilePortRefusesToBeDeleted {
+    when: EvaluateCall(delete, target)
+    requires: names_the_file_scheme(target)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: no_delete, about: the_reference_of(target))
+    ensures: was_there(the_file_named_by(target))
+}
+
+rule AnOpenFilePortRefusesToBeRenamed {
+    when: EvaluateCall(rename, from, to)
+    requires: names_the_file_scheme(from)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: no_rename, about: the_reference_of(from))
+    ensures: nothing_is_moved()
+}
+
+-- A file that cannot be made or opened -- in a folder that is not there, say
+-- -- is cannot-open naming the file and the number 3, whichever verb asked:
+-- OPEN, OPEN/NEW, OPEN/READ, WRITE, WRITE/APPEND or CREATE. 3 is the C's
+-- `RFE_OPEN_FAIL`, which the file device reports for every open that fails.
+-- A port opened on a file url is named by its url, because the C raises
+-- through the port and the port's reference is the url.
+rule AFileThatCannotBeMadeNamesItself {
+    when: EvaluateCall(verb, target)
+    requires: verb in {open, write, create}
+    requires: names_the_file_scheme(target)
+    requires: not the_host_could_open_it()
+
+    ensures: CallFails(error: cannot_open, about: the_reference_of(target), and: 3)
+}
+
+rule AClosedFilePortRenamesItsFile {
+    when: EvaluateCall(rename, from, to)
+    requires: names_the_file_scheme(from)
+    requires: not the_port_is_open()
+    requires: the_host_could_move_it(from, to)
+
+    ensures: the_file_is_moved_to(to)
+    ensures: CallResult(value: from)
+}
+
+-- A directory port is the one place the scheme lets DELETE through while it
+-- is open, because the C's directory actor has no check there: an open
+-- directory port deletes its directory and is left closed. CREATE does check,
+-- and an open directory port is already-open naming the directory. A second
+-- OPEN reads the listing again and answers the port.
+rule AnOpenDirectoryPortRefusesToBeCreated {
+    when: EvaluateCall(create, target)
+    requires: names_the_directory_scheme(target)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: already_open, about: the_reference_of(target))
 }
 
 -- The console port is the one that works. WRITE to it forms the data and
@@ -4471,6 +4586,26 @@ rule TheChaChaCipherTakesItsHeaderAsAWholeWrite {
     ensures: the_nonce_used = the_vector_with_the_first_eight_folded_into_its_tail()
 }
 
+-- Which makes the length to authenticate meaningless for it, and the C never
+-- reads it: ChaCha20-Poly1305 takes its first write whole as the header
+-- whatever `aad-length` says. So writing a message and reading answers none,
+-- because the message went in as a header, and a header on the front of the
+-- message is lost with it. Prot-tls and Rebol's own suite both write the
+-- header as a write of its own, which is the one shape that works.
+--
+-- Raising where the bytes vanish was offered and declined (decision 71): it
+-- is what a real 3.22.5 does, and JEBOL matches it.
+rule TheChaChaCipherIgnoresTheLengthToAuthenticate {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_chacha_with_poly1305()
+    requires: no_header_has_been_written_yet()
+    requires: the_length_to_authenticate_is_set()
+
+    ensures: the_whole_write_is_the_header()
+    ensures: nothing_is_enciphered_by_it()
+}
+
 -- And reading puts the port back to wanting a header, so a second message can
 -- go through the same port with its own sequence number.
 --
@@ -4490,6 +4625,7 @@ rule AnAuthenticatedCipherReadsItsHeaderFromTheFrontOfWhatIsWritten {
     when: EvaluateCall(write, target, octets)
     requires: names_a_cipher_port(target)
     requires: the_cipher_authenticates()
+    requires: not the_cipher_is_chacha_with_poly1305()
     requires: the_length_to_authenticate_is_set()
     requires: nothing_has_been_enciphered_yet()
     requires: length_of(octets) >= the_length_to_authenticate()
@@ -4509,11 +4645,69 @@ rule AnAuthenticatedCipherReadsItsHeaderFromTheFrontOfWhatIsWritten {
 rule AWriteTooShortToHoldTheHeaderIsDiscarded {
     when: EvaluateCall(write, target, octets)
     requires: names_a_cipher_port(target)
-    requires: the_cipher_authenticates()
+    requires: the_cipher_is_counting_with_galois()
     requires: nothing_has_been_enciphered_yet()
     requires: length_of(octets) < the_length_to_authenticate()
 
     ensures: nothing_of_those_octets_is_kept()
+    ensures: the_next_write_is_looked_at_for_the_header_again()
+}
+
+-- So the header comes from the front of the next write instead. With a
+-- four-byte header, a two-byte write and then a thirty-two byte message give
+-- twenty-eight bytes back, not thirty-two: the first four of the message went
+-- in as the header. This is a real 3.22.5's answer, and JEBOL matches it
+-- (decision 71).
+rule AfterADiscardedHeaderTheNextWriteSuppliesIt {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_counting_with_galois()
+    requires: a_header_write_was_discarded()
+    requires: length_of(octets) >= the_length_to_authenticate()
+
+    ensures: the_first_octets_are_authenticated_and_not_enciphered()
+    ensures: the_rest_are_enciphered()
+}
+
+-- Counter with CBC-MAC is one whole message to a write, header, cipher text
+-- and tag, where the other two modes gather a message across writes.
+--
+-- Every WRITE tells the cipher its lengths afresh -- `mbedtls_ccm_set_lengths`
+-- with the header length set and the rest of the write as the message -- takes
+-- its header from its own front, and finishes with its own tag. Finishing
+-- clears the cipher's state and nothing starts it again, so a second write is
+-- a message with no nonce block in its tag and a counter starting from nought.
+-- Two writes of sixteen bytes are thirty-two bytes of cipher text and two
+-- tags, sixty-four in all; a four-byte header written alone is a whole empty
+-- message and its tag, and the next write's first four bytes are another
+-- header.
+--
+-- A write shorter than its header fails, and it leaves the cipher marked
+-- failed -- the C computes the message length as an unsigned difference, and
+-- the length it gets does not fit -- so every later write fails as well, and
+-- READ answers none until the algorithm is set again.
+--
+-- All of this is what a real 3.22.5 does, and JEBOL matches it, byte for byte
+-- (decision 71). docs/rebol-findings.md has the shapes.
+rule CounterWithCbcMacIsOneMessageAWrite {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_counter_with_cbc_mac()
+
+    ensures: the_header_is_the_first_octets_of_this_write()
+    ensures: the_message_is_the_rest_of_this_write()
+    ensures: the_tag_is_added_after_this_writes_cipher_text()
+    ensures: the_next_write_continues_from_the_cleared_state()
+}
+
+rule ACounterWithCbcMacWriteShorterThanItsHeaderStopsThePort {
+    when: EvaluateCall(write, target, octets)
+    requires: names_a_cipher_port(target)
+    requires: the_cipher_is_counter_with_cbc_mac()
+    requires: length_of(octets) < the_length_to_authenticate()
+
+    ensures: every_later_write_fails_until_the_algorithm_is_set_again()
+    ensures: a_later_read_answers(none)
 }
 
 rule TakingAnAuthenticatedCipherAnswersTheTagAfterTheCipherText {
@@ -4839,11 +5033,61 @@ rule AWrittenImageCarriesNoPosition {
     ensures: ReadFails(error: malconstruct)
 }
 
--- A block of tuples is read as a run of pixels and then refused anyway,
--- because the reader that consumes it never steps past it and the leftover
--- check above then fires on the block it has just used. So `make image! [2x1
--- [1.1.1 2.2.2]]` is a malconstruct in a real 3.22.5 and here. Goal 1k fixes
--- it on purpose, and its rule arrives with that work.
+-- A block of tuples after the size is one tuple a pixel, row by row, from
+-- where the block stands.
+--
+-- This is a place JEBOL answers what a real 3.22.5 does not, on purpose
+-- (decision 71, docs/standing.md). The C reads the block with
+-- `Tuples_To_RGBA` and then never steps past it, so the leftover check above
+-- fires on the block it has just used and `make image! [2x1 [1.1.1 2.2.2]]`
+-- is a malconstruct there, with every block, whatever it holds.
+--
+-- What the block means is what `Tuples_To_RGBA` already makes it mean in
+-- APPEND and CHANGE, so the two agree: a fourth byte is transparency, stored
+-- as alpha 255 less the byte, and a tuple of three is opaque. Fewer tuples
+-- than pixels leave the rest as a bare size leaves them, white and opaque;
+-- more are ignored. Anything after the block is still left over.
+rule ABlockOfTuplesIsOneTupleAPixel {
+    when: MakeValue(image, specification)
+    requires: specification.holds_a_block_of_tuples
+
+    ensures: MakeSucceeds()
+    ensures: each_pixel_takes_the_colour_of_its_tuple_in_turn()
+    ensures: each_pixel_takes_alpha_255_less_its_fourth_byte()
+    ensures: the_pixels_past_the_last_tuple_are_white_and_opaque()
+}
+
+-- And a block holding anything but tuples is refused naming the first value
+-- that is not one.
+--
+-- The C means to do this and points past the block: `Trap_Arg(block+w-1)`
+-- counts from the specification's block rather than from the block of
+-- tuples, so a real 3.22.5 raises invalid-arg naming nothing. A whole number
+-- is not a tuple here either, though it is a pixel's alpha on its own.
+rule ABlockOfTuplesHoldingAnythingElseNamesIt {
+    when: MakeValue(image, specification)
+    requires: specification.holds_a_block
+    requires: not every_value_in(specification.block).datatype = tuple
+
+    ensures: MakeFails(error: invalid_arg, about: the_first_value_that_is_not_a_tuple())
+}
+
+-- So a fourth byte means two things in a real 3.22.5, and both stay. Written
+-- one tuple at a time -- `i/1: 1.2.3.4`, or a fill like `[2x1 1.2.3.4]` --
+-- it is the alpha itself. Written in a block, to MAKE, APPEND, INSERT or
+-- CHANGE, it is transparency. Making the block an alpha too was considered
+-- and rejected: it would put JEBOL's APPEND and CHANGE against R3's for the
+-- sake of one reading.
+rule AFourthByteInABlockIsTransparency {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change}
+    requires: value.datatype = block
+
+    ensures: each_pixel_written_takes_alpha_255_less_its_fourth_byte()
+    ensures: a_tuple_of_three_writes_alpha_255()
+    ensures: the_alpha_is_written_even_under_only()
+}
 
 -- === An image is a series of pixels ========================
 
@@ -4863,7 +5107,7 @@ rule EverySeriesActionWorksOnAnImage {
 }
 
 -- What counts as a pixel to write is a colour, an alpha, a run of bytes, or a
--- block of the first two.
+-- block of colours.
 --
 -- A run of bytes is four to a pixel and not three, which is the opposite way
 -- round from building an image: `make image! [1x1 #{FFFFFF}]` reads its bytes
@@ -4877,7 +5121,22 @@ rule WhatCanBeWrittenIntoAnImage {
     ensures: a_tuple_is_a_colour()
     ensures: a_whole_number_is_an_alpha()
     ensures: a_binary_is_four_bytes_to_a_pixel()
-    ensures: a_block_holds_any_number_of_the_first_two()
+    ensures: a_block_holds_any_number_of_tuples()
+}
+
+-- A block holding anything but tuples is refused by the value rather than its
+-- type, naming the first that is not one -- a whole number included, though
+-- on its own it is an alpha. `Valid_Tuples` is checked before anything is
+-- written, so the image is left as it was.
+rule ABlockWrittenIntoAnImageHoldsOnlyTuples {
+    when: EvaluateCall(verb, target, value)
+    requires: is_image(target)
+    requires: verb in {append, insert, change}
+    requires: value.datatype = block
+    requires: not every_value_in(value).datatype = tuple
+
+    ensures: CallFails(error: invalid_arg, about: the_first_value_that_is_not_a_tuple())
+    ensures: length_of(target) = length_of_the_image_before()
 }
 
 -- Anything else is refused by its type rather than by the action, because
@@ -7310,8 +7569,49 @@ rule OpeningADirectoryThatIsNotThereIsRefused {
     ensures: CallFails(error: cannot_open, about: target)
 }
 
--- What `open/new` on a directory that is not there answers in a real 3.22.5
--- differs between two identical runs: docs/rebol-findings.md, finding 246.
+-- OPEN/NEW of a directory is CREATE: the C's `A_OPEN` jumps to the CREATE arm
+-- when /new is asked. Either makes the directory, one level only, and leaves
+-- the port open on it; a directory already there, or one whose parent is
+-- missing, is no-create naming the port's reference; and a port already open
+-- is already-open. MAKE-DIR asks whether the directory is there before it
+-- creates, which is how it stays quiet about one that is.
+--
+-- docs/rebol-findings.md finding 246 once said a real 3.22.5 answered this
+-- two ways on two identical runs. It does not: R3 runs a script in the
+-- script's own folder, so the second run found the first run's directory.
+rule CreatingADirectoryMakesItAndOpensThePort {
+    when: EvaluateCall(verb, target)
+    requires: verb in {create, open}
+    requires: names_the_directory_scheme(target)
+    requires: verb = create or asked_for(new)
+    requires: not the_port_is_open()
+    requires: not host_has_anything_at(target)
+    requires: the_parent_is_there(target)
+
+    ensures: the_directory_is_made(target)
+    ensures: the_port_is_open()
+    ensures: CallResult(value: target)
+}
+
+rule CreatingADirectoryThatCannotBeMadeIsRefused {
+    when: EvaluateCall(verb, target)
+    requires: verb in {create, open}
+    requires: names_the_directory_scheme(target)
+    requires: verb = create or asked_for(new)
+    requires: not the_port_is_open()
+    requires: host_has_anything_at(target) or not the_parent_is_there(target)
+
+    ensures: CallFails(error: no_create, about: the_reference_of(target))
+}
+
+rule OpeningAnOpenDirectoryAnewIsRefused {
+    when: EvaluateCall(open, target)
+    requires: names_the_directory_scheme(target)
+    requires: asked_for(new)
+    requires: the_port_is_open()
+
+    ensures: CallFails(error: already_open, about: the_reference_of(target))
+}
 
 rule TryPassesThroughASuccessfulResult {
     when: EvaluateTry(body)
@@ -8970,10 +9270,26 @@ rule TrimTakesEverySeriesAndRefusesLater {
 -- outside that is a mistake in the caller rather than a search that
 -- happened to miss, and answering none would hide it.
 
--- Searching a binary for 255 answers none in a real 3.22.5 even when the
--- byte is there -- `find #{00FF} 255` is none -- and JEBOL finds the byte.
--- It is one of the five R3 bugs goal 1k fixes on purpose, and its rule and
--- its entry in docs/standing.md arrive with that work.
+-- Searching a binary for a byte finds it wherever it sits, 128 to 255 as
+-- much as 0 to 127, under every refinement and in SELECT.
+--
+-- This is a place JEBOL answers what a real 3.22.5 does not, on purpose
+-- (decision 71, docs/standing.md). `Find_Str_Char` gives up on any number
+-- above 0x7F before it looks at a byte -- a guard written for text, where a
+-- larger number is not one byte -- so `find #{00FF} 255` is none there and
+-- so is `select #{FF01} 255`. A char needle and a binary needle already find
+-- 255, by another path. A whole number needle in a string is not this rule:
+-- it is formed and searched for as text, so `find "ab" 98` is none in both.
+rule FindingAByteInABinaryFindsEveryByte {
+    when: EvaluateCall(verb, haystack, needle)
+    requires: verb in {find, select}
+    requires: haystack.datatype = binary
+    requires: needle.datatype = integer
+    requires: needle >= 0 and needle <= 255
+    requires: the_byte_is_there(haystack, needle)
+
+    ensures: CallResult(value: the_position_of_that_byte_under_the_refinements_asked())
+}
 
 -- Resolved against a real R3: what TAKE/PART answers is a series of the
 -- same kind it was taking from. Two items off a paren give a paren, off a
@@ -16326,14 +16642,29 @@ rule ACornerOutsideBothImagesIsRefused {
     ensures: CallFails(error: invalid_data)
 }
 
--- A rectangle reaching past the right or bottom edge is neither clipped to
--- the edge nor refused: the C subtracts the size a second time -- `wide =
--- maxx - ofsx - wide` where clipping would be `maxx - ofsx` -- so a rectangle
--- one column too wide has a negative width, nothing is compared, and
--- `image-diff/part i1 i2 0x0 1x3` on two two-by-two images answers nought
--- per cent where the pixels differ. JEBOL matches it today, as Rebol's own
--- image-test.r3 asserts. Goal 1k clips it on purpose, and its rule arrives
--- with that work.
+-- A rectangle reaching past the right or bottom edge is clipped to the edge.
+--
+-- This is a place JEBOL answers what a real 3.22.5 does not, on purpose
+-- (decision 71, docs/standing.md). The C subtracts the size a second time --
+-- `wide = maxx - ofsx - wide` where clipping is `maxx - ofsx` -- so a
+-- rectangle one column too wide has a negative width, nothing is compared,
+-- and `image-diff/part i1 i2 0x0 1x3` on two two-by-two images answers
+-- nought per cent where the pixels differ. Rebol's own image-test.r3 asserts
+-- that nought, and the suite records the assertion as one JEBOL fails on
+-- purpose.
+--
+-- Only a corner inside the pictures is clipped. A corner past the far edge
+-- keeps the C's arithmetic, which leaves the size short of nought, so it is
+-- the corner that is refused there, exactly as a real 3.22.5 refuses it.
+rule ARectanglePastTheEdgeIsClippedToIt {
+    when: EvaluateCall(image_diff, a, b, offset, size)
+    requires: refinement_asked(part)
+    requires: offset.x < the_wider_of(a, b) and offset.y < the_taller_of(a, b)
+    requires: offset.x + size.width > the_wider_of(a, b)
+        or offset.y + size.height > the_taller_of(a, b)
+
+    ensures: the_pixels_compared = the_rectangle_up_to_the_far_edges(offset, size)
+}
 
 -- IMAGE is the shim onto whatever image codec the platform has, and this
 -- platform has one.

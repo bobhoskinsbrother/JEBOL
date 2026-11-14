@@ -425,11 +425,11 @@ class ImageFunctionsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a rectangle reaching past the edge compares nothing at all")
-        void comparesNothingPastTheEdge() {
-            assertThat(compare("0x0 1x3")).isEqualTo("0%");
+        @DisplayName("and a rectangle reaching past the edge is clipped to it, on purpose")
+        void clipsPastTheEdge() {
+            assertThat(compare("0x0 1x3")).isEqualTo("50%");
             assertThat(compare("0x0 3x1")).isEqualTo("0%");
-            assertThat(compare("0x1 1x3")).isEqualTo("0%");
+            assertThat(compare("0x1 1x3")).isEqualTo("100%");
         }
     }
 

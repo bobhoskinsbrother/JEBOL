@@ -1,66 +1,201 @@
 package org.jebol.domain.cipher;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 public final class CounterWithCbcMac {
 
     private static final int BLOCK = 16;
     private static final int SHORTEST_NONCE = 7;
     private static final int LONGEST_NONCE = 13;
-    private static final int WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_HEADER = 0xFF00;
-    private static final Sealed NOTHING = new Sealed(new byte[0], false);
+    private static final int LONGEST_HEADER = 0xFF00;
+    private static final int LONGEST_TAG = 16;
+    private static final int OCTET = 0xFF;
 
-    private final JoinedOctets joined = new JoinedOctets();
+    private static final int STARTED = 1;
+    private static final int LENGTHS_SET = 1 << 1;
+    private static final int HEADER_STARTED = 1 << 2;
+    private static final int HEADER_FINISHED = 1 << 3;
+    private static final int FAILED = 1 << 4;
 
-    public boolean isValidTagLength(int octets) {
-        return octets >= 4 && octets <= BLOCK && octets % 2 == 0;
+    private enum Mode { DECRYPT, ENCRYPT, STAR_DECRYPT, STAR_ENCRYPT }
+
+    private OneBlock cipher;
+    private Mode mode = Mode.DECRYPT;
+    private int countOctets;
+    private long messageOctets;
+    private long headerOctets;
+    private int tagOctets;
+    private long processed;
+    private final byte[] chained = new byte[BLOCK];
+    private final byte[] counter = new byte[BLOCK];
+    private int state;
+
+    public static byte[] clampNonce(byte[] vector) {
+        return Arrays.copyOf(vector, Math.clamp(vector.length, SHORTEST_NONCE, LONGEST_NONCE));
     }
 
-    public record Sealed(byte[] octets, boolean worked) {
+    public void useKey(OneBlock keyed) {
+        cipher = keyed;
     }
 
-
-    public Sealed encipher(OneBlock cipher, byte[] vector, int tagOctets,
-                           byte[] header, byte[] message) {
-
-        if (tagOctets != 0 && !isValidTagLength(tagOctets)) {
-            return NOTHING;
+    public boolean start(boolean encrypting, byte[] nonce) {
+        if (nonce.length < SHORTEST_NONCE || nonce.length > LONGEST_NONCE) {
+            return false;
         }
-        byte[] nonce = clampNonce(vector);
-        byte[] cipherText = maskWithKeystream(cipher, nonce, message);
+        mode = encrypting ? Mode.ENCRYPT : Mode.DECRYPT;
+        countOctets = BLOCK - 1 - nonce.length;
+        Arrays.fill(counter, (byte) 0);
+        counter[0] = (byte) (countOctets - 1);
+        System.arraycopy(nonce, 0, counter, 1, nonce.length);
+        counter[BLOCK - 1] = 1;
+        System.arraycopy(nonce, 0, chained, 1, nonce.length);
+        state |= STARTED;
+        return chainFirstBlockWhenReady();
+    }
+
+    public void allowNoTag() {
+        mode = mode == Mode.ENCRYPT ? Mode.STAR_ENCRYPT : Mode.STAR_DECRYPT;
+    }
+
+    public boolean setLengths(long header, long message, int tag) {
+        if (tag < 0 || tag == 2 || tag > LONGEST_TAG || tag % 2 != 0) {
+            return false;
+        }
+        if (header >= LONGEST_HEADER) {
+            return false;
+        }
+        messageOctets = message;
+        headerOctets = header;
+        tagOctets = tag;
+        processed = 0;
+        state |= LENGTHS_SET;
+        return chainFirstBlockWhenReady();
+    }
+
+    private boolean chainFirstBlockWhenReady() {
+        if ((state & STARTED) == 0 || (state & LENGTHS_SET) == 0) {
+            return true;
+        }
         if (tagOctets == 0) {
-            return new Sealed(cipherText, true);
+            if (isStar()) {
+                messageOctets = 0;
+                return true;
+            }
+            return false;
         }
-        byte[] tag = computeTag(cipher, nonce, tagOctets, header, message);
-        return new Sealed(joined.of(cipherText, tag), true);
+        chained[0] |= (byte) ((headerOctets > 0 ? 1 : 0) << 6);
+        chained[0] |= (byte) (((tagOctets - 2) / 2) << 3);
+        chained[0] |= (byte) (countOctets - 1);
+        long left = messageOctets;
+        for (int at = 0; at < countOctets; at++, left >>>= 8) {
+            chained[BLOCK - 1 - at] = (byte) (left & OCTET);
+        }
+        if (left > 0) {
+            state |= FAILED;
+            return false;
+        }
+        encipherChained();
+        return true;
     }
 
-    public Sealed decipher(OneBlock cipher, byte[] vector, int tagOctets,
-                           byte[] header, byte[] sealedOctets) {
-
-        if (tagOctets != 0 && !isValidTagLength(tagOctets)) {
-            return NOTHING;
+    public boolean authenticate(byte[] header, int from, int length) {
+        if ((state & FAILED) != 0) {
+            return false;
         }
-        if (sealedOctets.length < tagOctets) {
-            return NOTHING;
+        if (length == 0) {
+            return true;
         }
-        byte[] cipherText =
-                Arrays.copyOf(sealedOctets, sealedOctets.length - tagOctets);
-        byte[] tagWritten = Arrays.copyOfRange(
-                sealedOctets, sealedOctets.length - tagOctets, sealedOctets.length);
-        byte[] nonce = clampNonce(vector);
-        byte[] message = maskWithKeystream(cipher, nonce, cipherText);
-        if (tagOctets == 0) {
-            return new Sealed(message, true);
+        if ((state & HEADER_FINISHED) != 0) {
+            return false;
         }
-        byte[] tagComputed = computeTag(cipher, nonce, tagOctets, header, message);
-        return agreeInConstantTime(tagWritten, tagComputed)
-                ? new Sealed(message, true)
-                : NOTHING;
+        if ((state & HEADER_STARTED) == 0) {
+            if (length > headerOctets) {
+                return false;
+            }
+            chained[0] ^= (byte) ((headerOctets >>> 8) & OCTET);
+            chained[1] ^= (byte) (headerOctets & OCTET);
+            state |= HEADER_STARTED;
+        } else if (processed + length > headerOctets) {
+            return false;
+        }
+        int at = from;
+        int left = length;
+        while (left > 0) {
+            int offset = (int) ((processed + 2) % BLOCK);
+            int use = Math.min(BLOCK - offset, left);
+            for (int within = 0; within < use; within++) {
+                chained[offset + within] ^= header[at + within];
+            }
+            processed += use;
+            left -= use;
+            at += use;
+            if (use + offset == BLOCK || processed == headerOctets) {
+                encipherChained();
+            }
+        }
+        if (processed == headerOctets) {
+            state |= HEADER_FINISHED;
+            processed = 0;
+        }
+        return true;
     }
 
-    private boolean agreeInConstantTime(
-            byte[] written, byte[] computed) {
+    public boolean update(byte[] input, int from, int length, byte[] output, int into) {
+        if ((state & FAILED) != 0) {
+            return false;
+        }
+        if (tagOctets != 0 && processed + length > messageOctets) {
+            return false;
+        }
+        int at = 0;
+        while (at < length) {
+            int offset = (int) (processed % BLOCK);
+            int use = Math.min(BLOCK - offset, length - at);
+            processed += use;
+            boolean blockEnds = use + offset == BLOCK || processed == messageOctets;
+            byte[] keystream = cipher.encipher(counter.clone());
+            for (int within = 0; within < use; within++) {
+                byte plain = isEnciphering()
+                        ? input[from + at + within]
+                        : (byte) (input[from + at + within] ^ keystream[offset + within]);
+                chained[offset + within] ^= plain;
+                output[into + at + within] = isEnciphering()
+                        ? (byte) (plain ^ keystream[offset + within])
+                        : plain;
+            }
+            if (blockEnds) {
+                encipherChained();
+                countOn();
+            }
+            at += use;
+        }
+        return true;
+    }
+
+    public Optional<byte[]> finish(int tagLength) {
+        if ((state & FAILED) != 0) {
+            return Optional.empty();
+        }
+        if (headerOctets > 0 && (state & HEADER_FINISHED) == 0) {
+            return Optional.empty();
+        }
+        if (messageOctets > 0 && processed != messageOctets) {
+            return Optional.empty();
+        }
+        for (int at = 0; at < countOctets; at++) {
+            counter[BLOCK - 1 - at] = 0;
+        }
+        byte[] mask = cipher.encipher(counter.clone());
+        for (int at = 0; at < BLOCK; at++) {
+            chained[at] ^= mask[at];
+        }
+        byte[] tag = Arrays.copyOf(chained, tagLength);
+        clearState();
+        return Optional.of(tag);
+    }
+
+    public static boolean agreeInConstantTime(byte[] written, byte[] computed) {
         if (written.length != computed.length) {
             return false;
         }
@@ -71,101 +206,31 @@ public final class CounterWithCbcMac {
         return differences == 0;
     }
 
-    private byte[] clampNonce(byte[] vector) {
-        return Arrays.copyOf(vector,
-                Math.clamp(vector.length, SHORTEST_NONCE, LONGEST_NONCE));
+    private void clearState() {
+        state = 0;
+        Arrays.fill(chained, (byte) 0);
+        Arrays.fill(counter, (byte) 0);
     }
 
-    private byte[] maskWithKeystream(
-            OneBlock cipher, byte[] nonce, byte[] message) {
-        byte[] masked = new byte[message.length];
-        for (int at = 0; at < message.length; at += BLOCK) {
-            byte[] keystream = cipher.encipher(
-                    makeCounterBlock(nonce, at / BLOCK + 1));
-            for (int within = 0; within < BLOCK && at + within < message.length;
-                    within++) {
-                masked[at + within] =
-                        (byte) (message[at + within] ^ keystream[within]);
+    private void countOn() {
+        for (int at = 0; at < countOctets; at++) {
+            counter[BLOCK - 1 - at]++;
+            if (counter[BLOCK - 1 - at] != 0) {
+                return;
             }
         }
-        return masked;
     }
 
-    private byte[] makeCounterBlock(byte[] nonce, long count) {
-        int countOctets = BLOCK - 1 - nonce.length;
-        byte[] counter = new byte[BLOCK];
-        counter[0] = (byte) (countOctets - 1);
-        System.arraycopy(nonce, 0, counter, 1, nonce.length);
-        long left = count;
-        for (int at = BLOCK - 1; at > nonce.length; at--) {
-            counter[at] = (byte) left;
-            left >>>= 8;
-        }
-        return counter;
+    private void encipherChained() {
+        byte[] next = cipher.encipher(chained.clone());
+        System.arraycopy(next, 0, chained, 0, BLOCK);
     }
 
-    private byte[] computeTag(OneBlock cipher, byte[] nonce, int tagOctets,
-                              byte[] header, byte[] message) {
-
-        byte[] chained = cipher.encipher(
-                makeFirstBlock(nonce, tagOctets, header.length, message.length));
-        if (header.length > 0) {
-            chained = chainThrough(cipher, chained,
-                    joined.of(writeHeadersLength(header.length), header));
-        }
-        chained = chainThrough(cipher, chained, message);
-        byte[] maskedWith = cipher.encipher(makeCounterBlock(nonce, 0));
-        byte[] tag = new byte[tagOctets];
-        for (int at = 0; at < tagOctets; at++) {
-            tag[at] = (byte) (chained[at] ^ maskedWith[at]);
-        }
-        return tag;
+    private boolean isStar() {
+        return mode == Mode.STAR_ENCRYPT || mode == Mode.STAR_DECRYPT;
     }
 
-    private byte[] makeFirstBlock(byte[] nonce, int tagOctets,
-                                  int headerOctets, int messageOctets) {
-
-        int countOctets = BLOCK - 1 - nonce.length;
-        byte[] first = new byte[BLOCK];
-        first[0] = (byte) ((headerOctets > 0 ? 0x40 : 0)
-                | (tagOctets - 2) / 2 << 3
-                | countOctets - 1);
-        System.arraycopy(nonce, 0, first, 1, nonce.length);
-        long left = messageOctets;
-        for (int at = BLOCK - 1; at > nonce.length; at--) {
-            first[at] = (byte) left;
-            left >>>= 8;
-        }
-        return first;
-    }
-
-    private byte[] writeHeadersLength(int octets) {
-        if (octets < WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_HEADER) {
-            return new byte[] {(byte) (octets >>> 8), (byte) octets};
-        }
-        byte[] written = new byte[6];
-        written[0] = (byte) 0xFF;
-        written[1] = (byte) 0xFE;
-        for (int at = 5; at >= 2; at--) {
-            written[at] = (byte) (octets >>> (5 - at) * 8);
-        }
-        return written;
-    }
-
-    private byte[] chainThrough(OneBlock cipher, byte[] chained,
-                                byte[] octets) {
-
-        byte[] running = chained;
-        for (int at = 0; at < octets.length; at += BLOCK) {
-            byte[] combined = new byte[BLOCK];
-            for (int within = 0; within < BLOCK; within++) {
-                byte next = at + within < octets.length
-                        ? octets[at + within]
-                        : 0;
-                combined[within] = (byte) (running[within] ^ next);
-            }
-            running = cipher.encipher(combined);
-        }
-        return running;
+    private boolean isEnciphering() {
+        return mode == Mode.ENCRYPT || mode == Mode.STAR_ENCRYPT;
     }
 }

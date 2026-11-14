@@ -55,6 +55,8 @@ public final class Ports {
 
     private static final int OPEN_FAILED = 3;
 
+    private static final boolean NOT_ITS_PARENTS = false;
+
     private static final int WHATEVER_NUMBER_MACHINE_HAS_FREE = 0;
 
     private static final Set<String> SCHEMES_CHECKED_AGAINST_NET_POLICY = Set.of("tcp", "udp");
@@ -536,12 +538,43 @@ public final class Ports {
             case "udp" -> bindDatagramPort(port, evaluator);
             case "crypt" -> startCipherBehindBlankingKeyInSpec(port);
             case "checksum" -> checksumPort.startEvenOnAlreadyOpenPort(port, checksumPort.checksumMethod(port));
+            case "clipboard" -> refuseWhenAlreadyOpen(port, portReference(port));
+            case "file" -> refuseWhenAlreadyOpen(port, fileReference(port));
             default -> refuseToReachOutside();
         }
         if (port.isAFile()) {
             openFileBehind(port, evaluator, refinements);
         }
         return markOpen(port);
+    }
+
+    private void refuseWhenAlreadyOpen(PortValue port, Value named) {
+        if (port.isOpen()) {
+            throw Raised.of(EvaluationFailure.ALREADY_OPEN, named);
+        }
+    }
+
+    public void refuseWhenFileIsOpen(PortValue port, EvaluationFailure refusal) {
+        if (port.schemeName().equals("file") && port.isOpen()) {
+            throw Raised.of(refusal, fileReference(port));
+        }
+    }
+
+    public void refuseWhenDirectoryIsOpen(PortValue port) {
+        if (port.schemeName().equals("dir") && port.isOpen()) {
+            throw Raised.of(EvaluationFailure.ALREADY_OPEN, fileReference(port));
+        }
+    }
+
+    public Value fileReference(PortValue port) {
+        if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
+            return NoneValue.none();
+        }
+        Value reference = spec.readFieldValue("ref");
+        if (reference instanceof UrlValue && spec.readFieldValue("path") instanceof FileValue path) {
+            return path;
+        }
+        return reference;
     }
 
     private PortValue markOpen(PortValue port) {
@@ -555,6 +588,11 @@ public final class Ports {
     private void openFileBehind(PortValue port, Evaluator evaluator, Set<String> refinements) {
         SeekableFilePort seekable = new SeekableFilePort(port);
         String path = seekable.path();
+        if (port.schemeName().equals("dir") && refinements.contains("new")) {
+            createDirectory(port, evaluator);
+            seekable.moveTo(0);
+            return;
+        }
         if (port.schemeName().equals("dir")) {
             requireFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
             if (!runThroughFileSystem(() -> LogicValue.of(
@@ -572,15 +610,46 @@ public final class Ports {
                 LogicValue.of(evaluator.ports().files().exists(path))).isTruthy();
         if (!asked.canWrite()) {
             if (!alreadyThere) {
-                throw Raised.of(EvaluationFailure.CANNOT_OPEN, FileValue.of(path));
+                throw refuseToOpen(port);
             }
         } else if (!alreadyThere || asked.emptiesWhatIsThere()) {
-            runThroughFileSystem(() -> {
-                evaluator.ports().files().write(path, new byte[0]);
-                return NoneValue.none();
-            });
+            makeEmptyFileOrRefuseToOpen(port, path, evaluator);
         }
         seekable.openAt(0, asked.canWrite());
+    }
+
+    public void createDirectory(PortValue port, Evaluator evaluator) {
+        refuseWhenDirectoryIsOpen(port);
+        String path = portPath(port);
+        requireFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
+        FilePort files = evaluator.ports().files();
+        try {
+            if (files.exists(path)) {
+                throw Raised.of(EvaluationFailure.NO_CREATE, fileReference(port));
+            }
+            files.makeDirectory(path, NOT_ITS_PARENTS);
+        } catch (FilePort.Denied refused) {
+            if (refused.isRefusedByHost()) {
+                throw refused.raise();
+            }
+            throw Raised.of(EvaluationFailure.NO_CREATE, fileReference(port));
+        }
+        port.markOpen(true);
+    }
+
+    private void makeEmptyFileOrRefuseToOpen(PortValue port, String path, Evaluator evaluator) {
+        try {
+            evaluator.ports().files().write(path, new byte[0]);
+        } catch (FilePort.Denied denied) {
+            if (denied.isRefusedByHost()) {
+                throw denied.raise();
+            }
+            throw refuseToOpen(port);
+        }
+    }
+
+    private Raised refuseToOpen(PortValue port) {
+        return Raised.of(EvaluationFailure.CANNOT_OPEN, portReference(port), IntegerValue.of(OPEN_FAILED));
     }
 
     private boolean isSomethingThereFor(String path, FilePort files) {

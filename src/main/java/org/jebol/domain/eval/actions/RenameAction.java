@@ -54,9 +54,10 @@ public class RenameAction extends PortAction {
             throw ports.refuseWithNoActionFor(nativeName());
         }
         if (!(destination instanceof FileValue to)) {
-            throw Raised.of(EvaluationFailure.NO_RENAME, asked);
+            throw Raised.of(EvaluationFailure.NO_RENAME, nameInRefusal(asked, from));
         }
         granted.require(HostService.FILES);
+        ports.refuseWhenFileIsOpen(from, EvaluationFailure.NO_RENAME);
         if (from.schemeName().equals("dir")) {
             ports.requireFilePolicy(ports.portPath(from), evaluator, Set.of(PolicyAccess.WRITE));
         }
@@ -66,8 +67,12 @@ public class RenameAction extends PortAction {
             if (refused.isRefusedByHost()) {
                 throw refused.raise();
             }
-            throw Raised.of(EvaluationFailure.NO_RENAME, asked);
+            throw Raised.of(EvaluationFailure.NO_RENAME, nameInRefusal(asked, from));
         }
         return from;
+    }
+
+    private Value nameInRefusal(Value asked, PortValue from) {
+        return asked instanceof PortValue ? ports.fileReference(from) : asked;
     }
 }

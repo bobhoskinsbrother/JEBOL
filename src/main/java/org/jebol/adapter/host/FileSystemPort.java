@@ -259,7 +259,7 @@ public final class FileSystemPort implements FilePort {
             Files.write(resolve(path).afterLinks(), contents,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException unwritable) {
-            throw new Denied("cannot-open", "cannot append to " + path);
+            throw new Denied("cannot-open", "cannot append to " + path, path);
         }
     }
 
@@ -269,7 +269,7 @@ public final class FileSystemPort implements FilePort {
         try {
             Files.write(resolve(path).afterLinks(), contents);
         } catch (IOException unwritable) {
-            throw new Denied("cannot-open", "cannot write " + path);
+            throw new Denied("cannot-open", "cannot write " + path, path);
         }
     }
 
@@ -281,7 +281,7 @@ public final class FileSystemPort implements FilePort {
             channel.position(position);
             channel.write(ByteBuffer.wrap(contents));
         } catch (IOException unwritable) {
-            throw new Denied("cannot-open", "cannot write " + path);
+            throw new Denied("cannot-open", "cannot write " + path, path);
         }
     }
 
