@@ -3154,3 +3154,40 @@ copier from a script, though the copier keeps the refinement if one does.
 `FunctionsCopyAndNativesAreTheReceiversOwn` and
 `WhatStandsOutsideTheInterpreterIsRefusedInTheSender` in `spec/values.allium`;
 tested by `AValueCrossingToATaskIsACopyTest` and `DoOfATaskFromTheSourceTest`.
+
+## 71. Which Rebol bugs JEBOL fixes, and which it matches
+
+Owner's decisions, 2026-10-23, revised 2026-11-14 (goal 1k) once
+`src/testFixtures/resources/r3-bugs/probes.r3` had been run through `./r3-head` and the
+jar.
+
+**Fixed on purpose, each an entry in `docs/standing.md`:**
+
+- **A binary search finds every byte.** R3's `Find_Str_Char` gives up on any
+  byte above `0x7F`, under every refinement of FIND and in SELECT.
+- **`make image!` reads a block of tuples**, which R3 refuses because
+  `Create_Image` never steps past it. The block means what the C's
+  `Tuples_To_RGBA` already makes it mean in APPEND and CHANGE: the fourth byte
+  is transparency, stored as alpha `255 - byte`. Making it alpha, as a pixel
+  and a fill read it, was rejected: it would put JEBOL's APPEND and CHANGE
+  against R3's for the sake of one reading. A non-tuple in the block is
+  `invalid-arg` naming that value.
+- **`image-diff/part` clips at the edge**, where R3 subtracts the size twice
+  and answers 0%. The suite assertion that asserts the 0% is recorded in
+  `fails-on-rebol-too.txt` under a heading of its own, for lines a real 3.22.5
+  passes and JEBOL fails on purpose, so the existing ratchet holds it.
+- **A second OPEN raises `already-open` where it would leak, or where R3
+  already refuses**: MIDI (which reconnects in R3) and the clipboard (which
+  answers `expect-arg` in R3) join file, directory CREATE and crypt. checksum,
+  dns, console and event answer the port, as R3 does, since a second open
+  there holds nothing new. Raising on every scheme was rejected for that
+  reason.
+
+**Matched rather than fixed:** the authenticated ciphers. With `tag-length`
+set, the 2026-10-23 measurement of GCM swallowing a message does not
+reproduce. What remains is R3's shape: ChaCha20-Poly1305 takes its whole
+first write as the header and ignores `aad-length`, GCM drops a header write
+too short to hold the header, and CCM treats each write as a whole message.
+Raising where bytes vanish was offered and declined; JEBOL matches R3,
+including the three CCM shapes it got wrong, and the shapes are rules and a
+finding.

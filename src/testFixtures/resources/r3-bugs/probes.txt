@@ -1,0 +1,122 @@
+find 0 | #{00FF}
+find 1 | #{01}
+find 65 uncased | _
+find 97 uncased | _
+find/case 97 | _
+find 127 | #{7F}
+find 128 | _
+find 200 | _
+find 254 | _
+find 255 | _
+find 255 absent | _
+find 256 | [error out-of-range 256]
+find -1 | [error out-of-range -1]
+find/case 255 | _
+find/tail 255 | _
+find/match 255 | _
+find/last 255 | _
+find/reverse 255 | _
+find/skip 255 | _
+find/part 255 inside | _
+find/part 255 outside | _
+find char 255 | #{FF}
+find char 128 | #{80}
+find binary FF | #{FF}
+select 254 | _
+select 255 | _
+select 0 | 255
+find string 255 | _
+find string char 255 | "ÿ"
+find string 98 | _
+find string 233 | _
+find wide string 233 | _
+find wide string 8364 | _
+image block of two tuples | [error malconstruct [2x1 [1.2.3 4.5.6]]]
+image block of four-tuples | [error malconstruct [2x1 [1.2.3.0 4.5.6.255]]]
+image block too short | [error malconstruct [2x1 [1.2.3]]]
+image block too long | [error malconstruct [2x1 [1.2.3 4.5.6 7.8.9]]]
+image block empty | [error malconstruct [2x1 []]]
+image block not tuples | [error invalid-arg]
+image block then more | [error malconstruct [2x1 [1.2.3 4.5.6] 0]]
+image zero size block | [error malconstruct [0x0 []]]
+image tuple fill | [image 2x1 #{010203010203} #{FFFF}]
+image tuple fill four | [image 2x1 #{010203010203} #{0404}]
+image tuple and alpha | [image 2x1 #{010203010203} #{6464}]
+image binary | [image 2x1 #{010203040506} #{FFFF}]
+image binary and alpha | [image 2x1 #{010203040506} #{0A0B}]
+image pixel set four-tuple | [image 1x1 #{010203} #{04}]
+image append block | [image 1x3 #{000000010203040506} #{FFFFF8}]
+image change block | [image 2x1 #{010203040506} #{FFF8}]
+diff whole | 49.9999999999999%
+diff 0x0 1x1 | 0%
+diff 0x0 1x2 | 49.9999999999999%
+diff 0x0 1x3 past bottom | 0%
+diff 0x0 3x1 past right | 0%
+diff 0x0 3x3 past both | 0%
+diff 1x0 1x3 past bottom | 0%
+diff 0x1 2x2 past bottom | 0%
+diff 1x1 5x5 past both | 0%
+diff 0x0 2x2 exactly | 49.9999999999999%
+diff 1x0 1x2 | 49.9999999999999%
+diff 2x2 -1x-2 | 49.9999999999999%
+diff 2x2 -3x-3 | 49.9999999999999%
+diff -1x0 2x2 | 49.9999999999999%
+diff 0x0 0x2 zero | [error invalid-data 0x2]
+diff 3x0 1x2 outside | [error invalid-data 3x0]
+diff 0x2 1x2 outside | [error invalid-data 0x2]
+aes-128-gcm write read | [#{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED} #{0182853F4EB7F20DFDA0907031F80566}]
+aes-128-gcm write take | #{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED0182853F4EB7F20DFDA0907031F80566}
+aes-128-gcm write update read | #{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED0182853F4EB7F20DFDA0907031F80566}
+aes-128-gcm two writes | [#{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED} #{0182853F4EB7F20DFDA0907031F80566}]
+aes-128-gcm aad 0 | [#{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED} #{0182853F4EB7F20DFDA0907031F80566}]
+aes-128-gcm aad 4 own write | [#{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED} #{9993056E24FBB4109C480C50B133F55A}]
+aes-128-gcm aad 4 front of write | [#{16CFA4F31389EF0BAD1CEB4F1F9646C80C63606CD4B56FFBB5345CA548F6D0ED} #{9993056E24FBB4109C480C50B133F55A}]
+aes-128-gcm aad 4 short write | [#{12CBA0F71F85E307A918EF4B038A5AD408676468D8B963F7B13058A1} #{002A640F1092454E157033CA682D69E6}]
+aes-128-gcm aad 32 whole message | [#{} #{F8AB7FF816C1E8C85AF094BF4506DCBC}]
+aes-128-ccm write read | [#{108B226B3EA07E63606E3F8D44CC1CF6CF7BF7F1328D35D2EA02DD6E90C3ED9B43C24D870A0A2F4D977C03B9399D806C} _]
+aes-128-ccm write take | #{108B226B3EA07E63606E3F8D44CC1CF6CF7BF7F1328D35D2EA02DD6E90C3ED9B43C24D870A0A2F4D977C03B9399D806C}
+aes-128-ccm write update read | #{108B226B3EA07E63606E3F8D44CC1CF6CF7BF7F1328D35D2EA02DD6E90C3ED9B43C24D870A0A2F4D977C03B9399D806C}
+aes-128-ccm two writes | [#{108B226B3EA07E63606E3F8D44CC1CF6BC6E11519ABB424646DFF058D872AEF0D5968693EEF23F30934BB8CA7144B9FA7D93AB28FF22C2396D817352D9433A02} _]
+aes-128-ccm aad 0 | [#{108B226B3EA07E63606E3F8D44CC1CF6CF7BF7F1328D35D2EA02DD6E90C3ED9B43C24D870A0A2F4D977C03B9399D806C} _]
+aes-128-ccm aad 4 own write | [#{D8ED0C3B25034B71C772FA2FB27488A2C1829287F2EE232C875FACDE7D48B5F691674F5A08E579AFD330366642951F92F66BCB6BC7AB7585AE6E53C2} _]
+aes-128-ccm aad 4 front of write | [#{108B226B3EA07E63606E3F8D44CC1CF6CF7BF7F1328D35D2EA02DD6E90C3ED9BDBBC55998EA079A4674EB55D30A8EDF3} _]
+aes-128-ccm aad 4 short write | [_ _]
+aes-128-ccm aad 32 whole message | [#{4C6BCBF5F05D0D3211D97F2514335D08} _]
+chacha20-poly1305 write read | [_ #{A164AFF82D8204E7D73C7F491B01C0AF}]
+chacha20-poly1305 write take | #{A164AFF82D8204E7D73C7F491B01C0AF}
+chacha20-poly1305 write update read | #{A164AFF82D8204E7D73C7F491B01C0AF}
+chacha20-poly1305 two writes | [#{A5D9DDC45D6994C98D20D111B5463EC4} #{7A9BC0EDF7ECE586A51428BD62AA0D2F}]
+chacha20-poly1305 aad 0 | [_ #{A164AFF82D8204E7D73C7F491B01C0AF}]
+chacha20-poly1305 aad 4 own write | [#{4221F161CBFE0A1E985416113A0CB6E511C33366D1B6E00244F03DABC515B84B} #{CBA39D8CBC79DD6B8CE8797DE9BA08B4}]
+chacha20-poly1305 aad 4 front of write | [_ #{FF01ED295BE9A71F2C398DA29CB420C0}]
+chacha20-poly1305 aad 4 short write | [#{697014E5409E7C6E1CBCD7BE65A1F5F362E8BF409DB6ACA04384F591DCF842C5} #{838BB875EB25FD9425B53582896247E3}]
+chacha20-poly1305 aad 32 whole message | [_ #{A164AFF82D8204E7D73C7F491B01C0AF}]
+chacha header then message round trip | [#(true) #(true)]
+file open twice | [error already-open %held.txt]
+file open? after | #(true)
+file delete while open | [error no-delete %held.txt]
+file there after delete | file
+file rename while open | [error no-rename %held.txt]
+file there after rename | [file file]
+file create while open | port
+file close | port
+file close again | port
+file rename when closed | port
+file renamed when closed | [_ file]
+file delete when closed | [error no-delete %gone.txt]
+file delete closed port | port
+file deleted closed port | _
+file delete missing | #(false)
+dir open twice | port
+dir create while open | [error already-open %d/]
+dir delete while open | port
+dir there after delete | _
+dir close | port
+dir create when closed | [error cannot-open %e/]
+dir created when closed | _
+crypt open twice | [error already-open crypt://aes-128-ecb]
+checksum open twice | port
+clipboard open twice | [error expect-arg open]
+dns open twice | port
+console open twice | port
+event open twice | port

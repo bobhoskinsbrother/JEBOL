@@ -21,8 +21,9 @@ something a real 3.22.5 does not is a defect.
 
 Four pieces of work, in the order to do them.
 
-**1k and 1l**: the five Rebol bugs JEBOL fixes on purpose (1k), which make
-the two differ deliberately, and then DRAW's `effect` and GUI-METRIC/SET (1l).
+**1k and 1l**: the Rebol bugs JEBOL fixes on purpose, and the places beside
+them where JEBOL is wrong and R3 is right (1k), and then DRAW's `effect` and
+GUI-METRIC/SET (1l).
 
 **And a browser's swipe is proven to move the app's history.** The browser's
 own swipe moves its history, and JEBOL's history is the browser's (decision
@@ -41,46 +42,170 @@ with `scan-names` run over a small literal block -- it fails only once
 1,200 lines of `set-word!` and `to word!`. Shrink that input until the
 smallest failing case is one line before reading any code.
 
-#### 1k. Fix five Rebol bugs
+#### 1k. Four Rebol bugs fixed on purpose, and the differences beside them
 
-Owner's decisions, 2026-10-23. Each fix is a place JEBOL answers something a
-real 3.22.5 does not, so each gets an entry in `docs/standing.md` saying what
-and why.
+Owner's decisions 2026-10-23, revised 2026-11-14 once the probes were run
+(decision 71). Work in this order: reference, spec, failing tests, code, docs.
 
-1. **`find` in a binary finds 255.** `find #{00FF} 255` is none in R3 and
-   `#{FF}` here; JEBOL is already right. Write it in `docs/standing.md`, and
-   turn the note beside it in `spec/natives.allium` into a rule.
-2. **`make image!` takes a block of tuples.** `make image! [2x1 [1.1.1
-   2.2.2]]` is a malconstruct in R3, because the reader that consumes the
-   block never steps past it. Read the C and decide what the block should
-   mean (one tuple per pixel, row by row) before writing the rule.
-3. **`image-diff/part` clips an area that runs past the edge.** The C
-   subtracts the size twice; `image-diff/part i1 i2 0x0 1x3` on two two by
-   two images answers 0% where the pixels differ. Rebol's own
-   `image-test.r3` asserts that 0% (line 402), so the suite assertion must
-   be recorded as a deliberate difference: decide how the suite harness
-   records one -- it has `fails-on-rebol-too.txt` for the other direction
-   and nothing for this -- before the fix lands.
-4. **A cipher that would swallow a message raises.** The open question named
-   one cipher; a probe on 2026-10-23 that writes 32 bytes without a header,
-   then UPDATE and READ, answers none for all nine GCM ciphers and only 16
-   bytes for chacha20-poly1305, in both. Find which of those are the bug
-   (a GCM stream may simply need its tag read differently) and raise on
-   those.
-5. **Opening a port that is already open raises `already-open`**, as the
-   crypt port does, instead of connecting again and leaking the first
-   connection. MIDI is the one that leaks; the sweep of every built-in
-   scheme on 2026-10-25 found three more places where a port's state should
-   gate a verb and does not, each measured against `./r3-head`:
-   - `open p` on an open file port is `already-open %held.txt` in R3 and
-     answers the port here; `create p` on an open directory port the same.
-   - `delete p` on an *open* file port is `no-delete %held.txt` in R3, and
-     here it deletes the file.
-   - `rename p %zz` refuses in both, as `no-rename`, but arg1 is the file in
-     R3 and the whole port object here.
+**What is true today.** `src/testFixtures/resources/r3-bugs/` holds the probes:
+`probes.r3`, 122 cases across all five areas; `generate.sh`, which runs them
+through `./r3-head` in an empty folder; and `probes.txt`, the transcript. Run
+through the jar at `93344d9e`, 29 lines differ. Each is listed below as either
+**deliberate** (R3 is wrong, JEBOL answers otherwise and says so in
+`docs/standing.md`) or **parity** (JEBOL is wrong, and is fixed to match R3).
 
-**Done when** the five behave as above, each with a rule, tests, and an entry
-in `docs/standing.md`, and the suite records the `image-diff` difference.
+1. **`find` and `select` in a binary find every byte -- deliberate.**
+   `Find_Str_Char` (`s-find.c:681`) returns not-found for any byte above
+   `0x7F` in a byte-wide series, so R3 never finds 128 to 255, under any
+   refinement (`/case /tail /match /last /reverse /skip /part`), and
+   `select #{FF01} 255` is none. JEBOL already finds them: 13 lines differ,
+   all on purpose. Boundaries that agree and must stay agreeing: 0, 1, 127,
+   256 and -1 (`out-of-range`), `/part` stopping short, a char and a binary
+   needle finding 255, and an integer needle in a *string* finding nothing,
+   even `find "ab" 98` (`find string 98`).
+2. **`make image!` takes a block of tuples -- deliberate.** `Create_Image`
+   (`t-image.c:707`) never steps past the block, so `[2x1 [1.2.3 4.5.6]]` is
+   `malconstruct` in R3, and so is every other block. The block means what
+   `Tuples_To_RGBA` makes it mean: one tuple per pixel, row by row; a tuple's
+   fourth byte is *transparency*, stored as alpha `255 - byte`; fewer tuples
+   than pixels leaves the rest as `make image! 2x1` leaves them (white,
+   opaque); more are ignored; anything after the block is still
+   `malconstruct`. A block holding a non-tuple raises `invalid-arg` naming that
+   value: the C's `Trap_Arg(block+w-1)` points past the block and names
+   nothing, and JEBOL answers `malconstruct` today.
+   - **Parity, beside it:** APPEND and CHANGE of a block of tuples already use
+     `Tuples_To_RGBA` in R3, so `4.5.6.7` gives alpha 248 (`#{F8}`). JEBOL
+     gives 7. Fix JEBOL. A pixel set (`i/1: 1.2.3.4`) and a fill
+     (`[2x1 1.2.3.4]`) keep alpha 4 in both, so the two meanings sit side by
+     side in R3 and the rule must say so.
+3. **`image-diff/part` clips an area that runs past the edge -- deliberate.**
+   `n-image.c` writes `wide = maxx - ofsx - wide`, subtracting the size twice,
+   so `high` goes negative and every part past the edge answers 0%. Clipped
+   (`wide = maxx - ofsx`), with `i1` white on its top row and black below it,
+   and `i2` white: `0x0 1x3` is 50%, `0x0 3x1` is 0%, `0x0 3x3` is 50%,
+   `1x0 1x3` is 50%, `0x1 2x2` is 100%, `1x1 5x5` is 100%. Inside the image,
+   negative sizes, and the three errors agree today and stay.
+   - **The suite.** `image-test.r3 / Image difference / image-diff/part`'s
+     `0x0 1x3` assertion (line 402) asserts R3's 0%. It goes in
+     `fails-on-rebol-too.txt` under a new second heading, *Assertions JEBOL
+     fails on purpose*, which says these are lines a real 3.22.5 *passes*,
+     each naming its `docs/standing.md` entry, with the `./r3-head` session
+     below it as the rest of the file does. `AssertionsRebolFailsTooTest`
+     already expects every line to fail, so going back to R3's answer is
+     loud. Put the count in `docs/standing.md`'s measures row as its own
+     number, not added to the 160.
+4. **The authenticated ciphers match R3 -- parity, and nothing raises.**
+   The probes overturn the 2026-10-23 measurement: with `tag-length` set,
+   every GCM shape agrees with R3, nothing is swallowed, and decision 71
+   chooses to match R3 rather than raise. What R3 does, read from
+   `p-crypt.c:554-751`, is written as rules and as a finding:
+   - **ChaCha20-Poly1305 ignores `aad-length`.** Its first write is always
+     the header, so `write p message read p` answers none and
+     `aad 4 front of write` loses the message. Prot-tls and Rebol's suite
+     both write the header as a write of its own.
+   - **GCM discards a header write shorter than `aad-length`**, then takes
+     the header from the front of the next write (`aad 4 short write`: 28
+     bytes back from 32). The spec's `AWriteTooShortToHoldTheHeaderIsDiscarded`
+     says the first half; add the second.
+   - **Parity, three lines: CCM is one message per write.** Each WRITE
+     calls `mbedtls_ccm_set_lengths`, takes its header from its own front,
+     and finishes with its own tag. So two writes are two messages (64
+     bytes), a 4-byte header written alone is a whole empty message and the
+     next write's first 4 bytes are another header (60 bytes), and a write
+     shorter than its header fails and leaves READ answering none. JEBOL
+     gathers the writes into one message. Fix JEBOL, and keep
+     `crypt-port-ccm-test.r3` green.
+5. **A port's state gates its verbs.** Decision 71 settles which second
+   OPEN raises `already-open`: where a second open would leak, and where R3
+   already refuses. checksum, dns, console and event keep answering the port
+   as R3 does.
+   - **Deliberate:** MIDI's `A_OPEN` (`p-midi.c:101`) connects again and
+     drops the first connection. Raise `already-open`. `./r3-head` has no
+     MIDI, so the evidence is the C, and the test is a recording
+     `MidiDevices` that counts connections.
+   - **Deliberate:** clipboard's second OPEN is `expect-arg open` in R3 and
+     the port here. Raise `already-open`.
+   - **Parity, file and directory**, each line in the transcript:
+     `file open twice` is `already-open %held.txt` (here: the port);
+     `file delete while open` is `no-delete` and the file stays (here: it is
+     deleted); `file rename while open` is `no-rename %held.txt` and nothing
+     moves (here: arg1 is the whole port, *and the file is renamed anyway*);
+     `file rename when closed` renames (here: refused); `delete open/new
+     %gone.txt` is `no-delete` because the port is open (here: deleted);
+     `dir create while open` is `already-open %d/` (here: the port).
+   - **Before relying on `file there after rename`:** R3 answered
+     `[file _]` on the first run and `[file file]` on four after it. Find
+     out why, and fix the probe or the README.
+
+**Reference first.** Build the fixed C, so each deliberate answer comes from
+a build rather than from reasoning: check in `fixes.patch` (the `block++` and
+the `Trap_Arg` pointer in `Create_Image`, the clip in `image_diff`, and the
+`0x7F` test in `Find_Str_Char`, applied to binaries only) and
+`generate-fixed.sh`, which applies it to a copy of `rebol3-source/` in a
+scratch folder, builds with `scripts/build-r3.sh`, and writes
+`probes-fixed.txt`. Read that transcript before writing the expectations
+below. Where it disagrees with this plan, the build wins and the plan is
+corrected. Clipboard and MIDI are not patched: the build has no MIDI, and
+the clipboard needs a desktop.
+
+**Spec, before tests.** In `spec/natives.allium`:
+- turn the note at the `find #{00FF} 255` paragraph into a rule,
+  `FindingAByteInABinaryFindsEveryByte`;
+- add rules for the block of tuples in MAKE, APPEND and CHANGE, saying the
+  fourth byte means transparency there and alpha in a pixel and a fill;
+- change `ImageDiffPartComparesOnlyTheRectangle`'s neighbour at the
+  `0x0 1x3` paragraph into a rule that clips at the edge;
+- add the three cipher rules above, with CCM as one message per write beside
+  `AnAuthenticatedCipherReadsItsHeaderFromTheFrontOfWhatIsWritten`;
+- extend the port rules at `no_delete`, `no_rename` and `already_open`
+  (around line 3074 and 3514): an open file refuses OPEN, DELETE and RENAME
+  naming its file; a closed one renames; MIDI and the clipboard refuse a
+  second OPEN.
+
+**Tests, failing first.** All functional, in `src/functionalTest/java`:
+- `TheRebolBugsTranscriptFromTheSourceTest` runs `probes.r3` through JEBOL
+  in a temporary folder with file access granted, and compares each line with
+  `probes.txt`. A map of label to answer holds the deliberate lines (find,
+  select, the image block, the diff past the edge, the clipboard). It fails
+  if a mapped label is missing from the transcript, or if the mapped answer
+  equals R3's (a deliberate line that is not different). Every other line
+  must equal R3's.
+- Standing alone, each building its own interpreter and reading no fixture,
+  per `CLAUDE.md`:
+  - `BinarySearchBoundsTest` gains 128, 200, 254 and 255 under every
+    refinement, and `select`.
+  - `MakingAnImageFromABlockOfTuplesFromTheSourceTest`: two pixels, the
+    fourth byte as transparency, too few, too many, empty, `0x0`, a
+    non-tuple named in `invalid-arg`, trailing values; and APPEND and CHANGE
+    giving 248.
+  - `ImageDiffPartClipsAtTheEdgeFromTheSourceTest`: the six clipped
+    answers above, and the in-range and error cases.
+  - `AuthenticatedCipherShapesFromTheSourceTest`: the three CCM shapes (by
+    bytes, from the transcript), GCM's short header, ChaCha's whole-write
+    header and ChaCha ignoring `aad-length`, and a ChaCha round trip.
+  - `APortsStateGatesItsVerbsFromTheSourceTest`: every file and directory
+    line above, asserting on the files left on disk as well as on the answer;
+    a clipboard opened twice.
+  - `TheMidiPortFromTheSourceTest` gains: a second OPEN is `already-open`,
+    and the recording devices saw one connection, not two.
+- Suite: line 402 moves to the new heading, and the full suite stays green.
+
+**Code.** Then make them pass: `ImageDiffNative`; the image MAKE, APPEND and
+CHANGE path; the CCM mode in `CryptPort`; `MidiSchemeActor`'s open; the
+clipboard's open; and the file and directory actors. Note that the jar
+renames an open file while saying it did not -- that is data loss, so check
+DELETE and RENAME on every scheme that has them while in there.
+
+**Docs.** `docs/standing.md` gains four entries: `find` in a binary, the
+block of tuples, `image-diff/part`, and MIDI and the clipboard refusing a
+second OPEN. Each names its rule. `docs/rebol-findings.md` gains the cipher
+shapes. Decision 71 names the tests that hold it.
+
+**Done when** the transcript test passes with exactly the deliberate lines
+mapped, every other line equal to R3's; each item has its rules and its
+standing-alone tests; `probes-fixed.txt` agrees with the deliberate answers;
+line 402 sits under its new heading; and `./gradlew allTests` and the full
+end-to-end suite are green.
 
 #### 1l. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
 
