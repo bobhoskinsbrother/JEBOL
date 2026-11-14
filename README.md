@@ -45,7 +45,7 @@ does with a block and a function.
 ## What is JEBOL?
 
 A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
-Java: an ordinary jar with no dependencies, running on any JDK 25.
+Java: an ordinary jar with no dependencies, running on any Java from 21.
 
 ```commandline
 ./gradlew jar
@@ -392,9 +392,10 @@ do not have to find one -- which matters on an Intel Mac, where Homebrew has no
 `openjdk@25` bottle to install. It builds on 25 whatever Gradle itself runs on,
 because what reads the classes is not only javac: ArchUnit's bundled ASM stops
 at class file 69, so a test tree compiled by a 26 is a tree it imports as empty.
-There are no runtime dependencies; the jar carries everything it needs. Running
-JEBOL does need Java 25 or later, and a launch on an older one says so and
-stops.
+Every source set is compiled at `release 21`, so the classes the 25 writes load
+on any Java from 21. There are no runtime dependencies; the jar carries
+everything it needs. Running JEBOL needs Java 21 or later, and a launch on an
+older one says so and stops.
 
 **The gate asks for two more, and each names itself when it is missing.**
 

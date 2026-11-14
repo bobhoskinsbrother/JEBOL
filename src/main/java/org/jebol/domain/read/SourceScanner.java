@@ -1505,7 +1505,7 @@ final class SourceScanner {
 
     private Value scanDateEndingAt(int token, int bp, int length, int ep) {
         return scanned.scanDate(bp, length)
-                .filter(_ -> scanned.scannedTo() == ep)
+                .filter(date -> scanned.scannedTo() == ep)
                 .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
     }
 
@@ -1568,7 +1568,7 @@ final class SourceScanner {
                     return number;
                 }
                 return scanned.scanTime(bp)
-                        .filter(_ -> scanned.scannedTo() == ep)
+                        .filter(time -> scanned.scannedTo() == ep)
                         .<Value>map(read -> read)
                         .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }

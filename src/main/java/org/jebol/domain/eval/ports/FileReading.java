@@ -156,7 +156,7 @@ final class FileReading {
             return switch (UtfStringDecoder.decode(bytes, 0)) {
                 case UtfStringDecoder.Text decoded ->
                         Optional.of(StringValue.of(decoded.text()).withOneLineFeedPerEnding().text());
-                case UtfStringDecoder.Refused _ -> Optional.empty();
+                case UtfStringDecoder.Refused refused -> Optional.empty();
             };
         }
     }

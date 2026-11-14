@@ -109,7 +109,7 @@ public final class Codecs {
         return switch (UtfStringDecoder.decode(bytes, 0)) {
             case UtfStringDecoder.Text decoded ->
                     Answer.string(StringValue.of(decoded.text().replace("\r\n", "\n")));
-            case UtfStringDecoder.Refused _ -> Answer.answerNotAvailable();
+            case UtfStringDecoder.Refused refused -> Answer.answerNotAvailable();
         };
     }
 

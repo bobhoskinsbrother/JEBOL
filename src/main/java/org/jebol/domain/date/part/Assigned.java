@@ -20,7 +20,7 @@ record Assigned(Value value, AnyWordValue part) {
         return switch (value) {
             case IntegerValue number -> Math.toIntExact(number.magnitude());
             case AnyDecimalValue number -> (int) number.quantity();
-            case NoneValue _ -> 0;
+            case NoneValue none -> 0;
             default -> throw refusal();
         };
     }

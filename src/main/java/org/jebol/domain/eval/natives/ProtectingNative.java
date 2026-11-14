@@ -61,7 +61,7 @@ public abstract class ProtectingNative extends DefaultNative {
             return;
         }
         List<Value> items = switch (target) {
-            case AnyPathValue _ -> List.of();
+            case AnyPathValue path -> List.of();
             case AnyBlockValue block -> block.remaining();
             case AnyWordValue only -> List.of(only);
             default -> List.of();

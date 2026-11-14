@@ -28,7 +28,7 @@ As a port of Oldes/Rebol3 ([https://github.com/Oldes/Rebol3](https://github.com/
 
 ## **2. Installation and Execution**
 
-**Prerequisite:** JEBOL requires Java 25 or higher. On an older Java it says so and stops: `JEBOL needs Java 25 or later; this is Java 21.`
+**Prerequisite:** JEBOL requires Java 21 or higher. On an older Java it says so and stops: `JEBOL needs Java 21 or later; this is Java 17.`
 
 ### **Running from the Distribution Package**
 

@@ -73,7 +73,7 @@ public final class WindowsOnOneSurface {
                 across = atAcross;
                 down = atDown;
             }
-            case ScreenEventDetail.Scrolled(int atAcross, int atDown, _) -> {
+            case ScreenEventDetail.Scrolled(int atAcross, int atDown, int amount) -> {
                 across = atAcross;
                 down = atDown;
             }

@@ -86,14 +86,16 @@ final class LibrarySource {
         return block.wrap(storage);
     }
 
+    private static final List<Class<? extends Value>> COPIED_WHOLE = List.of(
+            BitsetValue.class, AnyStringValue.class, BinaryValue.class, IntegerValue.class, AnyDecimalValue.class,
+            MoneyValue.class, CharacterValue.class, LogicValue.class, NoneValue.class, UnsetValue.class,
+            DateValue.class, TimeValue.class, PairValue.class, TupleValue.class, AnyWordValue.class, Datatype.class);
+
     private static boolean cannotCopySeries(Value value) {
         return switch (value) {
             case AnyBlockValue block -> cannotCopyMembers(block.remaining());
             case MapValue map -> cannotCopyMembers(map.flatten());
-            case BitsetValue _, AnyStringValue _, BinaryValue _, IntegerValue _, AnyDecimalValue _, MoneyValue _,
-                 CharacterValue _, LogicValue _, NoneValue _, UnsetValue _, DateValue _, TimeValue _, PairValue _,
-                 TupleValue _, AnyWordValue _, Datatype _ -> false;
-            default -> true;
+            default -> COPIED_WHOLE.stream().noneMatch(kind -> kind.isInstance(value));
         };
     }
 

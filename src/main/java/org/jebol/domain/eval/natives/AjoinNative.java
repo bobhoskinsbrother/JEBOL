@@ -49,10 +49,10 @@ public class AjoinNative extends DefaultNative {
             return StringValue.TYPE;
         }
         return switch (pieces.getFirst()) {
-            case FileValue _ -> FileValue.TYPE;
-            case UrlValue _ -> UrlValue.TYPE;
-            case EmailValue _ -> EmailValue.TYPE;
-            case RefValue _ -> RefValue.TYPE;
+            case FileValue file -> FileValue.TYPE;
+            case UrlValue url -> UrlValue.TYPE;
+            case EmailValue email -> EmailValue.TYPE;
+            case RefValue ref -> RefValue.TYPE;
             default -> StringValue.TYPE;
         };
     }

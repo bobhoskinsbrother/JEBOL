@@ -252,7 +252,7 @@ public final class Ports {
         }
         return switch (UtfStringDecoder.decode(line, 0)) {
             case UtfStringDecoder.Text decoded -> shapeConsoleLine(decoded.text().replace("\r\n", "\n"), asked);
-            case UtfStringDecoder.Refused _ -> NoneValue.none();
+            case UtfStringDecoder.Refused refused -> NoneValue.none();
         };
     }
 

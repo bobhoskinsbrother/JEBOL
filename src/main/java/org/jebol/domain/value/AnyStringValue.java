@@ -107,7 +107,7 @@ public abstract sealed class AnyStringValue implements RebolSeries, CopiesItsCel
         protected Value constructFromOne(Value only, Construction construction) {
             return switch (only) {
                 case AnyStringValue text -> as(text);
-                case BinaryValue _ -> construction.make(this, only);
+                case BinaryValue binary -> construction.make(this, binary);
                 default -> throw refuseConstruction(List.of(only));
             };
         }

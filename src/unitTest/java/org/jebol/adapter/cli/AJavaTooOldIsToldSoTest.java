@@ -9,43 +9,44 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AJavaTooOldIsToldSoTest {
 
-    private final JavaVersionCheck check = new JavaVersionCheck(25);
+    private final JavaVersionCheck check = new JavaVersionCheck(21);
 
     @Test
     @DisplayName("one short of the oldest is refused, naming both versions")
     void oneShortIsRefused() {
-        assertThat(check.refusalFor("24")).contains("JEBOL needs Java 25 or later; this is Java 24.");
+        assertThat(check.refusalFor("20")).contains("JEBOL needs Java 21 or later; this is Java 20.");
     }
 
     @Test
     @DisplayName("the oldest itself runs")
     void theOldestRuns() {
+        assertThat(check.refusalFor("21")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("one past the oldest runs, and so does the build's own 25")
+    void newerRuns() {
+        assertThat(check.refusalFor("22")).isEmpty();
         assertThat(check.refusalFor("25")).isEmpty();
     }
 
     @Test
-    @DisplayName("one past the oldest runs")
-    void onePastRuns() {
-        assertThat(check.refusalFor("26")).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Java 21, the long-term release before, is refused")
-    void twentyOneIsRefused() {
-        assertThat(check.refusalFor("21")).contains("JEBOL needs Java 25 or later; this is Java 21.");
+    @DisplayName("Java 17, the long-term release before, is refused")
+    void seventeenIsRefused() {
+        assertThat(check.refusalFor("17")).contains("JEBOL needs Java 21 or later; this is Java 17.");
     }
 
     @Test
     @DisplayName("Java 8 calls itself 1.8, and is named 8")
     void eightIsNamedEight() {
-        assertThat(check.refusalFor("1.8")).contains("JEBOL needs Java 25 or later; this is Java 8.");
+        assertThat(check.refusalFor("1.8")).contains("JEBOL needs Java 21 or later; this is Java 8.");
     }
 
     @Test
     @DisplayName("a version with a minor part is judged by its first")
     void aMinorPartIsIgnored() {
-        assertThat(check.refusalFor("25.0.1")).isEmpty();
-        assertThat(check.refusalFor("24.0.2")).contains("JEBOL needs Java 25 or later; this is Java 24.");
+        assertThat(check.refusalFor("21.0.9")).isEmpty();
+        assertThat(check.refusalFor("20.0.2")).contains("JEBOL needs Java 21 or later; this is Java 20.");
     }
 
     @ParameterizedTest(name = "[{0}]")
@@ -62,8 +63,8 @@ class AJavaTooOldIsToldSoTest {
     }
 
     @Test
-    @DisplayName("the oldest is the build's own 25, and nothing older")
-    void theOldestIsTwentyFive() {
-        assertThat(JebolLauncher.OLDEST_JAVA).isEqualTo(25);
+    @DisplayName("the oldest is the level every source set is compiled at, 21, and nothing older")
+    void theOldestIsTwentyOne() {
+        assertThat(JebolLauncher.OLDEST_JAVA).isEqualTo(21);
     }
 }

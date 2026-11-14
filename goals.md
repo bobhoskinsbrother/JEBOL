@@ -45,11 +45,8 @@ Run it at the close of every Android stage and after any change to the core.
 
 **What is true today (measured 2026-11-14).**
 
-- The main tree compiles at the toolchain's 25; only TeaVM's own compile is
-  held to `release 21`. Compiled at 21, the main tree fails on 23 unnamed
-  variables (`_`) in 14 files, and on one Java 25 call, `Inflater.close()` in
-  `Uts46$Tables` (`end()` is its 21 spelling). Every test tree and the SQLite
-  extension already reference nothing past 21.
+- Every source set is compiled at `release 21` and every suite runs on Java
+  21, the oldest the launcher accepts (decisions 10 and 73).
 - The Android SDK is installed in `~/Android/Sdk` by hand (command-line tools
   23, platform 35, build tools 37, platform-tools), with the licence accepted
   by the owner. `/dev/kvm` is the owner's to use, so an x86_64 emulator runs
@@ -70,20 +67,12 @@ Run it at the close of every Android stage and after any change to the core.
   | `adapter.host`: `ThreadTasks`, `JavaSocket`, `JavaProcess` | `Thread.ofPlatform`, `Thread.ofVirtual`, `Thread.startVirtualThread` |
   | `adapter.host`: `JavaProcess` | `ProcessHandle`, `Process.pid()`, `ProcessBuilder.Redirect.DISCARD` |
   | `adapter.host`: `JavaSecureTransport` | `SSLEngineResult.HandshakeStatus.NEED_UNWRAP_AGAIN` |
-  | `adapter.host`: `Uts46` | `Inflater.close()` (goes with the move to 21) |
   | desktop only: `DesktopScreen`, `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`, `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`, `SwingLeavingConfirmation`, `WindowStateReports`; `adapter.web.WebScreenServer` (`java.awt.Font`) | AWT, Swing, ImageIO: 93 classes, none of which Android has |
   | command line only: `CommandLineConsole`, `SttyTerminal` | `Redirect.DISCARD` |
 
   The domain's two are the only ones in code every platform runs, and both
   are a call through `Buffer`. `JavaImage` is the picture codecs; Android's
   are 2c's.
-
-**1. Java 21, everywhere.** The owner's call, 2026-11-14: every source set,
-main, tests, fixtures and extensions, compiles at `release 21`, so nothing
-newer can creep in on any platform. The toolchain stays 25 (decision 55). The
-23 `_` get names, `Uts46` calls `end()`, and the root build sets `release` for
-every `JavaCompile` (the launcher keeps its 8). Decision 55's FFM reason
-goes. The gate passes.
 
 **2. The gaps, closed on the JVM first.** Each with a test that fails first
 where one can:

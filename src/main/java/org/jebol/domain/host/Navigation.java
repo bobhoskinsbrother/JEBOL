@@ -100,7 +100,7 @@ public final class Navigation {
 
     private void arrive(int index, Place place) {
         history.arriveAt(index, place)
-                .filter(_ -> history.isUsedByApp())
+                .filter(arrived -> history.isUsedByApp())
                 .ifPresent(direction -> events.add(direction, null, new ScreenEventDetail.Arrived(place)));
     }
 

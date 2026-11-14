@@ -3,6 +3,8 @@ package org.jebol.adapter.cli;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,12 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Timeout(120)
 class LaunchingOnAJavaTooOldEndToEndTest {
 
-    private static final String REFUSAL = "JEBOL needs Java 25 or later; this is Java 21.";
+    private static final String REFUSAL = "JEBOL needs Java 21 or later; this is Java 17.";
 
     private final Path installedLauncher = Path.of(System.getProperty("jebol.installedLauncher"));
     private final Path shippedJar = Path.of(System.getProperty("jebol.shippedJar"));
     private final Path olderJava = Path.of(System.getProperty("jebol.olderJavaHome"));
-    private final Path supportedJava = Path.of(System.getProperty("jebol.supportedJavaHome"));
 
     private record Finished(int exitCode, String standardOutput, String standardError) {
     }
@@ -41,9 +42,13 @@ class LaunchingOnAJavaTooOldEndToEndTest {
         return javaHome.resolve("bin/java").toString();
     }
 
+    private Path supportedJava(String version) {
+        return Path.of(System.getProperty("jebol.java" + version + "Home"));
+    }
+
     @Test
-    @DisplayName("the installed jebol on Java 21 says it needs 25 and stops with 1")
-    void theInstalledLauncherTellsJavaTwentyOne() throws Exception {
+    @DisplayName("the installed jebol on Java 17 says it needs 21 and stops with 1")
+    void theInstalledLauncherTellsJavaSeventeen() throws Exception {
         Finished finished = launch(List.of(installedLauncher.toString(), "--do", "print 1 + 2"), olderJava);
 
         assertThat(finished.exitCode()).isEqualTo(1);
@@ -52,8 +57,8 @@ class LaunchingOnAJavaTooOldEndToEndTest {
     }
 
     @Test
-    @DisplayName("java -jar on Java 21 says the same and stops with 1")
-    void theJarTellsJavaTwentyOne() throws Exception {
+    @DisplayName("java -jar on Java 17 says the same and stops with 1")
+    void theJarTellsJavaSeventeen() throws Exception {
         Finished finished = launch(List.of(javaIn(olderJava), "-jar", shippedJar.toString(), "--do", "print 1 + 2"),
                 olderJava);
 
@@ -61,23 +66,26 @@ class LaunchingOnAJavaTooOldEndToEndTest {
         assertThat(finished.standardError()).contains(REFUSAL).doesNotContain("UnsupportedClassVersionError");
     }
 
-    @Test
-    @DisplayName("the installed jebol on Java 25 runs what it was given")
-    void theInstalledLauncherRunsOnTwentyFive() throws Exception {
-        Finished finished = launch(List.of(installedLauncher.toString(), "--do", "print 1 + 2"), supportedJava);
+    @ParameterizedTest(name = "Java {0}")
+    @ValueSource(strings = {"21", "25"})
+    @DisplayName("the installed jebol runs what it was given")
+    void theInstalledLauncherRuns(String version) throws Exception {
+        Finished finished = launch(List.of(installedLauncher.toString(), "--do", "print 1 + 2"), supportedJava(version));
 
         assertThat(finished.exitCode()).isZero();
         assertThat(finished.standardOutput()).contains("3");
         assertThat(finished.standardError()).doesNotContain("needs Java");
     }
 
-    @Test
-    @DisplayName("java -jar on Java 25 runs what it was given, and passes its exit code through")
-    void theJarRunsOnTwentyFive() throws Exception {
-        Finished printed = launch(List.of(javaIn(supportedJava), "-jar", shippedJar.toString(), "--do", "print 1 + 2"),
-                supportedJava);
-        Finished quitting = launch(List.of(javaIn(supportedJava), "-jar", shippedJar.toString(), "--do", "quit/return 7"),
-                supportedJava);
+    @ParameterizedTest(name = "Java {0}")
+    @ValueSource(strings = {"21", "25"})
+    @DisplayName("java -jar runs what it was given, and passes its exit code through")
+    void theJarRuns(String version) throws Exception {
+        Path javaHome = supportedJava(version);
+        Finished printed = launch(List.of(javaIn(javaHome), "-jar", shippedJar.toString(), "--do", "print 1 + 2"),
+                javaHome);
+        Finished quitting = launch(List.of(javaIn(javaHome), "-jar", shippedJar.toString(), "--do", "quit/return 7"),
+                javaHome);
 
         assertThat(printed.exitCode()).isZero();
         assertThat(printed.standardOutput()).contains("3");

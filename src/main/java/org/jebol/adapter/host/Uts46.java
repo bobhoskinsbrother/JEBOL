@@ -468,7 +468,8 @@ public final class Uts46 {
             byte[] compressed = Base64.getDecoder().decode(String.join("", chunks));
             ByteArrayOutputStream raw = new ByteArrayOutputStream();
             byte[] room = new byte[1 << 16];
-            try (Inflater inflater = new Inflater()) {
+            Inflater inflater = new Inflater();
+            try {
                 inflater.setInput(compressed);
                 while (!inflater.finished()) {
                     int produced = inflater.inflate(room);
@@ -479,6 +480,8 @@ public final class Uts46 {
                 }
             } catch (DataFormatException corrupt) {
                 throw new IllegalStateException("the UTS #46 tables are corrupt", corrupt);
+            } finally {
+                inflater.end();
             }
             return ByteBuffer.wrap(raw.toByteArray()).order(ByteOrder.LITTLE_ENDIAN);
         }

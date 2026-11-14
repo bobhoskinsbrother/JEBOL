@@ -19,9 +19,10 @@ group = "org.jebol"
 version = "3.22.5"
 
 java {
-    // 25 rather than 21 for the Foreign Function and Memory API, which
-    // struct!, routine! and library! will need. Final in 22, but 22 is
-    // non-LTS and out of support, and 25 is the current LTS.
+    // The toolchain is 25, the current LTS, and every source set is compiled
+    // at release 21 (the JavaCompile block below), so the jar runs on any
+    // Java from 21 and nothing newer than 21 creeps in on any platform:
+    // Android's ART and TeaVM both stop at 21. Decision 73.
     //
     // And 25 rather than 26, which this reader will be tempted by: ArchUnit
     // 1.4.1 carries an ASM that stops at class file 69, so a 26 compiles a
@@ -66,10 +67,6 @@ teavm {
         obfuscated.set(false)
         outOfProcess.set(false)
     }
-}
-
-tasks.named<JavaCompile>("compileTeavmJava") {
-    options.release.set(21)
 }
 
 val copyWorkerScript = tasks.register<Copy>("copyWorkerScript") {
@@ -261,6 +258,7 @@ tasks.named("processTeavmResources") {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
@@ -329,6 +327,9 @@ fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
 
 fun Test.runsTheTestsIn(suite: SourceSet, dumpsTheHeapWhenItRunsOut: Boolean = true) {
     group = "verification"
+    // The suites run on the oldest Java JEBOL supports, the level every source
+    // set is compiled at, so what passes here is what a Java 21 answers.
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
     testClassesDirs = suite.output.classesDirs
     classpath = suite.runtimeClasspath
     useJUnitPlatform()
@@ -436,14 +437,16 @@ val endToEndTests = tasks.register<Test>("endToEndTests") {
     systemProperty("jebol.shippedJar", tasks.jar.get().archiveFile.get().asFile.path)
     systemProperty(
         "jebol.olderJavaHome",
-        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
             .get().metadata.installationPath.asFile.path,
     )
-    systemProperty(
-        "jebol.supportedJavaHome",
-        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
-            .get().metadata.installationPath.asFile.path,
-    )
+    for (supported in listOf(21, 25)) {
+        systemProperty(
+            "jebol.java${supported}Home",
+            javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(supported) }
+                .get().metadata.installationPath.asFile.path,
+        )
+    }
     useJUnitPlatform { excludeTags(testsThatOpenARealWindow) }
     outputs.upToDateWhen { false }
     mustRunAfter(functionalTests)

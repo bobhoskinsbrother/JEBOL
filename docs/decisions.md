@@ -265,6 +265,13 @@ demonstrates it rather than a comment that warns about it.
 
 ## 10. Java 25, not 21
 
+**Reversed for what runs, 2026-11-14 (decision 73).** Every source set is
+compiled at `release 21` and the jar runs on any Java from 21; the launcher
+refuses 20 and older. The toolchain stays 25 (decision 55). The reason below
+never came to anything: nothing uses `java.lang.foreign`. Android's ART and
+TeaVM both stop at 21, so holding everything there keeps a newer call from
+creeping into code a phone or a browser runs.
+
 Asked for as "Java 22, for the memory reasons": the Foreign Function and
 Memory API, which `struct!`, `routine!` and `library!` need and which is
 final from 22 onward.

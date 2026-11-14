@@ -22,11 +22,11 @@ final class Clock implements WritableDateField {
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
         return switch (given.value()) {
-            case NoneValue _ -> date.asJustDay();
+            case NoneValue none -> date.asJustDay();
             case TimeValue clock -> date.atTime(clock);
             case DateValue other -> date.atTime(other.clock());
-            case IntegerValue _ -> date.atTime(given.asClock());
-            case AnyDecimalValue _ -> date.atTime(given.asClock());
+            case IntegerValue number -> date.atTime(given.asClock());
+            case AnyDecimalValue number -> date.atTime(given.asClock());
             default -> throw given.refusal();
         };
     }

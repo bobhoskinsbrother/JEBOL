@@ -102,7 +102,7 @@ public final class Repl {
         this.output = output;
     }
 
-    static void main(String[] arguments) {
+    public static void main(String[] arguments) {
         StreamOutput output = new StreamOutput(System.out, System.err);
         CommandLineConsole console = CommandLineConsole.forThisProcess(
                 new FileInputStream(FileDescriptor.in), output, System.out);

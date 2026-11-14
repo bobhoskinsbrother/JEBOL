@@ -15,6 +15,7 @@ repositories {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
@@ -105,6 +106,7 @@ val gateResults = core.layout.buildDirectory.dir("test-results")
 
 fun Test.runsTheTestsIn(suite: SourceSet, resultsName: Provider<String>) {
     group = "verification"
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
     testClassesDirs = suite.output.classesDirs
     classpath = suite.runtimeClasspath
     useJUnitPlatform()

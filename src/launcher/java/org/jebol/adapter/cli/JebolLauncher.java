@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public final class JebolLauncher {
 
-    static final int OLDEST_JAVA = 25;
+    static final int OLDEST_JAVA = 21;
 
     private static final String JAVA_VERSION_PROPERTY = "java.specification.version";
     private static final String CONSOLE = "org.jebol.adapter.cli.Repl";

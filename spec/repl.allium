@@ -115,7 +115,7 @@ config {
     longest_error_shown: Integer = 640
     -- The oldest Java JEBOL runs on. Its classes are built for it, and an
     -- older Java cannot load them at all.
-    oldest_java: Integer = 25
+    oldest_java: Integer = 21
 }
 
 ------------------------------------------------------------

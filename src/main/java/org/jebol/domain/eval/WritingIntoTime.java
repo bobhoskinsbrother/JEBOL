@@ -65,7 +65,7 @@ final class WritingIntoTime {
             case IntegerValue(long magnitude) -> checkWithinThirtyTwoBits(magnitude, written);
             case AnyDecimalValue fractional -> checkWithinThirtyTwoBits(
                     withinThirtyTwoBits(fractional.quantity(), written), written);
-            case NoneValue _ -> 0;
+            case NoneValue none -> 0;
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
     }
