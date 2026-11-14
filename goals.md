@@ -53,7 +53,8 @@ Run it at the close of every Android stage and after any change to the core.
   at full speed. No emulator or system image yet.
 - `javac` will not compile against `android.jar` as the platform at any level
   past 8 (the Android Gradle Plugin builds a system image from it to get
-  round this), so the gaps were measured from the class files: a probe reads
+  round this), so the gaps are measured from the class files:
+  `scripts/AndroidApiGaps.java` reads
   every platform class and member the core's classes reference and looks
   each up in `android.jar`, through supertypes. D8 at `--min-api 35` dexes the
   whole core and rewrites away every Java 21 language bootstrap
@@ -71,17 +72,13 @@ Run it at the close of every Android stage and after any change to the core.
   own machine; it runs no programs (`call` is 2c's to answer, as a browser's
   is). `JavaImage` is the picture codecs; Android's are 2c's.
 
-**3. The probe becomes a check.** `scripts/AndroidApiGaps.java`, a single
-file run by `java` with no build, checked in with its output for the core as
-`scripts/android-api-gaps.txt`. `androidTests` runs it over exactly the
-classes the APK carries and fails on any gap, so a new call Android lacks is
-caught on the next run rather than on a phone.
-
 **4. What the APK carries.** The core jar minus the JVM host's, the desktop's
 and the command line's classes above, which an Android process never loads: a `coreForAndroid` jar
-task in the root build excludes them by name, and step 3's check over it
-must come out empty. A class added later that reaches AWT fails the check
-until it is excluded or split.
+task in the root build excludes them by name, and
+`scripts/AndroidApiGaps.java --fail-on-gaps` over it must come out empty. A
+class added later that reaches AWT fails the check until it is excluded or
+split. The root build's `androidApiGaps` writes the whole core's list to
+`scripts/android-api-gaps.txt`.
 
 **5. The toolchain.** `scripts/setup-machine.sh` installs what was installed
 by hand above, plus the emulator and an x86_64 API 35 system image, and
@@ -93,6 +90,9 @@ the SDK. The Android Gradle Plugin and the android-junit5 plugin (Apache
 2.0), both checked against licensing before use. `minSdk` and `compileSdk`
 35. A library module that carries the core and Android's own ports, and a
 test application to run the suites in, which 2b replaces with the app.
+`androidTests` runs the gap check over `coreForAndroid` first and stops on
+any gap, so a new call Android lacks is caught on the next run rather than
+on a phone.
 
 **7. Running on ART.** The functional tests and Rebol's suite run on the
 emulator through android-junit5 as instrumentation tests. Running is the

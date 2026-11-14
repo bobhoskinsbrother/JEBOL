@@ -640,6 +640,33 @@ tasks.jacocoTestReport {
     }
 }
 
+// Every platform class and member the core's class files reference that
+// Android 35's android.jar does not have, into scripts/android-api-gaps.txt.
+// javac cannot compile against android.jar as the platform past level 8, so
+// the probe reads the class files instead (goal 2a). It needs the SDK, so it
+// is not part of allTests; ANDROID_HOME, or ~/Android/Sdk, says where it is.
+val androidApiGaps = tasks.register<Exec>("androidApiGaps") {
+    group = "verification"
+    description = "Lists what the core references that Android 35 lacks, into scripts/android-api-gaps.txt"
+    val script = layout.projectDirectory.file("scripts/AndroidApiGaps.java").asFile
+    val report = layout.projectDirectory.file("scripts/android-api-gaps.txt").asFile
+    val classes = sourceSets.main.get().java.destinationDirectory
+    val androidSdk = providers.environmentVariable("ANDROID_HOME")
+        .orElse(providers.systemProperty("user.home").map { "$it/Android/Sdk" })
+    dependsOn(tasks.named("compileJava"))
+    inputs.dir(classes)
+    inputs.file(script)
+    outputs.file(report)
+    executable(
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+            .get().executablePath.asFile.path,
+    )
+    args(
+        script.path, "--report", report.path,
+        classes.get().asFile.path, androidSdk.get() + "/platforms/android-35/android.jar",
+    )
+}
+
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
