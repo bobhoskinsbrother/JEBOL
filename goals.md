@@ -11,48 +11,10 @@ how to work on any goal is in `docs/porting-guide.md`.
 
 ## The goals
 
-Ordered by importance. Any Rebol file running the same on a real 3.22.5 and
-on JEBOL comes first (goal 1). The two that take JEBOL to Android and iOS
-come next, with the defects that would hurt there fixed before each stage.
+Ordered by importance. The two that take JEBOL to Android and iOS come
+first, with the defects that would hurt there fixed before each stage.
 Agreeing with the C comes before improving on it: a place where JEBOL answers
 something a real 3.22.5 does not is a defect.
-
-### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
-
-One piece of work left. It is spec, failing tests, code, docs, as
-everywhere.
-
-#### 1n. A swipe moves the app's history
-
-Owner's decisions 2026-11-14: a phone browser's edge swipe is checked in
-goal 2's emulator gate; the desktop swipe is tried on the owner's MacBook.
-
-**What is true today.**
-
-- A page's Back and Forward are the browser's (decision 50,
-  `APageUsesTheBrowsersOwnHistory`), and the end-to-end suite drives the
-  browser's buttons through `AnOperatorAtThePage.pressesBack` and
-  `pressesForward`. A swipe reaches the page the same way, as `popstate`.
-- A desktop window moves its history on Alt+Left and Alt+Right, Cmd+[ and
-  Cmd+], and the mouse's side buttons (decision 50). The trackpad's swipe is
-  `spec/nav.allium`'s open question: on macOS Java hears a real swipe only
-  through a part of the JDK that is not public; everywhere a sideways scroll
-  could stand for it, but cannot be told from scrolling sideways.
-
-**1. A swipe in Chrome.** Try CDP's `Input.synthesizeScrollGesture` as a
-touchpad swipe against the shipped page. If Chrome moves its history, an
-end-to-end test asserts the app hears `Back` and `Forward` from it. If it
-does not, that is recorded in decision 50 and the button tests stand for it.
-
-**2. A swipe in a window.** A probe, checked in under
-`src/testFixtures/resources/nav/probe/` with a script that runs it, opens a
-window and prints what Java hears: the swipe through the non-public macOS
-path, and the sideways scroll everywhere. The owner runs it on the MacBook
-and chooses; the choice replaces the open question with a rule, and the
-window hears a swipe as it hears Alt+Left. A test drives whichever is
-chosen by posting the event the toolkit would.
-
-**Done when** the open question is a rule, and both halves have a test.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
@@ -151,7 +113,7 @@ an APK (Java resources or assets).
 - `androidEndToEndTests` starts here: a script prints, a tap clicks, typing
   reaches a field, Back moves the history, a rotation resizes. And Chrome on
   the emulator (an image that carries it) opens the shipped site served from
-  the host and a swipe from the screen's edge moves its history (goal 1n).
+  the host and a swipe from the screen's edge moves its history.
 
 **Done when** `examples/r3-gui` runs in the app on the emulator and the
 parity test passes.
