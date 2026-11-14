@@ -42,17 +42,145 @@ smallest failing case is one line before reading any code.
 
 #### 1l. DRAW refuses `effect`, and GUI-METRIC/SET moves the window
 
-- **`effect`** is the one DRAW command (of the 34 in `dial-draw.reb`) JEBOL
-  does not paint, and it is skipped without a word. It raises until it is
-  built. Read the C for the id.
-- **`gui-metric/set`** with `'restore`, `'minimize`, `'maximize` and
-  `'activate` controls the window, on the desktop. Say what each does in a
-  browser, where a page cannot minimise itself. This goes past the C, where
-  neither host handles those words and each raises `command-fail`, which is
-  what JEBOL answers until then.
+Owner's decisions 2026-11-14, decision 72. Work in this order: spec, failing
+tests, code, docs. Painting `effect` is goal 16.
 
-**Done when** both are rules, with an end-to-end test that minimises,
-restores and maximises a real window.
+**What is true today.**
+
+- `DrawDialect.obey` (`src/main/java/org/jebol/domain/render/DrawDialect.java`)
+  has an empty `default` branch, so `effect` is read by DELECT and skipped.
+  A draw block is read only by `PaintList.paintItsDrawBlock`, at paint time:
+  on Swing's thread in `DesktopScreen`, between script steps in
+  `BrowserScreen`, and in `GobScreen.paintGob` for `to image!`. `walk`
+  swallows any `Raised`, so nothing read there reaches a script.
+  `spec/draw.allium` says the same in its excluded list and in
+  `WhatIsNotPaintedYetIsNamedRatherThanHidden`, which names this goal.
+- `GuiMetricNative` ignores `/set`, and the four words are not
+  `ScreenMetric`s, so each is `command-fail` with arg1 none, as in the C
+  (`host-window.c`, `CMD_WINDOW_GUI_METRIC`, `default: return RXR_BAD_ARGS`).
+- `ScreenEventType` has fourteen kinds and no `minimize`, `maximize` or
+  `restore`, though `system/view/event-types` names all three (`sysobj.reb`).
+  `DesktopScreen` has no `WindowStateListener`, so an operator's click on a
+  title bar's buttons tells the script only `resize`.
+- `WindowsOnOneSurface` (`src/main/java/org/jebol/domain/host/`) decides which
+  of a browser's windows hears an event; `BrowserScreen` keeps its windows
+  bottom to top in `gobValues` and knows the viewport.
+- The functional tests have no display (`DesktopScreen.onThisMachine` answers
+  `hasDisplay()` false there). The end-to-end suite has one:
+  `TheDrawExampleEndToEndTest` builds a real `DesktopScreen`.
+
+**1. `effect` refuses with `feature-na`, at SHOW.**
+
+- SHOW walks what it is about to show -- the gob, a block of gobs, or with
+  none every window under the root -- and reads each draw block through
+  DELECT against `system/dialects/draw`, down every pane and into `push`
+  blocks. The first `effect` command raises `feature-na` before the screen
+  is asked for anything. Do the walk in the domain, from `ShowNative`
+  rather than inside `GobScreen.show`, so every screen gets it, the test
+  fixtures' `RecordingScreen` included.
+- `to image!` of a gob makes the same walk over that gob first
+  (`ImageValue` line 168, `InterpreterMaker.paintGob`).
+- What is not refused: the word `effect` where it is an argument rather than a
+  command (inside a `text` block, a `shape` block, a word argument); a draw
+  block on a gob SHOW is not showing; a gob whose content is an effect block
+  (`gob/effect: [...]`), which still paints nothing and keeps its block.
+- The paint-time read in `DrawDialect` keeps skipping, as the last line of
+  defence for a block changed after SHOW without another SHOW.
+
+**2. GUI-METRIC/SET moves a window.**
+
+- `gui-metric/set 'minimize win`, `'maximize`, `'restore`, `'activate`:
+  `val` is an open window gob, and the answer is that gob. A gob that is not
+  an open window, or any other value, is `invalid-arg` naming it. With no
+  display, `no-service`. Without `/set` the four stay `command-fail`; the
+  twelve metrics keep ignoring `/set`; `/display` is ignored by the four.
+- The port: `ScreenPort` gains `arrangeWindow(GobValue window,
+  WindowArrangement arrangement)`, where `WindowArrangement` is the four.
+  `ScreenPort.none()` refuses it as it refuses `show`.
+- Desktop, `DesktopScreen`: `setExtendedState` with `ICONIFIED`,
+  `MAXIMIZED_BOTH` and `NORMAL`, and `toFront` with `requestFocus` for
+  `activate`, each on the toolkit thread. The gob's size and offset follow
+  the window through the existing resize and move reports.
+- Browser, `BrowserScreen`: `maximize` remembers the gob's size and offset,
+  puts it at `0x0` and the viewport's size, and keeps it fitted when the
+  viewport changes. `minimize` leaves it open but out of `PaintList.ofScreen`
+  and out of `WindowsOnOneSurface`'s addressing. `restore` puts back what
+  was remembered and shows it again. `activate` moves it to the top of
+  `gobValues` and gives it the keyboard. Restoring a window that is neither
+  minimised nor maximised changes nothing.
+- Events, both screens, whether the script or the operator changed the
+  window: `minimize` on minimising; `resize` then `maximize` on maximising;
+  `resize` then `restore` on restoring from either. That is `WM_SIZE` in
+  `rebol3-source/src/os/win32/host-event.c:286-319`. One `resize`, not two:
+  Swing's `componentResized` already queues one, so the state listener adds
+  only the second event. `activate` queues nothing, as in both hosts.
+  `ScreenEventType` gains the three, spelled as the catalogue spells them.
+
+**Spec, before tests.**
+
+- `spec/draw.allium`: replace the `effect` paragraph of the excluded list,
+  the paragraph at "`effect` is read and paints nothing", and
+  `WhatIsNotPaintedYetIsNamedRatherThanHidden` with rules:
+  `ShowRefusesADrawBlockThatUsesEffect`, `AnImageOfAGobRefusesEffectToo`,
+  and `AnEffectGobPaintsNothingAndKeepsItsBlock`. Point at goal 16.
+- `spec/screen.allium`: `ScreenEventKind` gains `minimize`, `maximize` and
+  `restore`; a `WindowArrangement` enum; rules
+  `GuiMetricSetArrangesAnOpenWindow`, `OnlyAnOpenWindowCanBeArranged`,
+  `TheFourWordsNeedSet`, `ABrowserArrangesAWindowOnItsPage` and
+  `AWindowSaysWhenItsStateChanges`. Cite decision 72.
+
+**Tests, failing first.**
+
+- Functional, standing alone:
+  - `DrawRefusesEffectFromTheSourceTest`: on a `RecordingScreen`, SHOW of a
+    gob whose draw block has `effect`, alone and with its arguments, is
+    `feature-na`, and the screen recorded no show; the same inside `push`,
+    in a child's draw block, in a block of gobs, and with SHOW none; `to
+    image!` of such a gob is `feature-na`; the word `effect` as an argument
+    is not refused; an effect gob shows and keeps its block; a draw block
+    without `effect` still shows.
+  - `GuiMetricSetFromTheSourceTest`: each of the four with `/set` on an open
+    window asks the port for that arrangement and answers the window; a
+    closed gob, an integer and none are `invalid-arg` naming themselves;
+    without `/set`, `command-fail`; with `ScreenPort.none()`, `no-service`;
+    `gui-metric/set 'screen-size 1x1` still answers the screen's size.
+  - `ABrowsersWindowsArrangedOnThePageFromTheSourceTest`, on `BrowserScreen`
+    with a recording `Viewer`: maximise fills the viewport and follows it
+    when it changes; minimise stops the window painting and hearing a press
+    over it while it stays open; restore puts back size and offset after
+    either; activate moves a lower window to the top and gives it the
+    keyboard; the events and their order for each.
+- Unit, `DesktopScreen` without a display: the window-state report maps
+  each change (normal to iconified, iconified to normal, normal to
+  maximised, maximised to normal) to its events, with no second `resize`.
+- End-to-end:
+  - `ArrangingAWindowEndToEndTest`, on a real `DesktopScreen`: a script
+    minimises, restores, maximises and activates its window, and each time
+    the `JFrame`'s extended state is what was asked and the script heard the
+    events above; then the test changes the frame's state itself, as the
+    operator would, and the script hears the same. Fail rather than skip if
+    `Toolkit.isFrameStateSupported` says no.
+  - In Chrome only, as JEBOL's own behaviour (`CLAUDE.md`): the page shows a
+    maximised window at the viewport's size, a minimised one not at all, and
+    a restored one where it was.
+
+**Code.** `ShowNative` and the `to image!` path, with the walk in
+`org.jebol.domain.render`; `GuiMetricNative`; `ScreenPort`,
+`WindowArrangement`, `ScreenEventType`; `DesktopScreen`, `BrowserScreen`,
+`WindowsOnOneSurface`; the page's JavaScript only if the viewport fitting
+needs it.
+
+**Docs.** `docs/standing.md`, under the differences on purpose: GUI-METRIC/SET
+arranges a window where R3 answers `command-fail`, and the three window
+events reach a script in a browser. `docs/rebol-findings.md`, beside finding
+219: neither host handles the four words, `val` is never read, and 3.22 does
+not build `host-draw.c` or `host-effect.c`. Decision 72 names the rules and
+tests that hold it.
+
+**Done when** `effect` is `feature-na` at SHOW and at `to image!` and nowhere
+else, the four words arrange a window on the desktop and in a browser with
+the events above, every rule named here exists with its tests, and
+`./gradlew allTests` and the full end-to-end suite are green.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
@@ -544,3 +672,38 @@ difference on any rung, every difference found is either fixed with its
 test or named in the allowlist with its reason, the transcript is checked
 in and read by a test in `allTests`, and the list of unreached C branches
 is in `docs/standing.md` beside the other measures.
+
+### 16. The effect dialect, ported from REBOL 2
+
+No Rebol 3 paints an effect. 3.22 builds no DRAW at all, the 2010 builds
+compiled DRAW's `effect` out, and the `FX_*` routines `host-effect.c` calls
+are not in the tree. The behaviour lived in REBOL 2's View: `box effect
+[gradient 0x1 ...]`, which `clock.r`, `diagram.r`, `effect-lab.r` and the
+other R2 programs in `corpus/sources/` use. So this is a port from R2, and
+it serves both doors in: DRAW's `effect pair pair block`, which runs a chain
+over what is already painted in that rectangle, and a gob whose content is an
+effect block. Until it lands, DRAW's `effect` refuses, as goal 1l says.
+
+1. **Find the reference before writing anything.** R2 is a closed binary,
+   and running a downloaded one is ruled out. Look for the AGG effect sources
+   in the later Saphirion and Atronix forks of R3, and check their licence
+   against JEBOL's before reading a line. Without them the authority is R2's
+   View documentation, and the claim the tests can make is "as R2's docs
+   describe", not "as the C computes". Say which, in a decision.
+2. **The 31 commands** of `dial-effect.reb`, which `host-effect.c`
+   dispatches with its defaults: per-pixel colour (invert, grayscale, luma,
+   tint, contrast, colorize, colorify, hsv, key, alphamul), two images
+   combined (add, mix, multiply, difference), geometry (flip, crop, extend,
+   rotate, reflect, tile, tile-view), the 3x3 kernels (blur, sharpen,
+   emboss, convolve), the gradients (gradient, gradcol, gradmul),
+   resampling (fit, aspect, with nearest, bilinear, bicubic and gaussian),
+   and shadow.
+3. **Written once, in the domain.** An effect works on pixels already
+   painted, which a paint instruction cannot carry. Each renderer gains two
+   primitives, read back a rectangle and put pixels back, and the domain
+   runs the chain on the pixel array, so the desktop and the browser still
+   decide nothing.
+
+**Done when** all 31 are rules with tests against the reference chosen in
+step 1, DRAW's `effect` and an effect gob both paint, and the renderer
+comparison covers an effect.

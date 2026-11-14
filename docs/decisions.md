@@ -3205,3 +3205,53 @@ built with `r3-bugs/fixes.patch`. Standing alone: `BinarySearchBoundsTest`,
 `ABlockOfTuplesIsOneTupleAPixel`, `ARectanglePastTheEdgeIsClippedToIt`,
 `OpeningAnOpenMidiPortIsRefused`, `TheClipboardRefusesToBeOpenedAgain` and
 `CounterWithCbcMacIsOneMessageAWrite`; finding 248 has the cipher shapes.
+
+## 72. DRAW refuses `effect` at SHOW, and GUI-METRIC/SET moves a window
+
+Owner's decisions, 2026-11-14 (goal 1l).
+
+**No Rebol 3 paints `effect`.** 3.22 builds no DRAW at all: `host-draw.c`
+and `host-effect.c` are in the tree and not in `make/rebol3.nest`, and the
+`FX_*` routines the second calls are not in the tree. The 2010 builds
+compiled DRAW's `effect` out. The behaviour lived in REBOL 2's View, so
+painting it is a port from R2, and that is goal 16. Until then:
+
+- **The error is `feature-na`**, "feature not available", which is what R3
+  raises for something its build left out (`request-color`, a compression
+  method). `dialect` naming `draw` and the block at `effect` was rejected:
+  it is the C's shape for a draw block it cannot read, and says the script
+  is wrong when the script is right. Rebol's suite asserts neither.
+- **It is raised by SHOW**, which reads the draw blocks of what it is about
+  to show on the interpreter's thread and refuses before anything is queued,
+  and by painting a gob into an image. A draw block is otherwise read only
+  while painting, on a toolkit's thread or between script steps, where no
+  script can hear an error, and the paint-time reading keeps skipping what
+  it cannot read so that a window is never taken down.
+- **A gob whose content is an effect block still paints nothing and keeps
+  the block**, as every R3 does. Raising there too was offered and declined.
+
+**GUI-METRIC/SET goes past the C.** Both hosts list `restore`, `minimize`,
+`maximize` and `activate` in the words `window.reb` hands them, and neither
+handles them: each reaches `RXR_BAD_ARGS`, `command-fail`. Nothing in the
+library calls `/set`, and the C never reads `val`. So:
+
+- **`val` is the window gob**: `gui-metric/set 'maximize win`. A value that is
+  not an open window is `invalid-arg` naming it; with no display at all the
+  answer is `no-service`, as SHOW's is. A logic acting on the newest window was
+  rejected, because a script may have several. It answers the window, as
+  SHOW answers its argument. The twelve metrics keep
+  ignoring `/set`, as the C does, and the four words without `/set` stay
+  `command-fail`.
+- **On the desktop** each does what its word says to the real window.
+- **In a browser**, where every window is painted on one page and a page can
+  neither minimise its tab nor go full screen unasked, they act on the page's
+  surface: `maximize` makes the window fill the viewport, `minimize` stops it
+  painting and hearing events while it stays open, `restore` puts back the
+  size and offset it had, and `activate` brings it to the top with the
+  keyboard. Refusing them in a browser was rejected.
+- **The window says what happened.** R3's win32 host queues `minimize` when a
+  window is minimised and `resize` followed by `maximize` or `restore` when it
+  is maximised or restored (`host-event.c`, `WM_SIZE`). JEBOL queues the same,
+  whether the script changed the window or the operator did, on the desktop
+  and in a browser. Neither host queues anything for `activate`, and nor does
+  JEBOL.
