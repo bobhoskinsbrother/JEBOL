@@ -19,6 +19,11 @@
 # already working. `./r3-head` bootstraps its own replacement, which is why the
 # compiler writes to a temporary file and only moves it into place on success:
 # a half-written binary here would leave nothing able to build the next one.
+#
+# With no `./r3-head`, JEBOL's own jar is the bootstrap: resolve-nest.r3 and
+# pre-make.r3 run on it and write what `./r3-head` writes, every byte but the
+# build's timestamps (scripts/compare-pre-make.py checks that). Pre-make
+# takes about 3s on the jar and 0.17s on `./r3-head`.
 
 set -e
 here=${0:a:h}
@@ -35,41 +40,33 @@ part_built=$out.part
 # not run on an Intel Mac and the compiler cross-compiles happily without
 # complaining.
 case $(uname -s) in
-  Darwin) os=macos; release_os=macos ;;
-  Linux)  os=linux; release_os=linux ;;
+  Darwin) os=macos ;;
+  Linux)  os=linux ;;
   *) echo "$0 builds on macOS and Linux, not $(uname -s)" >&2; exit 1 ;;
 esac
 case $(uname -m) in
-  arm64|aarch64) arch=arm64; rebol_arch=arm64; release_arch=arm64 ;;
-  x86_64)        arch=x86_64; rebol_arch=x86_64; release_arch=x64 ;;
+  arm64|aarch64) arch=arm64; rebol_arch=arm64 ;;
+  x86_64)        arch=x86_64; rebol_arch=x86_64 ;;
   *) echo "$0 builds for arm64 and x86_64, not $(uname -m)" >&2; exit 1 ;;
 esac
 
-if [[ ! -x $bootstrap ]]; then
-  cat >&2 <<WHY
-no ./r3-head to build with: the pre-make step is a Rebol script.
-
-To get the first one, fetch a release of the same fork and let it build its
-replacement from the checkout. A release is older than rebol3-source/ and must
-not be consulted for an answer -- that is what .gitignore's note is about -- but
-bootstrapping is the one job it is right for, because what it produces is the
-checkout's own build. For this machine:
-
-    curl -sL -o /tmp/r3.gz https://github.com/Oldes/Rebol3/releases/download/3.22.1/rebol3-bulk-$release_os-$release_arch.gz
-    gunzip -c /tmp/r3.gz > ./r3-head && chmod +x ./r3-head
-    scripts/build-r3.sh          # overwrites ./r3-head with the checkout's
-    rm /tmp/r3.gz
-
-JEBOL cannot bootstrap itself yet: scripts/resolve-nest.r3 does not run on it.
-WHY
-  exit 1
+if [[ -x $bootstrap ]]; then
+  rebol_command=($bootstrap)
+else
+  jar=$jebol/build/libs/jebol-3.22.5.jar
+  if [[ ! -f $jar ]]; then
+    echo "no ./r3-head and no $jar to bootstrap with: run ./gradlew jar first" >&2
+    exit 1
+  fi
+  echo "no ./r3-head: bootstrapping with JEBOL's jar" >&2
+  rebol_command=(java -jar $jar)
 fi
 
 mkdir -p ${spec:h}
-$bootstrap $here/resolve-nest.r3 $rebol/make/ $product $spec $rebol_arch $os
+$rebol_command $here/resolve-nest.r3 $rebol/make/ $product $spec $rebol_arch $os
 
 # pre-make must run from make/, because it reaches its own tools by relative path
-(cd $rebol/make && $bootstrap pre-make.r3 $spec > /dev/null)
+(cd $rebol/make && $rebol_command pre-make.r3 $spec > /dev/null)
 
 sources=$(python3 - $spec <<'PY'
 import re, sys

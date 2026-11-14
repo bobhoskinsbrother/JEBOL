@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
@@ -8,12 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class Codecs {
-
-    private final Encodings encodings;
-
-    public Codecs(DigestPort digests) {
-        this.encodings = new Encodings(digests);
-    }
 
     public enum Action { IDENTIFY, DECODE, ENCODE }
 
@@ -107,9 +100,16 @@ public final class Codecs {
     private Answer text(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkAnswer(YES);
-            case DECODE -> Answer.string(StringValue.of(
-                    encodings.textBehindAnyMark(binaryAsBytes(data))));
+            case DECODE -> decodeText(binaryAsBytes(data));
             case ENCODE -> Answer.answerWithBinary(BinaryValue.of());
+        };
+    }
+
+    private Answer decodeText(byte[] bytes) {
+        return switch (UtfStringDecoder.decode(bytes, 0)) {
+            case UtfStringDecoder.Text decoded ->
+                    Answer.string(StringValue.of(decoded.text().replace("\r\n", "\n")));
+            case UtfStringDecoder.Refused _ -> Answer.answerNotAvailable();
         };
     }
 

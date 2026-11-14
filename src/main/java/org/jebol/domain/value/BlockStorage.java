@@ -76,13 +76,13 @@ public final class BlockStorage extends ProtectableStorage {
     }
 
     public void set(int oneBasedIndex, Value value) {
-        refuseIfProtected();
+        admitChange();
         items.set(oneBasedIndex - 1, value);
         takeMarkOfCell(oneBasedIndex);
     }
 
     public void replaceKeepingMark(int oneBasedIndex, Value value) {
-        refuseIfProtected();
+        admitChange();
         items.set(oneBasedIndex - 1, LineMarks.withMark(value, breaksLineAt(oneBasedIndex)));
     }
 
@@ -100,7 +100,7 @@ public final class BlockStorage extends ProtectableStorage {
     }
 
     public void append(Value value) {
-        refuseIfProtected();
+        admitChange();
         items.add(value);
         markIfCellIsMarked(items.size());
     }
@@ -112,14 +112,14 @@ public final class BlockStorage extends ProtectableStorage {
     }
 
     public void insertAt(int oneBasedIndex, Value value) {
-        refuseIfProtected();
+        admitChange();
         items.add(oneBasedIndex - 1, value);
         moveLineBreaksFrom(oneBasedIndex, 1);
         markIfCellIsMarked(oneBasedIndex);
     }
 
     public Value removeAt(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         Value removed = items.remove(oneBasedIndex - 1);
         lineBreaks.remove(oneBasedIndex);
         moveLineBreaksFrom(oneBasedIndex + 1, -1);
@@ -171,7 +171,7 @@ public final class BlockStorage extends ProtectableStorage {
     public void spliceInAt(int oneBasedIndex, List<Value> incoming,
             BlockStorage marksFrom, int marksFromIndex) {
 
-        refuseIfProtected();
+        admitChange();
         moveLineBreaksFrom(oneBasedIndex, incoming.size());
         for (int offset = 0; offset < incoming.size(); offset++) {
             items.add(oneBasedIndex - 1 + offset, incoming.get(offset));

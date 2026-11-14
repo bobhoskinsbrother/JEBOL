@@ -5,6 +5,14 @@
 what it answered. An error shows as `[error id arg1]`, a port as `port`, an
 image as `[image size rgb alpha]`.
 
+The `utf` probes are the one bug goal 1m matches rather than fixes. A string
+they answer shows as `[text ascii joined]`: its ASCII bytes and the four-byte
+characters joined from pairs. That is what R3 and JEBOL can share, because R3
+stores the invalid bytes raw and JEBOL holds U+FFFD for each (finding 249).
+Two cases stay out because R3 cannot answer them: a pair that would begin
+before the decode's start crashes it, and MOLD of a string ending in an
+unread invalid byte hangs it.
+
 `generate-fixed.sh` builds a second R3 from a scratch copy of `rebol3-source/`
 with `fixes.patch` applied -- the clip in `image_diff`, the step past the block
 and the pointer to the bad value in `Create_Image`, and `0xFF` for `0x7F` in

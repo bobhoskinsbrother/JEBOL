@@ -851,42 +851,6 @@ public final class Encodings {
         return text.toString();
     }
 
-    String textBehindAnyMark(byte[] octets) {
-        Charset markAnnounces;
-        int width;
-        if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
-            markAnnounces = StandardCharsets.UTF_8;
-            width = 3;
-        } else if (startsWith(octets, 0xFF, 0xFE, 0x00, 0x00)) {
-            markAnnounces = Charset.forName("UTF-32LE");
-            width = 4;
-        } else if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
-            markAnnounces = Charset.forName("UTF-32BE");
-            width = 4;
-        } else if (startsWith(octets, 0xFE, 0xFF)) {
-            markAnnounces = StandardCharsets.UTF_16BE;
-            width = 2;
-        } else if (startsWith(octets, 0xFF, 0xFE)) {
-            markAnnounces = StandardCharsets.UTF_16LE;
-            width = 2;
-        } else {
-            return new String(octets, StandardCharsets.UTF_8);
-        }
-        return new String(octets, width, octets.length - width, markAnnounces);
-    }
-
-    private boolean startsWith(byte[] octets, int... expected) {
-        if (octets.length < expected.length) {
-            return false;
-        }
-        for (int at = 0; at < expected.length; at++) {
-            if ((octets[at] & 0xFF) != expected[at]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public Optional<Charset> findCharsetNamed(String asked) {
         String canonical = codepages.getOrDefault(asked.toLowerCase(Locale.ROOT), asked);
         try {

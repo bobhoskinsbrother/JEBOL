@@ -34,4 +34,34 @@
 +		block++;
  	}
  	if (!IS_END(block)) return 0;
- 
+
+--- a/rebol3-source/src/core/n-strings.c
++++ b/rebol3-source/src/core/n-strings.c
+@@ -788,7 +788,7 @@
+
+ 	// Set up the copy buffer:
+ 	ASSERT1(VAL_BYTE_SIZE(val), RP_BAD_SIZE);
+-	ser = Entab_Bytes(VAL_BIN(val), VAL_INDEX(val), len, tabsize);
++	ser = Entab_Bytes(VAL_BIN(val), VAL_INDEX(val), VAL_INDEX(val) + len, tabsize);
+ 	Set_Series(VAL_TYPE(val), D_RET, ser);
+
+ 	return R_RET;
+@@ -810,7 +810,7 @@
+
+ 	// Set up the copy buffer:
+ 	ASSERT1(VAL_BYTE_SIZE(val), RP_BAD_SIZE);
+-	ser = Detab_Bytes(VAL_BIN(val), VAL_INDEX(val), len, tabsize);
++	ser = Detab_Bytes(VAL_BIN(val), VAL_INDEX(val), VAL_INDEX(val) + len, tabsize);
+ 	Set_Series(VAL_TYPE(val), D_RET, ser);
+
+ 	return R_RET;
+--- a/rebol3-source/src/core/s-ops.c
++++ b/rebol3-source/src/core/s-ops.c
+@@ -621,6 +621,7 @@
+ 			}
+ 		}
+ 	}
++	for (; n > 0; n--) *dp++ = ' ';
+
+ 	return Copy_Buffer(BUF_SCAN, dp);
+ }

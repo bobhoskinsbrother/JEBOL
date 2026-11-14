@@ -145,3 +145,69 @@ clipboard open twice | [error expect-arg open]
 dns open twice | port
 console open twice | port
 event open twice | port
+utf false pair after invalid | [text #{626320206F6B} [#{F0A890A1}]]
+utf invalid with no pair | [error invalid-utf #{E162632068656C6C6F206F6B}]
+utf invalid first then pair | [text #{} [#{F0A890A1}]]
+utf pair-shaped in good text | [text #{2D61213D7021} []]
+utf invalid last | [error invalid-utf #{80}]
+utf cut at end | [error invalid-utf #{E182}]
+utf invalid middle | [error invalid-utf #{FF6364}]
+utf pair-shaped then invalid | [error invalid-utf #{FF}]
+utf real pair | [text #{} [#{F0908080}]]
+utf real pair between | [text #{4142} [#{F0908080}]]
+utf lone surrogate half | [error invalid-utf #{EDA08042}]
+utf empty | [text #{} []]
+utf overlong then pair | [text #{} [#{F0A890A1}]]
+utf cut lead then pair | [text #{} [#{F0A890A1}]]
+utf pair read past the end | [text #{} [#{F0A89080}]]
+utf mark invalid then pair | [text #{207A} [#{F0A890A1}]]
+utf mark alone | [error invalid-utf #{}]
+utf read/string mark alone | #{EFBBBF}
+utf utf-16 mark alone | [text #{} []]
+utf pair then lone lead | [text #{7A} [#{F0A890A1}]]
+utf real pair then invalid | [text #{4142} [#{F0908080}]]
+utf read/string false pair | [text #{626320206F6B} [#{F0A890A1}]]
+utf read/string no pair | #{E162632068656C6C6F206F6B}
+utf read/string real pair | [text #{4142} [#{F0908080}]]
+utf read/string crlf | [text #{0A78} [#{F0A890A1}]]
+utf read/lines false pair | [text #{626320206F6B} [#{F0A890A1}]]
+utf decode text false pair | [text #{626320206F6B} [#{F0A890A1}]]
+utf decode text crlf | [text #{0A78} [#{F0A890A1}]]
+utf decode text past good | [error bad-media _]
+detab at line start | "    x"
+detab after one | "a   x"
+detab after three | "abc x"
+detab after four | "abcd    x"
+detab two in a line | "a   b   c"
+detab after newline | "abc^/d   e"
+detab after cr | #{610D202078}
+detab after two-byte char | #{C3A9202078}
+detab after three-byte char | #{E282AC2078}
+detab after four-byte char | #{F09F98802020202078}
+detab size 8 | ";       x"
+detab size 2 | "abc d"
+detab size 1 | "a b"
+detab size past two gigabytes | [error past-end _]
+detab binary | #{3B20202078}
+detab empty | ""
+detab nothing to do | "abc"
+detab offset | "b   "
+detab offset past length | ""
+detab offset binary | #{20202020}
+entab four | "^-x"
+entab eight | "^-^-x"
+entab three | "   x"
+entab five | "^- x"
+entab inside a line | "ab    x"
+entab after newline | "a^/^-b"
+entab second run in line | "^-a    b"
+entab space then tab | "^-x"
+entab tab then spaces | "^-^-x"
+entab size 2 | "^-x  y"
+entab binary | #{0978}
+entab spaces alone | "^-"
+entab spaces then newline | "  ^/x"
+entab trailing spaces | ""
+entab trailing after newline | "a^/"
+entab offset | "^-"
+entab offset binary | #{09}

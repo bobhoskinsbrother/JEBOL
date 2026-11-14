@@ -35,6 +35,7 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.SetWordValue;
+import org.jebol.domain.value.UtfStringDecoder;
 
 import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.eval.security.PolicyClass;
@@ -238,11 +239,21 @@ public final class Ports {
                     .orElseGet(NoneValue::none);
         }
         Value answer = runThroughFileSystem(() -> {
-            String line = evaluator.ports().console().readLine();
-            return shapeConsoleLine(line == null ? "" : line, asked);
+            byte[] line = evaluator.ports().console().readLineBytes();
+            return shapeConsoleBytes(line == null ? new byte[0] : line, asked);
         });
         evaluator.haltIfEscaped();
         return answer;
+    }
+
+    private Value shapeConsoleBytes(byte[] line, PortRequest asked) {
+        if (!asked.refinements().contains("string") && !asked.refinements().contains("lines")) {
+            return BinaryValue.ofBytes(line);
+        }
+        return switch (UtfStringDecoder.decode(line, 0)) {
+            case UtfStringDecoder.Text decoded -> shapeConsoleLine(decoded.text().replace("\r\n", "\n"), asked);
+            case UtfStringDecoder.Refused _ -> NoneValue.none();
+        };
     }
 
     private Value shapeConsoleLine(String line, PortRequest asked) {

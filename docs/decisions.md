@@ -3187,6 +3187,11 @@ jar.
   dns, console and event answer the port, as R3 does, since a second open
   there holds nothing new. Raising on every scheme was rejected for that
   reason.
+- **DETAB and ENTAB work from the position to the tail** (2026-11-14, goal
+  1m), where R3 passes the length from the position as where to stop and
+  loses the tail of a series walked into.
+- **ENTAB keeps leading spaces still pending at the end** (2026-11-14, goal
+  1m), where R3 writes them only when another character follows.
 
 **Matched rather than fixed:** the authenticated ciphers. With `tag-length`
 set, the 2026-10-23 measurement of GCM swallowing a message does not
@@ -3210,6 +3215,12 @@ U+FFFD for each invalid sequence, which is what its MOLD and `to binary!`
 show; its `length?` and its walk over that string disagree with each other
 and are not matched.
 
+**Matched too, owner's decision 2026-11-14 (goal 1m): DETAB counts a column for
+each UTF-8 byte.** R3 stores strings as UTF-8 and `Detab_Bytes` counts stored
+bytes, so `é` takes two columns. Counting characters was offered and
+declined: pre-make detabs the natives' specs, and the file it writes would
+change.
+
 **What holds it.** `TheRebolBugsTranscriptFromTheSourceTest` runs
 `r3-bugs/probes.r3` through JEBOL and compares it with `probes.txt`, line by
 line: every line equals R3's except the deliberate ones it names, each of which
@@ -3219,10 +3230,14 @@ built with `r3-bugs/fixes.patch`. Standing alone: `BinarySearchBoundsTest`,
 `ImageDiffPartClipsAtTheEdgeFromTheSourceTest`,
 `AuthenticatedCipherShapesFromTheSourceTest`,
 `APortsStateGatesItsVerbsFromTheSourceTest` and
-`TheMidiPortFromTheSourceTest`. The rules are `FindingAByteInABinaryFindsEveryByte`,
+`TheMidiPortFromTheSourceTest`, `DecodingAsTheCDecidesFromTheSourceTest`,
+`EveryDecodeOfBytesToTextFromTheSourceTest` and
+`DetabAndEntabFromTheSourceTest`. The rules are `FindingAByteInABinaryFindsEveryByte`,
 `ABlockOfTuplesIsOneTupleAPixel`, `ARectanglePastTheEdgeIsClippedToIt`,
-`OpeningAnOpenMidiPortIsRefused`, `TheClipboardRefusesToBeOpenedAgain` and
-`CounterWithCbcMacIsOneMessageAWrite`; finding 248 has the cipher shapes.
+`OpeningAnOpenMidiPortIsRefused`, `TheClipboardRefusesToBeOpenedAgain`,
+`CounterWithCbcMacIsOneMessageAWrite`, `AFalseSurrogatePairResetsARejectedDecode`,
+`TabbingWorksFromThePositionToTheTail` and `EntabKeepsSpacesPendingAtTheEnd`;
+finding 248 has the cipher shapes and finding 249 the decoder's.
 
 ## 72. DRAW refuses `effect` at SHOW, and GUI-METRIC/SET moves a window
 

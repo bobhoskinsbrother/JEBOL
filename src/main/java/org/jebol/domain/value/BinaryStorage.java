@@ -49,7 +49,7 @@ public final class BinaryStorage extends ProtectableStorage {
     }
 
     public void append(int octet) {
-        refuseIfProtected();
+        admitChange();
         if (length == bytes.length) {
             bytes = Arrays.copyOf(bytes, Math.max(INITIAL_CAPACITY, bytes.length * 2));
             reserved.growTo(bytes.length);
@@ -66,12 +66,12 @@ public final class BinaryStorage extends ProtectableStorage {
      * other and the natives that take one should take it.
      */
     public void set(int oneBasedIndex, int octet) {
-        refuseIfProtected();
+        admitChange();
         bytes[oneBasedIndex - 1] = (byte) octet;
     }
 
     public void insertAt(int oneBasedIndex, int octet) {
-        refuseIfProtected();
+        admitChange();
         append(0);
         System.arraycopy(bytes, oneBasedIndex - 1, bytes, oneBasedIndex,
                 length - oneBasedIndex);
@@ -79,7 +79,7 @@ public final class BinaryStorage extends ProtectableStorage {
     }
 
     public int removeAt(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         int taken = bytes[oneBasedIndex - 1] & 0xFF;
         System.arraycopy(bytes, oneBasedIndex, bytes, oneBasedIndex - 1,
                 length - oneBasedIndex);

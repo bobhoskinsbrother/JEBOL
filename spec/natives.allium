@@ -2138,12 +2138,120 @@ rule TheByteOrderMarkDecidesTheEncodingAndIsNotPartOfTheText {
 -- special rule is needed for it: it is this rule reached by a different
 -- route, and a reading where a cut character is a failure would refuse a call
 -- that a real Rebol answers.
+--
+-- "Decode" is the C's decision, not strict UTF-8's: `UTF8_Copy_Surrogates`
+-- answers text for some bytes strict UTF-8 refuses, by the rules from
+-- AFalseSurrogatePairResetsARejectedDecode down (decision 71).
 rule BytesThatDoNotDecodeComeBackAsBytes {
     when: EvaluateFileRead(request)
     requires: request.decodes_the_bytes
-    requires: not the_bytes_decode(request)
+    requires: not decodes_as_the_c_decides(the_bytes_read(request))
 
     ensures: CallResult(value: the_bytes_read(request))
+}
+
+-- Every place R3 turns bytes into a string goes through `Decode_UTF_String`:
+-- READ/STRING and /LINES of a file or an open file port, TO STRING! and MAKE
+-- STRING! of a binary, the console's READ/STRING, and the text codec. They
+-- all decide alike. TRANSCODE, DO and TO BLOCK! of a binary do not: those
+-- are the scanner's, which reads the bytes itself.
+rule EveryDecodeOfBytesToTextDecidesAlike {
+    when: DecodeBytesToText(bytes)
+    ensures: the_answer = decoded_as_the_c_decides(bytes)
+}
+
+-- A decode the DFA has rejected is not over. `UTF8_Copy_Surrogates` tries
+-- `Decode_Surrogate_Pair` on the six bytes from the one before every byte it
+-- reads while rejected, and that check only masks bits: it never asks that
+-- the six bytes are `ED` sequences. Six of the right shape, ASCII included,
+-- are joined into one character above the basic plane, and the decode goes
+-- back to accepted as if nothing had been rejected.
+--
+-- So `#{E1626320}` then `-a!=p! ok` is text, with `-a!=p!` become U+28421,
+-- and `#{E1626320}` then `hello ok` is not. Rebol's own pre-make reads
+-- `u-parse.c` only because of this (decision 71: matched, not fixed).
+--
+-- A real pair of `ED` sequences takes the same path, which is how finding 99
+-- joins it: the DFA rejects `ED A0`, and the six bytes from the `ED` are a
+-- pair. A lone `ED A0 80` rejects and stays rejected.
+rule AFalseSurrogatePairResetsARejectedDecode {
+    when: DecodeBytesToText(bytes)
+    requires: the_decode_is_rejected_at(bytes, position)
+    requires: masked_as_a_surrogate_pair(bytes, position - 1)
+
+    ensures: the_decode_accepts_again_after(bytes, position + 4)
+}
+
+-- After a pair the C steps on five bytes and then the loop steps on one
+-- more, so the byte after the six is copied without being read by the DFA.
+-- `-a!=p!` then `#{C3}` then `z` is text holding the lone `C3`;
+-- `-a!=p!` then `#{C3A9}` is not, because the `A9` is then read alone.
+rule TheByteAfterAPairIsNotRead {
+    when: DecodeBytesToText(bytes)
+    requires: a_pair_joined_at(bytes, start)
+
+    ensures: not read_by_the_decoder(bytes, start + 6)
+}
+
+-- The pair check reads six bytes without asking whether they are there.
+-- Past the last byte the C finds the series' terminator, a zero, and a zero
+-- can complete a pair only as the sixth byte: `#{FF}` then `-a!=p` ends in
+-- U+28400. Every byte past the end reads as zero. The byte before the first
+-- is not the C's to read either; it is taken as zero, which no pair can
+-- begin with.
+rule ThePairCheckReadsZeroPastEitherEnd {
+    when: DecodeBytesToText(bytes)
+    ensures: byte_read_outside(bytes) = 0
+}
+
+-- Where the C answers text its series holds the bytes it copied: the runs it
+-- never rejected stored as they were, invalid ones included, and each joined
+-- pair stored as its character. The text is those bytes decoded with U+FFFD
+-- for each invalid sequence in them, which is what R3's MOLD and TO BINARY!
+-- show. R3's LENGTH? and its walk over the same string disagree with each
+-- other on those bytes and are not matched: a JEBOL string is code points
+-- and cannot hold an invalid byte (decision 71).
+rule TheTextIsTheStoredBytesWithEachInvalidSequenceReplaced {
+    when: DecodeBytesToText(bytes)
+    requires: decodes_as_the_c_decides(bytes)
+
+    ensures: the_answer = replacing_each_invalid_sequence(the_bytes_the_c_stores(bytes))
+}
+
+-- TO STRING! of bytes that do not decode is invalid-utf. Its argument is the
+-- binary itself, positioned where the C's accepted run ends: after the last
+-- byte the DFA accepted, counted from the binary's own position. R3 counts
+-- that offset from where its last joined pair left the decode and lays it on
+-- the binary's head, which is one byte early on a binary not at its head and
+-- negative after a pair; JEBOL counts from the binary's position (owner's
+-- decision 2026-11-14, goal 1m). Rebol's suite asserts only the id.
+rule BytesThatDoNotDecodeAreInvalidUtfToString {
+    when: EvaluateCall(to_string, bytes)
+    requires: not decodes_as_the_c_decides(bytes)
+
+    ensures: CallFails(error: invalid_utf, argument: bytes.at(the_end_of_the_accepted_run(bytes)))
+}
+
+-- The text codec hands DO-CODEC the decoder's failure offset as its error,
+-- and DO-CODEC raises bad-media for any error it is given. Where the offset
+-- is zero -- an invalid first byte, or a failure just after a pair -- R3
+-- takes the missing string as a string and crashes; JEBOL raises bad-media
+-- there too (owner's decision 2026-11-14, goal 1m: match R3).
+rule TheTextCodecRefusesBytesThatDoNotDecode {
+    when: EvaluateCall(decode, text, bytes)
+    requires: not decodes_as_the_c_decides(bytes)
+
+    ensures: CallFails(error: bad_media)
+}
+
+-- The console's READ/STRING decodes the bytes typed, and bytes that do not
+-- decode answer none: `if (!ser) return R_NONE;` in `p-console.c`.
+rule ConsoleBytesThatDoNotDecodeAnswerNone {
+    when: EvaluateConsoleRead(request)
+    requires: request.decodes_the_bytes
+    requires: not decodes_as_the_c_decides(the_bytes_typed(request))
+
+    ensures: CallResult(value: none)
 }
 
 -- /lines asks for /string without naming it, and then splits the text into a
@@ -17712,4 +17820,44 @@ rule TheNetworkSchemesRefuseWithoutTheGrant {
 
     ensures: CallFails(error: no_service)
     ensures: nothing_was_attempted() = true
+}
+
+-- DETAB pads each tab with spaces to the next multiple of the stop, four
+-- unless /size says otherwise, counting columns from the series' position
+-- and again after every line feed. `Detab_Bytes` counts the stored bytes, and
+-- R3 stores a string as UTF-8, so a character takes as many columns as its
+-- UTF-8 bytes: `detab "é^-x"` is `é` and two spaces. Matched (owner's
+-- decision 2026-11-14, decision 71): Rebol's own pre-make detabs the natives'
+-- specs, and counting characters would change the file it writes.
+rule DetabPadsEachTabToTheNextStop {
+    when: EvaluateCall(detab, text, stop)
+    ensures: each_tab_becomes_spaces_up_to(the_next_multiple_of(stop, utf8_bytes_since_the_line_began))
+}
+
+-- ENTAB turns only the spaces that lead a line into tabs, one for each whole
+-- stop. A tab among them is kept and forgets the spaces before it; spaces
+-- short of a stop stay spaces; once a line has another character, the rest of
+-- it, through its line feed, is copied as it stands.
+rule EntabTabsOnlyTheSpacesLeadingALine {
+    when: EvaluateCall(entab, text, stop)
+    ensures: only_leading_whitespace_changes(text)
+}
+
+-- Both work from the series' position to its tail. R3 passes its length from
+-- the position as if it were where to stop, so on a series walked into it
+-- loses the tail: `detab next "ab^-c"` is "b   ". Fixed on purpose
+-- (decision 71, docs/standing.md).
+rule TabbingWorksFromThePositionToTheTail {
+    when: EvaluateCall(detab_or_entab, text, stop)
+    ensures: the_bytes_read = text.from_its_position_to_its_tail
+}
+
+-- Leading spaces still pending at the end are written out as spaces. R3
+-- writes them only when another character follows, so `entab "  "` is ""
+-- there. Fixed on purpose (decision 71, docs/standing.md).
+rule EntabKeepsSpacesPendingAtTheEnd {
+    when: EvaluateCall(entab, text, stop)
+    requires: text.ends_in_leading_spaces_short_of(stop)
+
+    ensures: those_spaces_are_kept()
 }

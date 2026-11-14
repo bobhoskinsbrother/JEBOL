@@ -7338,3 +7338,35 @@ Read from `p-crypt.c` and `ccm.c`, and measured through `./r3-head` in
   CCM answers success and clears the error, so it hands over whatever was made,
   a message whose tag did not agree included. A later write that works, an
   empty one included, clears it the same way.
+
+## 249. `UTF8_Copy_Surrogates` decides what is text, and five things about it are not what it looks like
+
+Read from `s-unicode.c` and measured through `./r3-head` in
+`src/testFixtures/resources/r3-bugs/probes.txt`. JEBOL matches which bytes are
+text (decision 71); `UtfStringDecoder` is the port and
+`DecodingAsTheCDecidesFromTheSourceTest` its boundaries.
+
+- **A rejected decode is retried at every byte, and the retry never asks for
+  `ED`.** `Decode_Surrogate_Pair` masks six bytes into two sixteen-bit halves
+  and checks only their ranges, so `-a!=p!` is U+28421. The DFA goes back to
+  accepted. A real pair of `ED` sequences is joined by the same path: the DFA
+  rejects `ED A0` and the six bytes from the `ED` are a pair (finding 99).
+- **The byte after a pair is not read.** The C steps on five and the loop on
+  one more, so the seventh byte is copied unchecked: `-a!=p!` then `C3 z` is a
+  string holding a lone `C3`, and `-a!=p!` then `C3 A9` fails because the
+  `A9` is read alone.
+- **The check reads past both ends.** Past the last byte it finds the series'
+  terminator, a zero, which can complete a pair as the sixth byte: `FF` then
+  `-a!=p` ends in U+28400. Before the first byte it reads whatever precedes
+  the decode, and if that makes a pair it copies a negative length and
+  crashes (`to string! next #{2DA1213D7021}`). JEBOL reads zero there.
+- **The failure offset is relative to the last pair.** `err` is `acc - start`,
+  and `start` moves past every joined pair while `acc` does not, so after a
+  pair it is negative. TO STRING! lays it on the binary's head as the error's
+  index. DO-CODEC raises `bad-media` for any non-zero offset and takes the
+  missing string as a string when it is zero: `decode 'text #{80}` crashes,
+  `decode 'text #{4180}` is `bad-media`.
+- **A UTF-8 byte order mark alone is not text.** After the mark the length is
+  zero, and `UTF8_Copy_Surrogates` answers nothing for zero bytes, which is
+  failure: `to string! #{EFBBBF}` is `invalid-utf`, `read/string` of the file
+  is the three bytes. A UTF-16 mark alone is the empty string.

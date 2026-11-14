@@ -124,10 +124,11 @@ Rebol's own build tool, Siskin, is a separate download and is not needed --
 question pre-make asks, and the compiler does the rest: clang on macOS, gcc on
 Linux, each with the defines and libraries the nest gives that platform.
 
-**On a fresh clone with no `r3-head` there is nothing to bootstrap from**, and
-that is a genuine hole rather than an oversight to work around quietly: fetch a
-release from the Oldes/Rebol3 releases page, build with it once, then delete
-it. Do not leave it in the repo root, and do not consult it for an answer.
+**On a fresh clone with no `r3-head`, JEBOL's jar is the bootstrap.**
+`./gradlew jar`, then `scripts/build-r3.sh`: resolve-nest and pre-make run on
+the jar and write what `r3-head` writes, every byte but the build's
+timestamps, which `scripts/compare-pre-make.py` checks. No release binary is
+fetched.
 
 ## The regression floors
 

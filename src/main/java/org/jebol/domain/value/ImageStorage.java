@@ -85,7 +85,7 @@ public final class ImageStorage extends ProtectableStorage {
      * whichever is smaller.
      */
     public void reshape(int across, int down) {
-        refuseIfProtected();
+        admitChange();
         this.wide = across;
         this.high = Math.max(0, down);
     }
@@ -115,7 +115,7 @@ public final class ImageStorage extends ProtectableStorage {
 
     /** Drops pixels from a position, as `Remove_Series` does. */
     public void removeFrom(int oneBasedIndex, int howMany) {
-        refuseIfProtected();
+        admitChange();
         int dropped = Math.min(howMany, length - oneBasedIndex + 1);
         if (dropped <= 0) {
             return;
@@ -129,7 +129,7 @@ public final class ImageStorage extends ProtectableStorage {
 
     /** Drops everything from a position on, which is what CLEAR does to an image. */
     public void clearFrom(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         if (oneBasedIndex <= length) {
             length = oneBasedIndex - 1;
             resetHeightOnlyAfterSomethingChangedPixelCount();
@@ -138,7 +138,7 @@ public final class ImageStorage extends ProtectableStorage {
 
     /** Puts a pixel in at a position, growing the buffer when it has to. */
     public void insertAt(int oneBasedIndex, int red, int green, int blue, int alpha) {
-        refuseIfProtected();
+        admitChange();
         int needed = (length + 1) * BYTES_PIXEL;
         if (needed > pixels.length) {
             pixels = java.util.Arrays.copyOf(pixels, Math.max(needed, pixels.length * 2));
@@ -165,7 +165,7 @@ public final class ImageStorage extends ProtectableStorage {
     }
 
     public void setChannelAt(int pixel, int channel, int octet) {
-        refuseIfProtected();
+        admitChange();
         pixels[(pixel - 1) * BYTES_PIXEL + channel - 1] = (byte) octet;
     }
 
@@ -179,7 +179,7 @@ public final class ImageStorage extends ProtectableStorage {
 
     /** Writes red, green and blue, leaving the alpha this pixel already had. */
     public void setColourAt(int pixel, int red, int green, int blue) {
-        refuseIfProtected();
+        admitChange();
         int at = (pixel - 1) * BYTES_PIXEL;
         pixels[at] = (byte) red;
         pixels[at + 1] = (byte) green;

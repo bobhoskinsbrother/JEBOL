@@ -125,6 +125,16 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         if (editor != null) {
             return withoutFinalLineFeed(withCtrlCAsByte(editor::readLine));
         }
+        byte[] line = readLineBytes();
+        return line == null ? null : decode(line);
+    }
+
+    @Override
+    public byte[] readLineBytes() {
+        if (editor != null) {
+            String line = readLine();
+            return line == null ? null : line.getBytes(StandardCharsets.UTF_8);
+        }
         if (pending.length > 0) {
             return takePendingLine();
         }
@@ -133,7 +143,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         if (length < 0) {
             return null;
         }
-        return decode(lineMode ? withoutFinalLineFeed(read, length) : Arrays.copyOf(read, length));
+        return lineMode ? withoutFinalLineFeed(read, length) : Arrays.copyOf(read, length);
     }
 
     String nextPromptLine() {
@@ -153,7 +163,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
             }
             appendPending(read, length);
         }
-        return withoutFinalCarriageReturn(takePendingLine());
+        return withoutFinalCarriageReturn(decode(takePendingLine()));
     }
 
     @Override
@@ -345,12 +355,12 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         pending = longer;
     }
 
-    private String takePendingLine() {
+    private byte[] takePendingLine() {
         int lineFeed = indexOfLineFeed();
         int taken = lineFeed < 0 ? pending.length : lineFeed + 1;
         byte[] line = Arrays.copyOf(pending, taken);
         pending = Arrays.copyOfRange(pending, taken, pending.length);
-        return decode(withoutFinalLineFeed(line, line.length));
+        return withoutFinalLineFeed(line, line.length);
     }
 
     private static byte[] withoutFinalLineFeed(byte[] read, int length) {

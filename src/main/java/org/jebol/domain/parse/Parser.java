@@ -308,7 +308,7 @@ public final class Parser implements ParseWalk {
         } else {
             this.source = (RebolSeries) given;
             this.walkingBytes = given instanceof BinaryValue;
-            this.codePoints = codepointsFrom((RebolSeries) given);
+            readSource();
         }
     }
 
@@ -364,7 +364,7 @@ public final class Parser implements ParseWalk {
         for (int taken = from + howMany; taken > from; taken--) {
             removeFromSource(source.index() + taken - 1);
         }
-        codePoints = codepointsFrom(source);
+        readSource();
     }
 
     @Override
@@ -383,7 +383,7 @@ public final class Parser implements ParseWalk {
         for (int step = 0; step < units.length; step++) {
             insertIntoSource(source.index() + where + step, units[step]);
         }
-        codePoints = codepointsFrom(source);
+        readSource();
         return units.length;
     }
 
@@ -760,8 +760,27 @@ public final class Parser implements ParseWalk {
     private void adoptInput(RebolSeries newInput) {
         this.source = newInput;
         this.walkingBytes = newInput instanceof BinaryValue;
-        this.codePoints = codepointsFrom(newInput);
+        readSource();
         this.position = 0;
+    }
+
+    private long sourceChangesRead;
+
+    private void readSource() {
+        codePoints = codepointsFrom(source);
+        sourceChangesRead = changesAdmittedTo(source);
+    }
+
+    private void rereadSourceIfChanged() {
+        if (changesAdmittedTo(source) != sourceChangesRead) {
+            readSource();
+        }
+    }
+
+    private static long changesAdmittedTo(RebolSeries series) {
+        return series instanceof AnyStringValue text
+                ? text.storage().changesAdmitted()
+                : ((BinaryValue) series).storage().changesAdmitted();
     }
 
     private void removeFromSource(int oneBasedIndex) {
@@ -1018,7 +1037,7 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof ParenValue nested) {
             evaluator.evaluateOrRaise(nested.asBlock(), context);
-            codePoints = codepointsFrom(source);
+            rereadSourceIfChanged();
             position = Math.min(position, codePoints.length);
             return true;
         }

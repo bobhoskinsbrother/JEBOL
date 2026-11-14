@@ -11,7 +11,13 @@ public abstract class TabbingNative extends DefaultNative {
 
     private static final int SPACES_TAB_STANDS_FOR = 4;
 
-    abstract String tab(String text, String spacesForTab);
+    static final byte TAB = '\t';
+
+    static final byte SPACE = ' ';
+
+    static final byte LINE_FEED = '\n';
+
+    abstract byte[] tab(byte[] bytes, int stop);
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -28,21 +34,16 @@ public abstract class TabbingNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String spacesForTab = spacesText(refinementArgument("size", 0, arguments, refinements)
+            int stop = refinementArgument("size", 0, arguments, refinements)
                     .map(this::countSpacesTabStandsFor)
-                    .orElse(SPACES_TAB_STANDS_FOR));
+                    .orElse(SPACES_TAB_STANDS_FOR);
             return switch (arguments.getFirst()) {
-                case BinaryValue octets -> BinaryValue.ofBytes(tab(
-                        new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),
-                        spacesForTab).getBytes(StandardCharsets.ISO_8859_1));
-                case AnyStringValue text -> text.wrap(tab(text.text(), spacesForTab));
+                case BinaryValue octets -> BinaryValue.ofBytes(tab(octets.octetsFromHere(), stop));
+                case AnyStringValue text -> text.wrap(new String(
+                        tab(text.text().getBytes(StandardCharsets.UTF_8), stop), StandardCharsets.UTF_8));
                 case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
-    }
-
-    private String spacesText(int spaces) {
-        return " ".repeat(spaces);
     }
 
     private int countSpacesTabStandsFor(Value asked) {

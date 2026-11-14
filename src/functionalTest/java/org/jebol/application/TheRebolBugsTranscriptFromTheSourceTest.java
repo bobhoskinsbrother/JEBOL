@@ -56,7 +56,19 @@ class TheRebolBugsTranscriptFromTheSourceTest {
             entry("diff 1x0 1x3 past bottom", "49.9999999999999%"),
             entry("diff 0x1 2x2 past bottom", "100%"),
             entry("diff 1x1 5x5 past both", "100%"),
-            entry("clipboard open twice", "[error already-open clipboard://]"));
+            entry("clipboard open twice", "[error already-open clipboard://]"),
+            entry("detab offset", molded("b   c")),
+            entry("detab offset past length", molded("ef  g")),
+            entry("detab offset binary", "#{2020202062}"),
+            entry("entab spaces alone", molded("^-  ")),
+            entry("entab trailing spaces", molded("  ")),
+            entry("entab trailing after newline", molded("a^/  ")),
+            entry("entab offset", molded("^-x")),
+            entry("entab offset binary", "#{0978}"));
+
+    private static String molded(String text) {
+        return '"' + text + '"';
+    }
 
     private static Map<String, String> rebol;
     private static Map<String, String> rebolFixed;
@@ -120,7 +132,7 @@ class TheRebolBugsTranscriptFromTheSourceTest {
     @Test
     @DisplayName("JEBOL answers every probe the transcript holds, and nothing else")
     void answersEveryProbe() {
-        assertThat(rebol).hasSize(147);
+        assertThat(rebol).hasSize(213);
         assertThat(jebol.keySet()).containsExactlyElementsOf(rebol.keySet());
     }
 

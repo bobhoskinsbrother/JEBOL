@@ -12,9 +12,16 @@ public abstract class ProtectableStorage {
         this.isProtected = protectedNow;
     }
 
-    protected void refuseIfProtected() {
+    private long changesAdmitted;
+
+    public long changesAdmitted() {
+        return changesAdmitted;
+    }
+
+    protected void admitChange() {
         if (isProtected) {
             throw new ProtectedFromChange();
         }
+        changesAdmitted++;
     }
 }

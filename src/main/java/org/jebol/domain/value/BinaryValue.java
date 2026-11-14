@@ -367,6 +367,14 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public String decodeAsText() {
+        return switch (UtfStringDecoder.decode(octetsFromHere(), 0)) {
+            case UtfStringDecoder.Text decoded -> decoded.text();
+            case UtfStringDecoder.Refused refused -> throw Raised.of(
+                    EvaluationFailure.INVALID_UTF, atIndex(index + refused.acceptedRunEnd()));
+        };
+    }
+
+    public String decodeStrictlyJoiningSurrogatePairs() {
         byte[] bytes = octetsFromHere();
         int marked = findByteOrderMark();
         if (marked != 0) {

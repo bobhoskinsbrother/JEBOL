@@ -51,7 +51,7 @@ class WhatEachInterpreterStateNativeDeclaresTest {
                 Arguments.of(new WaitNative(), "wait", Set.of("all", "only")),
                 Arguments.of(new ReadKeyNative(granted), "read-key", Set.of()),
                 Arguments.of(new HaltNative(), "halt", Set.of()),
-                Arguments.of(new DoCodecNative(new JvmDigests()), "do-codec", Set.of()),
+                Arguments.of(new DoCodecNative(), "do-codec", Set.of()),
                 Arguments.of(new ReleaseNative(), "release", Set.of()),
                 Arguments.of(new MapEventNative(), "map-event", Set.of()),
                 Arguments.of(new WakeUpNative(), "wake-up", Set.of()),

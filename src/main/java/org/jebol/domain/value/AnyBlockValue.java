@@ -147,7 +147,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries, CopiesItsCell
                 return readSourceToNoughtByte(text.text(), maker);
             }
             if (from instanceof BinaryValue octets) {
-                return readSourceToNoughtByte(octets.decodeAsText(), maker);
+                return readSourceToNoughtByte(octets.decodeStrictlyJoiningSurrogatePairs(), maker);
             }
             if (from instanceof PairValue) {
                 return wrap(List.of());

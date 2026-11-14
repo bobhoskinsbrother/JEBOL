@@ -64,6 +64,12 @@ final class CodepointBuffer {
         length++;
     }
 
+    void replaceFrom(int zeroBasedIndex, int[] replacement) {
+        ensureCapacityFor(zeroBasedIndex + replacement.length);
+        System.arraycopy(replacement, 0, codepoints, zeroBasedIndex, replacement.length);
+        length = zeroBasedIndex + replacement.length;
+    }
+
     int removeAt(int zeroBasedIndex) {
         int removed = at(zeroBasedIndex);
         System.arraycopy(codepoints, zeroBasedIndex + 1, codepoints, zeroBasedIndex,

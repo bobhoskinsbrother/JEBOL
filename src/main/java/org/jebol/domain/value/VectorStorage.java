@@ -56,7 +56,7 @@ public final class VectorStorage extends ProtectableStorage {
     }
 
     public void set(int oneBasedIndex, long stored) {
-        refuseIfProtected();
+        admitChange();
         elements[oneBasedIndex - 1] = stored;
     }
 
@@ -65,14 +65,14 @@ public final class VectorStorage extends ProtectableStorage {
     }
 
     public void append(long stored) {
-        refuseIfProtected();
+        admitChange();
         makeRoomForOneMore();
         elements[length] = stored;
         length++;
     }
 
     public void insertAt(int oneBasedIndex, long stored) {
-        refuseIfProtected();
+        admitChange();
         makeRoomForOneMore();
         System.arraycopy(elements, oneBasedIndex - 1, elements, oneBasedIndex,
                 length - oneBasedIndex + 1);
@@ -81,7 +81,7 @@ public final class VectorStorage extends ProtectableStorage {
     }
 
     public long removeAt(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         long taken = elements[oneBasedIndex - 1];
         System.arraycopy(elements, oneBasedIndex, elements, oneBasedIndex - 1,
                 length - oneBasedIndex);
@@ -91,7 +91,7 @@ public final class VectorStorage extends ProtectableStorage {
 
     /** Drops everything from a 1-based position onwards, which is what CLEAR does. */
     public void clearFrom(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         if (oneBasedIndex <= length) {
             Arrays.fill(elements, oneBasedIndex - 1, length, 0L);
             length = oneBasedIndex - 1;

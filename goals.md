@@ -19,83 +19,8 @@ something a real 3.22.5 does not is a defect.
 
 ### 1. Any Rebol file runs as it does on a real 3.22.5, and the loose ends
 
-Two pieces of work, in the order to do them. Each is spec, failing tests,
-code, docs, as everywhere.
-
-#### 1m. JEBOL bootstraps `./r3-head`
-
-Owner's decision 2026-11-14, decision 71: R3's UTF-8 decoder bug below is
-matched, not fixed.
-
-**What is true today.** Measured 2026-11-14 on the jar and `./r3-head`.
-
-- `scripts/resolve-nest.r3` runs on JEBOL. The `invalid-path` it stopped at
-  on 2026-10-25 is gone, and for `bulk` and `base-core` its spec is byte for
-  byte r3's.
-- The next step, `rebol3-source/make/pre-make.r3`, fails in
-  `make/tools/make-boot.reb:638` with `lowercase does not allow
-  #(binary!)`. The symbols `make-headers.reb` collects from `u-parse.c` and
-  `t-struct.c` are binaries, because `read/string` answered binary: neither
-  file is UTF-8 (`u-parse.c` has `\xe1` three times, `t-struct.c` has
-  `\x97` four times).
-- r3 answers a string for both, by a bug. `UTF8_Copy_Surrogates`
-  (`rebol3-source/src/core/s-unicode.c:479`) rejects an invalid byte and
-  the DFA stays rejected, but on every later byte it tries
-  `Decode_Surrogate_Pair(str - 1)`, which masks bits without checking that
-  the six bytes are `ED` sequences. Six ASCII bytes of the right shape pass,
-  the state goes back to accepted, and the decoder answers a string. The
-  smallest case, in both through `read/string` and `to string!`:
-  `#{E1626320}` then `-a!=p! ok` is a string in r3 where `-a!=p!` became
-  U+28421; `#{E1626320}` then `hello ok` is binary in both, and `to
-  string!` of it `invalid-utf` in JEBOL as in r3. `u-parse.c` has such a run
-  after its first `\xe1`; that is the only reason Rebol's own pre-make runs.
-- R3's string from that path is not consistent with itself, because the
-  invalid bytes stay in the series raw: on the case above `length?` says 8,
-  walking it gives six characters with the `c` gone, MOLD shows the `c` and
-  drops the closing quote, and `to binary!` answers the stored bytes
-  `#{E1626320F0A890A1206F6B}`. JEBOL's strings are code points and cannot
-  hold an invalid byte.
-- Rebol's suite asserts nothing about `read/string` or `to string!` on
-  invalid UTF-8. `invalid-utf?` uses `UTF8_Check`, which returns at the first
-  reject that is not a pair, and answers the same in both.
-- JEBOL decodes in four places, each strict: `FileReading` (line 189),
-  `BinaryValue` (lines 353, 375, 441). `spec/natives.allium` has
-  `BytesThatDoNotDecodeComeBackAsBytes`.
-- Before failing, pre-make ran for 2m22s on the jar; the whole of it takes
-  0.17s on r3.
-
-**1. Decode as `UTF8_Copy_Surrogates` decides.** One decoder in the domain,
-called from all four places, that answers what the C answers on whether the
-bytes are text: real `ED` surrogate pairs joined (finding 99), and the false
-pair that resets a rejected decode. Where R3's answer is a string, its
-characters are the stored bytes decoded with U+FFFD for each invalid
-sequence, which is what MOLD and `to binary!` show; R3's `length?` and walk
-over the same string are not matched, since they disagree with each other.
-Every caller of `Decode_UTF_String` gets it: `read/string` and `/lines`,
-`to string!` of a binary, the console's read, and the codecs that decode
-text (`b-init.c:702`).
-
-**2. Pre-make runs to the end.** Run it again from a copy of
-`rebol3-source/` with the spec's `root:` pointed at the copy (it is absolute,
-and pre-make writes into it). Shrink each further failure until it is one
-line, then fix it, each with its own test.
-
-**3. The 840 times.** Profile pre-make on the jar. If one pathology is most
-of it, fix it here with a test that bounds it; otherwise the figures go to
-goal 9.
-
-**Spec, before tests.** `spec/natives.allium`: amend
-`BytesThatDoNotDecodeComeBackAsBytes` so "decode" is the C's, and a rule
-`AFalseSurrogatePairResetsARejectedDecode`, citing decision 71. The probes
-join `src/testFixtures/resources/r3-bugs/probes.r3`, matched, so
-`TheRebolBugsTranscriptFromTheSourceTest` holds them; standing alone, a
-`DecodingAsTheCDecidesFromTheSourceTest` covers the boundaries: an invalid
-byte at the start, in the middle and last; the pair-shaped run before and
-after it; a real pair; a cut sequence at the end; an empty input.
-
-**Done when** `scripts/build-r3.sh`, with no `./r3-head`, uses the jar as
-its bootstrap, and every file pre-make generates equals the one r3
-generates. The script's note about fetching a release goes.
+One piece of work left. It is spec, failing tests, code, docs, as
+everywhere.
 
 #### 1n. A swipe moves the app's history
 
@@ -475,6 +400,12 @@ tier, from the profile:
    image left it unchanged, because building the values costs what scanning
    them did. What is left is constructing and evaluating the library on every
    boot, which only a boot image in the strong sense would skip.
+3. **Rebol's own pre-make**, 2.98s on the jar against 0.16s on `./r3-head`
+   (`scripts/compare-pre-make.py`, 2026-11-14). Three quadratic paths took it
+   from 267s to there in goal 1m; no single cause is left. The largest share,
+   about 12 per cent of samples, is whole-string copies through
+   `AnyStringValue.text()` from PARSE and FIND over long strings, which a
+   view onto the code points would avoid.
 
 ### 10. WebP as an image format
 

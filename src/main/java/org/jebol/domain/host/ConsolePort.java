@@ -1,5 +1,6 @@
 package org.jebol.domain.host;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 /**
@@ -25,6 +26,11 @@ public interface ConsolePort {
      * empty line, as it does in the C, so a host need not invent one.
      */
     String readLine();
+
+    default byte[] readLineBytes() {
+        String line = readLine();
+        return line == null ? null : line.getBytes(StandardCharsets.UTF_8);
+    }
 
     /**
      * One line read without showing it, for REQUEST-PASSWORD.

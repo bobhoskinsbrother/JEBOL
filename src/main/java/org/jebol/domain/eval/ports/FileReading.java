@@ -10,13 +10,9 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.UtfStringDecoder;
 import org.jebol.domain.value.Value;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -157,52 +153,11 @@ final class FileReading {
     static final class TextBehindItsMark {
 
         Optional<String> decode(byte[] bytes) {
-            try {
-                return Optional.of(StringValue.of(decodeStrictlyByItsMark(bytes))
-                        .withOneLineFeedPerEnding().text());
-            } catch (CharacterCodingException undecodable) {
-                return Optional.empty();
-            }
-        }
-
-        private String decodeStrictlyByItsMark(byte[] bytes) throws CharacterCodingException {
-            if (startsWith(bytes, 0xEF, 0xBB, 0xBF)) {
-                return decodeStrictly(bytes, 3, StandardCharsets.UTF_8);
-            }
-            if (startsWith(bytes, 0xFF, 0xFE, 0x00, 0x00)) {
-                return decodeStrictly(bytes, 4, Charset.forName("UTF-32LE"));
-            }
-            if (startsWith(bytes, 0x00, 0x00, 0xFE, 0xFF)) {
-                return decodeStrictly(bytes, 4, Charset.forName("UTF-32BE"));
-            }
-            if (startsWith(bytes, 0xFE, 0xFF)) {
-                return decodeStrictly(bytes, 2, StandardCharsets.UTF_16BE);
-            }
-            if (startsWith(bytes, 0xFF, 0xFE)) {
-                return decodeStrictly(bytes, 2, StandardCharsets.UTF_16LE);
-            }
-            return decodeStrictly(bytes, 0, StandardCharsets.UTF_8);
-        }
-
-        private String decodeStrictly(byte[] bytes, int from, Charset charset)
-                throws CharacterCodingException {
-            return charset.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT)
-                    .decode(ByteBuffer.wrap(bytes, from, bytes.length - from))
-                    .toString();
-        }
-
-        private boolean startsWith(byte[] bytes, int... mark) {
-            if (bytes.length < mark.length) {
-                return false;
-            }
-            for (int at = 0; at < mark.length; at++) {
-                if ((bytes[at] & 0xFF) != mark[at]) {
-                    return false;
-                }
-            }
-            return true;
+            return switch (UtfStringDecoder.decode(bytes, 0)) {
+                case UtfStringDecoder.Text decoded ->
+                        Optional.of(StringValue.of(decoded.text()).withOneLineFeedPerEnding().text());
+                case UtfStringDecoder.Refused _ -> Optional.empty();
+            };
         }
     }
 }

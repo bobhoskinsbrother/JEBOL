@@ -138,3 +138,22 @@ a baseline from the same machine rather than against the row.
   `expect-arg`. File, directory CREATE and crypt already refuse in both, and
   checksum, dns, console and event answer the port in both. Decision 71;
   `OpeningAnOpenMidiPortIsRefused` and `TheClipboardRefusesToBeOpenedAgain`.
+- **Bytes R3 decodes to a string by its surrogate-pair bug hold U+FFFD for each
+  invalid sequence, where R3 holds the raw bytes.** Which bytes are a string
+  is R3's decision exactly (decision 71, finding 249); a JEBOL string is code
+  points and cannot hold a byte that is not one. R3's LENGTH?, its walk and
+  its MOLD of such a string disagree with each other and are not matched.
+- **TO STRING!'s `invalid-utf` names the binary where the accepted run ends,
+  counted from the binary's own position.** R3 counts from wherever its last
+  joined pair left the decode and lays that on the binary's head: one byte
+  early on a binary not at its head, negative after a pair. Rebol's suite
+  asserts only the id. `BytesThatDoNotDecodeAreInvalidUtfToString`.
+- **`decode 'text` of bytes that do not decode is `bad-media` wherever they
+  fail.** R3 raises it when the failure is past the first byte and crashes when
+  it is at the first, or straight after a joined pair. Finding 249.
+- **DETAB and ENTAB work from a series' position to its tail, where R3 loses
+  the tail, on purpose.** `detab next "ab^-c"` is "b   c" here and "b   " in a
+  real 3.22.5. Decision 71; `TabbingWorksFromThePositionToTheTail`.
+- **ENTAB keeps leading spaces pending at the end, where R3 drops them, on
+  purpose.** `entab "  "` is "  " here and "" in a real 3.22.5. Decision 71;
+  `EntabKeepsSpacesPendingAtTheEnd`.

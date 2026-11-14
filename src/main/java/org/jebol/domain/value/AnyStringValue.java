@@ -209,12 +209,7 @@ public abstract sealed class AnyStringValue implements RebolSeries, CopiesItsCel
 
     public AnyStringValue rewriteFromHere(UnaryOperator<String> change) {
         int[] replacement = change.apply(text()).codePoints().toArray();
-        for (int at = storageLength(); at >= index; at--) {
-            storage.removeAt(at);
-        }
-        for (int at = replacement.length; at > 0; at--) {
-            storage.insertAt(index, replacement[at - 1]);
-        }
+        storage.replaceFrom(Math.min(index, storageLength() + 1), replacement);
         return this;
     }
 

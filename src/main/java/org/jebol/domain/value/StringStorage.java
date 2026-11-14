@@ -49,22 +49,27 @@ public final class StringStorage extends ProtectableStorage {
     }
 
     public void set(int oneBasedIndex, int codepoint) {
-        refuseIfProtected();
+        admitChange();
         buffer.set(oneBasedIndex - 1, codepoint);
     }
 
     public void append(int codepoint) {
-        refuseIfProtected();
+        admitChange();
         buffer.append(codepoint);
     }
 
     public void insertAt(int oneBasedIndex, int codepoint) {
-        refuseIfProtected();
+        admitChange();
         buffer.insertAt(oneBasedIndex - 1, codepoint);
     }
 
+    public void replaceFrom(int oneBasedIndex, int[] replacement) {
+        admitChange();
+        buffer.replaceFrom(oneBasedIndex - 1, replacement);
+    }
+
     public int removeAt(int oneBasedIndex) {
-        refuseIfProtected();
+        admitChange();
         return buffer.removeAt(oneBasedIndex - 1);
     }
 

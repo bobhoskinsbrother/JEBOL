@@ -78,8 +78,8 @@ abstract class SeriesActions implements Actions {
     }
 
     Value clearOneAtTime() {
-        while (held().storageLength() >= held().index()) {
-            takeOneOutAt(held().index());
+        for (int last = held().storageLength(); last >= held().index(); last--) {
+            takeOneOutAt(last);
         }
         return held();
     }
