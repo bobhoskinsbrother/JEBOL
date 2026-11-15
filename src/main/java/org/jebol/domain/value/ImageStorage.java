@@ -71,6 +71,11 @@ public final class ImageStorage extends ProtectableStorage {
                 wide, high, length);
     }
 
+    public byte[] copyRedGreenBlueAlphaFrom(int firstPixel) {
+        int from = Math.min((firstPixel - 1) * BYTES_PIXEL, length * BYTES_PIXEL);
+        return java.util.Arrays.copyOfRange(pixels, from, length * BYTES_PIXEL);
+    }
+
     public int wide() {
         return wide;
     }

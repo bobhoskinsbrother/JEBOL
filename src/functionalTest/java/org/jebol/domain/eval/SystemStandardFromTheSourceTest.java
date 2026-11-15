@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.assertj.core.api.SoftAssertions;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
@@ -138,10 +137,12 @@ class SystemStandardFromTheSourceTest {
         void everyDeclaredFieldIsPresent() {
             String present = answerTo("mold words-of system/standard");
 
-            SoftAssertions.assertSoftly(all -> DECLARED.forEach(template ->
-                    all.assertThat(present)
-                            .as("system/standard is missing %s", template.name())
-                            .contains(template.name())));
+            assertThat(DECLARED.stream()
+                    .map(Template::name)
+                    .filter(name -> !present.contains(name))
+                    .toList())
+                    .as("the templates system/standard is missing")
+                    .isEmpty();
         }
 
         @ParameterizedTest(name = "{0}")
@@ -193,12 +194,13 @@ class SystemStandardFromTheSourceTest {
         @Test
         @DisplayName("a template declared none stays none")
         void theNoneTemplatesAreNone() {
-            SoftAssertions.assertSoftly(all -> DECLARED.stream()
+            assertThat(DECLARED.stream()
                     .filter(Template::isNone)
-                    .forEach(template -> all.assertThat(
-                                    answerTo("none? system/standard/" + template.name()))
-                            .as("system/standard/%s should be none", template.name())
-                            .isEqualTo(TRUE)));
+                    .map(Template::name)
+                    .filter(name -> !TRUE.equals(answerTo("none? system/standard/" + name)))
+                    .toList())
+                    .as("the templates declared none that are not none")
+                    .isEmpty();
         }
     }
 
@@ -218,12 +220,12 @@ class SystemStandardFromTheSourceTest {
                     .as("the declaration table itself is wrong for %s", name)
                     .isEqualTo(PORT_SPEC_HEAD);
 
-            SoftAssertions.assertSoftly(all -> PORT_SPEC_HEAD.forEach(inherited ->
-                    all.assertThat(answerTo(
-                                    "true? find words-of system/standard/" + name
-                                            + " '" + inherited))
-                            .as("%s does not carry the head's %s", name, inherited)
-                            .isEqualTo(TRUE)));
+            assertThat(PORT_SPEC_HEAD.stream()
+                    .filter(inherited -> !TRUE.equals(answerTo(
+                            "true? find words-of system/standard/" + name + " '" + inherited)))
+                    .toList())
+                    .as("the head's words %s does not carry", name)
+                    .isEmpty();
         }
 
         @Test
@@ -243,11 +245,12 @@ class SystemStandardFromTheSourceTest {
         @Test
         @DisplayName("each is filled, so the file that writes it ran that far")
         void eachIsFilled() {
-            SoftAssertions.assertSoftly(all -> FILLED_BY_A_BORROWED_FILE.forEach(
-                    (name, where) -> all.assertThat(
-                                    answerTo("object? system/standard/" + name))
-                            .as("%s should have been filled by %s", name, where)
-                            .isEqualTo(TRUE)));
+            assertThat(FILLED_BY_A_BORROWED_FILE.entrySet().stream()
+                    .filter(filled -> !TRUE.equals(answerTo("object? system/standard/" + filled.getKey())))
+                    .map(unfilled -> unfilled.getKey() + ", which " + unfilled.getValue() + " fills")
+                    .toList())
+                    .as("the templates a borrowed file should have filled")
+                    .isEmpty();
         }
 
         @Test

@@ -23,6 +23,8 @@
 /android/.kotlin/
 /android/build/
 /android/*/build/
+/android/buildSrc/.gradle/
+/android/buildSrc/.kotlin/
 /android/local.properties
 
 # Every gate run's test results and summary, one timestamped folder each,

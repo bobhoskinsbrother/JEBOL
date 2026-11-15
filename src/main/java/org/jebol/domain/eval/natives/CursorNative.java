@@ -45,7 +45,7 @@ public class CursorNative extends ScreenNative {
         return switch (given) {
             case IntegerValue(long id) -> ScreenCursor.numbered(id);
             case ImageValue image -> ScreenCursor.painted(new ImagePort.Pixels(
-                    image.storage().wide(), image.storage().high(), image.head().copyEveryPixel()));
+                    image.storage().wide(), image.storage().high(), image.head().copyPixelsFromHere()));
             default -> new ScreenCursor.Hidden();
         };
     }

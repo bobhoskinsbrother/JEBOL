@@ -557,15 +557,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return Math.min(Math.max(wanted, 0), room);
     }
 
-    public byte[] copyEveryPixel() {
-        byte[] octets = new byte[storageLength() * CHANNELS_PER_PIXEL];
-        for (int pixel = 0; pixel < storageLength(); pixel++) {
-            int[] parts = readPixelAt(pixel + 1);
-            for (int part = 0; part < CHANNELS_PER_PIXEL; part++) {
-                octets[pixel * CHANNELS_PER_PIXEL + part] = (byte) parts[part];
-            }
-        }
-        return octets;
+    public byte[] copyPixelsFromHere() {
+        return storage.copyRedGreenBlueAlphaFrom(index);
     }
 
     public PairValue size() {

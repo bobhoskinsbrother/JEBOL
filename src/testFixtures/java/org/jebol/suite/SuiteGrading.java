@@ -10,9 +10,11 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -122,18 +124,34 @@ final class SuiteGrading {
     }
 
     private static boolean isNamedIn(List<NetworkEntry> entries, SuiteFile.Assertion assertion) {
+        return isNamedIn(entries, assertion.file(), assertion.group(), assertion.test());
+    }
+
+    private static boolean isNamedIn(List<NetworkEntry> entries, String file, String group, String test) {
         for (NetworkEntry entry : entries) {
-            if (!entry.file().equals(assertion.file())) {
+            if (!entry.file().equals(file)) {
                 continue;
             }
             if (entry.group() == null) {
                 return true;
             }
-            if (entry.group().equals(assertion.group()) && entry.test().equals(assertion.test())) {
+            if (entry.group().equals(group) && entry.test().equals(test)) {
                 return true;
             }
         }
         return false;
+    }
+
+    static boolean isWithheldBy(List<String> named, String file, SuiteFile.Step step) {
+        return isWithheldByEntries(readEntries(named), file, step);
+    }
+
+    private static boolean isWithheldByEntries(List<NetworkEntry> entries, String file, SuiteFile.Step step) {
+        if (!step.isAssertion() && step.nested().isEmpty()) {
+            return isNamedIn(entries, file, step.group(), step.test());
+        }
+        return step.isAssertion() && isNamedIn(entries, step.assertion())
+                || step.nested().stream().anyMatch(assertion -> isNamedIn(entries, assertion));
     }
 
     private record NetworkEntry(String file, String group, String test) {
@@ -146,7 +164,7 @@ final class SuiteGrading {
     private static List<NetworkEntry> readEntries(List<String> lines) {
         List<NetworkEntry> entries = new ArrayList<>();
         for (String line : lines) {
-            String[] named = line.split("\\s*/\\s*", 3);
+            String[] named = line.split("\\s+/\\s+", 3);
             if (named.length == 1) {
                 entries.add(new NetworkEntry(named[0].strip(), null, null));
             } else if (named.length == 3) {
@@ -193,7 +211,7 @@ final class SuiteGrading {
                 deferEveryAssertionIn(grading, step);
                 continue;
             }
-            if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && theStepIsWithheldOnThisPlatform(step)) {
+            if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && theStepIsWithheldOnThisPlatform(file.name(), step)) {
                 withholdEveryAssertionIn(grading, step);
                 continue;
             }
@@ -261,11 +279,8 @@ final class SuiteGrading {
         return !its.isEmpty() && its.stream().anyMatch(SuiteGrading::needsTheNetwork);
     }
 
-    private static boolean theStepIsWithheldOnThisPlatform(SuiteFile.Step step) {
-        List<SuiteFile.Assertion> its = step.isAssertion()
-                ? List.of(step.assertion())
-                : step.nested();
-        return !its.isEmpty() && its.stream().anyMatch(SuiteGrading::isWithheldOnThisPlatform);
+    private static boolean theStepIsWithheldOnThisPlatform(String file, SuiteFile.Step step) {
+        return isWithheldByEntries(TheWithheldEntriesReadOncePerProcess.ENTRIES, file, step);
     }
 
     private static void withholdEveryAssertionIn(Grading grading, SuiteFile.Step step) {
@@ -278,11 +293,30 @@ final class SuiteGrading {
     }
 
     private static boolean isWithheldOnThisPlatform(SuiteFile.Assertion assertion) {
-        return isNamedIn(TheWithheldEntriesReadOncePerProcess.ENTRIES, assertion);
+        return TheWithheldEntriesReadOncePerProcess.ASSERTIONS.contains(assertion.toString());
     }
 
     private static final class TheWithheldEntriesReadOncePerProcess {
         static final List<NetworkEntry> ENTRIES = readEntries(PlatformUnderTest.current().suiteEntriesItCannotRun());
+        static final Set<String> ASSERTIONS = listEveryAssertionWithheldWithItsStep(ENTRIES);
+    }
+
+    private static Set<String> listEveryAssertionWithheldWithItsStep(List<NetworkEntry> entries) {
+        Set<String> withheld = new HashSet<>();
+        if (entries.isEmpty()) {
+            return withheld;
+        }
+        for (SuiteFile file : filesInSuite()) {
+            for (SuiteFile.Step step : file.steps()) {
+                if (isWithheldByEntries(entries, file.name(), step)) {
+                    if (step.isAssertion()) {
+                        withheld.add(step.assertion().toString());
+                    }
+                    step.nested().forEach(nested -> withheld.add(nested.toString()));
+                }
+            }
+        }
+        return Set.copyOf(withheld);
     }
 
     private static void deferEveryAssertionIn(Grading grading, SuiteFile.Step step) {
@@ -400,7 +434,7 @@ final class SuiteGrading {
         if (refinement.find()) {
             return "no " + refinement.group(2) + " on " + refinement.group(1);
         }
-        return "error " + outcome.errorId().orElse("?");
+        return "error " + outcome.errorId().orElse("?") + ": " + outcome.display().strip().lines().findFirst().orElse("");
     }
 
     private static Interpreter makeAnInterpreterWithAHost() {

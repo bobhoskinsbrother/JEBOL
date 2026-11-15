@@ -16,14 +16,14 @@ import java.util.List;
 record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
     record Step(Assertion assertion, String setup, List<Assertion> nested,
-            String numberedSetup) {
+            String numberedSetup, String group, String test) {
 
         Step(Assertion assertion, String setup) {
-            this(assertion, setup, List.of(), null);
+            this(assertion, setup, List.of(), null, null, null);
         }
 
         Step(Assertion assertion, String setup, List<Assertion> nested) {
-            this(assertion, setup, nested, null);
+            this(assertion, setup, nested, null, null, null);
         }
 
         boolean isAssertion() {
@@ -349,7 +349,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             asserted.ordinal(), written, from, to);
                     found.add(new Step(asserted, null, alsoInside,
                             alsoInside.isEmpty() ? null
-                                    : numberTheSource(reader, written, asserted.ordinal())));
+                                    : numberTheSource(reader, written, asserted.ordinal()),
+                            heading.group(), heading.test()));
                     progress = new Progress(asserted.ordinal() + alsoInside.size(), inside.after());
                 }
                 default -> progress = addSetupSteps(reader, found, file, progress,
@@ -383,7 +384,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             List<Assertion> nested = numberNestedAssertions(file, inside.headings(), progress.ordinal(),
                     setup, findTheBeginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1]));
             found.add(new Step(null, setup, nested,
-                    nested.isEmpty() ? null : numberTheSource(reader, setup, progress.ordinal())));
+                    nested.isEmpty() ? null : numberTheSource(reader, setup, progress.ordinal()),
+                    progress.heading().group(), progress.heading().test()));
             progress = new Progress(progress.ordinal() + nested.size(), inside.after());
         }
         return progress;

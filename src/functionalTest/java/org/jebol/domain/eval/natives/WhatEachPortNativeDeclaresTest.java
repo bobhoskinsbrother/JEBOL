@@ -21,6 +21,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -159,13 +160,20 @@ class WhatEachPortNativeDeclaresTest {
             p: open %a.txt update p                             | no-port-action | update:                     | _
             open %nope/                                         | cannot-open    | %nope/                      | 3
             call/wait []                                        | too-short      | _                           | _
-            call/wait {surely-no-such-program-here}             | call-fail      | "No such file or directory" | _
             """)
     void refusesAsRebolDoes(String source, String id, String firstArgument, String secondArgument,
             @TempDir Path directory) throws IOException {
         assertThat(answerBesideAFileAndADirectory(directory, """
                 e: try [%s] reduce [e/id e/arg1 e/arg2]""".formatted(source)))
                 .isEqualTo("[" + id + " " + firstArgument + " " + secondArgument + "]");
+    }
+
+    @Test
+    @DisplayName("a program that is not there is refused with call-fail, naming the system's reason")
+    void refusesAProgramThatIsNotThere(@TempDir Path directory) throws IOException {
+        assertThat(answerBesideAFileAndADirectory(directory, """
+                e: try [call/wait {surely-no-such-program-here}] reduce [e/id e/arg1 e/arg2]"""))
+                .isEqualTo("[call-fail \"No such file or directory\" _]");
     }
 
     @ParameterizedTest(name = "change-dir {0} is cannot-open with {1}")

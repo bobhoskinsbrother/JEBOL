@@ -7,7 +7,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -33,7 +32,7 @@ public final class LocalSmtpServer implements AutoCloseable {
     public LocalSmtpServer(LocalTlsServer.Identity identity) {
         try {
             upgrade = makeContextServing(identity);
-            listening = new ServerSocket(0, 5, InetAddress.getLoopbackAddress());
+            listening = new ServerSocket(0, 5, Ipv4Loopback.address());
         } catch (IOException | GeneralSecurityException cannotListen) {
             throw new IllegalStateException(cannotListen);
         }

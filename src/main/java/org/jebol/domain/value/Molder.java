@@ -593,7 +593,8 @@ public final class Molder {
     }
 
     private static String renderBinary(BinaryValue binary, boolean forReading) {
-        byte[] octets = new byte[binary.lengthFromHere()];
+        int whole = binary.lengthFromHere();
+        byte[] octets = new byte[forReading ? countBytesLimitAllows(whole) : whole];
         for (int offset = 0; offset < octets.length; offset++) {
             octets[offset] = (byte) binary.storage().at(binary.index() + offset);
         }

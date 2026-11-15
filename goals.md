@@ -71,28 +71,55 @@ Run it at the close of every Android stage and after any change to the core.
   and the browser's program are `web/`, each with the tests of its own code.
   `./gradlew checkCoreForAndroid` runs the probe over the core's own jar with
   `--fail-on-gaps`, and it passes: nothing Android 35 lacks, and no class the
-  core does not carry. Android supplies its own machine (the core's
-  `PropertiesMachine` will do until 2c); it runs no programs (`call` is 2c's
-  to answer, as a browser's is); its picture codecs are 2c's.
+  core does not carry. Android supplies its own machine, `AndroidMachine`,
+  which gives the process number; it runs no programs (`call` is 2c's to
+  answer, as a browser's is); its picture codecs are 2c's.
 - The core's tests build their interpreters on `PlatformUnderTest`, found
-  through `ServiceLoader`; on the JVM it is the desktop's, and step 6 gives
-  `android/` its own.
+  through `ServiceLoader`: the desktop's on the JVM, `TheAndroidPlatform` on a
+  device. `./gradlew -p android androidTests` runs the core's functional tests
+  and Rebol's suite on ART across three emulators in about an hour, every one
+  passing apart from those named with why (decision 73).
 - R3's nine external extensions are jars of their own under `extensions/`
   (decision 58): the shipped jar and the site carry them, the core and
   Android do not.
 
-**6. Running on ART.** The functional tests and Rebol's suite run on the
-emulator through android-junit5 as instrumentation tests. Running is the
-measure, not compiling. Known risks, each measured on the emulator: case folding through
-  `Character` (Android's is ICU at its own Unicode version, the JDK 25's is
-  16.0); the JCA algorithms the crypto asks for by name (`XDH`, `ChaCha20`,
-  `DH`, `EC`, RSA, `AES/ECB/NoPadding`) and the digests `JvmDigests` offers;
-  regular expressions and number formatting. Where the platform's table
-  decides an answer, the domain carries R3's own, as `Uts46` does. Each
-  difference found is fixed on the JVM side with a test that pins R3's
-  answer, then re-run on ART.
+**6. R3's Bulk compressors become optional parts of the core.** The owner's
+call, 2026-11-15. Brotli, LZMA, LZ4, LZAV, LZW and Crush are C core code in R3
+(`src/core/`, listed as `core-files` in `make/rebol3.nest`) behind compile
+switches (`INCLUDE_BROTLI`, `INCLUDE_LZMA`, ...): R3's Bulk product builds them
+in, its Core product leaves them out. Nothing in R3's base library needs them:
+compressed scripts, SAVE/COMPRESS, HTTP, zip, PDF and downloaded extensions use
+zlib, gzip and deflate, which every R3 has. Their optional uses ask first:
+prot-http adds `br` to Accept-Encoding only when `system/catalog/compressions`
+holds it, and the zip codec reads an LZMA entry with `'lzma`. Measured: only
+`Encodings` and `DecompressNative` touch them in the core.
 
-**7. Docs.** Decision 73 gains the measured gaps and how each was closed;
+- **Six projects under `optional/`**, one for each switch, each with its codec,
+  what `DecompressNative` knows of it (its error codes, Crush's length field),
+  its tests and its fixtures. Unlike an extension, nothing imports one: present,
+  `compress data 'br` works and `'br` is in the catalog; absent, it is not.
+- **The core's seam is one interface,** `OptionalCompression` (its name,
+  compress, decompress, its error answers), which `Encodings` finds through
+  `ServiceLoader`, as the JVM, ART and TeaVM all do. `gzip`, `zlib` and
+  `deflate` stay built in.
+- **Absent, a method answers `feature-na`**, as R3's Core product does; Rebol's
+  own `compress-test.r3` asserts exactly that when the build lacks one.
+- **The desktop's shipped jar carries all six** (their service registrations
+  merged into one file) and the site compiles them in; the core and Android
+  carry none. The Brotli extension depends on the optional Brotli codec.
+- **Tests:** the core asserts `feature-na` for each absent method and a
+  catalog of gzip, zlib and deflate alone; each optional project asserts its
+  method is in the catalog and answers R3's bytes, with the tests that moved
+  from the core.
+- **Decision 58 gains the optional core**, `docs/standing.md` the sizes, and
+  `docs/writing-an-extension.md` the difference between the two.
+
+**Done when** the core jar holds none of the six, each project's tests pass in
+its own project, `allTests` counts what it counted, the shipped jar and the
+site answer every method as before, and Rebol's suite passes with and without
+them.
+
+**8. Docs.** Decision 73 gains the measured gaps and how each was closed;
 `docs/android-port.md` is the porting notes, as `docs/web-port.md` is the
 web's; `docs/standing.md` gets the APK's size and the suites' counts on ART.
 

@@ -26,4 +26,14 @@ class TheCoreBootsOnArtTest {
 
         assertThat(interpreter.display(interpreter.run("form system/platform"))).isNotBlank();
     }
+
+    @Test
+    @DisplayName("ACCESS-OS answers the process number Android gives this app")
+    void answersAndroidsProcessNumber() {
+        Interpreter interpreter = Interpreter.createOn(new AndroidHost().ports(), OutputPort.discard(),
+                Bounds.standard());
+
+        assertThat(interpreter.display(interpreter.run("access-os 'pid")))
+                .isEqualTo(String.valueOf(android.os.Process.myPid()));
+    }
 }

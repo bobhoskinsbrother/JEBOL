@@ -3425,6 +3425,41 @@ and waits for `sys.boot_completed`, and `androidTests` runs the device suites
 with `connectedDebugAndroidTest` between starting and stopping it. A cold boot
 under KVM takes about 19 seconds, and the first interpreter on ART about 1.2.
 
+**The device run is split across emulators in shards** (2026-11-15, goal 2a
+step 7). The core's functional suite and Rebol's are 25,800 cases, nearly all
+of which build an interpreter; the JVM gate spends 72 minutes of CPU on them
+across twenty processes, while one instrumentation process on one emulator
+took 2 hours 18 minutes. AGP's connected task runs every test on every device
+it finds, so `deviceShards` runs them instead: it installs both APKs on each
+emulator and starts `am instrument -r` with AndroidJUnitRunner's
+`numShards`/`shardIndex` and android-junit5's runner builder on all of them at
+once, reads each raw stream as it arrives, and writes `TEST-shard-i.xml` for
+the archive. `emulator.sh start N` boots N read-only instances of the one AVD
+on ports two apart, 1.5 GB each. `-Pemulators=N` (default 3) sets how many and
+`-Pclasses=` passes the runner's class filter, for a quick device run of a few
+classes.
+
+- **Measured:** three emulators ran it in 63 minutes, every case passing. Each
+  shard ran 47 to 60 minutes, since three emulators sharing the machine make
+  each test slower, so three bought 2.2 times rather than 3.
+- **Four do not fit beside an IDE.** Each emulator holds about 3.6 GB beyond
+  what Android is given (the software GPU and the virtual machine), and four at
+  2 GB, with IntelliJ and Gradle, filled the 22 GB the machine offers; the
+  kernel killed Gradle's daemon.
+- **Gradle Managed Devices' own sharding was not used,** for the reason above.
+
+**What Android cannot run is named, with why.** `not-on-a-device.txt` lists
+the core's tests a device cannot run, by class or method, and Rebol's suite
+withholds what `TheAndroidPlatform` names in `not-on-a-device-in-rebols-suite.txt`.
+Withholding a suite test withholds every step of it, its setup included, and
+a step holding several tests is judged by the tests inside it. The causes:
+no programs and no picture codec until 2c; the repository's own folders; a TLS
+server that sends its chain out of order, which Android's BoringSSL refuses to
+be; file creation times, which Android's file system does not keep; and jqwik,
+whose engine reads generics through a method ART lacks. Hang guards in the
+tests' interpreters are stretched ten times on the emulator
+(`PlatformUnderTest.timeLimitFactor`).
+
 **Rejected:** a lower API level with the sequenced calls replaced; native
 widgets; a Kotlin app; the Android build inside the root build, which would
 make every machine install the SDK.

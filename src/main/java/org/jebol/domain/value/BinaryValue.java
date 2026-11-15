@@ -159,11 +159,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public static BinaryValue ofBytes(byte[] bytes) {
-        int[] octets = new int[bytes.length];
-        for (int at = 0; at < bytes.length; at++) {
-            octets[at] = bytes[at] & 0xFF;
-        }
-        return of(octets);
+        return new BinaryValue(new BinaryStorage(bytes), 1);
     }
 
     public String asText() {
@@ -492,7 +488,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                 case StructValue struct -> BinaryValue.ofBytes(struct.octets());
                 case TupleValue segments -> BinaryValue.ofBytes(octetsFromTuple(segments));
                 case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
-                case ImageValue picture -> BinaryValue.ofBytes(picture.copyEveryPixel());
+                case ImageValue picture -> BinaryValue.ofBytes(picture.copyPixelsFromHere());
                 case CharacterValue letter -> BinaryValue.ofBytes(
                         new String(Character.toChars(letter.codepoint())).getBytes(StandardCharsets.UTF_8));
                 default -> throw Raised.of(EvaluationFailure.INVALID_ARG, from);

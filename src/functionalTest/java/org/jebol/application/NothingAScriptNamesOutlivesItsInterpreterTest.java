@@ -23,7 +23,7 @@ class NothingAScriptNamesOutlivesItsInterpreterTest {
 
     private static boolean isCollectedEventually(WeakReference<String> name) throws InterruptedException {
         for (int asked = 0; asked < COLLECTIONS_ASKED_FOR && name.get() != null; asked++) {
-            System.gc();
+            Runtime.getRuntime().gc();
             Thread.sleep(10);
         }
         return name.get() == null;

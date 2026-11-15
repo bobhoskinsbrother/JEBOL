@@ -186,7 +186,6 @@ class SecureConnectionsFromTheSourceTest {
                 "other-host test-intermediate        | localhost | the certificate does not name localhost",
                 "other-host test-intermediate        | 127.0.0.1 | the certificate does not name 127.0.0.1",
                 "self-signed                         | localhost | no trusted authority vouches for localhost",
-                "test-intermediate localhost-rsa     | localhost | the certificate chain for localhost is broken",
                 "one-day test-intermediate           | localhost | a certificate for localhost has expired",
         })
         @DisplayName("ends the handshake with an error event saying why, and nothing the script meant to write is sent")
@@ -197,6 +196,13 @@ class SecureConnectionsFromTheSourceTest {
                 server.awaitAllConnectionsClosed(HANDSHAKE_TIMEOUT);
                 assertThat(server.requestsReceived()).isZero();
             }
+        }
+
+        @Test
+        @DisplayName("ends the handshake saying the chain is broken when the server sends its certificates out of order")
+        void endsSayingTheChainIsBroken() throws Exception {
+            endsSayingWhy("test-intermediate localhost-rsa", "localhost",
+                    "the certificate chain for localhost is broken");
         }
 
         @Test

@@ -1,6 +1,19 @@
 # A test the core runs on the JVM that cannot run on a device by its nature,
 # one to a line: the class (or class#method), then why. NotOnADevice disables
 # exactly these, so each shows as skipped with its reason. Goal 2a step 7.
+#
+# Not listed, because NotOnADevice is a Jupiter condition and they are not
+# Jupiter tests: the jqwik properties (ScreenAndGobTreeAgreeProperties). jqwik's
+# engine reads generics through Class.getAnnotatedSuperclass, which Android's
+# Class lacks, so the test APK compiles against jqwik's API and carries no engine
+# to run them.
+
+org.jebol.domain.eval.AccessOsFromTheSourceTest$Setting#deniesSignallingWhatCannotBeSignalled it signals a process, and Android has no process port until 2c
+org.jebol.domain.eval.natives.WhatEachPortNativeDeclaresTest#refusesAProgramThatIsNotThere it starts a program, and Android runs none (CALL is 2c's)
+org.jebol.application.EnvironmentWritingFromTheSourceTest#passesItToAStartedProgram it starts a program, and Android runs none (CALL is 2c's)
+org.jebol.application.SecurityPoliciesFromTheSourceTest$TheFileActions#leaveImageSaveUnchecked it saves a PNG, and Android has no picture codec until 2c
+org.jebol.application.ImageCodecFromTheSourceTest it decodes and encodes pictures, and Android has no picture codec until 2c
+org.jebol.application.BlurringARealPictureFromTheSourceTest it decodes a real picture, and Android has no picture codec until 2c
 
 org.jebol.domain.eval.natives.EveryBuiltInNativeIsRegisteredTest ArchUnit reads class files, and a device carries dex
 org.jebol.domain.eval.ReadingHttpFromALocalServerFromTheSourceTest it serves from the JDK's com.sun.net.httpserver, which Android does not have
@@ -12,5 +25,9 @@ org.jebol.mezz.ModuleLoadTest it reads Rebol's modules from rebol3-source/, whic
 org.jebol.mezz.MezzanineLoadTest it reads Rebol's library from rebol3-source/, which only the repository has
 org.jebol.mezz.EveryCarriedRebolFileReadsTest it reads every REBOL file in the repository, rebol3-source/, examples/ and scripts/ among them
 org.jebol.application.TheModuleTableIsRebolsFromTheSourceTest it reads sysobj.reb from rebol3-source/, which only the repository has
+org.jebol.application.QueryingAFilesDatesFromTheSourceTest#anAppendMovesOnlyModified Android's file system keeps no creation time, so created moves on with modified
+org.jebol.application.SecureConnectionsFromTheSourceTest$AnUntrustedServer#endsSayingTheChainIsBroken its server must send a chain out of order, and Android's TLS (BoringSSL) refuses to serve one
+org.jebol.suite.PortingBacklogTest it writes its report into the repository's build/, which only the repository has
+org.jebol.suite.SuiteHostTest#aprocessCanBeStarted it starts a program, and Android runs none (CALL is 2c's)
 org.jebol.corpus.CorpusCoverageReportTest it reads corpus/, which only the repository has
 org.jebol.corpus.EvaluationCorpusTest it reads corpus/, which only the repository has

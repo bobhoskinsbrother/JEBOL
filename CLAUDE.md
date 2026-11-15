@@ -306,14 +306,19 @@ log it finds.
 
 **Android has a gate of its own, `./gradlew -p android androidTests`**, outside
 `allTests` because it needs the Android SDK (`scripts/setup-machine.sh`
-installs it). It runs the core's `checkCoreForAndroid` first, then boots an
-x86_64 API 35 emulator with `android/emulator.sh`, runs the device suites on
-it, shuts it down, and archives the results into
-`test-history/<timestamp>-android/`. Run it at the close of every Android
-stage and after any change to the core. `android/` is a build of its own that
-takes the core through `includeBuild("..")`; tests that cannot run on a device
-by their nature are listed with why in
-`android/suites/src/androidTest/resources/not-on-a-device.txt`.
+installs it). It runs the core's `checkCoreForAndroid` first, then boots three
+x86_64 API 35 emulators with `android/emulator.sh`, runs the device tests split
+across them in shards (`deviceShards`, about an hour), shuts them down, and
+archives the results into `test-history/<timestamp>-android/`.
+`-Pemulators=N` sets how many (each holds about 3.6 GB; four do not fit beside
+IntelliJ) and `-Pclasses=a.B,c.D` runs only those classes, which is how to try
+a fix on the device in a couple of minutes. `ANDROID_HOME` must be set. Run it
+at the close of every Android stage and after any change to the core.
+`android/` is a build of its own that takes the core through
+`includeBuild("..")`; tests that cannot run on a device by their nature are
+listed with why in `android/suites/src/androidTest/resources/not-on-a-device.txt`,
+and Rebol's suite entries in `not-on-a-device-in-rebols-suite.txt` beside it
+(decision 73).
 
 A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 `./gradlew networkTests` runs the twelve suite assertions named in

@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
@@ -83,7 +82,7 @@ public final class LocalTlsServer implements AutoCloseable {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(new KeyManager[] {new FixedKeyManager(identity)}, new TrustManager[] {new TrustingNoClient()}, null);
             listening = (SSLServerSocket) context.getServerSocketFactory()
-                    .createServerSocket(0, 50, InetAddress.getLoopbackAddress());
+                    .createServerSocket(0, 50, Ipv4Loopback.address());
             listening.setEnabledProtocols(settings.protocols().toArray(String[]::new));
             if (!settings.cipherSuites().isEmpty()) {
                 listening.setEnabledCipherSuites(settings.cipherSuites().toArray(String[]::new));

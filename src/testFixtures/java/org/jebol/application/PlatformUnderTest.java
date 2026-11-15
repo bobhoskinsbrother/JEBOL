@@ -22,6 +22,10 @@ public interface PlatformUnderTest {
         return List.of();
     }
 
+    default int timeLimitFactor() {
+        return 1;
+    }
+
     static PlatformUnderTest current() {
         return TheOneFound.PLATFORM;
     }

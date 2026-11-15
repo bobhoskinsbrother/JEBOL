@@ -5,7 +5,11 @@ import org.jebol.adapter.host.WakeablePause;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.OutputPort;
 
+import java.time.Duration;
+
 public final class AnInterpreter {
+
+    private static final Duration WITHIN_ANY_STRETCH = Duration.ofDays(1);
 
     private AnInterpreter() {
     }
@@ -23,7 +27,16 @@ public final class AnInterpreter {
     }
 
     public static Interpreter createWithOutput(OutputPort output, Bounds bounds) {
-        return Interpreter.createOn(PlatformUnderTest.current().ports(), output, bounds);
+        return Interpreter.createOn(PlatformUnderTest.current().ports(), output, stretchForThePlatform(bounds));
+    }
+
+    public static Bounds stretchForThePlatform(Bounds bounds) {
+        int factor = PlatformUnderTest.current().timeLimitFactor();
+        Duration limit = bounds.timeLimit();
+        if (factor == 1 || limit.compareTo(WITHIN_ANY_STRETCH) > 0) {
+            return bounds;
+        }
+        return bounds.withTimeLimit(limit.multipliedBy(factor));
     }
 
     public static HostPorts standardPorts() {

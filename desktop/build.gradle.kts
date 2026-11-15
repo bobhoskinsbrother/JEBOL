@@ -17,18 +17,8 @@ dependencies {
 
 // R3's external extensions JEBOL ports ship inside the jar, as the site carries
 // them in its WebAssembly, so `import 'zstd` works on the desktop as it does in
-// R3. They are not on the desktop's own classpath, so a core test that runs on
-// the desktop's platform never sees them.
-val carriedExtensions: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-    isTransitive = false
-}
-
-dependencies {
-    CARRIED_EXTENSIONS.forEach { carriedExtensions(project(":extensions:$it")) }
-}
-
+// R3. The shipped jar takes each one's jar task; none is on the desktop's own
+// classpath, so a core test that runs on the desktop's platform never sees them.
 val listCarriedExtensions = tasks.register("listCarriedExtensions") {
     group = "build"
     description = "Write META-INF/jebol/carried.txt, naming each extension the shipped jar carries"

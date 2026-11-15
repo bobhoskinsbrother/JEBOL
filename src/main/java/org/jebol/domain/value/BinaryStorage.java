@@ -22,8 +22,12 @@ public final class BinaryStorage extends ProtectableStorage {
     }
 
     public BinaryStorage(byte[] initialBytes) {
-        this.bytes = initialBytes.clone();
-        this.length = initialBytes.length;
+        this(initialBytes.clone(), initialBytes.length);
+    }
+
+    private BinaryStorage(byte[] ownBytes, int length) {
+        this.bytes = ownBytes;
+        this.length = length;
         this.reserved = SeriesMemory.reserve(this, bytes.length);
     }
 
@@ -32,7 +36,7 @@ public final class BinaryStorage extends ProtectableStorage {
         for (int position = 0; position < octets.length; position++) {
             initial[position] = requireOctet(octets[position]);
         }
-        return new BinaryStorage(initial);
+        return new BinaryStorage(initial, initial.length);
     }
 
     public int length() {

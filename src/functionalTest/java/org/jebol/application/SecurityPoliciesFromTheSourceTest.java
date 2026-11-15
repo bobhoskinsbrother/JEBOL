@@ -542,13 +542,14 @@ class SecurityPoliciesFromTheSourceTest {
         @Test
         @DisplayName("GET-ENV reads and SET-ENV writes, each naming the variable as given")
         void checkTheEnvironment() {
+            answerTo("set-env {JEBOL_READ} {there}");
             answerTo("secure [envr [allow read throw write]]");
 
-            assertThat(answerTo("string? get-env {HOME}")).isEqualTo("#(true)");
+            assertThat(answerTo("equal? {there} get-env {JEBOL_READ}")).isEqualTo("#(true)");
             assertThat(readTheRefusalOf("set-env {JEBOL_SECURITY} {1}")).isEqualTo("[security \"JEBOL_SECURITY\"]");
             answerTo("secure [envr throw]");
-            assertThat(readTheRefusalOf("get-env {HOME}")).isEqualTo("[security \"HOME\"]");
-            assertThat(readTheRefusalOf("get-env 'HOME")).isEqualTo("[security HOME]");
+            assertThat(readTheRefusalOf("get-env {JEBOL_READ}")).isEqualTo("[security \"JEBOL_READ\"]");
+            assertThat(readTheRefusalOf("get-env 'JEBOL_READ")).isEqualTo("[security JEBOL_READ]");
         }
 
         @Test

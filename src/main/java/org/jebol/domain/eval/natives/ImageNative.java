@@ -147,6 +147,6 @@ public class ImageNative extends DefaultNative {
 
     private ImagePort.Pixels readWholeImage(ImageValue image) {
         return new ImagePort.Pixels(image.storage().wide(), image.storage().high(),
-                image.head().copyEveryPixel());
+                image.head().copyPixelsFromHere());
     }
 }

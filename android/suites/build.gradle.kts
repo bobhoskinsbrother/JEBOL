@@ -42,11 +42,20 @@ tasks.configureEach {
 dependencies {
     implementation(project(":host"))
     androidTestImplementation(coreFunctionalTests)
-    androidTestImplementation("net.jqwik:jqwik:1.9.2")
+    androidTestCompileOnly("net.jqwik:jqwik-api:1.9.2")
     androidTestImplementation(testFixtures("org.jebol:jebol:3.22.5"))
     androidTestImplementation(platform("org.junit:junit-bom:5.11.4"))
     androidTestImplementation("org.junit.jupiter:junit-jupiter-api")
     androidTestImplementation("org.junit.jupiter:junit-jupiter-params")
     androidTestImplementation("org.assertj:assertj-core:3.26.3")
     androidTestImplementation("androidx.test:runner:1.6.2")
+}
+
+// jqwik's engine cannot run on ART (it reads generics through
+// Class.getAnnotatedSuperclass), so the test APK carries none; the core's test
+// fixtures would otherwise bring it in. not-on-a-device.txt says the same.
+configurations.configureEach {
+    if (name.endsWith("AndroidTestRuntimeClasspath")) {
+        exclude(group = "net.jqwik")
+    }
 }

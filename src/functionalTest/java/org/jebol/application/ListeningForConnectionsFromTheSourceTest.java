@@ -4,6 +4,7 @@ import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
+import org.jebol.tls.Ipv4Loopback;
 import org.jebol.tls.TestCertificates;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,7 +18,6 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -168,7 +168,7 @@ class ListeningForConnectionsFromTheSourceTest {
                 SSLContext context = SSLContext.getInstance("TLS");
                 context.init(null, trust.getTrustManagers(), null);
                 try (SSLSocket client = (SSLSocket) context.getSocketFactory()
-                        .createSocket(InetAddress.getLoopbackAddress(), port)) {
+                        .createSocket(Ipv4Loopback.address(), port)) {
                     client.setSoTimeout(20_000);
                     OutputStream out = client.getOutputStream();
                     out.write("GET / HTTP/1.0\r\n\r\n".getBytes(StandardCharsets.US_ASCII));

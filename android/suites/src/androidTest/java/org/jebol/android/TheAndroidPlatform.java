@@ -1,7 +1,7 @@
 package org.jebol.android;
 
 import org.jebol.adapter.android.AndroidHost;
-import org.jebol.adapter.host.PropertiesMachine;
+import org.jebol.adapter.android.AndroidMachine;
 import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ImagePort;
@@ -18,6 +18,8 @@ public final class TheAndroidPlatform implements PlatformUnderTest {
 
     private static final String SUITE_ENTRIES = "/not-on-a-device-in-rebols-suite.txt";
 
+    private static final int EMULATED_SLOWNESS = 10;
+
     @Override
     public HostPorts ports() {
         return new AndroidHost().ports();
@@ -25,7 +27,7 @@ public final class TheAndroidPlatform implements PlatformUnderTest {
 
     @Override
     public MachinePort machine() {
-        return new PropertiesMachine();
+        return new AndroidMachine();
     }
 
     @Override
@@ -51,6 +53,11 @@ public final class TheAndroidPlatform implements PlatformUnderTest {
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }
+    }
+
+    @Override
+    public int timeLimitFactor() {
+        return EMULATED_SLOWNESS;
     }
 
     @Override

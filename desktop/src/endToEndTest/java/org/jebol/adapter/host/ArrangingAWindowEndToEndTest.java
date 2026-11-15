@@ -35,6 +35,8 @@ class ArrangingAWindowEndToEndTest {
     private static final String TITLE = "JEBOL arranging a window";
     private static final Duration PATIENCE = Duration.ofSeconds(15);
 
+    private static final int DRAINS_THAT_MAKE_A_QUIET_HALF_SECOND = 10;
+
     private static final String OPEN_THE_WINDOW = """
             win: view/no-wait/options make gob! [size: 320x200 color: 10.20.30] [title: "%s"]
             seen: copy []
@@ -64,7 +66,21 @@ class ArrangingAWindowEndToEndTest {
         run(OPEN_THE_WINDOW);
         frame = findTheFrame();
         takeEventsUntil(() -> frame.isShowing() && run("seen").contains("resize"));
-        forgetWhatWasSeen();
+        waitUntilTheWindowManagerHasSettledIt();
+    }
+
+    private void waitUntilTheWindowManagerHasSettledIt() {
+        long giveUpAt = System.nanoTime() + PATIENCE.toNanos();
+        int quietDrains = 0;
+        while (quietDrains < DRAINS_THAT_MAKE_A_QUIET_HALF_SECOND) {
+            assertThat(System.nanoTime())
+                    .as("the window manager was still moving the new window after %s", PATIENCE)
+                    .isLessThan(giveUpAt);
+            run("clear seen");
+            pause();
+            run("wait [system/ports/event 0]");
+            quietDrains = run("seen").equals("[]") ? quietDrains + 1 : 0;
+        }
     }
 
     @AfterEach
