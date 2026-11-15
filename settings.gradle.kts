@@ -12,7 +12,7 @@ include("desktop", "web")
 
 include("extensions:sqlite")
 
-include("optional:lzw")
+include("optional:lzw", "optional:crush")
 
 include(
     "extensions:easing", "extensions:blurhash", "extensions:mathpresso", "extensions:deflate",
