@@ -3380,6 +3380,16 @@ end-to-end, run on an emulator by `androidTests`, which is a gate of its own
 beside `allTests`, as `networkTests` is. Installing the SDK, the emulator and
 its system images is part of setting up a machine.
 
+**The emulator is booted by the build, not by Gradle Managed Devices**
+(2026-11-15, goal 2a step 6). AGP 9.5's managed device called the x86_64 API
+35 Google APIs image `sdkmanager` installs missing while it lay in its proper
+place, used it once it was moved anywhere else, and its own download of the
+same image stalled at 550 MB of 1.36 GB. So `android/emulator.sh` creates the
+AVD from the installed image, boots it with no window on a port of its own
+and waits for `sys.boot_completed`, and `androidTests` runs the device suites
+with `connectedDebugAndroidTest` between starting and stopping it. A cold boot
+under KVM takes about 19 seconds, and the first interpreter on ART about 1.2.
+
 **Rejected:** a lower API level with the sequenced calls replaced; native
 widgets; a Kotlin app; the Android build inside the root build, which would
 make every machine install the SDK.

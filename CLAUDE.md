@@ -304,6 +304,17 @@ tag a test `exhausts-the-heap` if it runs the heap out on purpose. The archive
 copies the folder with the results, and `summary.txt` names any dump or crash
 log it finds.
 
+**Android has a gate of its own, `./gradlew -p android androidTests`**, outside
+`allTests` because it needs the Android SDK (`scripts/setup-machine.sh`
+installs it). It runs the core's `checkCoreForAndroid` first, then boots an
+x86_64 API 35 emulator with `android/emulator.sh`, runs the device suites on
+it, shuts it down, and archives the results into
+`test-history/<timestamp>-android/`. Run it at the close of every Android
+stage and after any change to the core. `android/` is a build of its own that
+takes the core through `includeBuild("..")`; tests that cannot run on a device
+by their nature are listed with why in
+`android/suites/src/androidTest/resources/not-on-a-device.txt`.
+
 A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 `./gradlew networkTests` runs the twelve suite assertions named in
 `needs-the-network.txt` against the hosts they name. It is not part of

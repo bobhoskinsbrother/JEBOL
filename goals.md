@@ -47,10 +47,16 @@ Run it at the close of every Android stage and after any change to the core.
 
 - Every source set is compiled at `release 21` and every suite runs on Java
   21, the oldest the launcher accepts (decisions 10 and 73).
-- The Android SDK is installed in `~/Android/Sdk` by hand (command-line tools
-  23, platform 35, build tools 37, platform-tools), with the licence accepted
-  by the owner. `/dev/kvm` is the owner's to use, so an x86_64 emulator runs
-  at full speed. No emulator or system image yet.
+- `scripts/setup-machine.sh` installs the Android SDK in `~/Android/Sdk`:
+  the command-line tools pinned by digest, platform 35, build tools 37 and 36,
+  platform-tools, the emulator and an x86_64 API 35 Google APIs image. The
+  owner accepted the licence.
+- `android/` is a build of its own (`./gradlew -p android androidTests`):
+  `android/host` carries the core and `AndroidHost`, and `android/suites` is a
+  test application whose instrumentation tests run under Jupiter
+  (android-junit5 2.0.2, Apache 2.0) on an emulator `android/emulator.sh`
+  boots under KVM in about 19 seconds. An interpreter boots on ART from the
+  library the APK carries, the first in about 1.2 seconds, and adds.
 - `javac` will not compile against `android.jar` as the platform at any level
   past 8 (the Android Gradle Plugin builds a system image from it to get
   round this), so the gaps are measured from the class files:
@@ -71,21 +77,6 @@ Run it at the close of every Android stage and after any change to the core.
 - The core's tests build their interpreters on `PlatformUnderTest`, found
   through `ServiceLoader`; on the JVM it is the desktop's, and step 7 gives
   `android/` its own.
-
-**5. The toolchain.** `scripts/setup-machine.sh` installs what was installed
-by hand above, plus the emulator and an x86_64 API 35 system image, and
-accepts the licences.
-
-**6. The `android/` build.** Its own Gradle build and settings; it takes the
-core through an included build, so the root build and `allTests` never need
-the SDK. The Android Gradle Plugin and the android-junit5 plugin (Apache
-2.0), both checked against licensing before use. `minSdk` and `compileSdk`
-35. A library module that carries the core and Android's own ports, and a
-test application to run the suites in, which 2b replaces with the app.
-The library module carries the core's own jar, and `androidTests` runs
-`checkCoreForAndroid` first and stops on any gap, so a new call Android
-lacks, or a carried class reaching one left out, is caught on the next run
-rather than on a phone.
 
 **7. Running on ART.** The functional tests and Rebol's suite run on the
 emulator through android-junit5 as instrumentation tests. Running is the
