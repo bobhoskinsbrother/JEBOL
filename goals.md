@@ -91,33 +91,114 @@ in, its Core product leaves them out. Nothing in R3's base library needs them:
 compressed scripts, SAVE/COMPRESS, HTTP, zip, PDF and downloaded extensions use
 zlib, gzip and deflate, which every R3 has. Their optional uses ask first:
 prot-http adds `br` to Accept-Encoding only when `system/catalog/compressions`
-holds it, and the zip codec reads an LZMA entry with `'lzma`. Measured: only
-`Encodings` and `DecompressNative` touch them in the core.
+holds it, and the zip codec reads an LZMA entry with `'lzma`. Brotli at levels
+10 and 11 is also the slowest thing the device runs: 25 of the 165
+emulator-minutes on 2026-11-15.
 
-- **Six projects under `optional/`**, one for each switch, each with its codec,
-  what `DecompressNative` knows of it (its error codes, Crush's length field),
-  its tests and its fixtures. Unlike an extension, nothing imports one: present,
-  `compress data 'br` works and `'br` is in the catalog; absent, it is not.
-- **The core's seam is one interface,** `OptionalCompression` (its name,
-  compress, decompress, its error answers), which `Encodings` finds through
-  `ServiceLoader`, as the JVM, ART and TeaVM all do. `gzip`, `zlib` and
-  `deflate` stay built in.
-- **Absent, a method answers `feature-na`**, as R3's Core product does; Rebol's
-  own `compress-test.r3` asserts exactly that when the build lacks one.
-- **The desktop's shipped jar carries all six** (their service registrations
-  merged into one file) and the site compiles them in; the core and Android
-  carry none. The Brotli extension depends on the optional Brotli codec.
-- **Tests:** the core asserts `feature-na` for each absent method and a
-  catalog of gzip, zlib and deflate alone; each optional project asserts its
-  method is in the catalog and answers R3's bytes, with the tests that moved
-  from the core.
-- **Decision 58 gains the optional core**, `docs/standing.md` the sizes, and
-  `docs/writing-an-extension.md` the difference between the two.
+**How R3 does it, read from `src/core/u-compress.c`.** Every method, the base's
+included, is registered at boot by `Init_Compression` through
+`Register_Compress_Method(sym, encode, decode)`, the same registry an extension
+uses; each optional one only `#ifdef INCLUDE_<NAME>`. Registering appends the
+name to `system/catalog/compressions`, so a Bulk build answers `[deflate zlib
+gzip br crush lz4 lzav lzma lzw]` and a Core build `[deflate zlib gzip]`.
+COMPRESS and DECOMPRESS look the handler up with `Find_Compress_Handler`; with
+none they fall to a `switch` whose `default` is `Trap1(RE_INVALID_ARG, method)`.
 
-**Done when** the core jar holds none of the six, each project's tests pass in
-its own project, `allTests` counts what it counted, the shipped jar and the
-site answer every method as before, and Rebol's suite passes with and without
-them.
+**One question to settle first, from a build and not from reading.** The C
+above answers `invalid-arg` for a method a build lacks, while Rebol's own
+`compress-test.r3` asserts `feature-na` in that branch (its groups for Brotli,
+LZMA, LZW and Crush all begin `either error? e: try [compress "test" 'br]`). So
+build R3's Core product from the checkout, `scripts/build-r3.sh core r3-core`
+(never a release binary), and ask it `try [compress "x" 'br]` for each of the
+six, and `system/catalog/compressions`. Whatever it answers is what absent
+means in JEBOL. If that is `invalid-arg`, those suite assertions fail on a real
+Core build too: they join `fails-on-rebol-too.txt` for the core's run, with the
+build's transcript as the evidence, and a finding goes in
+`docs/rebol-findings.md`.
+
+**What exists to build on.**
+- `Encodings` dispatches all nine by name: `COMPRESSIONS` (the catalog,
+  R3's order), `COMPRESSIONS_WITH_NO_HEADER` (the deflate three),
+  `COMPRESSIONS_SIZED_BY_THEIR_OWN_DECODER` (lz4, lzav), and `compress`/
+  `decompress` switch on the name. `SystemObject` builds the catalog from
+  `COMPRESSIONS`; `CompressionMethods.isKnown` asks it too.
+- `DecompressNative` carries per-method knowledge: the `bad-press` code each
+  method reports for data it cannot read (`br` 2, `lzw` 1, `lzma` 6, `crush` 0,
+  `lz4` 0), Crush's four-byte length field, and the deflate family's
+  `/size` codes (2 and 3, which stay in the core).
+- `CompressionMethods` (per interpreter) and `CompressionMethod` (compress,
+  decompress, `CompressionRefused` for `bad-press`) are already R3's registry
+  for extensions: a registered method is called in place of the built-in one,
+  and `restoreBuiltIn` puts one back.
+- The six codecs are `org.jebol.domain.eval.compression.brotli`, `.lz4`,
+  `.lzav`, and `Lzma`, `LzmaDecoder`, `LzmaEncoder`, `LzmaMatchFinder`, `Lzw`,
+  `Crush` in `org.jebol.domain.eval.compression`. `CodecTrace`,
+  `CodecTraceHolder`, `ExpandingBinary`, `Octets`, `SeriesRoom` and `deflate/`
+  stay core: the extensions use them.
+- Their tests: functional `compression/brotli/*` (three classes),
+  `compression/lz4/Lz4FromTheSourceTest`, `compression/lzav/LzavFromTheSourceTest`,
+  `LzmaFromTheSourceTest`, `LzwFromTheSourceTest`, `CrushFromTheSourceTest`,
+  and the Bulk rows of `WhatEachEncodingNativeDeclaresTest` (the
+  `compress`/`decompress` tables, rows naming the six); unit
+  `compression/brotli/BrotliStreamingFromTheSourceTest` and
+  `ExactFusedMultiplyAddTest`; fixtures `src/testFixtures/resources/brotli/`
+  (with `module/`, whose one generator writes both the codec's stream table and
+  the Brotli extension's module answers) and the `BrotliBlockSwitchStreams`
+  fixture class. `CompressionCatalogueFromTheSourceTest` pins the whole
+  catalog. `extensions/brotli` uses the Brotli codec and those fixtures.
+
+**The work, in order, keeping the gate green after each.**
+
+1. **Settle absent** with the Core build, as above, and write the core's
+   tests for it before any code: `CompressionCatalogueFromTheSourceTest`
+   answers `[deflate zlib gzip]`, and COMPRESS and DECOMPRESS answer the Core
+   build's error for each of the six. They fail until step 3.
+2. **The seam, as R3's registry.** The base's three stay built into
+   `Encodings`. Each optional codec is a `CompressionMethod` in its own
+   project, named by a provider the core finds through `ServiceLoader`
+   (`OptionalCompression`: its name, its place in R3's order, and its
+   `CompressionMethod`), which the JVM, ART and TeaVM all support. At boot the
+   interpreter registers what it finds in R3's order, so the catalog is built
+   as `Init_Compression` builds it, whatever the classpath order. What
+   `DecompressNative` and `Encodings` know of a method moves into its
+   `CompressionMethod`: its `bad-press` code, Crush's length field, LZ4's and
+   LZAV's sizing by their own decoder. With the extension seam already calling
+   a registered method first, COMPRESS and DECOMPRESS change only where they
+   answer a method nobody registered.
+3. **Six projects under `optional/`**, `brotli`, `lzma`, `lz4`, `lzav`, `lzw`,
+   `crush`, one at a time, smallest first. A convention plugin,
+   `jebol-optional`, built from the suites half of `jebol-extension` (unit,
+   functional and end-to-end suites, test fixtures, the fixture index) and
+   without its descriptor: an optional part is never imported. Each takes its
+   codec (package names kept), its tests (each building its interpreter with the
+   method present, as an extension's do) and its fixtures. The Brotli project
+   takes `brotli/` and `BrotliBlockSwitchStreams`; `extensions/brotli` then
+   depends on it, its code and its test fixtures, and the jar's `Class-Path`
+   names it.
+4. **The carriers.** The shipped jar merges the six as it merges the nine
+   extensions, with their `META-INF/services` files merged into one, so the
+   desktop answers every method as today. The site adds them to the TeaVM
+   classpath, as it does the extensions. The core and Android carry none.
+   Gate wiring as for the extensions: their suites in `allTests`' stages and
+   the archive, a list in `buildSrc` beside `CARRIED_EXTENSIONS`.
+5. **Rebol's suite both ways.** The core's run has none of the six, so
+   `compress-test.r3` takes its absent branches (settled in step 1). Each
+   optional project runs that file's group for its method with the method
+   present, through `SuiteGrading`, so the present branch is still checked
+   against R3 somewhere.
+6. **Android.** A sharded device run: the device suite loses these tests,
+   which are about a quarter of its time, and gains nothing else.
+7. **Docs.** A decision for the optional core (what it is, how it differs
+   from an extension, the error id and its evidence); `docs/standing.md` the
+   core jar's size; `CLAUDE.md` the suites table and the shipped jar's size
+   note (Brotli's dictionary leaves the core); `docs/writing-an-extension.md`
+   a paragraph on the difference.
+
+**Done when** the core jar holds none of the six; each project's tests pass in
+its own project; `allTests` counts what it counted, the moved tests included;
+the shipped jar and the site answer all nine methods byte for byte as before;
+Rebol's suite passes in the core without them and in each project with its
+method; and a sharded device run passes.
 
 **8. Docs.** Decision 73 gains the measured gaps and how each was closed;
 `docs/android-port.md` is the porting notes, as `docs/web-port.md` is the
