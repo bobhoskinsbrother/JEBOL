@@ -13,7 +13,6 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -26,28 +25,6 @@ public class DecompressNative extends CompressionNative {
     private static final int DEFLATE_SHORT_OUTPUT = 2;
 
     private static final int DEFLATE_INSUFFICIENT_SPACE = 3;
-
-    private static final int BROTLI_NEEDS_MORE_INPUT = 2;
-
-    private static final int LZW_BAD_DATA = 1;
-
-    private static final int LZMA_INPUT_ENDS_EARLY = 6;
-
-    private static final int CRUSH_COPIES_FROM_BEFORE_START = 0;
-
-    private static final int LZ4_REPORTS_NOTHING = 0;
-
-    private static final Map<String, Integer> WHAT_EACH_METHOD_REPORTS_OF_DATA_IT_CANNOT_READ = Map.of(
-            "zlib", DEFLATE_BAD_DATA,
-            "deflate", DEFLATE_BAD_DATA,
-            "gzip", DEFLATE_BAD_DATA,
-            "br", BROTLI_NEEDS_MORE_INPUT,
-            "lzw", LZW_BAD_DATA,
-            "lzma", LZMA_INPUT_ENDS_EARLY,
-            "crush", CRUSH_COPIES_FROM_BEFORE_START,
-            "lz4", LZ4_REPORTS_NOTHING);
-
-    private static final int CRUSH_LENGTH_FIELD = 4;
 
     public DecompressNative(Encodings encodings) {
         super(encodings);
@@ -87,14 +64,10 @@ public class DecompressNative extends CompressionNative {
                 try {
                     return BinaryValue.ofBytes(registered.get().decompress(compressed, limit));
                 } catch (CompressionRefused refused) {
-                    throw refuseAsBadPress(refused);
+                    throw refuseAsBadPress(refused, arguments.get(1));
                 }
             }
-            if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
-                throw Raised.of(EvaluationFailure.BAD_PRESS, arguments.get(1));
-            }
-            return BinaryValue.ofBytes(ofSizeAsked(
-                    decompressOrRefuse(compressed, method, wanted), method, wanted));
+            return BinaryValue.ofBytes(ofSizeAsked(decompressOrRefuse(compressed, method), wanted));
         };
     }
 
@@ -106,18 +79,16 @@ public class DecompressNative extends CompressionNative {
         return (int) size;
     }
 
-    private byte[] decompressOrRefuse(byte[] compressed, String method, int wanted) {
+    private byte[] decompressOrRefuse(byte[] compressed, String method) {
         try {
-            return encodings.decompress(compressed, method, wanted);
+            return encodings.decompress(compressed, method);
         } catch (IllegalArgumentException unreadable) {
-            throw Raised.of(EvaluationFailure.BAD_PRESS,
-                    IntegerValue.of(WHAT_EACH_METHOD_REPORTS_OF_DATA_IT_CANNOT_READ.get(method)));
+            throw Raised.of(EvaluationFailure.BAD_PRESS, IntegerValue.of(DEFLATE_BAD_DATA));
         }
     }
 
-    private byte[] ofSizeAsked(byte[] whole, String method, int wanted) {
-        if (wanted == AS_MUCH_AS_IT_HOLDS || encodings.cutsShortToSizeAsked(method)
-                || whole.length == wanted) {
+    private byte[] ofSizeAsked(byte[] whole, int wanted) {
+        if (wanted == AS_MUCH_AS_IT_HOLDS || whole.length == wanted) {
             return whole;
         }
         throw Raised.of(EvaluationFailure.BAD_PRESS, IntegerValue.of(whole.length > wanted

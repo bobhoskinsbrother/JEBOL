@@ -1,0 +1,27 @@
+# Assertions in Rebol's own suite that need one of R3's optional compressors,
+# each under the method it needs: a whole file, a group, or one test.
+#
+#     <method>  <file> [/ <group> [/ <test>]]
+#
+# R3's Bulk product registers six compressors its Core product leaves out --
+# br crush lz4 lzav lzma lzw -- and JEBOL's core carries none of them: each is
+# a project of its own under optional/ (goal 2a step 6, decision 74). The
+# core's run of the suite expects none of these to pass, because the core is
+# R3's Core product and they need the Bulk one. Each optional project runs the
+# assertions under its method with its method present, so every line here is
+# still graded against R3, in the project that carries what it needs.
+#
+# The steps themselves still run in the core. compress-test.r3 guards each of
+# its groups on `try [compress "test" '<method>]`, so the core takes the branch
+# a build without the method takes, exactly as ./r3-core does: the one
+# assertion in it, `'feature-na = e/id`, fails on both and is in
+# fails-on-rebol-too.txt (docs/rebol-findings.md 252).
+#
+# SuiteSelectionTest fails if an entry names nothing the suite has, or if
+# anything named here passes on a build without its method -- a line that
+# passes without the method does not need it.
+
+br     compress-test.r3 / Brotli compression / decompression
+lzma   compress-test.r3 / LZMA compression / decompression
+lzw    compress-test.r3 / LZW compression / decompression
+crush  compress-test.r3 / CRUSH compression / decompression

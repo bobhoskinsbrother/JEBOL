@@ -32,7 +32,7 @@ rebol=$jebol/rebol3-source
 bootstrap=$jebol/r3-head
 
 product=${1:-bulk}
-out=${2:-$jebol/r3-head}
+out=${${2:-$jebol/r3-head}:a}
 spec=$jebol/build/r3/spec-$product.reb
 part_built=$out.part
 

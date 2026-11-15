@@ -9,6 +9,7 @@
 # It was deleted, and leaving it un-ignored means that if anyone fetches one
 # again `git status` will say so rather than hiding it.
 /r3-head
+/r3-core
 
 # Gradle
 /.gradle/

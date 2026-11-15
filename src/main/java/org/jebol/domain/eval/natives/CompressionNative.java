@@ -23,7 +23,8 @@ public abstract class CompressionNative extends EncodingNative {
         return asked;
     }
 
-    protected Raised refuseAsBadPress(CompressionRefused refused) {
-        return Raised.of(EvaluationFailure.BAD_PRESS, IntegerValue.of(refused.code()));
+    protected Raised refuseAsBadPress(CompressionRefused refused, Value method) {
+        return Raised.of(EvaluationFailure.BAD_PRESS,
+                refused.namesMethod() ? method : IntegerValue.of(refused.code()));
     }
 }

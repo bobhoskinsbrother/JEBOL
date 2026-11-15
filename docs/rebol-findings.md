@@ -7401,3 +7401,28 @@ for at most a second, for a write of 32,000 bytes or fewer from its own peer
 in the same process to report. Hidden while JEBOL used virtual threads,
 whose blocked reader woke later; shown by the move to platform threads for
 Android (goal 2a). `AWriteIsHeardBeforeItsPeerReadsItTest`, `WritesInFlightTest`.
+
+## 252. A build without a compressor answers `invalid-arg`, and Rebol's own test expects `feature-na`
+
+R3 registers every compression at boot (`Init_Compression`,
+`u-compress.c`), the Bulk product's six each under `#ifdef INCLUDE_<NAME>`,
+and COMPRESS and DECOMPRESS fall to `Trap1(RE_INVALID_ARG, method)` for a
+name nothing registered. So a build without one answers exactly what it
+answers for a word that is no method at all. Built from the checkout
+(`scripts/build-r3.sh core r3-core`) and asked with
+`scripts/core-compressions.r3`:
+
+    [deflate zlib gzip]
+    compress br [Script invalid-arg br]
+    decompress br [Script invalid-arg br]
+    ...                                   ; the same for crush lz4 lzav lzma lzw
+    3.22.5 Core
+
+`compress-test.r3` opens its Brotli, LZMA, LZW and CRUSH groups with
+`either error? e: try [compress "test" '<method>] [--assert 'feature-na = e/id]`,
+so on the one build that takes that branch the assertion fails: the Core
+product passes 64 of the file's 68 and fails exactly those four. They are in
+`fails-on-rebol-too.txt` either way -- a Bulk build never runs them, a Core
+build runs them and they fail -- and JEBOL's core, which carries none of the
+six (goal 2a step 6), answers `invalid-arg` as the Core product does.
+`CompressionCatalogueFromTheSourceTest`.

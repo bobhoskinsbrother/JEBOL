@@ -152,17 +152,21 @@ poly1305-test.r3 / Poly1305 test vectors / join #7
 poly1305-test.r3 / Poly1305 test vectors / join #8
 poly1305-test.r3 / Poly1305 test vectors / Poly1305 with failed verification #9
 
-# compress-test.r3: the CRUSH group opens
+# compress-test.r3 opens its Brotli, LZMA, LZW and CRUSH groups with
 #     either error? e: try [compress "test" 'crush][--assert 'feature-na = e/id][...]
-# so the assertion in the first branch only runs on a build without CRUSH.
-# A real 3.22.5 has it -- `compress "test" 'crush` answers
-# #{04000000E894994307} -- so that branch is never taken there either, and
-# the assertion is never executed by anything this is measured against.
+# and neither of R3's products passes that first branch. A Bulk build has the
+# method, so the branch is never taken: `compress "test" 'crush` answers
+# #{04000000E894994307} on ./r3-head. A Core build lacks it and takes the
+# branch, but answers invalid-arg rather than feature-na, so the assertion
+# fails: ./r3-core passes 64 of the file's 68 and fails exactly these four.
+# JEBOL's core carries none of the six and takes the branch as ./r3-core
+# does; each optional part's run has its method and does not.
+# docs/rebol-findings.md 252, and scripts/core-compressions.r3.
+#
+#   >> e: try [compress "test" 'crush]  mold reduce [e/id e/arg1]
+#   == [invalid-arg crush]      ; r3-core 3.22.5, and JEBOL's core
+#
 compress-test.r3 / CRUSH compression / decompression / CRUSH compress/decompress #121
-
-# compress-test.r3: the LZW group opens the same way as the CRUSH one above,
-# and a real 3.22.5 has LZW too -- `compress "test" 'lzw` answers
-# #{0774657374FF01} there -- so its first branch is never taken either.
 compress-test.r3 / LZW compression / decompression / LZW compress/decompress #102
 
 # make-test.r3 asks for an error from MAKE and TO of a map from a paren, and a
@@ -249,24 +253,14 @@ codecs-test.r3 / SAVE function / SAVE/compress #30
 codecs-test.r3 / SAVE function / SAVE/compress #31
 codecs-test.r3 / SAVE function / SAVE/compress #32
 
-# compress-test.r3 opens each of its five algorithm groups with a guard that
-# reads "if this build has not got the algorithm, the only thing to check is
-# that it says so". This is the LZMA one, and this build has got LZMA, so the
-# guard takes its other branch and the assertion never runs -- which is what
-# happens on r3-head as well, for the same reason.
+# The same guard on the LZMA and Brotli groups, with the same answers as the
+# CRUSH and LZW ones above: never taken on ./r3-head, taken and failing with
+# invalid-arg on ./r3-core and in JEBOL's core.
 #
-#   >> mold either error? e: try [compress "test" 'lzma] ['errored] ['no-error]
-#   == no-error        ; r3-head 3.22.5, and JEBOL
+#   >> e: try [compress "test" 'br]  mold reduce [e/id e/arg1]
+#   == [invalid-arg br]         ; r3-core 3.22.5, and JEBOL's core
 #
 compress-test.r3 / LZMA compression / decompression / LZMA compress/decompress #83
-
-# The same guard, on the Brotli group. This build has Brotli too, so the
-# assertion that a build without it says so never runs -- exactly as on
-# r3-head.
-#
-#   >> mold either error? e: try [compress "test" 'br] ['errored] ['no-error]
-#   == no-error        ; r3-head 3.22.5, and JEBOL
-#
 compress-test.r3 / Brotli compression / decompression / Brotli compress/decompress #62
 
 # ---------------------------------------------------------------------------

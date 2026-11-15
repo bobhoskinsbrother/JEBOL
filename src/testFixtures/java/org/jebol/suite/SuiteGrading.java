@@ -4,6 +4,8 @@ import org.jebol.application.CarriedFixtures;
 import org.jebol.application.Interpreter;
 import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.domain.eval.OptionalCompression;
+import org.jebol.domain.eval.OptionalCompressions;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -14,10 +16,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 final class SuiteGrading {
@@ -42,6 +46,8 @@ final class SuiteGrading {
     private static final Path FAILS_ON_REBOL_TOO = SUITE.resolve("fails-on-rebol-too.txt");
 
     private static final Path NEEDS_THE_NETWORK = SUITE.resolve("needs-the-network.txt");
+
+    private static final Path NEEDS_AN_OPTIONAL_PART = SUITE.resolve("needs-an-optional-part.txt");
 
     private static final String DEFERRED =
             "not run here: it needs the network, which ./gradlew networkTests provides";
@@ -71,7 +77,75 @@ final class SuiteGrading {
                 .filter(assertion -> !assertion.redOnly())
                 .filter(assertion -> !failingOnRebolToo().contains(assertion.toString()))
                 .filter(assertion -> !needsTheNetwork(assertion))
+                .filter(assertion -> !isWithheldOnThisPlatform(assertion))
+                .filter(assertion -> !needsAnOptionalPartThisBuildLacks(assertion));
+    }
+
+    static Stream<SuiteFile.Assertion> listTheAssertionsNeeding(String method) {
+        return listEveryAssertion()
+                .filter(assertion -> method.equals(optionalPartNeededBy(assertion).orElse(null)));
+    }
+
+    static Stream<SuiteFile.Assertion> listTheAssertionsNeedingAnOptionalPartThisBuildLacks() {
+        return listEveryAssertion().filter(SuiteGrading::needsAnOptionalPartThisBuildLacks);
+    }
+
+    static Stream<SuiteFile.Assertion> listTheAssertionsNeedingExpectedToPass(String method) {
+        return listTheAssertionsNeeding(method)
+                .filter(assertion -> !assertion.redOnly())
+                .filter(assertion -> !failingOnRebolToo().contains(assertion.toString()))
+                .filter(assertion -> !needsTheNetwork(assertion))
                 .filter(assertion -> !isWithheldOnThisPlatform(assertion));
+    }
+
+    static List<OptionalPartEntry> optionalPartEntries() {
+        return TheOptionalPartEntriesReadOncePerProcess.ENTRIES;
+    }
+
+    static Set<String> optionalPartsThisBuildCarries() {
+        return TheOptionalPartEntriesReadOncePerProcess.CARRIED;
+    }
+
+    private static Optional<String> optionalPartNeededBy(SuiteFile.Assertion assertion) {
+        return optionalPartEntries().stream()
+                .filter(entry -> entry.names(assertion))
+                .map(OptionalPartEntry::method)
+                .findFirst();
+    }
+
+    private static boolean needsAnOptionalPartThisBuildLacks(SuiteFile.Assertion assertion) {
+        return optionalPartNeededBy(assertion)
+                .filter(method -> !optionalPartsThisBuildCarries().contains(method))
+                .isPresent();
+    }
+
+    record OptionalPartEntry(String method, String place) {
+
+        boolean names(SuiteFile.Assertion assertion) {
+            String inFile = assertion.file();
+            String inGroup = inFile + " / " + assertion.group();
+            return place.equals(inFile) || place.equals(inGroup)
+                    || place.equals(inGroup + " / " + assertion.test());
+        }
+
+        boolean namesAnyOf(SuiteFile file) {
+            return file.assertions().stream().anyMatch(this::names);
+        }
+    }
+
+    private static final class TheOptionalPartEntriesReadOncePerProcess {
+        static final List<OptionalPartEntry> ENTRIES = readOptionalPartEntries(linesOf(NEEDS_AN_OPTIONAL_PART));
+        static final Set<String> CARRIED = OptionalCompressions.found().stream()
+                .map(OptionalCompression::name)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private static List<OptionalPartEntry> readOptionalPartEntries(List<String> lines) {
+        return lines.stream()
+                .map(line -> line.split("\\s+", 2))
+                .filter(halves -> halves.length == 2)
+                .map(halves -> new OptionalPartEntry(halves[0], halves[1].strip()))
+                .toList();
     }
 
     static Stream<SuiteFile.Assertion> listTheAssertionsNeedingTheNetwork() {

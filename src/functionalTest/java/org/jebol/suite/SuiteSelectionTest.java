@@ -194,6 +194,45 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
+    private static final Set<String> REBOLS_OPTIONAL_COMPRESSORS =
+            Set.of("br", "crush", "lz4", "lzav", "lzma", "lzw");
+
+    @Test
+    @DisplayName("every entry that needs an optional part names one of R3's six and something the suite still has")
+    void everyOptionalPartEntryNamesSomethingThatIsThere() {
+        List<String> stale = SuiteGrading.optionalPartEntries().stream()
+                .filter(entry -> !REBOLS_OPTIONAL_COMPRESSORS.contains(entry.method())
+                        || SuiteGrading.filesInSuite().stream().noneMatch(entry::namesAnyOf))
+                .map(entry -> entry.method() + "  " + entry.place())
+                .toList();
+
+        assertThat(SuiteGrading.optionalPartEntries())
+                .as("with no entries the checks below hold vacuously")
+                .isNotEmpty();
+        assertThat(stale)
+                .as("these name no compressor R3 leaves out of its Core product, or "
+                        + "nothing in the suite, so they would hold a line for ever:%n  %s",
+                        String.join("\n  ", stale))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("nothing named as needing an optional part passes on a build without it")
+    void passesNothingThatNeedsAnAbsentPart() {
+        List<String> findings = SuiteGrading.failingOnRebolToo();
+        List<String> passing = SuiteGrading.listTheAssertionsNeedingAnOptionalPartThisBuildLacks()
+                .filter(assertion -> !findings.contains(assertion.toString()))
+                .filter(SuiteGrading::holds)
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+
+        assertThat(passing)
+                .as("these pass without the part they are listed under, so they do "
+                        + "not need it and belong in the core's own run:%n  %s",
+                        String.join("\n  ", passing))
+                .isEmpty();
+    }
+
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every vendored file is the upstream file, byte for byte")

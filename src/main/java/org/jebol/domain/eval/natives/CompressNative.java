@@ -56,7 +56,7 @@ public class CompressNative extends CompressionNative {
                 try {
                     return BinaryValue.ofBytes(registered.get().compress(octets, level));
                 } catch (CompressionRefused refused) {
-                    throw refuseAsBadPress(refused);
+                    throw refuseAsBadPress(refused, arguments.get(1));
                 }
             }
             int level = levelAsked

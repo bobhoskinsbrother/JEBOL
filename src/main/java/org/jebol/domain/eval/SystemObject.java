@@ -148,7 +148,7 @@ public final class SystemObject {
         catalog.register("elliptic-curves", BlockValue.of(EllipticCurveKey.curveNamesInCataloguesOrder().stream().<Value>map(WordValue::of).toList()));
         catalog.register("handles", BlockValue.of(List.of(WordValue.of(CipherNative.RC4_HANDLE_TYPE), WordValue.of(CipherNative.DHM_HANDLE_TYPE), WordValue.of(CipherNative.RSA_HANDLE_TYPE), WordValue.of(CipherNative.ECDH_HANDLE_TYPE), WordValue.of("codec"))));
         catalog.register("checksums", BlockValue.of(encodings.listChecksumMethods().stream().<Value>map(WordValue::of).toList()));
-        catalog.register("compressions", BlockValue.of(Encodings.COMPRESSIONS.stream().<Value>map(WordValue::of).toList()));
+        catalog.register("compressions", BlockValue.of(new CompressionMethods().catalogue().stream().<Value>map(WordValue::of).toList()));
         catalog.register("file-types", BlockValue.of(List.of(FileValue.of(".txt"), WordValue.of("text"), FileValue.of(".html"), WordValue.of("markup"), FileValue.of(".htm"), WordValue.of("markup"), FileValue.of(".qoi"), WordValue.of("qoi"))));
         catalog.register("errors", makeErrors());
         return new ObjectValue(catalog);

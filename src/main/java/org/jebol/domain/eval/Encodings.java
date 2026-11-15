@@ -1,13 +1,7 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.compression.brotli.Brotli;
-import org.jebol.domain.eval.compression.Crush;
-import org.jebol.domain.eval.compression.Lzma;
-import org.jebol.domain.eval.compression.Lzw;
 import org.jebol.domain.eval.compression.Octets;
 import org.jebol.domain.eval.compression.deflate.DeflateCompressor;
-import org.jebol.domain.eval.compression.lz4.Lz4;
-import org.jebol.domain.eval.compression.lzav.Lzav;
 import org.jebol.domain.eval.hashing.Md4;
 import org.jebol.domain.eval.hashing.RipeMd160;
 import org.jebol.domain.eval.hashing.XxHash;
@@ -571,7 +565,6 @@ public final class Encodings {
     private final Md4 md4 = new Md4();
     private final XxHash xxHash = new XxHash();
     private final XxHash3 xxHash3 = new XxHash3();
-    private final Lzw lzw = new Lzw();
 
     private final DigestPort port;
 
@@ -672,54 +665,20 @@ public final class Encodings {
         return (~running) & 0xFFFF;
     }
 
-    private static final List<String> COMPRESSIONS_WITH_NO_HEADER =
-            List.of("zlib", "gzip", "deflate");
-
-    public static final List<String> COMPRESSIONS =
-            List.of("deflate", "zlib", "gzip", "br", "crush", "lz4", "lzav", "lzma", "lzw");
-
-    private static final List<String> COMPRESSIONS_SIZED_BY_THEIR_OWN_DECODER =
-            List.of("lz4", "lzav");
-
     public byte[] compress(byte[] octets, String method, int level) {
         return switch (method) {
             case "gzip" -> new DeflateCompressor(level).wrapInGzip(octets);
             case "zlib" -> new DeflateCompressor(level).wrapInZlib(octets);
             case "deflate" -> new DeflateCompressor(level).deflate(octets);
-            case "crush" -> Crush.compress(octets, level);
-            case "lzw" -> lzw.compress(octets, level);
-            case "lzma" -> Lzma.compress(octets, level);
-            case "br" -> Brotli.compress(octets, level);
-            case "lz4" -> Lz4.compress(octets, level);
-            case "lzav" -> Lzav.compress(octets);
             default -> throw new IllegalArgumentException(method);
         };
     }
 
-    public byte[] decompress(byte[] octets, String method, int wanted) {
-        if (octets.length == 0 && COMPRESSIONS_WITH_NO_HEADER.contains(method)) {
+    public byte[] decompress(byte[] octets, String method) {
+        if (octets.length == 0) {
             return octets;
         }
-        if (COMPRESSIONS_SIZED_BY_THEIR_OWN_DECODER.contains(method)) {
-            return "lz4".equals(method) ? Lz4.decompress(octets, wanted) : Lzav.decompress(octets, wanted);
-        }
-        byte[] whole = switch (method) {
-            case "gzip" -> ungzip(octets);
-            case "zlib" -> inflate(octets, false);
-            case "deflate" -> inflate(octets, true);
-            case "crush" -> Crush.decompress(octets, wanted);
-            case "lzw" -> lzw.decompress(octets, wanted);
-            case "lzma" -> Lzma.decompress(octets, wanted);
-            case "br" -> Brotli.decompress(octets, wanted);
-            default -> throw new IllegalArgumentException(method);
-        };
-        return wanted > 0 && whole.length > wanted && cutsShortToSizeAsked(method)
-                ? Arrays.copyOf(whole, wanted)
-                : whole;
-    }
-
-    public boolean cutsShortToSizeAsked(String method) {
-        return !COMPRESSIONS_WITH_NO_HEADER.contains(method);
+        return inflateAsBuiltIn(octets, method);
     }
 
     private static final int GZIP_MAGIC_FIRST = 0x1F;
