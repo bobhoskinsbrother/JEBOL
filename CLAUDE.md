@@ -264,17 +264,38 @@ becomes a test, and that test is what stays.
 
 ## Running the suite
 
-**`./gradlew allTests` is the gate.** It runs the spec check, then four suites,
-each its own task, and all but one its own source set:
+**`./gradlew allTests` is the gate.** Three projects hold code and each keeps
+the tests of its own (goal 2a step 4): the root is the core every platform
+carries, `desktop/` the command line, the window and the JVM's own machine,
+`web/` the page and the browser's program. Each has the same four source sets,
+`src/unitTest`, `src/functionalTest`, `src/endToEndTest` and `src/networkTest`,
+built by the `jebol-suites` convention in `buildSrc`. The gate runs the spec
+check, then every project's unit suite, then every functional suite, then every
+end-to-end suite, then the desktop's window, one stage at a time:
 
 | Task | Source set | What is in it |
 | --- | --- | --- |
 | `unitTests` | `src/unitTest` | Tests that never build an interpreter: values, codecs, the reader, the domain on its own |
 | `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
-| `heapExhaustionTests` | `src/functionalTest` | The functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
+| `heapExhaustionTests` | `src/functionalTest` | The core's functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
-| `desktopWindowTests` | `src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
+| `:desktop:desktopWindowTests` | `desktop/src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
 | `:extensions:<name>:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11 |
+
+`./gradlew unitTests` runs every project's unit suite, and so on for each
+name; `./gradlew :desktop:unitTests` runs one. Results go to
+`build/test-results/<suite>` in the root: the core's under the names above,
+a subproject's with its name first (`desktopUnitTests`, `webEndToEndTests`).
+Every suite runs from the root, so a path in a test is the same wherever the
+test lives.
+
+**A test lives in the project whose code it exercises**, and the core's tests
+name nothing of the desktop's or the web's: they compile without either.
+They build their interpreters on `PlatformUnderTest`, which `AnInterpreter`
+and `SuiteHost` find through `ServiceLoader`; on the JVM it is the desktop's
+`TheJvmDesktop`, a runtime-only dependency, and on a phone it will be
+Android's. A core test that needs a platform's processes, pictures or
+machine asks `PlatformUnderTest.current()` for them.
 
 Every test fork leaves a GC log in `build/test-results/<suite>/jvm/`, and an
 `hs_err` file if the JVM dies. Outside `heapExhaustionTests` it also leaves a
@@ -290,8 +311,12 @@ A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 default suite does not run those steps at all rather than skipping the
 assertions conditionally.
 
-Where a test lives says what it is: put a new one in the source set that
-matches. Helpers and every resource the three share are in `src/testFixtures`.
+Where a test lives says what it is: put a new one in the project and the
+source set that match. Helpers and every resource the suites share are in the
+core's `src/testFixtures`; the browser fixtures every page test drives
+(`AnOperatorAtThePage`, `PageBrowsers`, `ShippedRunner`) are `web/`'s
+`src/testFixtures`, and the desktop's own (`TheJvmDesktop`, `TheCarriedFace`)
+are `desktop/`'s.
 `./gradlew test` and `./gradlew check` both run `allTests`, so no name runs
 less than it sounds like.
 

@@ -8,4 +8,4 @@ plugins {
 
 rootProject.name = "jebol"
 
-include("extensions:sqlite")
+include("desktop", "web", "extensions:sqlite")

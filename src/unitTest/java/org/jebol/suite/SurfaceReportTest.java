@@ -1,6 +1,6 @@
 package org.jebol.suite;
 
-import org.jebol.adapter.host.JavaMachine;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.eval.Boot;
 import org.jebol.domain.eval.BootSources;
 import org.jebol.domain.host.JvmDigests;
@@ -22,7 +22,7 @@ class SurfaceReportTest {
     void printsTheSurface() {
         TreeMap<String, String> byName = new TreeMap<>();
         for (ContextSlot slot : Boot.makeStandard(
-                new JavaMachine(), new JvmDigests(), BootSources.none()).start().lib().slots()) {
+                PlatformUnderTest.current().machine(), new JvmDigests(), BootSources.none()).start().lib().slots()) {
             describe(slot.value()).ifPresent(
                     shape -> byName.put(slot.canonical(), slot.canonical() + " |" + shape));
         }

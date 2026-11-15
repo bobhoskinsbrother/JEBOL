@@ -1,6 +1,5 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaHost;
 import org.jebol.adapter.host.JavaSecureTransport;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.domain.host.HostPorts;
@@ -8,28 +7,28 @@ import org.jebol.domain.host.OutputPort;
 
 public final class AnInterpreter {
 
-    private static final JavaHost THE_JVM_HOST = new JavaHost();
-
     private AnInterpreter() {
     }
 
     public static Interpreter create() {
-        return THE_JVM_HOST.create();
+        return createWithOutput(OutputPort.discard(), Bounds.standard());
     }
 
     public static Interpreter withBounds(Bounds bounds) {
-        return THE_JVM_HOST.withBounds(bounds);
+        return createWithOutput(OutputPort.discard(), bounds);
     }
 
     public static Interpreter createWithOutput(OutputPort output) {
-        return THE_JVM_HOST.createWithOutput(output);
+        return createWithOutput(output, Bounds.standard());
     }
 
     public static Interpreter createWithOutput(OutputPort output, Bounds bounds) {
-        return THE_JVM_HOST.createWithOutput(output, bounds);
+        return Interpreter.createOn(PlatformUnderTest.current().ports(), output, bounds);
     }
 
     public static HostPorts standardPorts() {
-        return THE_JVM_HOST.ports().withSecureTransport(new JavaSecureTransport()).withPause(new WakeablePause());
+        return PlatformUnderTest.current().ports()
+                .withSecureTransport(new JavaSecureTransport())
+                .withPause(new WakeablePause());
     }
 }

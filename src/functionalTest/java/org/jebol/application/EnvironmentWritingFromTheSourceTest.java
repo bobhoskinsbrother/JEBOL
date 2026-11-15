@@ -1,6 +1,5 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -128,7 +127,7 @@ class EnvironmentWritingFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
                         .withEnvironment(new ProcessEnvironment())
-                        .withProcesses(new JavaProcess()),
+                        .withProcesses(PlatformUnderTest.current().processes()),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.ENVIRONMENT)

@@ -571,7 +571,9 @@ separated by commas.
 `allTests` runs and archives with the rest. The end-to-end tests get
 `jebol.shippedJar` and `jebol.extensionJar` to start the command line with and
 without the extension, and `jebol.webBuild` and `jebol.webBuildWithExtensions`
-for `ShippedRunner`, to drive a site with and without it.
+for `ShippedRunner`, to drive a site with and without it; the browser
+fixtures are `web/`'s test fixtures, and the interpreters a test builds stand
+on the platform `PlatformUnderTest` finds, the desktop's on the JVM.
 
 ---
 

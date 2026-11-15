@@ -1,7 +1,6 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
-import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.ImageValue;
@@ -84,7 +83,7 @@ class Blend2DImageFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(IMAGES.toAbsolutePath()))
-                        .withImages(new JavaImage()),
+                        .withImages(PlatformUnderTest.current().images()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
         String importing = "b2d: import 'blend2d";

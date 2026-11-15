@@ -12,9 +12,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaHost;
-import org.jebol.adapter.host.JavaImage;
-import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.JavaSecureTransport;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.WakeablePause;
@@ -22,6 +19,7 @@ import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -75,11 +73,12 @@ final class SuiteHost {
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
-        HostPorts ports = new JavaHost().ports()
+        PlatformUnderTest platform = PlatformUnderTest.current();
+        HostPorts ports = platform.ports()
                 .withFiles(FileSystemPort.rootFileSystem(theRootOfThisRun))
                 .withEnvironment(new ProcessEnvironment())
-                .withProcesses(new JavaProcess())
-                .withImages(new JavaImage())
+                .withProcesses(platform.processes())
+                .withImages(platform.images())
                 .withNetwork(new JavaSocket())
                 .withSecureTransport(new JavaSecureTransport())
                 .withPause(new WakeablePause())

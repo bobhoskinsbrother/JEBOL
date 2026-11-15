@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.adapter.host.JavaProcess;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
@@ -20,7 +20,7 @@ class AccessOsFromTheSourceTest {
 
     private static String answerAllowingProcesses(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
+                AnInterpreter.standardPorts().withProcesses(PlatformUnderTest.current().processes()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.PROCESSES));
         return answerFrom(interpreter, source);

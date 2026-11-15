@@ -131,7 +131,7 @@ and a window lay out the same words in the same places.
   store before `main.reb` runs, so `do %lib/whatever.reb` and `read %data.txt`
   find them.
 - Nothing else. No HTML, no JS. The build writes `index.html` for you from
-  `site/runner.html` (canvas, replayer, worker hookup) with your file list baked
+  `web/site/runner.html` (canvas, replayer, worker hookup) with your file list baked
   in, and puts the module, the loader, the worker's shell and the font beside it.
 
 ```
@@ -335,7 +335,7 @@ host wanting concurrency runs several instances.
 
 ```
 spec/            Allium specifications, checked by the same gate as the code
-src/main/java/org/jebol/
+src/main/java/org/jebol/      the core, which every platform carries
   domain/value   the value model: datatypes, series storage, contexts, MOLD
   domain/read    the reader
   domain/eval    the evaluator, the natives, the dialects, the ports
@@ -343,21 +343,27 @@ src/main/java/org/jebol/
   domain/render  the surface: one walk of the gob tree, calls an adapter draws
   domain/host    the ports a host implements: screen, files, network, digests
   application    Interpreter: one instance, one thread, owns its values
-  adapter/host   the desktop: a Java2D surface in a native window
-  adapter/web    the browser: a canvas surface, events over HTTP or postMessage
-  adapter/cli    the console
-src/teavm/java/  the web's entry point and its substitutions, for TeaVM only
-src/teavm/js/    the worker's shell, and the store and digests it lends the page
+  adapter/host   the adapters every platform shares: files, sockets, TLS, tasks
 src/main/resources/org/jebol/mezz/
                  Rebol's own library, vendored and run unchanged
-site/            the runner page every site is built around
+desktop/         the command line and the desktop's window; builds what ships
+  src/main/java/org/jebol/adapter/cli    the console
+  src/main/java/org/jebol/adapter/host   a Java2D surface in a native window, the JVM's machine
+  src/main/java/org/jebol/adapter/web    the command line's page, served over HTTP
+  src/launcher/  the first class a launch loads, for any Java from 8
+web/             the browser's program and its page
+  src/main/java/org/jebol/adapter/web    a canvas surface, events over postMessage
+  src/teavm/java/  the web's entry point and its substitutions, for TeaVM only
+  src/teavm/js/    the worker's shell, and the store and digests it lends the page
+  site/          the runner page every site is built around
 examples/r3-gui/ the shipped demo app: the 2010 R3 GUI, with main.reb as its entry
 editors/         a TextMate bundle: REBOL highlighting for IntelliJ and VS Code
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/unitTest/       tests that never build an interpreter
 src/functionalTest/ tests that build an interpreter and run REBOL through it
-src/endToEndTest/   tests that drive the command line, a real browser and real servers
+src/endToEndTest/   tests that drive a real interface and real servers
+                    (desktop/ and web/ keep the same three for their own code)
 src/testFixtures/   what the three share: helpers, and every test resource
 src/testFixtures/resources/rebol-suite/
                  Rebol's own test files, and what a real Rebol fails too

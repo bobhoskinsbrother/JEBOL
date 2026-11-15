@@ -85,8 +85,9 @@ def methodsIn(path):
 
 def everyMethod():
     measured = []
-    for path in sorted(glob.glob('src/main/java/**/*.java', recursive=True)):
-        measured.extend(methodsIn(path))
+    for project in ('', 'desktop/', 'web/'):
+        for path in sorted(glob.glob(project + 'src/main/java/**/*.java', recursive=True)):
+            measured.extend(methodsIn(path))
     return measured
 
 

@@ -17,6 +17,8 @@
 /buildSrc/.kotlin/
 /buildSrc/build/
 /extensions/*/build/
+/desktop/build/
+/web/build/
 
 # Every gate run's test results and summary, one timestamped folder each,
 # written by `archiveTestResults` at the end of `allTests`. Outside build/ so

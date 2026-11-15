@@ -1,7 +1,6 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
-import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +19,7 @@ class BlurringARealPictureFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(VENDORED))
-                        .withImages(new JavaImage()),
+                        .withImages(PlatformUnderTest.current().images()),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
         interpreter.defineNewWordsIn(source);

@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Bounds;
-import org.jebol.adapter.host.JavaProcess;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
@@ -80,7 +80,7 @@ class WhatEachRemainingNativeDeclaresTest {
 
     private String errorArgumentsWithProcesses(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts().withProcesses(new JavaProcess()),
+                AnInterpreter.standardPorts().withProcesses(PlatformUnderTest.current().processes()),
                 OutputPort.discard(),
                 everythingGranted());
         return Molder.moldFlat(interpreter.run("e: try [" + source + "] reduce [e/id e/arg1 e/arg2 e/arg3]").value());

@@ -59,74 +59,18 @@ Run it at the close of every Android stage and after any change to the core.
   each up in `android.jar`, through supertypes. D8 at `--min-api 35` dexes the
   whole core and rewrites away every Java 21 language bootstrap
   (`SwitchBootstraps`, `MatchException`, `ConstantBootstraps`, lambdas,
-  string concatenation): none survives in the dex. What is left is library:
-
-  | Where | What Android 35 lacks |
-  | --- | --- |
-  | the JVM's host: `JavaMachine`, `JavaProcess` (and `JavaHost`, which builds the machine) | `ProcessHandle`, `Process.pid()`, `ProcessBuilder.Redirect.DISCARD`, `Files.writeString` |
-  | desktop only: `DesktopScreen`, `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`, `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`, `SwingLeavingConfirmation`, `WindowStateReports`; `adapter.web.WebScreenServer` (`java.awt.Font`) | AWT, Swing, ImageIO: 93 classes, none of which Android has |
-  | command line only: `CommandLineConsole`, `SttyTerminal` | `Redirect.DISCARD` |
-
-  Nothing every platform runs is left on the list: the domain, `application`
-  and the shared adapters reach only what Android has. Android supplies its
-  own machine; it runs no programs (`call` is 2c's to answer, as a browser's
-  is). `JavaImage` is the picture codecs; Android's are 2c's.
-
-**4. The core, the desktop and the web: three builds, so Android takes the
-core whole.** What was stage 2i, brought forward by the owner 2026-11-14 in
-place of a jar that left the desktop out by name. The root build is the core, and
-`desktop/` and `web/` are subprojects of it, as `extensions/sqlite` is, so
-one `./gradlew allTests` still runs everything and nothing needs the SDK.
-`android/` stays a build of its own (step 6). Packages keep their names;
-only where the files sit changes.
-
-What is true today: `domain` and `application` import no adapter at all.
-The only line from one adapter package into another is `ChosenScreen`, the
-command line's `--screen=web`, into `adapter.web`. `AnInterpreter`, which
-almost every functional test builds on, uses `JavaHost`. Of the test files,
-the unit tests have 10 on the command line, 17 on the page and 13 on the
-desktop or the JVM's host; the functional tests 2, 11 and 18; the
-end-to-end tests 40, 31 and 7; the fixtures 1, 1 and 4.
-
-- **The core** (root): `domain`, `application`, and the adapters every
-  platform shares: `ClasspathFiles`, `FileSystemPort`, `ConfinedEnvironment`,
-  `ProcessEnvironment`, `JavaSocket`, `WritesInFlight`, `JavaSecureTransport`,
-  `JavaCertificateAuthority`, `JavaTrustAnchors`, `ThreadTasks`,
-  `DaemonThreads`, `WakeablePause`, `Uts46`, `Uts46Tables`,
-  `ExtensionDescriptors`. The carried library and font are its resources.
-- **`desktop/`**: `adapter.cli`, the desktop's window (`DesktopScreen`,
-  `Java2DSurface`, `JavaImage`, `JebolIcon`, `DesktopWindows`,
-  `JavaClipboard`, `AwtCursors`, `BackForwardChords`, `WheelScrolling`,
-  `DesktopSystem`, `LeavingConfirmation`, `SwingLeavingConfirmation`,
-  `WindowStateReports`) and the JVM's own host (`JavaHost`, `JavaMachine`,
-  `JavaProcess`, `ExecutableFile`). It builds the shipped jar, the launcher
-  source set and the distribution, and depends on the core and on `web/`
-  for `--screen=web`.
-- **`web/`**: `adapter.web` (the page's ports and the JVM's page server),
-  the TeaVM source set and its substitutions, `jebol-page/`, the site and the
-  extensions' web halves. It depends on the core.
-- **Tests go with what they test.** A test that exercises only the command
-  line, the desktop or the page moves to that build's source set of the
-  same name; everything else stays in the core. The core's tests still need
-  a host to build an interpreter on, and step 7 runs them on ART, so the
-  fixture's host stops being `JavaHost` by name: `AnInterpreter` asks for
-  the platform's host through `ServiceLoader`, which the core's JVM run gets
-  from `desktop/` as a test-only dependency and `android/` from its own.
-- **The gate.** `allTests` runs every project's suites and
-  `archiveTestResults` gathers them, as it does the extension's. The
-  architecture tests read every project's classes. `checkSpec`, the timing
-  and parity scripts and `scripts/` keep working from the root.
-- **The check that proves it.** `scripts/AndroidApiGaps.java --fail-on-gaps`
-  over the core's own jar comes out empty: nothing Android 35 lacks, and no
-  class the core does not carry. It now also reports a carried class
-  reaching one left out, and counts `com/sun/` as the platform's. A
-  `checkCoreForAndroid` task runs it, outside `allTests` because it needs the
-  SDK; `androidTests` runs it first.
-
-**Done when** the three projects build, `allTests` passes with the same
-counts as before the move (suites move between projects, none is lost), the
-shipped jar and the site are byte-for-byte what they were apart from build
-stamps, and `checkCoreForAndroid` passes on the core's jar.
+  string concatenation): none survives in the dex.
+- The root build is the core every platform carries; the command line, the
+  window and the JVM's own machine and programs are `desktop/`, and the page
+  and the browser's program are `web/`, each with the tests of its own code.
+  `./gradlew checkCoreForAndroid` runs the probe over the core's own jar with
+  `--fail-on-gaps`, and it passes: nothing Android 35 lacks, and no class the
+  core does not carry. Android supplies its own machine (the core's
+  `PropertiesMachine` will do until 2c); it runs no programs (`call` is 2c's
+  to answer, as a browser's is); its picture codecs are 2c's.
+- The core's tests build their interpreters on `PlatformUnderTest`, found
+  through `ServiceLoader`; on the JVM it is the desktop's, and step 7 gives
+  `android/` its own.
 
 **5. The toolchain.** `scripts/setup-machine.sh` installs what was installed
 by hand above, plus the emulator and an x86_64 API 35 system image, and

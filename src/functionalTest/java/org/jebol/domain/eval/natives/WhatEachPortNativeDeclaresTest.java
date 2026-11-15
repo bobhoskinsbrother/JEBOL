@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.adapter.host.JavaProcess;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.AnInterpreter;
@@ -66,7 +66,7 @@ class WhatEachPortNativeDeclaresTest {
                 AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(directory))
                         .withEnvironment(new AnEnvironmentOfItsOwn())
-                        .withProcesses(new JavaProcess()),
+                        .withProcesses(PlatformUnderTest.current().processes()),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

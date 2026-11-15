@@ -187,7 +187,8 @@ no way to tell which to believe.
 
 `./gradlew allTests` is the gate before a commit: 0 failed, 0 skipped. It runs
 the spec check and three suites -- `unitTests`, `functionalTests` and
-`endToEndTests` -- each one a source set of its own under `src/`. The end to
+`endToEndTests` -- each one a source set of its own under `src/`, in the core,
+`desktop/` and `web/` alike, each holding the tests of its own code. The end to
 end suite builds the core for the web with TeaVM, drives a real Chrome, runs a
 script from a page, compares what the renderers paint pixel for pixel, and puts
 the command line's TLS to real servers, so it needs Chrome and the internet.

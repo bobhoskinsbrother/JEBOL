@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
-import org.jebol.adapter.host.JavaMachine;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.eval.natives.LimitUsageNative;
 import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.value.*;
@@ -62,7 +62,7 @@ class LimitUsageFromTheSourceTest {
 
         private static Evaluator makeAnEvaluator() {
             Boot boot = Boot.makeStandard(
-                    new JavaMachine(), new JvmDigests(), BootSources.none(), Set.of());
+                    PlatformUnderTest.current().machine(), new JvmDigests(), BootSources.none(), Set.of());
             return new Evaluator(boot.start().lib(), line -> { });
         }
 

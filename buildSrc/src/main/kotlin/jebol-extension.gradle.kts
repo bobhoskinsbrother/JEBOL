@@ -94,6 +94,7 @@ listOf(functionalTest, endToEndTest).forEach { suite ->
     dependencies {
         add(suite.implementationConfigurationName, core)
         add(suite.implementationConfigurationName, testFixtures(core))
+        add(suite.runtimeOnlyConfigurationName, testFixtures(project(":desktop")))
         testLibraries.forEach { add(suite.implementationConfigurationName, it) }
         add(suite.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
     }
@@ -127,22 +128,19 @@ tasks.register<Test>("functionalTests") {
     maxParallelForks = Runtime.getRuntime().availableProcessors()
 }
 
-val corePageTests = core.extensions.getByType<SourceSetContainer>()["endToEndTest"]
-
 dependencies {
-    add(endToEndTest.implementationConfigurationName, corePageTests.output)
+    add(endToEndTest.implementationConfigurationName, testFixtures(project(":web")))
     add(endToEndTest.implementationConfigurationName, "org.seleniumhq.selenium:selenium-java:4.27.0")
 }
 
 tasks.register<Test>("endToEndTests") {
     description = "The extension's tests that run the shipped jar and a built site, with and without it"
     runsTheTestsIn(endToEndTest, declaration.name.map { "${it}EndToEndTests" })
-    dependsOn(assembleExtension, core.tasks.named("jar"), core.tasks.named("assembleWebBuildWithExtensions"),
-        core.tasks.named("buildWasmGC"))
+    dependsOn(assembleExtension, ":desktop:shippedJar", ":web:assembleWebBuildWithExtensions", ":web:buildWasmGC")
     workingDir = core.layout.projectDirectory.asFile
     val folder = layout.buildDirectory.dir("jebol-extension")
     val extensionJar = declaration.name.flatMap { name -> folder.map { it.file("jebol-$name.jar") } }
-    val shippedJar = core.tasks.named<Jar>("jar").flatMap { it.archiveFile }
+    val shippedJar = core.layout.buildDirectory.file("libs/jebol-3.22.5.jar")
     val webBuildWith = core.layout.buildDirectory.dir("generated/web-with-extensions")
     val webBuildWithout = core.layout.buildDirectory.dir("generated/teavm/wasm-gc")
     jvmArgumentProviders.add(CommandLineArgumentProvider {

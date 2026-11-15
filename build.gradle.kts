@@ -1,6 +1,4 @@
-import com.sun.management.OperatingSystemMXBean
 import java.io.ByteArrayOutputStream
-import java.lang.management.ManagementFactory
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -9,11 +7,15 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     java
-    application
     jacoco
-    `java-test-fixtures`
-    id("org.teavm") version "0.16.0"
+    id("jebol-suites")
 }
+
+// The root is the core every platform shares: the domain, the application and
+// the adapters a desktop, a browser and a phone all use. desktop/ holds the
+// command line, the window and the JVM's own machine, and builds what ships;
+// web/ holds the page and the browser's program. Each keeps the tests of its
+// own code. Goal 2a step 4.
 
 group = "org.jebol"
 version = "3.22.5"
@@ -34,228 +36,15 @@ java {
     }
 }
 
-application {
-    mainClass = "org.jebol.adapter.cli.JebolLauncher"
-    applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true")
-}
-
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    // The web build's substitution targets and library resources are written
-    // against these, and they are never on the shipped jar's classpath.
-    "teavmCompileOnly"("org.teavm:teavm-classlib:0.16.0")
-    "teavmCompileOnly"("org.teavm:teavm-core:0.16.0")
-    "teavmCompileOnly"("org.teavm:teavm-extension-spi:0.16.0")
-    "teavmCompileOnly"("org.teavm:teavm-interop:0.16.0")
-    "teavmCompileOnly"("org.jetbrains:annotations:24.1.0")
-}
-
-// The web build compiles the whole core with TeaVM: src/teavm holds only what
-// the browser needs on top of it. Main's classes and resources are the program.
-sourceSets.named("teavm") {
-    compileClasspath += sourceSets.main.get().output
-    runtimeClasspath += sourceSets.main.get().output
-}
-
-teavm {
-    wasmGC {
-        mainClass.set("org.jebol.adapter.web.WorkerInterpreter")
-        targetFileName.set("jebol-web")
-        obfuscated.set(false)
-        outOfProcess.set(false)
-    }
-}
-
-val copyWorkerScript = tasks.register<Copy>("copyWorkerScript") {
-    group = "build"
-    description = "Put the worker's shell script beside the WebAssembly module"
-    from("src/teavm/js/jebol-worker.js")
-    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
-}
-
-val copyPageScripts = tasks.register<Copy>("copyPageScripts") {
-    group = "build"
-    description = "Put the page's scripts for the interpreter's asks and the history beside the WebAssembly module"
-    from("src/main/resources/jebol-page/jebol-asks.js", "src/main/resources/jebol-page/jebol-navigation.js",
-        "src/main/resources/jebol-page/jebol-paint.js", "src/main/resources/jebol-page/jebol-screen.js",
-        "src/main/resources/jebol-page/jebol-input.js", "site/jebol-loading.js", "site/jebol-runner.js")
-    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
-}
-
-val copyCarriedFont = tasks.register<Copy>("copyCarriedFont") {
-    group = "build"
-    description = "Put the font this build carries beside the WebAssembly module"
-    from("src/main/resources/org/jebol/fonts/NotoSans-Regular.ttf")
-    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
-}
-
-tasks.named("buildWasmGC") {
-    dependsOn(copyWorkerScript, copyPageScripts, copyCarriedFont)
+tasks.jar {
+    archiveBaseName = "jebol-core"
 }
 
 val extensionProjects = listOf("sqlite")
-
-// An extension reaches a site as a jar named with -Pextensions: its classes join
-// the WasmGC build, which finds its web provider through META-INF/services, and its
-// assets go beside jebol-web.wasm. Decision 63.
-val siteExtensionJars: FileCollection = files(providers.gradleProperty("extensions")
-    .map { named -> named.split(",").map(String::trim).filter(String::isNotEmpty) }
-    .getOrElse(emptyList()))
-
-abstract class CheckSiteExtensions : DefaultTask() {
-
-    @get:Inject
-    abstract val archives: ArchiveOperations
-
-    @get:InputFiles
-    abstract val jars: ConfigurableFileCollection
-
-    @TaskAction
-    fun check() {
-        jars.files.forEach { jar ->
-            val descriptor = archives.zipTree(jar).matching { include("META-INF/jebol/extension.reb") }.files
-            val text = descriptor.firstOrNull()?.readText() ?: ""
-            if (!Regex("""(?m)^\s*web\s*\[""").containsMatchIn(text)) {
-                throw GradleException("$jar has no web setup in META-INF/jebol/extension.reb, so a site cannot carry it")
-            }
-        }
-    }
-}
-
-val checkSiteExtensions = tasks.register<CheckSiteExtensions>("checkSiteExtensions") {
-    group = "verification"
-    description = "Refuse an extension named with -Pextensions that has no web setup"
-    jars.from(siteExtensionJars)
-}
-
-val unpackSiteExtensions = tasks.register<Sync>("unpackSiteExtensions") {
-    group = "build"
-    description = "Unpack each jar named with -Pextensions, so the WasmGC build never reads a jar rebuilt under it"
-    dependsOn(checkSiteExtensions)
-    siteExtensionJars.forEach { jar ->
-        from(zipTree(jar)) {
-            into(jar.nameWithoutExtension)
-        }
-    }
-    into(layout.buildDirectory.dir("generated/site-extensions"))
-}
-
-tasks.named<org.teavm.gradle.tasks.GenerateWasmGCTask>("generateWasmGC") {
-    siteExtensionJars.forEach { jar ->
-        classpath.from(unpackSiteExtensions.map { it.destinationDir.resolve(jar.nameWithoutExtension) })
-    }
-    dependsOn(unpackSiteExtensions)
-}
-
-val buildWasmGCWithExtensions = tasks.register<org.teavm.gradle.tasks.GenerateWasmGCTask>("buildWasmGCWithExtensions") {
-    group = "build"
-    description = "The WasmGC build again, carrying every extension in extensions/, for their end-to-end tests"
-    val plain = tasks.named<org.teavm.gradle.tasks.GenerateWasmGCTask>("generateWasmGC")
-    classpath.from(plain.map { it.classpath })
-    extensionProjects.forEach { name ->
-        classpath.from(project(":extensions:$name").extensions.getByType<SourceSetContainer>()["main"].output)
-    }
-    mainClass.set(plain.flatMap { it.mainClass })
-    targetFileName.set(plain.flatMap { it.targetFileName })
-    obfuscated.set(plain.flatMap { it.obfuscated })
-    strict.set(plain.flatMap { it.strict })
-    debugInformation.set(plain.flatMap { it.debugInformation })
-    optimization.set(plain.flatMap { it.optimization })
-    fastGlobalAnalysis.set(plain.flatMap { it.fastGlobalAnalysis })
-    outOfProcess.set(plain.flatMap { it.outOfProcess })
-    processMemory.set(plain.flatMap { it.processMemory })
-    daemonClasspath.from(plain.map { it.daemonClasspath })
-    outputDir.set(layout.buildDirectory.dir("generated/teavm/wasm-gc-extensions").map { it.asFile })
-    mustRunAfter(plain)
-}
-
-val assembleWebBuildWithExtensions = tasks.register<Sync>("assembleWebBuildWithExtensions") {
-    group = "build"
-    description = "The web build's files with the WasmGC build that carries every extension, and their assets"
-    dependsOn(tasks.named("buildWasmGC"))
-    from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
-        exclude("jebol-web.wasm")
-    }
-    from(buildWasmGCWithExtensions) {
-        include("jebol-web.wasm")
-    }
-    extensionProjects.forEach { extension ->
-        from(project(":extensions:$extension").tasks.named("jar").map { zipTree((it as Jar).archiveFile) }) {
-            include("META-INF/jebol/assets/**")
-            eachFile { path = this.name }
-            includeEmptyDirs = false
-        }
-    }
-    into(layout.buildDirectory.dir("generated/web-with-extensions"))
-}
-
-val assembleSite = tasks.register<Sync>("assembleSite") {
-    group = "build"
-    description = "Assemble the static site: a runner page and the app it runs"
-    dependsOn(tasks.named("buildWasmGC"))
-    val theApp = providers.gradleProperty("siteDir").getOrElse("examples/r3-gui")
-    val theRunner = layout.projectDirectory.file("site/runner.html")
-    inputs.property("appDirectory", theApp)
-    inputs.file(theRunner).withPropertyName("runnerPage")
-    into(layout.buildDirectory.dir("site"))
-    from(theApp)
-    from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
-        include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "jebol-asks.js",
-            "jebol-navigation.js", "jebol-paint.js", "jebol-screen.js", "jebol-input.js", "jebol-loading.js",
-            "jebol-runner.js",
-            "NotoSans-Regular.ttf")
-    }
-    from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
-    from(unpackSiteExtensions) {
-        include("*/META-INF/jebol/assets/**")
-        eachFile { path = this.name }
-        includeEmptyDirs = false
-    }
-    val siteDirectory = layout.buildDirectory.dir("site")
-    val app = file(theApp)
-    doLast {
-        val site = siteDirectory.get().asFile
-        val names = app.walkTopDown().filter { it.isFile }
-            .map { it.relativeTo(app).invariantSeparatorsPath }
-            .sorted()
-            .toList()
-        val filesJson = names.joinToString(",", "[", "]") { name ->
-            "\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-        }
-        site.resolve("app.json").writeText("{\"files\":$filesJson,\"entry\":\"main.reb\"}")
-        if (!site.resolve("index.html").exists()) {
-            theRunner.asFile.copyTo(site.resolve("index.html"))
-        }
-    }
-}
-
-// TeaVM only embeds a resource it is told about. The list is written from the
-// resources themselves so it cannot drift from them.
-val writeTheWebResourceList = tasks.register("writeTheWebResourceList") {
-    group = "build"
-    description = "List the library files the web build must carry"
-    val library = fileTree("src/main/resources/org/jebol")
-    inputs.files(library).withPropertyName("libraryFiles")
-    val list = layout.buildDirectory.file("generated/web/jebol-resources.txt")
-    val resourcesRoot = file("src/main/resources")
-    outputs.file(list)
-    doLast {
-        list.get().asFile.parentFile.mkdirs()
-        list.get().asFile.writeText(library.files
-            .map { it.relativeTo(resourcesRoot).invariantSeparatorsPath }
-            .sorted()
-            .joinToString("\n"))
-    }
-}
-
-sourceSets["teavm"].resources.srcDir(layout.buildDirectory.dir("generated/web"))
-
-tasks.named("processTeavmResources") {
-    dependsOn(writeTheWebResourceList)
-}
 
 tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)
@@ -263,220 +52,44 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
 
-// The first class a launch loads, built so that every Java from 8 on can load
-// it: it tells a Java too old for the rest of JEBOL so, in words, rather than
-// leaving the JVM to report a class file version. spec/repl.allium.
-val launcher = sourceSets.create("launcher")
+val functionalTest = sourceSets["functionalTest"]
 
-tasks.named<JavaCompile>(launcher.compileJavaTaskName) {
-    options.release.set(8)
-    options.compilerArgs.add("-Xlint:-options")
-}
-
-tasks.jar {
-    from(launcher.output)
-}
-
-val unitTest = sourceSets.create("unitTest")
-val functionalTest = sourceSets.create("functionalTest")
-val endToEndTest = sourceSets.create("endToEndTest")
-val networkTest = sourceSets.create("networkTest")
-val testSuites = listOf(unitTest, functionalTest, endToEndTest, networkTest)
-
-val testLibraries = listOf(
-    "org.junit.jupiter:junit-jupiter:5.11.4",
-    "net.jqwik:jqwik:1.9.2",
-    "org.assertj:assertj-core:3.26.3",
-    "com.tngtech.archunit:archunit-junit5:1.4.1",
-    "org.seleniumhq.selenium:selenium-java:4.27.0",
-)
-
+// The core's tests build their interpreters on the platform they run on, which
+// they find through ServiceLoader as a PlatformUnderTest. On the JVM that is
+// the desktop's; on a phone, Android's.
 dependencies {
-    testLibraries.forEach { "testFixturesImplementation"(it) }
-    testSuites.forEach { suite ->
-        add(suite.implementationConfigurationName, testFixtures(project(project.path)))
-        testLibraries.forEach { add(suite.implementationConfigurationName, it) }
-        add(suite.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+    listOf("unitTest", "functionalTest", "endToEndTest", "networkTest").forEach { suite ->
+        add(sourceSets[suite].runtimeOnlyConfigurationName, testFixtures(project(":desktop")))
     }
 }
 
-testSuites.forEach { suite ->
-    suite.compileClasspath += sourceSets.main.get().output + launcher.output
-    suite.runtimeClasspath += sourceSets.main.get().output + launcher.output
-}
-
-val testsThatExhaustTheHeap = "exhausts-the-heap"
-val testsThatOpenARealWindow = "opens-a-real-window"
-
-fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
-    val resultsOfThisRun = reports.junitXml.outputLocation.get().asFile
-    val jvmEvidence = resultsOfThisRun.resolve("jvm")
-    jvmArgs(
-        "-XX:ErrorFile=$jvmEvidence/hs_err_pid%p.log",
-        "-Xlog:gc,gc+init:file=$jvmEvidence/gc-%p.log:time,uptime",
-    )
-    if (dumpsTheHeapWhenItRunsOut) {
-        jvmArgs("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=$jvmEvidence")
+val unitTests = tasks.named<Test>("unitTests") {
+    // The architecture tests read every project's classes, main and test.
+    PROJECTS_WITH_SUITES.forEach { path ->
+        val inProject = if (path == ":") "" else "$path:"
+        dependsOn("${inProject}classes")
+        SUITE_SOURCE_SETS.forEach { suite -> dependsOn("$inProject${suite}Classes") }
     }
-    doFirst {
-        resultsOfThisRun.listFiles { file -> file.name.endsWith(".xml") }.orEmpty().forEach { it.delete() }
-        jvmEvidence.deleteRecursively()
-        jvmEvidence.mkdirs()
-    }
-}
-
-fun Test.runsTheTestsIn(suite: SourceSet, dumpsTheHeapWhenItRunsOut: Boolean = true) {
-    group = "verification"
-    // The suites run on the oldest Java JEBOL supports, the level every source
-    // set is compiled at, so what passes here is what a Java 21 answers.
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
-    testClassesDirs = suite.output.classesDirs
-    classpath = suite.runtimeClasspath
-    useJUnitPlatform()
-    systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
-    systemProperty("java.awt.headless", "true")
-    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
-    systemProperty("jebol.mainClassesDirs", sourceSets.main.get().output.classesDirs.asPath)
-    systemProperty(
-        "jebol.testClassesDirs",
-        testSuites.joinToString(File.pathSeparator) { it.output.classesDirs.asPath },
-    )
-    // How deep a test can recurse is its thread's stack, and HotSpot takes
-    // the default for that from the architecture: 1 MB on x86_64, 2 MB on
-    // arm64. call-frames.r3 records a real 3.22.5 answering `dp 500`, which
-    // needs about 850 KB measured, so under JUnit's own frames it fits on an
-    // arm64 Mac and overflows on an x86_64 one. Pinning it to the larger of
-    // the two defaults makes the gate answer the same on both.
-    jvmArgs("-Xss2m")
-    leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut)
-    maxParallelForks = Runtime.getRuntime().availableProcessors()
-    inputs.dir(layout.projectDirectory.dir("corpus"))
-        .withPropertyName("corpus")
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    testLogging {
-        events("failed")
-        showStackTraces = true
-        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-    }
-}
-
-fun Test.readsAlsoFrom(what: String, vararg files: Any) {
-    inputs.files(*files)
-        .withPropertyName(what)
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-}
-
-val unitTests = tasks.register<Test>("unitTests") {
-    description = "Tests that never build an interpreter: values, codecs, the reader, the domain on its own"
-    runsTheTestsIn(unitTest)
-    // Gradle's default of 512 MB is what ZstdCompressionFromTheSourceTest's
-    // level 22 streams need on their own, so sharing a fork ran it out of heap.
-    maxHeapSize = "1g"
-    dependsOn(functionalTest.classesTaskName, endToEndTest.classesTaskName, networkTest.classesTaskName)
-    readsAlsoFrom(
-        "the other suites' classes",
-        functionalTest.output.classesDirs,
-        endToEndTest.output.classesDirs,
-        networkTest.output.classesDirs,
-    )
     readsAlsoFrom("the editor grammar", fileTree("editors"))
     readsAlsoFrom("the shipped examples", fileTree("examples"))
 }
 
-val functionalTests = tasks.register<Test>("functionalTests") {
+val functionalTests = tasks.named<Test>("functionalTests") {
     description = "Tests that build an interpreter and run REBOL through it, Rebol's own suite included"
-    runsTheTestsIn(functionalTest)
     readsAlsoFrom(
         "Rebol's own source",
         fileTree("rebol3-source/src/boot"),
         fileTree("rebol3-source/src/modules"),
         fileTree("rebol3-source/src/tests"),
     )
-    useJUnitPlatform { excludeTags(testsThatExhaustTheHeap) }
-    mustRunAfter(unitTests)
 }
 
 val heapExhaustionTests = tasks.register<Test>("heapExhaustionTests") {
     description = "The functional tests that run the heap out on purpose, apart, so a heap dump in the others always means something"
-    runsTheTestsIn(functionalTest, dumpsTheHeapWhenItRunsOut = false)
-    useJUnitPlatform { includeTags(testsThatExhaustTheHeap) }
+    runsTheTestsIn(functionalTest, "heapExhaustionTests", dumpsTheHeapWhenItRunsOut = false)
+    useJUnitPlatform { includeTags(TESTS_THAT_EXHAUST_THE_HEAP) }
     maxParallelForks = 1
     mustRunAfter(unitTests)
-}
-
-val endToEndTests = tasks.register<Test>("endToEndTests") {
-    description = "Tests that drive a real interface: the command line, a real browser, and local servers"
-    runsTheTestsIn(endToEndTest)
-    // Each process here holds a browser for every configuration its classes
-    // touch, and a Chrome with its renderers is hundreds of megabytes, so what
-    // bounds these forks is memory and not the processor count the other two
-    // suites use. Twelve on a six-core 16 GB machine put swap at its ceiling
-    // and Chrome took a SIGSEGV mid-run, failing two tests with a browser that
-    // had stopped answering: one waited 30 seconds for a browser, the other
-    // timed out removing its BiDi user context on the way out. Four gibibytes
-    // a fork leaves a machine with memory to spare at its processor count.
-    val memoryThisMachineHas =
-        (ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean).totalMemorySize
-    val forksItsMemoryAllows = (memoryThisMachineHas / (4L * 1024 * 1024 * 1024)).toInt()
-    maxParallelForks = providers.gradleProperty("endToEndForks").map(String::toInt)
-        .getOrElse(maxOf(2, minOf(maxParallelForks, forksItsMemoryAllows)))
-    systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
-    systemProperty(
-        "jebol.webBuild",
-        layout.buildDirectory.dir("generated/teavm/wasm-gc").get().asFile.path,
-    )
-    systemProperty(
-        "jebol.webSite",
-        layout.buildDirectory.dir("site").get().asFile.path,
-    )
-    dependsOn(tasks.named("buildWasmGC"), assembleSite, tasks.named("installDist"), tasks.jar)
-    systemProperty(
-        "jebol.installedLauncher",
-        layout.buildDirectory.file("install/jebol/bin/jebol").get().asFile.path,
-    )
-    systemProperty("jebol.shippedJar", tasks.jar.get().archiveFile.get().asFile.path)
-    systemProperty(
-        "jebol.olderJavaHome",
-        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
-            .get().metadata.installationPath.asFile.path,
-    )
-    for (supported in listOf(21, 25)) {
-        systemProperty(
-            "jebol.java${supported}Home",
-            javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(supported) }
-                .get().metadata.installationPath.asFile.path,
-        )
-    }
-    useJUnitPlatform { excludeTags(testsThatOpenARealWindow) }
-    outputs.upToDateWhen { false }
-    mustRunAfter(functionalTests)
-}
-
-// Every other suite runs headless, and a JVM decides that once, when AWT
-// starts. A test that opens a real desktop window -- tagged
-// `opens-a-real-window` -- runs here instead, in one fork with the toolkit
-// switched on, and fails on a machine with no display rather than skipping.
-val desktopWindowTests = tasks.register<Test>("desktopWindowTests") {
-    description = "The end-to-end tests that open a real desktop window, in one fork that is not headless"
-    runsTheTestsIn(endToEndTest)
-    useJUnitPlatform { includeTags(testsThatOpenARealWindow) }
-    systemProperty("java.awt.headless", "false")
-    maxParallelForks = 1
-    outputs.upToDateWhen { false }
-    mustRunAfter(endToEndTests)
-}
-
-// Rebol's own assertions that reach a host on the internet live in a gate of
-// their own, out of `allTests`: a gate that runs everywhere can only run them
-// where the network answers, and a run that reached out would measure the
-// machine rather than JEBOL. What belongs to this gate is listed, with the line
-// in each that decides it, in
-// src/testFixtures/resources/rebol-suite/needs-the-network.txt.
-val networkTests = tasks.register<Test>("networkTests") {
-    description = "Rebol's own assertions that need the network, run against the hosts they name"
-    runsTheTestsIn(networkTest)
-    outputs.upToDateWhen { false }
-    mustRunAfter(functionalTests)
 }
 
 val checkSpec = tasks.register<Exec>("checkSpec") {
@@ -580,11 +193,22 @@ abstract class ArchiveTestResults : DefaultTask() {
     }
 }
 
-val extensionSuiteTasks = extensionProjects.flatMap { name ->
-    listOf(":extensions:$name:functionalTests", ":extensions:$name:endToEndTests")
-}
+// The gate, project by project and in order: every unit suite, then every
+// functional suite, then every end-to-end suite, then the window that needs a
+// display. The machine's cores are spent one stage at a time, because the
+// functional tests' five-second bounds do not survive sharing them.
+val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests")
+val functionalStage = listOf(":functionalTests", ":heapExhaustionTests", ":desktop:functionalTests",
+    ":web:functionalTests") + extensionProjects.map { ":extensions:$it:functionalTests" }
+val endToEndStage = listOf(":endToEndTests", ":desktop:endToEndTests", ":web:endToEndTests") +
+    extensionProjects.map { ":extensions:$it:endToEndTests" }
+val windowStage = listOf(":desktop:desktopWindowTests")
+val gateStages = listOf(unitStage, functionalStage, endToEndStage, windowStage)
+val gateTasks = gateStages.flatten()
 
-val gateSuites = listOf("unitTests", "functionalTests", "heapExhaustionTests", "endToEndTests", "desktopWindowTests") +
+val gateSuites = listOf("unitTests", "desktopUnitTests", "webUnitTests",
+    "functionalTests", "heapExhaustionTests", "desktopFunctionalTests", "webFunctionalTests",
+    "endToEndTests", "desktopEndToEndTests", "webEndToEndTests", "desktopWindowTests") +
     extensionProjects.flatMap { name -> listOf("${name}FunctionalTests", "${name}EndToEndTests") }
 
 val gateWasAskedFor = gradle.startParameter.taskNames
@@ -599,26 +223,26 @@ val archiveTestResults = tasks.register<ArchiveTestResults>("archiveTestResults"
     suites = gateSuites
     val asked = gateWasAskedFor
     onlyIf("the gate was asked for") { asked }
+    gateTasks.forEach { mustRunAfter(it) }
 }
 
 val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "The spec check, then unitTests, functionalTests, heapExhaustionTests, endToEndTests and desktopWindowTests, " +
-        "then each extension's functional and end-to-end tests, then archiveTestResults"
-    dependsOn(checkSpec, unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests)
-    dependsOn(extensionSuiteTasks)
+    description = "The spec check, then every project's unit, functional and end-to-end suites in stages, " +
+        "then the desktop's window, then archiveTestResults"
+    dependsOn(checkSpec)
+    dependsOn(gateTasks)
     finalizedBy(archiveTestResults)
 }
 
-extensionSuiteTasks.forEach { suite ->
-    project.tasks.named("archiveTestResults") { mustRunAfter(suite) }
+gradle.projectsEvaluated {
+    gateStages.zipWithNext().forEach { (earlier, later) ->
+        later.forEach { laterTask ->
+            rootProject.tasks.findByPath(laterTask)?.mustRunAfter(earlier)
+        }
+    }
+    rootProject.tasks.findByPath(":unitTests")?.mustRunAfter(checkSpec)
 }
-
-listOf(unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests).forEach { suite ->
-    suite { finalizedBy(archiveTestResults) }
-}
-
-unitTests { mustRunAfter(checkSpec) }
 
 tasks.test {
     description = "The same as allTests"
@@ -631,30 +255,29 @@ tasks.check {
 }
 
 tasks.jacocoTestReport {
-    dependsOn(unitTests, functionalTests, heapExhaustionTests, endToEndTests, desktopWindowTests)
-    executionData(unitTests.get(), functionalTests.get(), heapExhaustionTests.get(), endToEndTests.get(),
-        desktopWindowTests.get())
+    dependsOn(unitTests, functionalTests, heapExhaustionTests)
+    executionData(unitTests.get(), functionalTests.get(), heapExhaustionTests.get())
     reports {
         xml.required = true
         html.required = true
     }
 }
 
-// Every platform class and member the core's class files reference that
-// Android 35's android.jar does not have, into scripts/android-api-gaps.txt.
-// javac cannot compile against android.jar as the platform past level 8, so
-// the probe reads the class files instead (goal 2a). It needs the SDK, so it
-// is not part of allTests; ANDROID_HOME, or ~/Android/Sdk, says where it is.
-val androidApiGaps = tasks.register<Exec>("androidApiGaps") {
+// The core is what Android carries, so it may reach nothing Android 35's
+// android.jar lacks and no class it does not carry itself. javac cannot
+// compile against android.jar as the platform past level 8, so
+// scripts/AndroidApiGaps.java reads the core's jar instead and writes what it
+// found to scripts/android-api-gaps.txt (goal 2a). It needs the SDK, so it is
+// not part of allTests; ANDROID_HOME, or ~/Android/Sdk, says where it is.
+tasks.register<Exec>("checkCoreForAndroid") {
     group = "verification"
-    description = "Lists what the core references that Android 35 lacks, into scripts/android-api-gaps.txt"
+    description = "Fails if the core reaches anything Android 35 lacks or any class it does not carry"
     val script = layout.projectDirectory.file("scripts/AndroidApiGaps.java").asFile
     val report = layout.projectDirectory.file("scripts/android-api-gaps.txt").asFile
-    val classes = sourceSets.main.get().java.destinationDirectory
+    val coreJar = tasks.jar.flatMap { it.archiveFile }
     val androidSdk = providers.environmentVariable("ANDROID_HOME")
         .orElse(providers.systemProperty("user.home").map { "$it/Android/Sdk" })
-    dependsOn(tasks.named("compileJava"))
-    inputs.dir(classes)
+    inputs.file(coreJar)
     inputs.file(script)
     outputs.file(report)
     executable(
@@ -662,27 +285,7 @@ val androidApiGaps = tasks.register<Exec>("androidApiGaps") {
             .get().executablePath.asFile.path,
     )
     args(
-        script.path, "--report", report.path,
-        classes.get().asFile.path, androidSdk.get() + "/platforms/android-35/android.jar",
+        script.path, "--fail-on-gaps", "--report", report.path,
+        coreJar.get().asFile.path, androidSdk.get() + "/platforms/android-35/android.jar",
     )
-}
-
-tasks.named<JavaExec>("run") {
-    standardInput = System.`in`
-}
-
-// The jar runs the console on its own, so `java -jar` is a whole
-// installation: no launcher script, no dependencies, nothing to unpack.
-tasks.jar {
-    manifest {
-        attributes("Main-Class" to application.mainClass.get())
-    }
-}
-
-distributions {
-    named("main") {
-        contents {
-            from("LICENSE", "NOTICE", "using-jebol.md")
-        }
-    }
 }

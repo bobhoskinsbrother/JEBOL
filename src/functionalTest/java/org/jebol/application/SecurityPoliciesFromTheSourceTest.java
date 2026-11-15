@@ -50,9 +50,9 @@ class SecurityPoliciesFromTheSourceTest {
         return AnInterpreter.standardPorts()
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(new ProcessEnvironment())
-                .withProcesses(new JavaProcess())
+                .withProcesses(PlatformUnderTest.current().processes())
                 .withNetwork(new JavaSocket())
-                .withImages(new JavaImage());
+                .withImages(PlatformUnderTest.current().images());
     }
 
     private String answerTo(String source) {
