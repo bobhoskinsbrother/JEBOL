@@ -1,4 +1,2 @@
 org.jebol.domain.eval.compression.brotli.OptionalBrotli
-org.jebol.domain.eval.compression.lz4.OptionalLz4
-org.jebol.domain.eval.compression.lzav.OptionalLzav
 org.jebol.domain.eval.compression.OptionalLzma
