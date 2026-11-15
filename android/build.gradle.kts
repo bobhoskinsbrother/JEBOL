@@ -31,10 +31,12 @@ val stopEmulator = tasks.register<Exec>("stopEmulator") {
 
 val deviceSuites = listOf(":suites:connectedDebugAndroidTest")
 
+// The archive and the shutdown hang off the device suites themselves, so a
+// failing run is archived and its emulator stopped too.
 subprojects {
     tasks.matching { it.path in deviceSuites }.configureEach {
         dependsOn(coreForAndroid, startEmulator)
-        finalizedBy(stopEmulator)
+        finalizedBy(stopEmulator, ":archiveAndroidTestResults")
     }
 }
 
@@ -55,5 +57,4 @@ tasks.register("androidTests") {
     description = "The core's check against Android 35, then every device suite on the emulator, then the archive"
     dependsOn(coreForAndroid)
     dependsOn(deviceSuites)
-    finalizedBy(archiveAndroidTestResults)
 }

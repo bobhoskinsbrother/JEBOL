@@ -250,7 +250,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     static SuiteFile read(Path path) {
         String source;
         try {
-            source = Files.readString(path, StandardCharsets.UTF_8);
+            source = org.jebol.application.TextFiles.read(path, StandardCharsets.UTF_8);
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }

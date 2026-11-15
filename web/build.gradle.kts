@@ -16,6 +16,7 @@ dependencies {
     // The web build's substitution targets and library resources are written
     // against these, and they are never on the shipped jar's classpath.
     "teavmImplementation"(core)
+    CARRIED_EXTENSIONS.forEach { "teavmImplementation"(project(":extensions:$it")) }
     "teavmCompileOnly"("org.teavm:teavm-classlib:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-core:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-extension-spi:0.16.0")

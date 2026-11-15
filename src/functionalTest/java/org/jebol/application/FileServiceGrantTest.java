@@ -65,7 +65,7 @@ class FileServiceGrantTest {
         Interpreter interpreter = makeAnInterpreterReadingUnder(
                 Bounds.standard().grant(HostService.FILES), directory);
         answerTo(interpreter, "write %c.txt \"there\"");
-        assertThat(Files.readString(directory.resolve("c.txt"))).isEqualTo("there");
+        assertThat(TextFiles.read(directory.resolve("c.txt"))).isEqualTo("there");
     }
 
     @Test
@@ -73,7 +73,7 @@ class FileServiceGrantTest {
     void keepsTheScriptInsideTheAdapter(@TempDir Path directory) throws Exception {
         Interpreter interpreter = makeAnInterpreterReadingUnder(
                 Bounds.standard().grant(HostService.FILES), directory);
-        Files.writeString(directory.getParent().resolve("secret.txt"), "not yours");
+        TextFiles.write(directory.getParent().resolve("secret.txt"), "not yours");
         assertThat(readTheErrorIdOf(interpreter, "read %../secret.txt")).isEqualTo("cannot-open");
     }
 

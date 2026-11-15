@@ -1,7 +1,9 @@
 package org.jebol.suite;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.CarriedFixtures;
 import org.jebol.application.Interpreter;
+import org.jebol.application.TextFiles;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,7 +28,7 @@ class SuiteFileTest {
     private SuiteFile makeAFileHolding(String body) {
         Path written = folder.resolve("made-up-test.r3");
         try {
-            Files.writeString(written, """
+            TextFiles.write(written, """
                     Rebol [Title: "made up"]
                     ~~~start-file~~~ "Made up"
                     ===start-group=== "a group"
@@ -306,7 +308,7 @@ class SuiteFileTest {
 
             for (SuiteFile file : SuiteGrading.filesInSuite()) {
                 String original = stripWhitespace(read(
-                        Path.of("src", "testFixtures", "resources", "rebol-suite", file.name())));
+                        CarriedFixtures.directory("rebol-suite").resolve(file.name())));
                 for (SuiteFile.Assertion assertion : file.assertions()) {
                     String source = stripWhitespace(assertion.source());
                     if (!source.isEmpty() && !original.contains(source)) {
@@ -324,7 +326,7 @@ class SuiteFileTest {
 
         private static String read(Path path) {
             try {
-                return Files.readString(path, StandardCharsets.UTF_8);
+                return org.jebol.application.TextFiles.read(path, StandardCharsets.UTF_8);
             } catch (IOException unreadable) {
                 throw new UncheckedIOException(unreadable);
             }

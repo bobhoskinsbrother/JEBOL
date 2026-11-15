@@ -133,7 +133,12 @@ public final class RsaKey {
         if (!probabilistic) {
             return Signature.getInstance(algorithm.replace("-", "") + "withRSA");
         }
-        Signature scheme = Signature.getInstance("RSASSA-PSS");
+        Signature scheme;
+        try {
+            scheme = Signature.getInstance("RSASSA-PSS");
+        } catch (java.security.NoSuchAlgorithmException namedPerDigest) {
+            return Signature.getInstance(algorithm.replace("-", "") + "withRSA/PSS");
+        }
         scheme.setParameter(new java.security.spec.PSSParameterSpec(
                 algorithm, "MGF1",
                 new java.security.spec.MGF1ParameterSpec(algorithm),

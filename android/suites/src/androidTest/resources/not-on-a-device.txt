@@ -1,3 +1,16 @@
 # A test the core runs on the JVM that cannot run on a device by its nature,
 # one to a line: the class (or class#method), then why. NotOnADevice disables
 # exactly these, so each shows as skipped with its reason. Goal 2a step 7.
+
+org.jebol.domain.eval.natives.EveryBuiltInNativeIsRegisteredTest ArchUnit reads class files, and a device carries dex
+org.jebol.domain.eval.ReadingHttpFromALocalServerFromTheSourceTest it serves from the JDK's com.sun.net.httpserver, which Android does not have
+org.jebol.application.TheThruCacheFunctionsFromTheSourceTest it serves from the JDK's com.sun.net.httpserver, which Android does not have
+org.jebol.domain.eval.AccessOsFromTheSourceTest$Reading it compares the process number with ProcessHandle, which Android does not have
+org.jebol.domain.eval.natives.WhatEachRemainingNativeDeclaresTest$AccessOs it compares the process number with ProcessHandle, which Android does not have
+org.jebol.suite.SuiteSelectionTest it compares the vendored suite with rebol3-source/, which only the repository has
+org.jebol.mezz.ModuleLoadTest it reads Rebol's modules from rebol3-source/, which only the repository has
+org.jebol.mezz.MezzanineLoadTest it reads Rebol's library from rebol3-source/, which only the repository has
+org.jebol.mezz.EveryCarriedRebolFileReadsTest it reads every REBOL file in the repository, rebol3-source/, examples/ and scripts/ among them
+org.jebol.application.TheModuleTableIsRebolsFromTheSourceTest it reads sysobj.reb from rebol3-source/, which only the repository has
+org.jebol.corpus.CorpusCoverageReportTest it reads corpus/, which only the repository has
+org.jebol.corpus.EvaluationCorpusTest it reads corpus/, which only the repository has

@@ -9,6 +9,7 @@ import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.ImageValue;
+import org.jebol.extension.blend2d.Blend2DExtension;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -121,6 +122,7 @@ class TheBlend2DExampleEndToEndTest {
                         .withFiles(FileSystemPort.rootFileSystem(Path.of(".").toAbsolutePath())),
                 OutputPort.discard(),
                 Bounds.standard()
+                        .add(new Blend2DExtension().provide())
                         .grant(HostService.WINDOWS)
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));

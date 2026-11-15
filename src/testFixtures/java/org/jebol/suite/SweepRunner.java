@@ -23,7 +23,7 @@ public final class SweepRunner {
                         System.out.println(text);
                     }
                 });
-        String source = Files.readString(Path.of(argued[0]));
+        String source = org.jebol.application.TextFiles.read(Path.of(argued[0]));
         interpreter.defineNewWordsIn(source);
         interpreter.run("do [\n" + source + "\n]");
     }

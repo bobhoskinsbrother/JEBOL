@@ -280,7 +280,7 @@ end-to-end suite, then the desktop's window, one stage at a time:
 | `heapExhaustionTests` | `src/functionalTest` | The core's functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
 | `:desktop:desktopWindowTests` | `desktop/src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
-| `:extensions:<name>:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11 |
+| `:extensions:<name>:unitTests`, `:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>UnitTests`, `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11. Ten extensions: SQLite, and the nine of R3's the shipped jar and the site carry (decision 58) |
 
 `./gradlew unitTests` runs every project's unit suite, and so on for each
 name; `./gradlew :desktop:unitTests` runs one. Results go to

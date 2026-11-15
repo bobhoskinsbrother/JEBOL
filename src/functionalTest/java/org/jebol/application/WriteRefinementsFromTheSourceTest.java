@@ -34,7 +34,7 @@ class WriteRefinementsFromTheSourceTest {
     }
 
     private static String textIn(Path directory, String name) throws Exception {
-        return Files.readString(directory.resolve(name));
+        return TextFiles.read(directory.resolve(name));
     }
 
     private static byte[] readTheBytesIn(Path directory, String name) throws Exception {

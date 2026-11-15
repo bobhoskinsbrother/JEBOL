@@ -105,15 +105,6 @@ public final class Interpreter {
         SealedLibrary library = new SealedLibrary(systemContext);
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library, boot.ports());
-        installation.installBundled(EasingExtension.create());
-        installation.installBundled(BlurHashExtension.create());
-        installation.installBundled(DeflateExtension.create());
-        installation.installBundled(ZlibNgExtension.create());
-        installation.installBundled(Blend2DExtension.create());
-        installation.installBundled(MathPressoExtension.create());
-        installation.installBundled(ZstdExtension.create());
-        installation.installBundled(Bzip2Extension.create());
-        installation.installBundled(BrotliExtension.create());
         List<ExtensionReport> reports = new ArrayList<>(bounds.refusedExtensions());
         bounds.extensions().stream().map(installation::installAndReport).forEach(reports::add);
         this.extensionReports = List.copyOf(reports);

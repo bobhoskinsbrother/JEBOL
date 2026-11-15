@@ -23,7 +23,7 @@ class ChecksumOfAFileFromTheSourceTest {
             "The quick brown fox jumps over the lazy dog";
 
     private static Interpreter makeAnInterpreterReaching(Path directory) throws IOException {
-        Files.writeString(directory.resolve("subject.txt"), THE_SUBJECT);
+        TextFiles.write(directory.resolve("subject.txt"), THE_SUBJECT);
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),

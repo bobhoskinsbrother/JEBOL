@@ -79,7 +79,7 @@ class WhatEachPortNativeDeclaresTest {
     }
 
     private String answerBesideAFileAndADirectory(Path directory, String source) throws IOException {
-        Files.writeString(directory.resolve("a.txt"), "abc");
+        org.jebol.application.TextFiles.write(directory.resolve("a.txt"), "abc");
         Files.createDirectory(directory.resolve("d"));
         return answerIn(directory, source);
     }

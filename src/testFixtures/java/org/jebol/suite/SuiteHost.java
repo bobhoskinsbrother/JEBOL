@@ -17,6 +17,7 @@ import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
+import org.jebol.application.CarriedFixtures;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.PlatformUnderTest;
@@ -106,7 +107,7 @@ final class SuiteHost {
     private static void putTheModulesTheSuiteImportsWhereImportLooks(Path root)
             throws IOException {
 
-        Path from = Path.of("src", "testFixtures", "resources", "rebol-modules");
+        Path from = CarriedFixtures.directory("rebol-modules");
         Path into = root.resolve("data").resolve("modules");
         if (!Files.isDirectory(from) || !Files.isDirectory(into)) {
             return;
@@ -122,7 +123,7 @@ final class SuiteHost {
     private static void putTheSuiteFilesWhereARunStandsAmongThem(Path root)
             throws IOException {
 
-        Path from = Path.of("src", "testFixtures", "resources", "rebol-suite");
+        Path from = CarriedFixtures.directory("rebol-suite");
         if (!Files.isDirectory(from)) {
             return;
         }
@@ -145,7 +146,7 @@ final class SuiteHost {
         putTheSuiteFilesWhereARunStandsAmongThem(root);
         Path into = root.resolve("units").resolve("files");
         Files.createDirectories(into);
-        Path from = Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
+        Path from = CarriedFixtures.directory("rebol-suite/units/files");
         if (!Files.isDirectory(from)) {
             return;
         }

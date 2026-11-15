@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.TerminalLending;
 import org.jebol.domain.host.ConsoleKey;
 import org.jebol.domain.host.ConsoleMode;
 import org.jebol.domain.host.ConsolePort;
@@ -17,10 +18,10 @@ import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
-public final class CommandLineConsole implements ConsolePort, AutoCloseable {
+public final class CommandLineConsole implements ConsolePort, TerminalLending, AutoCloseable {
 
     private static final List<String> EDITORS_SETTINGS =
-            List.of("-echo", "-icanon", "-icrnl", "-inlcr", "onlcr", "min", "1", "time", "0");
+            List.of("-echo", "-icanon", "-icrnl", "-inlcr", "-isig", "onlcr", "min", "1", "time", "0");
 
     private static final List<String> RAW_SETTINGS = List.of("-ixon", "-ixoff", "susp", "undef", "quit", "undef");
 
@@ -34,6 +35,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
 
     private static final int READ_SIZE = 32 * 1024;
     private static final int KEY_POLL_MILLISECONDS = 40;
+    private static final int READ_AHEAD_MILLISECONDS = 40;
     private static final int CR = '\r';
     private static final int LF = '\n';
     private static final int ESC = 0x1B;
@@ -47,37 +49,97 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
     private final boolean isTerminal;
     private final TerminalLineEditor editor;
     private final TerminalKeyDecoder decoder;
+    private final TypeAhead typeAhead;
     private final String asFound;
     private final String editorsMode;
+    private final Object readers = new Object();
+    private int readsUnderway;
+    private boolean lentToAProgram;
 
     private byte[] pending = new byte[0];
     private boolean lineMode = true;
     private ConsoleMode lastModeSet = ConsoleMode.ECHO;
     private boolean lastSetting;
-    private boolean closed;
+    private volatile boolean closed;
     private Runnable escape = () -> {
     };
     private BooleanSupplier escapePending = () -> false;
 
     private CommandLineConsole(InputStream typed, StreamOutput output, OutputStream shown,
                                Optional<TerminalSettings> terminal, boolean honoursModes, boolean isTerminal) {
-        this.typed = typed;
         this.output = output;
         this.terminal = terminal;
         this.honoursModes = honoursModes;
         this.isTerminal = isTerminal;
         if (terminal.isPresent()) {
             TerminalSettings settings = terminal.orElseThrow();
+            this.typeAhead = new TypeAhead(typed);
+            this.typed = typeAhead;
             this.asFound = settings.read();
             settings.change(EDITORS_SETTINGS);
             this.editorsMode = settings.read();
-            this.editor = new TerminalLineEditor(typed, shown, () -> escape.run());
-            this.decoder = new TerminalKeyDecoder(typed, settings.eraseCharacter());
+            this.editor = new TerminalLineEditor(typeAhead, shown, () -> escape.run());
+            this.decoder = new TerminalKeyDecoder(typeAhead, settings.eraseCharacter());
         } else {
+            this.typeAhead = null;
+            this.typed = typed;
             this.asFound = "";
             this.editorsMode = "";
             this.editor = null;
             this.decoder = null;
+        }
+    }
+
+    void readAhead() {
+        if (typeAhead == null) {
+            return;
+        }
+        synchronized (readers) {
+            if (readsUnderway > 0 || lentToAProgram) {
+                return;
+            }
+            byte[] arrived = typeAhead.takeWhatHasArrived();
+            int afterLastCtrlC = 0;
+            for (int at = 0; at < arrived.length; at++) {
+                if (arrived[at] == ConsoleKey.CTRL_C) {
+                    escape.run();
+                    afterLastCtrlC = at + 1;
+                }
+            }
+            if (afterLastCtrlC > 0) {
+                typeAhead.dropKept();
+            }
+            typeAhead.keep(Arrays.copyOfRange(arrived, afterLastCtrlC, arrived.length));
+        }
+    }
+
+    private void keepReadingAhead() {
+        while (!closed) {
+            readAhead();
+            try {
+                Thread.sleep(READ_AHEAD_MILLISECONDS);
+            } catch (InterruptedException stopped) {
+                return;
+            }
+        }
+    }
+
+    @Override
+    public <T> T lendDuring(Supplier<T> program) {
+        if (terminal.isEmpty()) {
+            return program.get();
+        }
+        synchronized (readers) {
+            lentToAProgram = true;
+        }
+        terminal.orElseThrow().change(SIGNALS_ON);
+        try {
+            return program.get();
+        } finally {
+            terminal.orElseThrow().change(SIGNALS_OFF);
+            synchronized (readers) {
+                lentToAProgram = false;
+            }
         }
     }
 
@@ -99,9 +161,12 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows")) {
             return onWindows(typed, output, System.console() != null);
         }
-        return isStandardInputATerminal()
-                ? atTerminal(typed, output, shown, new SttyTerminal())
-                : throughPipes(typed, output, shown);
+        if (!isStandardInputATerminal()) {
+            return throughPipes(typed, output, shown);
+        }
+        CommandLineConsole console = atTerminal(typed, output, shown, new SttyTerminal());
+        Thread.ofPlatform().daemon().name("jebol-reading-ahead-for-ctrl-c").start(console::keepReadingAhead);
+        return console;
     }
 
     private static boolean isStandardInputATerminal() {
@@ -123,7 +188,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
     @Override
     public String readLine() {
         if (editor != null) {
-            return withoutFinalLineFeed(withCtrlCAsByte(editor::readLine));
+            return withoutFinalLineFeed(whileReading(editor::readLine));
         }
         byte[] line = readLineBytes();
         return line == null ? null : decode(line);
@@ -148,7 +213,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
 
     String nextPromptLine() {
         if (editor != null) {
-            return withoutFinalLineFeed(withCtrlCAsByte(editor::readLine));
+            return withoutFinalLineFeed(whileReading(editor::readLine));
         }
         while (indexOfLineFeed() < 0) {
             byte[] read = new byte[READ_SIZE];
@@ -168,7 +233,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
 
     @Override
     public String readHiddenLine() {
-        return withCtrlCAsByte(this::readHiddenBytes);
+        return whileReading(this::readHiddenBytes);
     }
 
     private String readHiddenBytes() {
@@ -216,7 +281,7 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         if (decoder == null) {
             return Optional.of(keyLeftByLastMode());
         }
-        return withCtrlCAsByte(this::readKeyUnlessEscaped);
+        return whileReading(this::readKeyUnlessEscaped);
     }
 
     private Optional<ConsoleKey> readKeyUnlessEscaped() {
@@ -310,12 +375,16 @@ public final class CommandLineConsole implements ConsolePort, AutoCloseable {
         return new ConsoleKey(lastModeSet.ordinal(), value & VALUE_BITS, false, false, false);
     }
 
-    private <T> T withCtrlCAsByte(Supplier<T> reading) {
-        terminal.ifPresent(settings -> settings.change(SIGNALS_OFF));
+    private <T> T whileReading(Supplier<T> reading) {
+        synchronized (readers) {
+            readsUnderway++;
+        }
         try {
             return reading.get();
         } finally {
-            terminal.ifPresent(settings -> settings.change(SIGNALS_ON));
+            synchronized (readers) {
+                readsUnderway--;
+            }
         }
     }
 

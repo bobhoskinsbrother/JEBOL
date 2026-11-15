@@ -59,7 +59,7 @@ final class AFileTriedOnItsOwn {
     private static Attempt attempt(Path file) {
         String source;
         try {
-            source = Files.readString(file);
+            source = org.jebol.application.TextFiles.read(file);
         } catch (IOException unreadable) {
             return new Attempt(file.getFileName().toString(), 0, "unreadable");
         }

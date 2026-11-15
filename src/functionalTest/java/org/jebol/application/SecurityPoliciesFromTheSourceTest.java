@@ -31,9 +31,9 @@ class SecurityPoliciesFromTheSourceTest {
     void layOutAnAppBesideThingsOutsideIt() throws IOException {
         Files.createDirectories(root.resolve("app"));
         Files.createDirectories(root.resolve("outdir"));
-        Files.writeString(root.resolve("app").resolve("in.txt"), "inside");
-        Files.writeString(root.resolve("out.txt"), "outside");
-        Files.writeString(root.resolve("outdir").resolve("o.txt"), "o");
+        TextFiles.write(root.resolve("app").resolve("in.txt"), "inside");
+        TextFiles.write(root.resolve("out.txt"), "outside");
+        TextFiles.write(root.resolve("outdir").resolve("o.txt"), "o");
         interpreter = makeAnInterpreterGrantedEverything(Bounds.standard());
         answerTo("cd %/app/");
     }
@@ -296,7 +296,7 @@ class SecurityPoliciesFromTheSourceTest {
         @Test
         @DisplayName("a name that only begins like the folder is not in it")
         void excludesANameThatOnlyBeginsLikeIt() throws IOException {
-            Files.writeString(root.resolve("apple.txt"), "no");
+            TextFiles.write(root.resolve("apple.txt"), "no");
 
             assertThat(readTheRefusalOf("read %/apple.txt")).isEqualTo("[security %/apple.txt]");
         }

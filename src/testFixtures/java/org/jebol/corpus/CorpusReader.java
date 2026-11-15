@@ -41,7 +41,7 @@ public final class CorpusReader {
 
     public static String read(Path file) {
         try {
-            return Files.readString(file, StandardCharsets.UTF_8);
+            return org.jebol.application.TextFiles.read(file, StandardCharsets.UTF_8);
         } catch (IOException problem) {
             throw new UncheckedIOException("cannot read " + file, problem);
         }

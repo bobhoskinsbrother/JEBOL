@@ -95,7 +95,7 @@ public final class LocalTlsServer implements AutoCloseable {
         } catch (IOException | GeneralSecurityException cannotListen) {
             throw new IllegalStateException(cannotListen);
         }
-        acceptor = Thread.ofVirtual().start(this::acceptLoop);
+        acceptor = org.jebol.application.TestThreads.start(this::acceptLoop);
     }
 
     public int port() {
@@ -149,7 +149,7 @@ public final class LocalTlsServer implements AutoCloseable {
             try {
                 Socket accepted = listening.accept();
                 countAccepted();
-                Thread.ofVirtual().start(() -> serve((SSLSocket) accepted));
+                org.jebol.application.TestThreads.start(() -> serve((SSLSocket) accepted));
             } catch (SocketException closed) {
                 return;
             } catch (IOException acceptFailed) {

@@ -8,16 +8,16 @@ import org.jebol.domain.value.Value;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-final class StoredOctets {
+public final class StoredOctets {
 
     private StoredOctets() {
     }
 
-    static long countUnitsFromIndex(Value data) {
+    public static long countUnitsFromIndex(Value data) {
         return readAllFromIndex(data).length;
     }
 
-    static byte[] readFromIndex(Value data, long length) {
+    public static byte[] readFromIndex(Value data, long length) {
         byte[] stored = readAllFromIndex(data);
         return Arrays.copyOf(stored, (int) Math.max(0, Math.min(stored.length, length)));
     }

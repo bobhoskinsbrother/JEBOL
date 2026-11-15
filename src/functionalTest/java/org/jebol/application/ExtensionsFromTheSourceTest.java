@@ -509,7 +509,7 @@ class ExtensionsFromTheSourceTest {
                     p/awake: func [event] [true]""");
             PortValue port = (PortValue) interpreter.run("p").value();
 
-            Thread.ofPlatform().start(() -> kept.get().post(port, "read"));
+            TestThreads.start(() -> kept.get().post(port, "read"));
 
             assertThat(answerTo(interpreter, "same? p wait [p 20]")).isEqualTo("#(true)");
         }
@@ -523,7 +523,7 @@ class ExtensionsFromTheSourceTest {
             ObjectValue listener = (ObjectValue) interpreter.run("listener").value();
 
             AnswerAwaited answered = new AnswerAwaited(new CompletableFuture<>());
-            Thread.ofPlatform().start(() -> kept.get()
+            TestThreads.start(() -> kept.get()
                     .callBack(listener, "heard", List.of(StringValue.of("a shutter")), answered));
             answerTo(interpreter, "wait [system/ports/callback 2]");
 

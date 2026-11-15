@@ -43,7 +43,7 @@ class DirectoryQuestionFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterHoldingADirectoryAndAFile(Path root) throws Exception {
         Files.createDirectories(root.resolve("sub"));
-        Files.writeString(root.resolve("plain.txt"), "x");
+        org.jebol.application.TextFiles.write(root.resolve("plain.txt"), "x");
         return makeAnInterpreterReaching(root, HostService.FILES);
     }
 

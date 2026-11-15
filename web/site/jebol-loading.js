@@ -3,10 +3,11 @@ class JebolLoading {
     this.element = element;
     this.saying = element.querySelector('.jebol-loading-says');
     this.isOver = false;
+    this.hasFailed = false;
   }
 
   say(text) {
-    if (!this.isOver) {
+    if (!this.isOver && !this.hasFailed) {
       this.saying.textContent = text;
     }
   }
@@ -24,6 +25,7 @@ class JebolLoading {
 
   fail(text) {
     this.say(text);
+    this.hasFailed = true;
     this.element.classList.add('jebol-loading-failed');
   }
 

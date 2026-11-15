@@ -23,6 +23,10 @@ public final class ExtensionDescriptors {
 
     private static final String DESCRIPTOR = "META-INF/jebol/extension.reb";
 
+    private static final String CARRIED_LISTING = "META-INF/jebol/carried.txt";
+
+    private static final String CARRIED_DESCRIPTORS = "META-INF/jebol/carried/";
+
     private static final String JVM_SETUP = "jvm";
 
     private static final String UNNAMED = "extension";
@@ -37,15 +41,28 @@ public final class ExtensionDescriptors {
 
     public Bounds addJvmSetupsTo(Bounds bounds) {
         Bounds added = bounds;
-        for (URL descriptor : listDescriptors()) {
+        for (URL listing : listResources(CARRIED_LISTING)) {
+            for (String name : readText(listing).lines().map(String::strip).filter(line -> !line.isEmpty()).toList()) {
+                added = addCarried(added, name);
+            }
+        }
+        for (URL descriptor : listResources(DESCRIPTOR)) {
             added = addJvmSetup(added, readText(descriptor));
         }
         return added;
     }
 
-    private List<URL> listDescriptors() {
+    private Bounds addCarried(Bounds bounds, String name) {
+        URL descriptor = loader.getResource(CARRIED_DESCRIPTORS + name + ".reb");
+        if (descriptor == null) {
+            return bounds.refuse(new ExtensionReport(name, Optional.of(BAD_EXTENSION)));
+        }
+        return addJvmSetup(bounds, readText(descriptor));
+    }
+
+    private List<URL> listResources(String path) {
         try {
-            return Collections.list(loader.getResources(DESCRIPTOR));
+            return Collections.list(loader.getResources(path));
         } catch (IOException unlisted) {
             throw new UncheckedIOException(unlisted);
         }

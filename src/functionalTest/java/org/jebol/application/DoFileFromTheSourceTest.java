@@ -37,7 +37,7 @@ class DoFileFromTheSourceTest {
     }
 
     private static void writeAScript(Path root, String fileName, String body) throws IOException {
-        Files.writeString(root.resolve(fileName), body);
+        TextFiles.write(root.resolve(fileName), body);
     }
 
     @Nested

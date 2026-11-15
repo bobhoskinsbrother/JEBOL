@@ -156,7 +156,7 @@ on every return code, total and byte: 148,416 `Z_DATA_ERROR`, 15,960
 
 ---
 
-**What the gate runs.** `src/testFixtures/resources/zlib-ng/` keeps two tables
+**What the gate runs.** `extensions/zlib-ng/src/testFixtures/resources/zlib-ng/` keeps two tables
 made by the same C over `DeflateFixtures`' inputs at every boundary its README
 lists, 6,892 compressions and 11,520 decodes, and `ZlibNgFromTheSourceTest` replays
 them. `TheZlibNgModuleFromTheSourceTest` and `TheDeflateModuleFromTheSourceTest`

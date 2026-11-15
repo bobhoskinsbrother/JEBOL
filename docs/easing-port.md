@@ -46,7 +46,7 @@ JEBOL computes in double, as Linux and macOS do.
 The extension's `easing.c` was fetched as text, read, and compiled in a
 scratch directory beside a `main` that prints the bits of every curve's answer.
 Nothing else from the extension was built, and no release binary was run.
-`src/testFixtures/resources/easing/` holds both generators and the README says
+`extensions/easing/src/testFixtures/resources/easing/` holds both generators and the README says
 how to make the table again.
 
 Over 65,588 inputs per curve -- every multiple of 1/65536 from 0 to 1, and 0, 1,

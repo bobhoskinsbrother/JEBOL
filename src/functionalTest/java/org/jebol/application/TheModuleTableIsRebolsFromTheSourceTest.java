@@ -29,7 +29,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     private static Map<String, String> listWhatRebolPublishes() {
         String source;
         try {
-            source = Files.readString(SYSOBJ, StandardCharsets.UTF_8);
+            source = TextFiles.read(SYSOBJ, StandardCharsets.UTF_8);
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }

@@ -18,6 +18,10 @@ public interface PlatformUnderTest {
 
     ImagePort images();
 
+    default List<String> suiteEntriesItCannotRun() {
+        return List.of();
+    }
+
     static PlatformUnderTest current() {
         return TheOneFound.PLATFORM;
     }

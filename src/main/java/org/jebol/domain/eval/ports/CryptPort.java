@@ -3,6 +3,7 @@ package org.jebol.domain.eval.ports;
 import org.jebol.domain.cipher.Aria;
 import org.jebol.domain.cipher.BlockModes;
 import org.jebol.domain.cipher.Camellia;
+import org.jebol.domain.cipher.ChaCha20;
 import org.jebol.domain.cipher.JoinedOctets;
 import org.jebol.domain.cipher.CounterWithCbcMac;
 import org.jebol.domain.cipher.ChaChaWithPoly1305;
@@ -211,6 +212,7 @@ public final class CryptPort {
         private int toAuthenticateOctets;
 
         private Cipher running;
+        private ChaCha20 streaming;
         private byte[] heldBack = new byte[0];
         private byte[] ready = new byte[0];
         private boolean somethingIsReady;
@@ -477,6 +479,7 @@ public final class CryptPort {
         working.needsStarting = false;
         working.wouldNotRun = false;
         working.lastWriteFailed = false;
+        working.streaming = null;
         if (works.mode() == Mode.COUNTER_WITH_GALOIS) {
             working.wouldNotRun = working.vector.length == 0;
             return;
@@ -492,8 +495,13 @@ public final class CryptPort {
             working.chaining = fitTo(working.vector, Camellia.BLOCK);
             return;
         }
-        working.running = makeCipherFor(working, works.mode() == Mode.CHAINED
-                || works.mode() == Mode.STREAM);
+        if (works.mode() == Mode.STREAM) {
+            byte[] whole = fitTo(working.vector, WIDEST_VECTOR);
+            working.streaming = new ChaCha20(fitTo(working.key, works.keyOctets()),
+                    Arrays.copyOf(whole, CHACHA20_COUNTER_AT), readCounterMostSignificantFirstAfterNonce(whole));
+            return;
+        }
+        working.running = makeCipherFor(working, works.mode() == Mode.CHAINED);
     }
 
     private OneBlock makeBlockCipherBehind(
@@ -524,12 +532,7 @@ public final class CryptPort {
                     : Cipher.ENCRYPT_MODE;
             SecretKeySpec key = new SecretKeySpec(
                     fitTo(working.key, works.keyOctets()), works.keyAlgorithm());
-            if (works.mode() == Mode.STREAM) {
-                byte[] whole = fitTo(working.vector, WIDEST_VECTOR);
-                cipher.init(direction, key, new javax.crypto.spec.ChaCha20ParameterSpec(
-                        Arrays.copyOf(whole, CHACHA20_COUNTER_AT),
-                        readCounterMostSignificantFirstAfterNonce(whole)));
-            } else if (needsVector) {
+            if (needsVector) {
                 cipher.init(direction, key, new IvParameterSpec(
                         fitTo(working.vector, works.blockOctets())));
             } else {
@@ -551,6 +554,9 @@ public final class CryptPort {
     }
 
     private byte[] transform(Working working, byte[] octets) {
+        if (working.streaming != null) {
+            return working.streaming.mask(octets);
+        }
         if (working.works().family() == Family.CAMELLIA
                 || working.works().family() == Family.ARIA) {
             return runThroughWrittenOutCipher(working, octets);

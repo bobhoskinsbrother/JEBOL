@@ -29,8 +29,7 @@ class SuiteSelectionTest {
 
     private static Set<String> listWhatRebolRuns() {
         try {
-            String runner = Files.readString(
-                    REBOL_TESTS.resolve("run-tests.r3"), StandardCharsets.UTF_8);
+            String runner = org.jebol.application.TextFiles.read(REBOL_TESTS.resolve("run-tests.r3"), StandardCharsets.UTF_8);
             Set<String> found = new TreeSet<>();
             for (String line : runner.lines().toList()) {
                 String beforeAnyComment = line.split(";", 2)[0];
@@ -306,7 +305,7 @@ class SuiteSelectionTest {
 
     private static String readAll(Path path) {
         try {
-            return Files.readString(path, StandardCharsets.UTF_8);
+            return org.jebol.application.TextFiles.read(path, StandardCharsets.UTF_8);
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }

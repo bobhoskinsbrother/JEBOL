@@ -37,7 +37,7 @@ class SandboxPathsFromTheSourceTest {
         @Test
         @DisplayName("a file at the root is reached by naming it with a slash")
         void reachesAFileAtTheRoot(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("inside.txt"), "fine");
+            TextFiles.write(root.resolve("inside.txt"), "fine");
 
             assertThat(answerTo(makeAnInterpreterGrantedFilesUnder(root), """
                     to string! read %/inside.txt""")).isEqualTo("\"fine\"");
@@ -47,7 +47,7 @@ class SandboxPathsFromTheSourceTest {
         @DisplayName("and one in a directory beneath it the same way")
         void reachesOneInADirectory(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("units"));
-            Files.writeString(root.resolve("units").resolve("deeper.txt"), "here");
+            TextFiles.write(root.resolve("units").resolve("deeper.txt"), "here");
 
             assertThat(answerTo(makeAnInterpreterGrantedFilesUnder(root), """
                     to string! read %/units/deeper.txt""")).isEqualTo("\"here\"");
@@ -57,7 +57,7 @@ class SandboxPathsFromTheSourceTest {
         @DisplayName("changing directory to the slash is the top of what can be seen")
         void changesToTheTopOnTheSlash(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("units"));
-            Files.writeString(root.resolve("at-the-top.txt"), "yes");
+            TextFiles.write(root.resolve("at-the-top.txt"), "yes");
 
             assertThat(answerTo(makeAnInterpreterGrantedFilesUnder(root), """
                     cd %units/
@@ -91,7 +91,7 @@ class SandboxPathsFromTheSourceTest {
         @DisplayName("TO-REAL-FILE answers a path READ can be given straight back")
         void roundTripsThroughToRealFile(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("units"));
-            Files.writeString(root.resolve("units").resolve("there.txt"), "round");
+            TextFiles.write(root.resolve("units").resolve("there.txt"), "round");
 
             assertThat(answerTo(makeAnInterpreterGrantedFilesUnder(root), """
                     real: to-real-file %units/there.txt

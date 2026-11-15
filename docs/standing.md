@@ -6,7 +6,7 @@ here and nowhere else. `README.md`, `docs/porting-guide.md`, `using-jebol.md` an
 
 ## The measures
 
-Measured on 2026-10-12, the jar row on 2026-11-08, the web build row on 2026-11-06,
+Measured on 2026-10-12, the jar rows on 2026-11-15, the web build row on 2026-11-06,
 and the timing rows on 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
 an Intel one read about 122ms median and 187ms p95, so compare a change against
 a baseline from the same machine rather than against the row.
@@ -19,7 +19,8 @@ a baseline from the same machine rather than against the row.
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 4,103 KB, of which the 2010 GUI is 75 KB before compression and the UTS #46 tables 56 KB, and no dependencies                                                                                                    |
+| the shipped jar               | 4,171 KB, of which the 2010 GUI is 75 KB before compression and the UTS #46 tables 56 KB, and no dependencies; it carries the nine of R3's extensions JEBOL ports (decision 58)                                   |
+| the core jar                  | 3,382 KB, what every platform carries and Android's APK takes; the nine extensions' jars beside it are 588 KB together                                                                                           |
 | the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |

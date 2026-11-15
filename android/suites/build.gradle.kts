@@ -27,8 +27,22 @@ android {
     }
 }
 
+// The core's functional tests, Rebol's suite among them, compiled once by the
+// root build as on the JVM and dexed into this test APK, where the Jupiter
+// runner finds them (goal 2a step 7).
+val core = gradle.includedBuilds.single()
+val coreFunctionalTests = files(core.projectDir.resolve("build/libs/jebol-core-3.22.5-functional-tests.jar"))
+
+tasks.configureEach {
+    if (name == "preDebugAndroidTestBuild") {
+        dependsOn(core.task(":functionalTestJar"))
+    }
+}
+
 dependencies {
     implementation(project(":host"))
+    androidTestImplementation(coreFunctionalTests)
+    androidTestImplementation("net.jqwik:jqwik:1.9.2")
     androidTestImplementation(testFixtures("org.jebol:jebol:3.22.5"))
     androidTestImplementation(platform("org.junit:junit-bom:5.11.4"))
     androidTestImplementation("org.junit.jupiter:junit-jupiter-api")

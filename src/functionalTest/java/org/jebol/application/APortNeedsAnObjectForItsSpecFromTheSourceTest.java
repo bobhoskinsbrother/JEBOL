@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) throws IOException {
-        Files.writeString(directory.resolve("held.txt"), "carried");
+        TextFiles.write(directory.resolve("held.txt"), "carried");
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),

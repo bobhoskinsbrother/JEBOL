@@ -1,0 +1,36 @@
+# Assertions in Rebol's own suite that Android cannot run, in the form
+# needs-the-network.txt uses: a file, or file / group / test. Their steps are
+# not run at all, so what they would have changed -- the directory a block cd's
+# into before its CALL fails, say -- never reaches the assertions after them.
+# Goal 2a step 6.
+
+# Android runs no programs (decision 73; CALL is 2c's to answer, as a
+# browser's is), so nothing starts a second interpreter or a shell.
+evaluation-test.r3 / BOOT / issue-232
+evaluation-test.r3 / CATCH / catch/quit [quit]
+unicode-test.r3 / natives / call
+lexer-test.r3 / Special tests / NULLs inside loaded string
+file-test.r3 / to-local-file / issue-2538
+module-test.r3 / module import / import to user context
+module-test.r3 / module import / import/no-lib
+module-test.r3 / module import / import block
+module-test.r3 / module import / import/no-lib block
+
+# Until 2c, Android has no picture codec: decoding and encoding images is
+# Android's adapter to write, as JavaImage is the desktop's.
+codecs-test.r3 / BMP codec / encode/decode BMP
+codecs-test.r3 / GIF codec / animated gif
+codecs-test.r3 / GIF codec / encode/decode GIF
+codecs-test.r3 / GIF codec / gif rgb image
+codecs-test.r3 / ICO codec / ICO decode
+codecs-test.r3 / JPEG codec / encode/decode JPEG
+codecs-test.r3 / JPEG codec / jpeg/size?
+codecs-test.r3 / JPEG codec / load jpeg
+codecs-test.r3 / PNG codec / encode/decode PNG
+codecs-test.r3 / PNG codec / png rgb image
+image-test.r3 / BLUR / blur
+image-test.r3 / Image difference / image-diff [different sizes]
+image-test.r3 / Image difference / image-diff [same sizes]
+image-test.r3 / Save/load image / loading JPEG file with an unexpected property type
+image-test.r3 / Save/load image / save/load BMP
+image-test.r3 / Save/load image / save/load PNG

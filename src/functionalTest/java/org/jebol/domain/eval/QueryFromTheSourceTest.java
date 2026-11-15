@@ -40,7 +40,7 @@ class QueryFromTheSourceTest {
     }
 
     private void givenAFile(String name, String contents) throws Exception {
-        Files.writeString(directory.resolve(name), contents);
+        org.jebol.application.TextFiles.write(directory.resolve(name), contents);
     }
 
     private static final String TRUE = "#(true)";

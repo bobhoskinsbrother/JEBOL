@@ -3,8 +3,11 @@ package org.jebol.domain.eval;
 import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.Extension;
+import org.jebol.application.ExtensionCommand;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.domain.value.LogicValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,7 +35,9 @@ class AValueCrossingToATaskIsACopyTest {
                 AnInterpreter.standardPorts().withTasks(
                         new ThreadTasks(Bounds.standard().withoutTimeLimit(), AnInterpreter::standardPorts)),
                 written::append,
-                Bounds.standard());
+                Bounds.standard().add(new Extension("a-command", "1.0.0", List.of(
+                        new ExtensionCommand("answer", "{Answers true}", call -> LogicValue.of(true))))
+                        .withHeader("REBOL [Title: {A command} Type: module]")));
     }
 
     private static String waitForChild(StringBuffer written) {
@@ -311,7 +317,7 @@ class AValueCrossingToATaskIsACopyTest {
                 "make gob! []|gob!",
                 "open checksum://sha1|port!",
                 "system/codecs/text/entry|handle!",
-                "get in import 'easing 'linear|command!"})
+                "get in import 'a-command 'answer|command!"})
         @DisplayName("the parent catches invalid-type naming the datatype, and the child never starts")
         void refusesInParent(String madeAndNamed) {
             String made = madeAndNamed.substring(0, madeAndNamed.indexOf('|'));

@@ -8,4 +8,11 @@ plugins {
 
 rootProject.name = "jebol"
 
-include("desktop", "web", "extensions:sqlite")
+include("desktop", "web")
+
+include("extensions:sqlite")
+
+include(
+    "extensions:easing", "extensions:blurhash", "extensions:mathpresso", "extensions:deflate",
+    "extensions:zlib-ng", "extensions:zstd", "extensions:bzip2", "extensions:brotli", "extensions:blend2d",
+)

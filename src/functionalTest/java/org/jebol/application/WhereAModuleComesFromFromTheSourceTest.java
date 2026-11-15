@@ -83,18 +83,18 @@ class WhereAModuleComesFromFromTheSourceTest {
                 .isEqualTo("bundled://thru-cache.reb");
         assertThat(answerTo(root, "select system/modules 'httpd"))
                 .isEqualTo("bundled://httpd.reb");
-        assertThat(answerTo(root, "type? first select system/modules 'blend2d"))
-                .as("a served extension is offered before it is imported, as its spec and its body")
-                .isEqualTo("#(object!)");
     }
 
     @Test
     @DisplayName("but nothing this build cannot serve is offered")
     void offersNothingThisBuildCannotServe(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'sqlite")).isEqualTo("_");
-        assertThat(answerTo(root, "type? first select system/modules 'bzip2")).isEqualTo("#(object!)");
-        assertThat(answerTo(root, "type? first select system/modules 'zstd")).isEqualTo("#(object!)");
-        assertThat(answerTo(root, "type? first select system/modules 'brotli")).isEqualTo("#(object!)");
+        assertThat(answerTo(root, "select system/modules 'blend2d"))
+                .as("R3's external extensions are jars of their own, and the core carries none")
+                .isEqualTo("_");
+        assertThat(answerTo(root, "select system/modules 'bzip2")).isEqualTo("_");
+        assertThat(answerTo(root, "select system/modules 'zstd")).isEqualTo("_");
+        assertThat(answerTo(root, "select system/modules 'brotli")).isEqualTo("_");
         assertThat(answerTo(root, "type? select system/modules 'json"))
                 .as("already vendored and loaded, so it is a module and not an address")
                 .isEqualTo("#(module!)");

@@ -42,7 +42,7 @@ class ExtensionDescriptorsFromTheSourceTest {
         Path jar = directory.resolve("jar" + jars.size());
         Path written = jar.resolve("META-INF/jebol/extension.reb");
         Files.createDirectories(written.getParent());
-        Files.writeString(written, descriptor);
+        org.jebol.application.TextFiles.write(written, descriptor);
         jars.add(jar);
     }
 
@@ -117,5 +117,54 @@ class ExtensionDescriptorsFromTheSourceTest {
 
         assertThat(AnInterpreter.withBounds(readDescriptors()).extensions()).containsExactly(
                 new ExtensionReport("greeting", Optional.of("bad-extension")));
+    }
+
+    private void addJarCarrying(String listing, String... namedDescriptors) throws IOException {
+        Path jar = directory.resolve("jar" + jars.size());
+        Path carried = jar.resolve("META-INF/jebol/carried.txt");
+        Files.createDirectories(carried.getParent());
+        org.jebol.application.TextFiles.write(carried, listing);
+        for (int at = 0; at < namedDescriptors.length; at += 2) {
+            Path descriptor = jar.resolve("META-INF/jebol/carried/" + namedDescriptors[at] + ".reb");
+            Files.createDirectories(descriptor.getParent());
+            org.jebol.application.TextFiles.write(descriptor, namedDescriptors[at + 1]);
+        }
+        jars.add(jar);
+    }
+
+    @Test
+    @DisplayName("a jar that carries several extensions names each in carried.txt, and every one goes in")
+    void addsEveryCarriedExtension() throws IOException {
+        addJarCarrying("""
+                        greeting
+                        hello
+                        """,
+                "greeting", GREETING,
+                "hello", GREETING.replace("name: greeting", "name: hello"));
+
+        assertThat(AnInterpreter.withBounds(readDescriptors()).extensions()).containsExactly(
+                new ExtensionReport("greeting", Optional.empty()),
+                new ExtensionReport("greeting", Optional.of("already-used")));
+    }
+
+    @Test
+    @DisplayName("a jar's carried extensions and another jar's own are both read")
+    void addsCarriedAndOwnJars() throws IOException {
+        addJarDescribedBy(GREETING.replace("name: greeting", "name: from-its-jar")
+                .replace("GreetingExtensionProvider", "NoSuchProvider"));
+        addJarCarrying("greeting\n", "greeting", GREETING);
+
+        assertThat(AnInterpreter.withBounds(readDescriptors()).extensions()).containsExactlyInAnyOrder(
+                new ExtensionReport("greeting", Optional.empty()),
+                new ExtensionReport("from-its-jar", Optional.of("bad-extension")));
+    }
+
+    @Test
+    @DisplayName("a name in carried.txt with no descriptor beside it is refused as bad-extension")
+    void refusesACarriedNameWithoutADescriptor() throws IOException {
+        addJarCarrying("missing\n");
+
+        assertThat(AnInterpreter.withBounds(readDescriptors()).extensions()).containsExactly(
+                new ExtensionReport("missing", Optional.of("bad-extension")));
     }
 }

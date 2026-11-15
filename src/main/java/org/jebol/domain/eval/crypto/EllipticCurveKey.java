@@ -10,13 +10,10 @@ import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.interfaces.ECPublicKey;
-import java.security.interfaces.XECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
-import java.security.spec.NamedParameterSpec;
-import java.security.spec.XECPublicKeySpec;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -47,12 +44,7 @@ public final class EllipticCurveKey implements ReleasableKey {
             "secp256r1", "secp256r1",
             "secp384r1", "secp384r1",
             "secp521r1", "secp521r1",
-            "secp256k1", "secp256k1",
-            "curve25519", NamedParameterSpec.X25519.getName(),
-            "curve448", NamedParameterSpec.X448.getName());
-
-    private static final Map<String, Integer> EXCHANGE_CURVE_WIDTHS =
-            Map.of("curve25519", 32, "curve448", 56);
+            "secp256k1", "secp256k1");
 
     private static final SecureRandom RANDOMLY = new SecureRandom();
 
@@ -63,6 +55,9 @@ public final class EllipticCurveKey implements ReleasableKey {
     private WeierstrassCurve computedHere;
     private BigInteger privateNumber;
     private WeierstrassCurve.Point publicPoint;
+    private MontgomeryCurve exchangedHere;
+    private byte[] scalar;
+    private byte[] publicU;
 
     private EllipticCurveKey(KeyPair pair, String curveName,
             int coordinateWidth, HowPointIsPublished published) {
@@ -86,6 +81,19 @@ public final class EllipticCurveKey implements ReleasableKey {
         this.publicPoint = publicPoint;
     }
 
+    private EllipticCurveKey(MontgomeryCurve curve, byte[] scalar, String curveName) {
+        this.pair = null;
+        this.curveName = curveName;
+        this.coordinateWidth = curve.width();
+        this.published = HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN;
+        this.computedHere = null;
+        this.privateNumber = null;
+        this.publicPoint = null;
+        this.exchangedHere = curve;
+        this.scalar = scalar;
+        this.publicU = curve.publicFor(scalar);
+    }
+
     private boolean doesArithmeticInThisBuild() {
         return computedHere != null;
     }
@@ -103,6 +111,9 @@ public final class EllipticCurveKey implements ReleasableKey {
         this.computedHere = made.computedHere;
         this.privateNumber = made.privateNumber;
         this.publicPoint = made.publicPoint;
+        this.exchangedHere = made.exchangedHere;
+        this.scalar = made.scalar;
+        this.publicU = made.publicU;
         this.handedBack = false;
         return true;
     }
@@ -116,13 +127,16 @@ public final class EllipticCurveKey implements ReleasableKey {
         if (carriedHere.isPresent()) {
             return Optional.of(makeOnCurveThisBuildComputes(curveName, carriedHere.get()));
         }
+        Optional<MontgomeryCurve> exchangeCurve = MontgomeryCurve.named(curveName);
+        if (exchangeCurve.isPresent()) {
+            return Optional.of(new EllipticCurveKey(exchangeCurve.get(),
+                    exchangeCurve.get().drawScalar(RANDOMLY), curveName));
+        }
         String known = CURVES_THIS_BUILD_HAS.get(curveName);
         if (known == null) {
             return Optional.empty();
         }
-        return EXCHANGE_CURVE_WIDTHS.containsKey(curveName)
-                ? makeForExchangeAlone(curveName, known)
-                : makeOnCurveWithTwoCoordinates(curveName, known);
+        return makeOnCurveWithTwoCoordinates(curveName, known);
     }
 
     private static EllipticCurveKey makeOnCurveThisBuildComputes(
@@ -148,21 +162,6 @@ public final class EllipticCurveKey implements ReleasableKey {
         }
     }
 
-    private static Optional<EllipticCurveKey> makeForExchangeAlone(
-            String curveName, String asJdkCallsIt) {
-
-        try {
-            KeyPairGenerator generating = KeyPairGenerator.getInstance("XDH");
-            generating.initialize(new NamedParameterSpec(asJdkCallsIt));
-            return Optional.of(new EllipticCurveKey(
-                    generating.generateKeyPair(), curveName,
-                    EXCHANGE_CURVE_WIDTHS.get(curveName),
-                    HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
-        } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
-            return Optional.empty();
-        }
-    }
-
     private static ECParameterSpec findCurveBehind(KeyPair pair) {
         return ((ECPublicKey) pair.getPublic()).getParams();
     }
@@ -171,10 +170,10 @@ public final class EllipticCurveKey implements ReleasableKey {
         if (doesArithmeticInThisBuild()) {
             return writeCoordinates(publicPoint.x(), publicPoint.y());
         }
-        return published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
-                ? writeLittleEndianAsRfc7748(
-                        ((XECPublicKey) pair.getPublic()).getU())
-                : writeBothCoordinatesAfterLeadByte();
+        if (exchangedHere != null) {
+            return publicU.clone();
+        }
+        return writeBothCoordinatesAfterLeadByte();
     }
 
     private byte[] writeBothCoordinatesAfterLeadByte() {
@@ -197,24 +196,6 @@ public final class EllipticCurveKey implements ReleasableKey {
         System.arraycopy(raw, from, into, at + coordinateWidth - taking, taking);
     }
 
-    private byte[] writeLittleEndianAsRfc7748(BigInteger coordinate) {
-        byte[] written = new byte[coordinateWidth];
-        byte[] biggestFirst = coordinate.toByteArray();
-        int taking = Math.min(biggestFirst.length, coordinateWidth);
-        for (int step = 0; step < taking; step++) {
-            written[step] = biggestFirst[biggestFirst.length - 1 - step];
-        }
-        return written;
-    }
-
-    private static BigInteger fromLittleEndian(byte[] written) {
-        byte[] biggestFirst = new byte[written.length];
-        for (int step = 0; step < written.length; step++) {
-            biggestFirst[step] = written[written.length - 1 - step];
-        }
-        return new BigInteger(1, biggestFirst);
-    }
-
     public Optional<byte[]> agreeWith(byte[] peersPoint) {
         if (handedBack) {
             return Optional.empty();
@@ -224,28 +205,14 @@ public final class EllipticCurveKey implements ReleasableKey {
                     .map(theirs -> computedHere.writeCoordinateOnWire(
                             computedHere.multiply(theirs, privateNumber).x()));
         }
+        if (exchangedHere != null) {
+            return exchangedHere.agree(scalar, peersPoint);
+        }
         try {
-            return published == HowPointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
-                    ? agreeOnOneCoordinateWith(peersPoint)
-                    : agreeOnBothCoordinatesWith(peersPoint);
+            return agreeOnBothCoordinatesWith(peersPoint);
         } catch (GeneralSecurityException | RuntimeException cannotAgree) {
             return Optional.empty();
         }
-    }
-
-    private Optional<byte[]> agreeOnOneCoordinateWith(byte[] peersPoint)
-            throws GeneralSecurityException {
-
-        if (peersPoint.length != coordinateWidth) {
-            return Optional.empty();
-        }
-        NamedParameterSpec curve =
-                new NamedParameterSpec(CURVES_THIS_BUILD_HAS.get(curveName));
-        KeyAgreement agreeing = KeyAgreement.getInstance("XDH");
-        agreeing.init(pair.getPrivate());
-        agreeing.doPhase(KeyFactory.getInstance("XDH").generatePublic(
-                new XECPublicKeySpec(curve, fromLittleEndian(peersPoint))), true);
-        return Optional.of(agreeing.generateSecret());
     }
 
     private Optional<byte[]> agreeOnBothCoordinatesWith(byte[] peersPoint)
@@ -318,7 +285,7 @@ public final class EllipticCurveKey implements ReleasableKey {
                     .isPresent();
         }
         String known = CURVES_THIS_BUILD_HAS.get(curveName);
-        if (known == null || EXCHANGE_CURVE_WIDTHS.containsKey(curveName)) {
+        if (known == null) {
             return false;
         }
         try {

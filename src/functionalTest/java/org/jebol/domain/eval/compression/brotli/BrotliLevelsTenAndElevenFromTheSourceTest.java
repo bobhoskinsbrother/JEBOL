@@ -189,8 +189,7 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
         @DisplayName("thirty kilobytes of map data, at both levels")
         void mapData() throws Exception {
             byte[] fixture = java.nio.file.Files.readAllBytes(
-                    java.nio.file.Path.of(
-                            "src/testFixtures/resources/brotli/mapsdatazrh-first-30k.bin"));
+                    org.jebol.application.CarriedFixtures.file("brotli/mapsdatazrh-first-30k.bin"));
             String asRebolBinary = asBraceless(fixture);
             assertThat(answerTo(THE_DATA_AND_HOW_TO_MEASURE_IT
                     + "data: debase {" + asRebolBinary + "} 64\n" + """

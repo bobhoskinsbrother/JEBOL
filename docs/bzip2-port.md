@@ -4,7 +4,7 @@ Rebol-Bzip2 1.1.0, wrapping libbzip2. JEBOL serves it in Java as decision 58
 says. This note carries what the code cannot. The codec is in
 `org.jebol.domain.eval.compression.bzip2`, and the module, its seven commands and
 its two handles are `Bzip2Extension` and `Bzip2Stream`. The tables in
-`src/testFixtures/resources/bzip2/` hold the C's own answers, and its README lists
+`extensions/bzip2/src/testFixtures/resources/bzip2/` hold the C's own answers, and its README lists
 each boundary with what covers it.
 
 ---

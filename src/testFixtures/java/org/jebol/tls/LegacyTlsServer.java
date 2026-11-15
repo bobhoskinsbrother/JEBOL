@@ -28,7 +28,7 @@ public final class LegacyTlsServer implements AutoCloseable {
     public LegacyTlsServer(String protocol, String cipherSuite, int diffieHellmanBits) {
         try {
             securitySettings = Files.createTempFile("nothing-disabled", ".security");
-            Files.writeString(securitySettings, NOTHING_DISABLED);
+            org.jebol.application.TextFiles.write(securitySettings, NOTHING_DISABLED);
             List<String> command = new ArrayList<>(List.of(
                     Path.of(System.getProperty("java.home"), "bin", "java").toString(),
                     "-Djava.security.properties=" + securitySettings,

@@ -85,7 +85,7 @@ Against gcc 15.2 and glibc 2.43 on x86-64, everything agreed byte for byte:
 - 17,946 decodings of every one of those hashes and eight that barely read, at
   sizes from 0x0 to 64x48 and punches of -1, 0, 1, 2 and 5.
 
-`src/testFixtures/resources/blurhash/` keeps the part `BlurHashFromTheSourceTest`
+`extensions/blurhash/src/testFixtures/resources/blurhash/` keeps the part `BlurHashFromTheSourceTest`
 runs and says how to make it again. The module's answers in
 `TheBlurHashModuleFromTheSourceTest` were computed by the same C from the same
 pixels laid out as R3's memory holds them.

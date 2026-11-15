@@ -121,7 +121,7 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("answers the absolute path of a file that is there")
         void answersAnAbsolutePath(@TempDir Path directory) throws Exception {
-            java.nio.file.Files.writeString(directory.resolve("here.txt"), "x");
+            org.jebol.application.TextFiles.write(directory.resolve("here.txt"), "x");
             assertThat(runWithFilesUnder(directory,
                     "file? to-real-file %here.txt")).isEqualTo(TRUE);
             assertThat(runWithFilesUnder(directory,
@@ -144,7 +144,7 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("a string is taken as well as a file")
         void takesAStringToo(@TempDir Path directory) throws Exception {
-            java.nio.file.Files.writeString(directory.resolve("here.txt"), "x");
+            org.jebol.application.TextFiles.write(directory.resolve("here.txt"), "x");
             assertThat(runWithFilesUnder(directory,
                     "file? to-real-file \"here.txt\"")).isEqualTo(TRUE);
         }
@@ -277,7 +277,7 @@ class InterpreterStateFromTheSourceTest {
             interpreter.run("echo %log.txt print \"hello\"");
 
             assertThat(printed.toString()).contains("hello");
-            assertThat(java.nio.file.Files.readString(directory.resolve("log.txt")))
+            assertThat(org.jebol.application.TextFiles.read(directory.resolve("log.txt")))
                     .contains("hello");
         }
 
@@ -291,7 +291,7 @@ class InterpreterStateFromTheSourceTest {
 
             interpreter.run("echo %log.txt print \"kept\" echo none print \"dropped\"");
 
-            String written = java.nio.file.Files.readString(directory.resolve("log.txt"));
+            String written = org.jebol.application.TextFiles.read(directory.resolve("log.txt"));
             assertThat(written).contains("kept");
             assertThat(written).doesNotContain("dropped");
         }
@@ -307,9 +307,9 @@ class InterpreterStateFromTheSourceTest {
             interpreter.run(
                     "echo %one.txt print \"first\" echo %two.txt print \"second\"");
 
-            assertThat(java.nio.file.Files.readString(directory.resolve("one.txt")))
+            assertThat(org.jebol.application.TextFiles.read(directory.resolve("one.txt")))
                     .contains("first").doesNotContain("second");
-            assertThat(java.nio.file.Files.readString(directory.resolve("two.txt")))
+            assertThat(org.jebol.application.TextFiles.read(directory.resolve("two.txt")))
                     .contains("second").doesNotContain("first");
         }
 

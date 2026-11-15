@@ -87,7 +87,7 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("DELETE removes a file")
     void deleteRemoves(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.resolve("gone.txt"), "x");
+        TextFiles.write(directory.resolve("gone.txt"), "x");
         Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "delete %gone.txt");
         assertThat(Files.exists(directory.resolve("gone.txt"))).isFalse();
@@ -96,7 +96,7 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("RENAME gives a file another name")
     void renameMoves(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.resolve("old.txt"), "x");
+        TextFiles.write(directory.resolve("old.txt"), "x");
         Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "rename %old.txt %new.txt");
         assertThat(Files.exists(directory.resolve("new.txt"))).isTrue();
@@ -106,7 +106,7 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("READ of a directory gives the names, with a slash on each directory")
     void namesEverythingInADirectory(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.resolve("one.txt"), "x");
+        TextFiles.write(directory.resolve("one.txt"), "x");
         Files.createDirectory(directory.resolve("two"));
         Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         assertThat(answerTo(interpreter, "sort read %./")).isEqualTo("[%one.txt %two/]");
@@ -137,7 +137,7 @@ class DirectoryNativesTest {
     @DisplayName("CHANGE-DIR moves where a relative path counts from")
     void changeDirMoves(@TempDir Path directory) throws Exception {
         Files.createDirectory(directory.resolve("inner"));
-        Files.writeString(directory.resolve("inner/here.txt"), "found");
+        TextFiles.write(directory.resolve("inner/here.txt"), "found");
         Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(answerTo(interpreter, "change-dir %inner/ read/string %here.txt"))
@@ -156,8 +156,8 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("and what it can see up there is still only what is inside")
     void keepsWhatItCanSeeUpThereInside(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.getParent().resolve("outside.txt"), "not yours");
-        Files.writeString(directory.resolve("inside.txt"), "yours");
+        TextFiles.write(directory.getParent().resolve("outside.txt"), "not yours");
+        TextFiles.write(directory.resolve("inside.txt"), "yours");
         Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(answerTo(interpreter, """
@@ -169,7 +169,7 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("CHANGE-DIR to something that is not a directory fails")
     void refusesAFileAsADirectory(@TempDir Path directory) throws Exception {
-        Files.writeString(directory.resolve("flat.txt"), "x");
+        TextFiles.write(directory.resolve("flat.txt"), "x");
         Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(readTheErrorIdOf(interpreter, "change-dir %flat.txt")).isEqualTo("cannot-open");

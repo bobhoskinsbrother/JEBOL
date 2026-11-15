@@ -1,6 +1,7 @@
 package org.jebol.suite;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.CarriedFixtures;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.TranscodeResult;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,7 +28,7 @@ class SuiteCoverageTest {
         AnInterpreter.create();
     }
 
-    private static final Path SUITE = Path.of("src", "testFixtures", "resources", "rebol-suite");
+    private static final Path SUITE = CarriedFixtures.directory("rebol-suite");
 
     private record Coverage(String file, int assertionsInSource, int assertionsRead, String note) {
 
@@ -41,7 +42,7 @@ class SuiteCoverageTest {
         try (Stream<Path> files = Files.list(SUITE)) {
             for (Path path : files.filter(p -> p.toString().endsWith(".r3"))
                     .sorted(Comparator.comparing(Path::toString)).toList()) {
-                String source = Files.readString(path, StandardCharsets.UTF_8);
+                String source = org.jebol.application.TextFiles.read(path, StandardCharsets.UTF_8);
                 long written = countTheAssertionsWrittenIn(source);
                 found.add(coverageOf(path, (int) written, source));
             }

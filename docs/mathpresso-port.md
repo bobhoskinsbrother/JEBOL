@@ -175,7 +175,7 @@ computed value, a variable with itself, a variable assigned first so it is read
 only, constants the optimizer folds), 3,000 number literals, 140 programs of
 statements and scopes, and 11,000 calls into the maths library. All agreed,
 messages included, apart from the last bit of the maths library's functions.
-`src/testFixtures/resources/mathpresso/` keeps 30,275 of them and says how to
+`extensions/mathpresso/src/testFixtures/resources/mathpresso/` keeps 30,275 of them and says how to
 make them again; rows that call the maths library are compared closely, the
 rest bit for bit. `TheMathPressoModuleFromTheSourceTest` runs the extension's
 own CI script and compares all 62 answers with the probe's to within 1e-9.

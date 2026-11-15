@@ -27,6 +27,16 @@ public final class JavaProcess implements ProcessPort {
 
     private final MachinePort machine = new JavaMachine();
 
+    private final TerminalLending lending;
+
+    public JavaProcess() {
+        this(TerminalLending.none());
+    }
+
+    public JavaProcess(TerminalLending lending) {
+        this.lending = lending;
+    }
+
     @Override
     public boolean isRunning(long processNumber) {
         return ProcessHandle.of(processNumber).isPresent();
@@ -41,6 +51,10 @@ public final class JavaProcess implements ProcessPort {
 
     @Override
     public ProgramResult run(Program program) {
+        return program.isWaitedFor() ? lending.lendDuring(() -> startAndRun(program)) : startAndRun(program);
+    }
+
+    private ProgramResult startAndRun(Program program) {
         ProcessBuilder builder = buildProcess(program);
         Process child;
         try {

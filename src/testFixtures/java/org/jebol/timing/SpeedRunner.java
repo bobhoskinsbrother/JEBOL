@@ -25,7 +25,7 @@ public final class SpeedRunner {
                 System.out.println(text);
             }
         }, Bounds.standard());
-        String source = Files.readString(Path.of(argued[0]));
+        String source = org.jebol.application.TextFiles.read(Path.of(argued[0]));
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);
     }

@@ -566,9 +566,21 @@ everything else still starts. For a site, build the jar first, then name it:
 A jar with no web setup fails that build and says so. Several jars are
 separated by commas.
 
-**Testing it.** The plugin gives the project `src/functionalTest` and
-`src/endToEndTest`, run by `functionalTests` and `endToEndTests`, which
-`allTests` runs and archives with the rest. The end-to-end tests get
+**Carried in the shipped jar.** The nine of R3's extensions JEBOL ports
+(`CARRIED_EXTENSIONS` in `buildSrc`) are jars like this one, and the desktop's
+shipped jar carries their classes inside it, so `java -jar` stays one file.
+Their descriptors move to `META-INF/jebol/carried/<name>.reb`, named one a line
+in `META-INF/jebol/carried.txt`, and the command line reads those before any
+jar's own descriptor. The site carries the same nine in its WebAssembly.
+Neither carries SQLite (decision 58).
+
+**Testing it.** The plugin gives the project `src/unitTest`,
+`src/functionalTest` and `src/endToEndTest`, run by `unitTests`,
+`functionalTests` and `endToEndTests`, which `allTests` runs and archives with
+the rest, and a `src/testFixtures` that all three see. A test builds its
+interpreter with the extension added, `Bounds.standard().add(new
+MyExtension().provide())`, because the core's tests carry none. Its fixtures
+are listed for `CarriedFixtures` as the core's are. The end-to-end tests get
 `jebol.shippedJar` and `jebol.extensionJar` to start the command line with and
 without the extension, and `jebol.webBuild` and `jebol.webBuildWithExtensions`
 for `ShippedRunner`, to drive a site with and without it; the browser

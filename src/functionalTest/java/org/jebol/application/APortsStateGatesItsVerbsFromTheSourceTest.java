@@ -52,7 +52,7 @@ class APortsStateGatesItsVerbsFromTheSourceTest {
     }
 
     private static void holding(Path root, String name) throws IOException {
-        Files.writeString(root.resolve(name), "x");
+        TextFiles.write(root.resolve(name), "x");
     }
 
     @Nested

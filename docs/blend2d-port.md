@@ -562,7 +562,7 @@ not 0 is PRGB32 and is drawn, as 0. A global alpha that scales to 0 draws
 nothing; it scales by `alpha * 255` rounded half up (`roundToInt`).
 
 **What this is checked against.** `table.c` under
-`src/testFixtures/resources/blend2d/` fills noise through the release's JIT,
+`extensions/blend2d/src/testFixtures/resources/blend2d/` fills noise through the release's JIT,
 and its README lists the boundaries. Before the tables were cut to 64x64, the
 same generator at 256x256 agreed on all 6,264 fills and 1,160 masked fills,
 every pixel.

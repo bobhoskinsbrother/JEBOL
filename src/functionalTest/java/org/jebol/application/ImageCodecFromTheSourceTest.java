@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ImageCodecFromTheSourceTest {
 
     private static final Path VENDORED =
-            Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
+            CarriedFixtures.directory("rebol-suite/units/files");
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
         return Interpreter.createOn(

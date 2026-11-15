@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BlurringARealPictureFromTheSourceTest {
 
     private static final Path VENDORED =
-            Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
+            CarriedFixtures.directory("rebol-suite/units/files");
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.createOn(

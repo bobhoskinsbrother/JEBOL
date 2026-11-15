@@ -75,10 +75,13 @@ Run it at the close of every Android stage and after any change to the core.
   `PropertiesMachine` will do until 2c); it runs no programs (`call` is 2c's
   to answer, as a browser's is); its picture codecs are 2c's.
 - The core's tests build their interpreters on `PlatformUnderTest`, found
-  through `ServiceLoader`; on the JVM it is the desktop's, and step 7 gives
+  through `ServiceLoader`; on the JVM it is the desktop's, and step 6 gives
   `android/` its own.
+- R3's nine external extensions are jars of their own under `extensions/`
+  (decision 58): the shipped jar and the site carry them, the core and
+  Android do not.
 
-**7. Running on ART.** The functional tests and Rebol's suite run on the
+**6. Running on ART.** The functional tests and Rebol's suite run on the
 emulator through android-junit5 as instrumentation tests. Running is the
 measure, not compiling. Known risks, each measured on the emulator: case folding through
   `Character` (Android's is ICU at its own Unicode version, the JDK 25's is
@@ -89,7 +92,7 @@ measure, not compiling. Known risks, each measured on the emulator: case folding
   difference found is fixed on the JVM side with a test that pins R3's
   answer, then re-run on ART.
 
-**8. Docs.** Decision 73 gains the measured gaps and how each was closed;
+**7. Docs.** Decision 73 gains the measured gaps and how each was closed;
 `docs/android-port.md` is the porting notes, as `docs/web-port.md` is the
 web's; `docs/standing.md` gets the APK's size and the suites' counts on ART.
 

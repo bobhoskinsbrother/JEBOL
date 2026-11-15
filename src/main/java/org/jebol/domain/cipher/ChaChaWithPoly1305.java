@@ -1,9 +1,5 @@
 package org.jebol.domain.cipher;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.ChaCha20ParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.GeneralSecurityException;
 import java.util.Arrays;
 
 public final class ChaChaWithPoly1305 {
@@ -14,6 +10,8 @@ public final class ChaChaWithPoly1305 {
     private static final int CHUNK = 16;
 
     public static final int NONCE = 12;
+
+    private static final int KEY = 32;
 
     private static final int AUTHENTICATORS_BLOCK = 0;
 
@@ -27,16 +25,15 @@ public final class ChaChaWithPoly1305 {
     }
 
     public static Sealed seal(byte[] key, byte[] nonce, byte[] header, byte[] octets, boolean deciphering) {
-        try {
-            byte[] authenticatorKey = generateKeystream(key, nonce, AUTHENTICATORS_BLOCK, Poly1305.KEY);
-            byte[] masked = maskWith(generateKeystream(
-                    key, nonce, WHERE_MESSAGE_STARTS, octets.length), octets);
-            byte[] overCipherText = deciphering ? octets : masked;
-            return new Sealed(masked, Poly1305.computeTag(authenticatorKey,
-                    collectAuthenticated(header, overCipherText)));
-        } catch (GeneralSecurityException refused) {
+        if (key.length != KEY || nonce.length != NONCE) {
             return new Sealed(new byte[0], new byte[0]);
         }
+        byte[] authenticatorKey = generateKeystream(key, nonce, AUTHENTICATORS_BLOCK, Poly1305.KEY);
+        byte[] masked = maskWith(generateKeystream(
+                key, nonce, WHERE_MESSAGE_STARTS, octets.length), octets);
+        byte[] overCipherText = deciphering ? octets : masked;
+        return new Sealed(masked, Poly1305.computeTag(authenticatorKey,
+                collectAuthenticated(header, overCipherText)));
     }
 
     private static byte[] collectAuthenticated(
@@ -75,16 +72,12 @@ public final class ChaChaWithPoly1305 {
     }
 
     private static byte[] generateKeystream(
-            byte[] key, byte[] nonce, int countingFrom, int howMany)
-            throws GeneralSecurityException {
+            byte[] key, byte[] nonce, int countingFrom, int howMany) {
 
         if (howMany == 0) {
             return new byte[0];
         }
-        Cipher counting = Cipher.getInstance("ChaCha20");
-        counting.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "ChaCha20"),
-                new ChaCha20ParameterSpec(nonce, countingFrom));
-        return counting.doFinal(new byte[howMany]);
+        return new ChaCha20(key, nonce, countingFrom).keystream(howMany);
     }
 
     private static byte[] maskWith(byte[] keystream, byte[] octets) {

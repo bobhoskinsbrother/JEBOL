@@ -48,7 +48,7 @@ class EveryCarriedRebolFileReadsTest {
         Map<String, String> failures = new LinkedHashMap<>();
         for (Path file : files) {
             try {
-                TranscodeResult read = reader.read(Files.readString(file));
+                TranscodeResult read = reader.read(org.jebol.application.TextFiles.read(file));
                 if (!read.succeeded()) {
                     failures.put(shown(file), String.valueOf(read.error().orElse(null)));
                 }

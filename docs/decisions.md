@@ -2582,6 +2582,34 @@ object and ignored a field of a module, so a module made by IMPORT kept
 `lib-boot` among its words where R3's hides it. A path now hides a field of any
 value that carries a context: an object, a module, a port or a task.
 
+**Amended 2026-11-15 (goal 2a step 5): the nine are jars of their own, and the
+core carries none.** R3's own build (`make/rebol3.nest`) puts deflate in its
+base, LZMA, LZ4, LZAV, LZW, Crush and Brotli among the natives of its Bulk
+product, and none of these nine anywhere: each is a native extension IMPORT
+downloads. Carrying all nine in the core put 588 KB (compressed) into every
+build, Android's APK included, and most of a device run's hours went on their
+tests. So each is now a project under `extensions/`, built by `jebol-extension`
+as SQLite is (decision 63), with one provider serving both setups because each
+is pure Java. Its codec goes with it where only it uses one (Zstd, Bzip2,
+Zlib-ng, Blend2D, BlurHash, Easing, MathPresso). The Brotli codec stays in the
+core for `compress 'br`, and the readers the compression commands share are a
+core class, `CompressionArguments`.
+
+- **The desktop's shipped jar and the site carry all nine,** so on both a script
+  imports them as before. The site compiles them into its WebAssembly. The
+  shipped jar stays one file with no dependencies, so it carries their classes,
+  not their jars. Their descriptors are under `META-INF/jebol/carried/` and are
+  named in `META-INF/jebol/carried.txt`, which the command line reads before
+  each jar's own `extension.reb`.
+- **The core and Android carry none.** Without the jar, `system/modules` names
+  the extension no more than it names SQLite, and IMPORT fails as it does for
+  any module it cannot find.
+- **Each project's tests go with it,** in a unit suite the extension plugin
+  gained for them, and its fixtures go in its own `src/testFixtures`. The one
+  exception is the Brotli module's reference answers, which stay in the core's
+  fixtures: the one generator that writes them also writes the stream table the
+  core's codec tests read.
+
 ## 59. The blend2d extension rasterises in the domain, as Blend2D does
 
 **Decision 35 keeps rasterising out of the domain, and the blend2d extension is
@@ -2680,7 +2708,7 @@ checked-in generator. `docs/bzip2-port.md` has the detail.
 
 **Two checks no input reaches are kept anyway:** three checks on `unzftab` and
 `cftab`, and a randomised block's run overrunning its end. They are marked
-`(none)` in `src/testFixtures/resources/bzip2/README.md`.
+`(none)` in `extensions/bzip2/src/testFixtures/resources/bzip2/README.md`.
 
 **Not ported, because the extension cannot reach them:** the `FILE*` API, small
 mode, verbosity, a work factor other than 30, and `AssertH`.
@@ -2798,11 +2826,18 @@ false. `CommandLineConsole` is the one reader the prompt and a script share.
 - **The modes are the C's.** echo writes the conceal escapes, line goes raw and
   writes the bracketed paste escapes, error moves output to stderr. On Windows
   the three are accepted and do nothing.
-- **Ctrl-C is the escape.** A signal while the script runs halts it at its next
-  step; while a line, a password or a key is being read, signals are off and
-  Ctrl-C arrives as a byte, so the escape is raised on the reading thread. A
-  Java signal handler runs on a thread of its own, and an escape that raced a
-  line just read was a flake.
+- **Ctrl-C is the escape, and at a terminal it is always a byte.** The editor's
+  settings turn signals off for as long as the console runs, so Ctrl-C arrives
+  in order with what was typed around it. While the script runs and nothing
+  reads, a daemon thread reads ahead every 40 ms: what it finds is kept for the
+  next read, and a Ctrl-C raises the escape at once and drops what came before
+  it, as the terminal's flush on a signal does. While CALL/WAIT runs a program
+  the console lends it the terminal (`TerminalLending`): signals are on, so
+  Ctrl-C reaches the program, and nothing is read ahead. Signals used to be
+  switched off only for each read, so a Ctrl-C typed between `prin` and
+  `input` -- ASK's prompt and its read -- was a signal, handled on a thread of
+  the JVM's own, and lost the race to the Enter typed after it (2026-11-15).
+  Away from a terminal a signal still escapes, through `CtrlCTrap`.
 - **`request-password` reads the console when it can,** before any screen or
   window, as R3 always reads it, so `--screen=web` asks on the terminal too.
 

@@ -131,13 +131,13 @@ class TheCommandLinesConsoleFromTheSourceTest {
     class TheTerminalsSettings {
 
         @Test
-        @DisplayName("opening keeps the terminal as found, puts it in the editor's mode, and keeps that too")
+        @DisplayName("opening keeps the terminal as found, puts it in the editor's mode with Ctrl-C a byte, and keeps that too")
         void putsTheTerminalInTheEditorsMode() {
             atTerminal();
 
             assertThat(stty.run).containsExactly(
                     "read",
-                    "change -echo -icanon -icrnl -inlcr onlcr min 1 time 0",
+                    "change -echo -icanon -icrnl -inlcr -isig onlcr min 1 time 0",
                     "read");
             assertThat(printed()).isEmpty();
         }
@@ -374,14 +374,14 @@ class TheCommandLinesConsoleFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("Ctrl-C is a byte while the line is read, and the terminal makes signals again after")
-        void turnsSignalsOffWhileReading() {
+        @DisplayName("reading a line leaves the terminal's settings alone, since Ctrl-C is already a byte")
+        void leavesTheSettingsAloneWhileReading() {
             CommandLineConsole console = atTerminal("hi\r");
             stty.run.clear();
 
             console.readLine();
 
-            assertThat(stty.run).containsExactly("change -isig", "change isig");
+            assertThat(stty.run).isEmpty();
         }
 
         @Test
@@ -393,6 +393,79 @@ class TheCommandLinesConsoleFromTheSourceTest {
             assertThat(console.readLine()).isEqualTo("cd");
             assertThat(escapes).hasValue(1);
             assertThat(printed()).isEqualTo("cd\r\n");
+        }
+    }
+
+    @Nested
+    @DisplayName("what is typed while the script runs, and nothing reads")
+    class TypedWhileTheScriptRuns {
+
+        @Test
+        @DisplayName("is kept, in order, for the next read")
+        void isKeptForTheNextRead() {
+            CommandLineConsole console = atTerminal("ab", "c\r");
+            console.whenEscaped(escapes::incrementAndGet);
+
+            console.readAhead();
+
+            assertThat(console.readLine()).isEqualTo("abc");
+            assertThat(escapes).hasValue(0);
+        }
+
+        @Test
+        @DisplayName("Ctrl-C escapes at once and drops what was typed before it, as the terminal's flush does")
+        void ctrlCEscapesAtOnce() {
+            CommandLineConsole console = atTerminal("ab\u0003c", "d\r");
+            console.whenEscaped(escapes::incrementAndGet);
+
+            console.readAhead();
+
+            assertThat(escapes).hasValue(1);
+            assertThat(console.readLine()).isEqualTo("cd");
+        }
+
+        @Test
+        @DisplayName("Ctrl-C typed between a prompt and its read is the escape, before the Enter after it answers")
+        void ctrlCAfterAPromptEscapesBeforeTheLine() {
+            CommandLineConsole console = atTerminal("ab\u0003", "\r");
+            console.whenEscaped(escapes::incrementAndGet);
+
+            console.readAhead();
+            int escapedBeforeTheRead = escapes.get();
+
+            assertThat(escapedBeforeTheRead).isEqualTo(1);
+            assertThat(console.readLine()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("is not read while a program holds the terminal, which makes signals for it meanwhile")
+        void isLeftToAProgramHoldingTheTerminal() {
+            CommandLineConsole console = atTerminal("ab\u0003", "c\r");
+            console.whenEscaped(escapes::incrementAndGet);
+            stty.run.clear();
+
+            String answered = console.lendDuring(() -> {
+                console.readAhead();
+                return "ran";
+            });
+
+            assertThat(answered).isEqualTo("ran");
+            assertThat(escapes).hasValue(0);
+            assertThat(stty.run).containsExactly("change isig", "change -isig");
+        }
+
+        @Test
+        @DisplayName("through pipes nothing is read ahead, and a program changes no settings")
+        void isLeftAloneThroughPipes() {
+            CommandLineConsole console = throughPipes("ab\u0003\n");
+            console.whenEscaped(escapes::incrementAndGet);
+
+            console.readAhead();
+            String answered = console.lendDuring(() -> "ran");
+
+            assertThat(answered).isEqualTo("ran");
+            assertThat(escapes).hasValue(0);
+            assertThat(console.readLine()).isEqualTo("ab\u0003");
         }
     }
 
@@ -453,7 +526,7 @@ class TheCommandLinesConsoleFromTheSourceTest {
     class AKey {
 
         @Test
-        @DisplayName("at a terminal it leaves line mode first, then decodes the key with Ctrl-C turned into a byte")
+        @DisplayName("at a terminal it leaves line mode first, then decodes the key")
         void decodesAtATerminal() {
             CommandLineConsole console = atTerminal("\u001b[A");
             stty.run.clear();
@@ -461,8 +534,7 @@ class TheCommandLinesConsoleFromTheSourceTest {
             ConsoleKey key = console.readKey().orElseThrow();
 
             assertThat(key).isEqualTo(new ConsoleKey(0, 6, false, false, false));
-            assertThat(stty.run).containsExactly(
-                    "change -ixon -ixoff susp undef quit undef", "change -isig", "change isig");
+            assertThat(stty.run).containsExactly("change -ixon -ixoff susp undef quit undef");
             assertThat(printed()).isEqualTo("\u001b[?2004h");
         }
 

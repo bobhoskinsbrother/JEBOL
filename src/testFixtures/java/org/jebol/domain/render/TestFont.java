@@ -1,5 +1,6 @@
 package org.jebol.domain.render;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -53,9 +54,10 @@ public final class TestFont {
             font.putInt(table.getValue().length);
             at += padded(table.getValue().length);
         }
+        Buffer moving = font;
         for (byte[] table : tables.values()) {
             font.put(table);
-            font.position(font.position() + padded(table.length) - table.length);
+            moving.position(moving.position() + padded(table.length) - table.length);
         }
         return font.array();
     }

@@ -1,6 +1,8 @@
 package org.jebol.suite;
 
+import org.jebol.application.CarriedFixtures;
 import org.jebol.application.Interpreter;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.ScriptOutcome;
 
 import java.io.IOException;
@@ -33,8 +35,7 @@ final class SuiteGrading {
         }
     }
 
-    private static final Path SUITE =
-            Path.of("src", "testFixtures", "resources", "rebol-suite");
+    private static final Path SUITE = CarriedFixtures.directory("rebol-suite");
 
     private static final Path FAILS_ON_REBOL_TOO = SUITE.resolve("fails-on-rebol-too.txt");
 
@@ -42,6 +43,9 @@ final class SuiteGrading {
 
     private static final String DEFERRED =
             "not run here: it needs the network, which ./gradlew networkTests provides";
+
+    private static final String WITHHELD =
+            "not run here: the platform these tests run on cannot, and names it so";
 
     private static final Map<String, Verdict> OUTCOMES = new ConcurrentHashMap<>();
 
@@ -64,7 +68,8 @@ final class SuiteGrading {
         return listEveryAssertion()
                 .filter(assertion -> !assertion.redOnly())
                 .filter(assertion -> !failingOnRebolToo().contains(assertion.toString()))
-                .filter(assertion -> !needsTheNetwork(assertion));
+                .filter(assertion -> !needsTheNetwork(assertion))
+                .filter(assertion -> !isWithheldOnThisPlatform(assertion));
     }
 
     static Stream<SuiteFile.Assertion> listTheAssertionsNeedingTheNetwork() {
@@ -94,6 +99,9 @@ final class SuiteGrading {
         if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && needsTheNetwork(assertion)) {
             return new Verdict(false, DEFERRED);
         }
+        if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && isWithheldOnThisPlatform(assertion)) {
+            return new Verdict(false, WITHHELD);
+        }
         Verdict known = OUTCOMES.get(keyOf(grading, assertion));
         if (known != null) {
             return known;
@@ -110,7 +118,11 @@ final class SuiteGrading {
     }
 
     private static boolean needsTheNetwork(SuiteFile.Assertion assertion) {
-        for (NetworkEntry entry : needsTheNetworkEntries()) {
+        return isNamedIn(TheNetworkEntriesReadOncePerProcess.ENTRIES, assertion);
+    }
+
+    private static boolean isNamedIn(List<NetworkEntry> entries, SuiteFile.Assertion assertion) {
+        for (NetworkEntry entry : entries) {
             if (!entry.file().equals(assertion.file())) {
                 continue;
             }
@@ -127,17 +139,13 @@ final class SuiteGrading {
     private record NetworkEntry(String file, String group, String test) {
     }
 
-    private static List<NetworkEntry> needsTheNetworkEntries() {
-        return TheNetworkEntriesReadOncePerProcess.ENTRIES;
-    }
-
     private static final class TheNetworkEntriesReadOncePerProcess {
-        static final List<NetworkEntry> ENTRIES = readTheNetworkEntries();
+        static final List<NetworkEntry> ENTRIES = readEntries(linesOf(NEEDS_THE_NETWORK));
     }
 
-    private static List<NetworkEntry> readTheNetworkEntries() {
+    private static List<NetworkEntry> readEntries(List<String> lines) {
         List<NetworkEntry> entries = new ArrayList<>();
-        for (String line : linesOf(NEEDS_THE_NETWORK)) {
+        for (String line : lines) {
             String[] named = line.split("\\s*/\\s*", 3);
             if (named.length == 1) {
                 entries.add(new NetworkEntry(named[0].strip(), null, null));
@@ -183,6 +191,10 @@ final class SuiteGrading {
         for (SuiteFile.Step step : file.steps()) {
             if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && theStepNeedsTheNetwork(step)) {
                 deferEveryAssertionIn(grading, step);
+                continue;
+            }
+            if (grading == Grading.EVERYTHING_BUT_THE_NETWORK && theStepIsWithheldOnThisPlatform(step)) {
+                withholdEveryAssertionIn(grading, step);
                 continue;
             }
             String source = step.isAssertion() ? step.assertion().source() : step.setup();
@@ -247,6 +259,30 @@ final class SuiteGrading {
                 ? List.of(step.assertion())
                 : step.nested();
         return !its.isEmpty() && its.stream().anyMatch(SuiteGrading::needsTheNetwork);
+    }
+
+    private static boolean theStepIsWithheldOnThisPlatform(SuiteFile.Step step) {
+        List<SuiteFile.Assertion> its = step.isAssertion()
+                ? List.of(step.assertion())
+                : step.nested();
+        return !its.isEmpty() && its.stream().anyMatch(SuiteGrading::isWithheldOnThisPlatform);
+    }
+
+    private static void withholdEveryAssertionIn(Grading grading, SuiteFile.Step step) {
+        if (step.isAssertion()) {
+            OUTCOMES.put(keyOf(grading, step.assertion()), new Verdict(false, WITHHELD));
+        }
+        for (SuiteFile.Assertion nested : step.nested()) {
+            OUTCOMES.put(keyOf(grading, nested), new Verdict(false, WITHHELD));
+        }
+    }
+
+    private static boolean isWithheldOnThisPlatform(SuiteFile.Assertion assertion) {
+        return isNamedIn(TheWithheldEntriesReadOncePerProcess.ENTRIES, assertion);
+    }
+
+    private static final class TheWithheldEntriesReadOncePerProcess {
+        static final List<NetworkEntry> ENTRIES = readEntries(PlatformUnderTest.current().suiteEntriesItCannotRun());
     }
 
     private static void deferEveryAssertionIn(Grading grading, SuiteFile.Step step) {

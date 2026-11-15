@@ -32,7 +32,7 @@ class ReadingAFilePatternFromTheSourceTest {
         for (String name : new String[] {
                 "issue-2186-UTF16-BE.txt", "issue-2186-UTF16-LE.txt",
                 "issue-2186-UTF32-BE.txt", "one.png", "two.png"}) {
-            Files.writeString(directory.resolve("files").resolve(name), "x");
+            TextFiles.write(directory.resolve("files").resolve(name), "x");
         }
         Files.createDirectories(directory.resolve("files").resolve("icons"));
     }

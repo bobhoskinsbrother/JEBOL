@@ -6,7 +6,7 @@ Zstandard. JEBOL serves it in Java as decision 58 says. This note carries what
 the code cannot. The decoder, the encoder at every level and both streams are in
 `org.jebol.domain.eval.compression.zstd`, and the module, its seven commands and
 its two handles are `ZstdExtension` and `ZstdStream`. The tables in
-`src/testFixtures/resources/zstd/` hold zstd's own answers, and the Java gives
+`extensions/zstd/src/testFixtures/resources/zstd/` hold zstd's own answers, and the Java gives
 every one of them octet for octet.
 
 ---

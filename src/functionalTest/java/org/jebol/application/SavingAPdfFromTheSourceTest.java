@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SavingAPdfFromTheSourceTest {
 
     private static final Path THE_VENDORED_FIXTURE =
-            Path.of("src", "testFixtures", "resources", "pdf", "hello-linearized.pdf");
+            CarriedFixtures.file("pdf/hello-linearized.pdf");
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
         return Interpreter.createOn(

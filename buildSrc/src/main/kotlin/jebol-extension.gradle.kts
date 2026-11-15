@@ -1,5 +1,6 @@
 plugins {
     java
+    `java-test-fixtures`
 }
 
 val declaration = extensions.create<JebolExtensionDeclaration>("jebolExtension")
@@ -85,15 +86,27 @@ val testLibraries = listOf(
     "org.assertj:assertj-core:3.26.3",
 )
 
+writesItsFixtureIndex()
+
+val unitTest = sourceSets.create("unitTest")
 val functionalTest = sourceSets.create("functionalTest")
 val endToEndTest = sourceSets.create("endToEndTest")
 
-listOf(functionalTest, endToEndTest).forEach { suite ->
-    suite.compileClasspath += sourceSets.main.get().output
-    suite.runtimeClasspath += sourceSets.main.get().output
+dependencies {
+    "testFixturesImplementation"(core)
+    "testFixturesImplementation"(testFixtures(core))
+    testLibraries.forEach { "testFixturesImplementation"(it) }
+}
+
+val testFixturesOutput = sourceSets["testFixtures"].output
+
+listOf(unitTest, functionalTest, endToEndTest).forEach { suite ->
+    suite.compileClasspath += sourceSets.main.get().output + testFixturesOutput
+    suite.runtimeClasspath += sourceSets.main.get().output + testFixturesOutput
     dependencies {
         add(suite.implementationConfigurationName, core)
         add(suite.implementationConfigurationName, testFixtures(core))
+        add(suite.implementationConfigurationName, "net.jqwik:jqwik:1.9.2")
         add(suite.runtimeOnlyConfigurationName, testFixtures(project(":desktop")))
         testLibraries.forEach { add(suite.implementationConfigurationName, it) }
         add(suite.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
@@ -120,6 +133,12 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: Provider<String>) {
         showStackTraces = true
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+tasks.register<Test>("unitTests") {
+    description = "The extension's tests that never build an interpreter"
+    runsTheTestsIn(unitTest, declaration.name.map { "${it}UnitTests" })
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
 }
 
 tasks.register<Test>("functionalTests") {

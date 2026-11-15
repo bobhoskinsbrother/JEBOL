@@ -44,7 +44,10 @@ tasks.jar {
     archiveBaseName = "jebol-core"
 }
 
-val extensionProjects = listOf("sqlite")
+val extensionProjects = EVERY_EXTENSION
+
+fun extensionsWithSuite(sourceSet: String) =
+    extensionProjects.filter { file("extensions/$it/src/$sourceSet").isDirectory }
 
 tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)
@@ -82,6 +85,21 @@ val functionalTests = tasks.named<Test>("functionalTests") {
         fileTree("rebol3-source/src/modules"),
         fileTree("rebol3-source/src/tests"),
     )
+}
+
+// A Java resource cannot be listed inside a jar or an APK, so the fixtures
+// carry a list of their own files, written from the files themselves so it
+// cannot drift from them. CarriedFixtures reads it, on the JVM and on ART alike.
+writesItsFixtureIndex()
+
+// The core's functional tests as a jar, which android/ dexes into its test APK
+// and runs on ART against Android's platform (goal 2a step 7).
+tasks.register<Jar>("functionalTestJar") {
+    group = "build"
+    description = "The core's functional tests as a jar, for android/ to run on ART"
+    archiveBaseName = "jebol-core"
+    archiveClassifier = "functional-tests"
+    from(functionalTest.output)
 }
 
 val heapExhaustionTests = tasks.register<Test>("heapExhaustionTests") {
@@ -197,11 +215,12 @@ abstract class ArchiveTestResults : DefaultTask() {
 // functional suite, then every end-to-end suite, then the window that needs a
 // display. The machine's cores are spent one stage at a time, because the
 // functional tests' five-second bounds do not survive sharing them.
-val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests")
+val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests") +
+    extensionsWithSuite("unitTest").map { ":extensions:$it:unitTests" }
 val functionalStage = listOf(":functionalTests", ":heapExhaustionTests", ":desktop:functionalTests",
-    ":web:functionalTests") + extensionProjects.map { ":extensions:$it:functionalTests" }
+    ":web:functionalTests") + extensionsWithSuite("functionalTest").map { ":extensions:$it:functionalTests" }
 val endToEndStage = listOf(":endToEndTests", ":desktop:endToEndTests", ":web:endToEndTests") +
-    extensionProjects.map { ":extensions:$it:endToEndTests" }
+    extensionsWithSuite("endToEndTest").map { ":extensions:$it:endToEndTests" }
 val windowStage = listOf(":desktop:desktopWindowTests")
 val gateStages = listOf(unitStage, functionalStage, endToEndStage, windowStage)
 val gateTasks = gateStages.flatten()
@@ -209,7 +228,9 @@ val gateTasks = gateStages.flatten()
 val gateSuites = listOf("unitTests", "desktopUnitTests", "webUnitTests",
     "functionalTests", "heapExhaustionTests", "desktopFunctionalTests", "webFunctionalTests",
     "endToEndTests", "desktopEndToEndTests", "webEndToEndTests", "desktopWindowTests") +
-    extensionProjects.flatMap { name -> listOf("${name}FunctionalTests", "${name}EndToEndTests") }
+    extensionsWithSuite("unitTest").map { "${it}UnitTests" } +
+    extensionsWithSuite("functionalTest").map { "${it}FunctionalTests" } +
+    extensionsWithSuite("endToEndTest").map { "${it}EndToEndTests" }
 
 val gateWasAskedFor = gradle.startParameter.taskNames
     .map { it.removePrefix(":") }
@@ -242,6 +263,7 @@ gradle.projectsEvaluated {
         }
     }
     rootProject.tasks.findByPath(":unitTests")?.mustRunAfter(checkSpec)
+    gateTasks.forEach { suite -> rootProject.tasks.findByPath(suite)?.finalizedBy(archiveTestResults) }
 }
 
 tasks.test {

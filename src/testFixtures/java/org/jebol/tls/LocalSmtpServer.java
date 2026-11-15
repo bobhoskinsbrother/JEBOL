@@ -37,7 +37,7 @@ public final class LocalSmtpServer implements AutoCloseable {
         } catch (IOException | GeneralSecurityException cannotListen) {
             throw new IllegalStateException(cannotListen);
         }
-        acceptor = Thread.ofVirtual().start(this::acceptOne);
+        acceptor = org.jebol.application.TestThreads.start(this::acceptOne);
     }
 
     public int port() {

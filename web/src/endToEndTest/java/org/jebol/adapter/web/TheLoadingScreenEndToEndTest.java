@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -109,9 +110,36 @@ class TheLoadingScreenEndToEndTest {
                 .running("print {never}");
              AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, "chrome", runner).opensThePage()) {
 
-            new PageWait(operator.browser(), Duration.ofSeconds(30)).until(anything ->
-                    readWhatTheLoadingScreenSays(operator).filter(text -> text.startsWith("JEBOL could not start")).isPresent());
+            try {
+                new PageWait(operator.browser(), Duration.ofSeconds(30)).until(anything ->
+                        readWhatTheLoadingScreenSays(operator).filter(text -> text.startsWith("JEBOL could not start")).isPresent());
+            } catch (TimeoutException neverSaid) {
+                throw new AssertionError("the loading screen said " + readWhatTheLoadingScreenSays(operator)
+                        + ", the page printed " + operator.readOutput()
+                        + " and complained " + operator.readErrorOutput(), neverSaid);
+            }
             assertThat(operator.browser().findElement(By.className("jebol-loading-spinner")).isDisplayed()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("a failure stays said, though the refused module's empty download reports itself done after it")
+    void keepsTheFailureSaid() throws IOException {
+        try (ShippedRunner runner = new ShippedRunner()
+                .serving("/jebol-web.wasm", exchange -> runnerRefuses(exchange))
+                .running("print {never}");
+             AnOperatorAtThePage operator = new AnOperatorAtThePage(browsers, "chrome", runner).opensThePage()) {
+
+            Object said = ((JavascriptExecutor) operator.browser()).executeScript("""
+                    const element = document.createElement('div');
+                    element.innerHTML = '<span class="jebol-loading-says">Starting JEBOL</span>';
+                    const loading = new JebolLoading(element);
+                    loading.fail('JEBOL could not start: refused');
+                    loading.reportDownload(0, 0, true);
+                    loading.say('Starting the app');
+                    return [element.innerText, element.classList.contains('jebol-loading-failed')].join('|');""");
+
+            assertThat(said).isEqualTo("JEBOL could not start: refused|true");
         }
     }
 

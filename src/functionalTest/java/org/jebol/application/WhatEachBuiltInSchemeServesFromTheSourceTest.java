@@ -30,7 +30,7 @@ class WhatEachBuiltInSchemeServesFromTheSourceTest {
             """;
 
     private static Interpreter anInterpreterReading(Path directory) throws IOException {
-        Files.writeString(directory.resolve("held.txt"), "carried");
+        TextFiles.write(directory.resolve("held.txt"), "carried");
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),

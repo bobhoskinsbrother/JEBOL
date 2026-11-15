@@ -227,7 +227,7 @@ function jebolReportDownload(received, total, done) {
 }
 
 function jebolCountWhileDownloading(response) {
-  if (!response.body) {
+  if (!response.ok || !response.body) {
     return response;
   }
   var isCompressed = response.headers.get('Content-Encoding') !== null;

@@ -297,8 +297,8 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("reading a dir port answers its names")
         void answersTheNamesInADirPort(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("one.txt"), "a");
-            Files.writeString(root.resolve("two.txt"), "b");
+            TextFiles.write(root.resolve("one.txt"), "a");
+            TextFiles.write(root.resolve("two.txt"), "b");
 
             assertThat(answerTo(root, "sort read open %."))
                     .isEqualTo("[%one.txt %two.txt]");
@@ -308,7 +308,7 @@ class FilePortFromTheSourceTest {
         @DisplayName("and EMPTY? on one asks whether the directory is empty")
         void asksWhetherADirPortIsEmpty(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("nothing-in-here"));
-            Files.writeString(root.resolve("something.txt"), "a");
+            TextFiles.write(root.resolve("something.txt"), "a");
 
             assertThat(answerTo(root, """
                     reduce [empty? open %nothing-in-here/ empty? open %.]"""))
@@ -323,7 +323,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("reading one reads the file the path would have")
         void readsTheFileAUrlNames(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("temp.txt"), "hello");
+            TextFiles.write(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "read file://temp.txt"))
                     .isEqualTo("#{68656C6C6F}");
@@ -334,7 +334,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("an empty file reads as no bytes rather than failing")
         void readsAnEmptyFileAsNoBytes(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("temp.txt"), "");
+            TextFiles.write(root.resolve("temp.txt"), "");
 
             assertThat(answerTo(root, "#{} = read file://temp.txt"))
                     .as("Rebol's own file test asks exactly this, for issue 834")
@@ -344,7 +344,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("none, one and two slashes all name the same relative file")
         void takesTheSlashesAsOptional(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("temp.txt"), "hello");
+            TextFiles.write(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "read file:temp.txt")).isEqualTo("#{68656C6C6F}");
             assertThat(answerTo(root, "read file:/temp.txt")).isEqualTo("#{68656C6C6F}");
@@ -354,7 +354,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("and a third slash starts an absolute path")
         void thethirdSlashIsPartOfThePath(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("temp.txt"), "hello");
+            TextFiles.write(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "read file:///temp.txt"))
                     .as("the run's root is the sandbox root, so this one does reach it")
@@ -370,7 +370,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("the port keeps the path it worked out beside the url it was given")
         void carriesBothInTheSpec(@TempDir Path root) throws IOException {
-            Files.writeString(root.resolve("temp.txt"), "hello");
+            TextFiles.write(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "p: open file://temp.txt  p/spec/path"))
                     .isEqualTo("%temp.txt");
@@ -388,7 +388,7 @@ class FilePortFromTheSourceTest {
                     write %e.txt "e"  exists? file://e.txt"""))
                     .isEqualTo("file");
 
-            Files.writeString(root.resolve("gone.txt"), "x");
+            TextFiles.write(root.resolve("gone.txt"), "x");
             answerTo(root, "delete file://gone.txt");
             assertThat(Files.exists(root.resolve("gone.txt"))).isFalse();
         }
@@ -397,7 +397,7 @@ class FilePortFromTheSourceTest {
         @DisplayName("and a dir: url lists the directory it names")
         void adirectoryUrl(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("sub"));
-            Files.writeString(root.resolve("sub/a.txt"), "x");
+            TextFiles.write(root.resolve("sub/a.txt"), "x");
 
             assertThat(answerTo(root, "read dir://sub/")).isEqualTo("[%a.txt]");
         }

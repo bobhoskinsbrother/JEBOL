@@ -33,8 +33,8 @@ class SymbolicLinksStayInsideTheRootTest {
     void makeARootWithSomethingBesideIt() throws IOException {
         root = Files.createDirectories(machine.resolve("root"));
         outside = Files.createDirectories(machine.resolve("outside"));
-        Files.writeString(root.resolve("inside.txt"), "inside");
-        Files.writeString(outside.resolve("secret.txt"), "secret");
+        TextFiles.write(root.resolve("inside.txt"), "inside");
+        TextFiles.write(outside.resolve("secret.txt"), "secret");
         interpreter = over(root);
     }
 

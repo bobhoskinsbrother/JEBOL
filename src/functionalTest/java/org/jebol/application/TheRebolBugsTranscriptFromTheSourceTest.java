@@ -91,7 +91,7 @@ class TheRebolBugsTranscriptFromTheSourceTest {
     static void runTheProbes(@TempDir Path root) throws IOException {
         rebol = readTranscript(readResource("probes.txt"));
         rebolFixed = readTranscript(readResource("probes-fixed.txt"));
-        Files.writeString(root.resolve("probes.r3"), readResource("probes.r3"));
+        TextFiles.write(root.resolve("probes.r3"), readResource("probes.r3"));
         StringBuilder printed = new StringBuilder();
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()

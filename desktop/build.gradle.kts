@@ -15,6 +15,33 @@ dependencies {
     implementation(project(":web"))
 }
 
+// R3's external extensions JEBOL ports ship inside the jar, as the site carries
+// them in its WebAssembly, so `import 'zstd` works on the desktop as it does in
+// R3. They are not on the desktop's own classpath, so a core test that runs on
+// the desktop's platform never sees them.
+val carriedExtensions: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    CARRIED_EXTENSIONS.forEach { carriedExtensions(project(":extensions:$it")) }
+}
+
+val listCarriedExtensions = tasks.register("listCarriedExtensions") {
+    group = "build"
+    description = "Write META-INF/jebol/carried.txt, naming each extension the shipped jar carries"
+    val listing = layout.buildDirectory.file("generated/carried-extensions/META-INF/jebol/carried.txt")
+    val names = CARRIED_EXTENSIONS
+    inputs.property("names", names)
+    outputs.file(listing)
+    doLast {
+        listing.get().asFile.parentFile.mkdirs()
+        listing.get().asFile.writeText(names.joinToString("\n", postfix = "\n"))
+    }
+}
+
 tasks.jar {
     archiveBaseName = "jebol-desktop"
 }
@@ -53,6 +80,19 @@ val shippedJar = tasks.register<Jar>("shippedJar") {
             exclude("META-INF/MANIFEST.MF")
         }
     }
+    CARRIED_EXTENSIONS.forEach { name ->
+        val extensionJar = project(":extensions:$name").tasks.named<Jar>("jar").map { zipTree(it.archiveFile) }
+        from(extensionJar) {
+            exclude("META-INF/MANIFEST.MF", "META-INF/services/**", "META-INF/jebol/**")
+        }
+        from(extensionJar) {
+            include("META-INF/jebol/extension.reb")
+            eachFile { path = "META-INF/jebol/carried/$name.reb" }
+            includeEmptyDirs = false
+        }
+    }
+    from(layout.buildDirectory.dir("generated/carried-extensions"))
+    dependsOn(listCarriedExtensions)
     manifest {
         attributes("Main-Class" to application.mainClass.get())
     }
@@ -104,6 +144,7 @@ dependencies {
     listOf("unitTest", "functionalTest", "endToEndTest", "networkTest").forEach { suite ->
         add("${suite}Implementation", launcher.output)
     }
+    "endToEndTestImplementation"(project(":extensions:blend2d"))
 }
 
 tasks.named<Test>("endToEndTests") {

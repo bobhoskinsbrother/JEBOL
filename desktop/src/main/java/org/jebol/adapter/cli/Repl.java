@@ -5,6 +5,7 @@ import org.jebol.adapter.host.ExtensionDescriptors;
 import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.adapter.host.JavaProcess;
+import org.jebol.adapter.host.TerminalLending;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaHost;
 import org.jebol.adapter.host.JavaSecureTransport;
@@ -218,21 +219,23 @@ public final class Repl {
             boolean anythingWasAsked, Path root, ProcessEnvironment environment, ConsolePort console) {
 
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
+        TerminalLending lending = console instanceof TerminalLending lends ? lends : TerminalLending.none();
         HostPorts ports = hostServicesFor(bounds, FileSystemPort.rootFileSystem(root), environment,
-                isWholeMachine(root), new WakeablePause(), cafile)
+                isWholeMachine(root), new WakeablePause(), cafile, lending)
                 .withConsole(console);
         ChosenScreen chosen = new ChosenScreen(arguments);
         return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
     private static HostPorts hostServicesFor(Bounds bounds, FileSystemPort files, ProcessEnvironment environment,
-                                             boolean wholeMachine, PausePort pause, String cafile) {
+                                             boolean wholeMachine, PausePort pause, String cafile,
+                                             TerminalLending lending) {
         return attachJavaImagesCodec(new JavaHost().ports()
                 .withTasks(new ThreadTasks(bounds, () -> hostServicesFor(bounds, files.copyInWorkingDirectory(),
-                        environment.copy(), wholeMachine, pause, cafile)))
+                        environment.copy(), wholeMachine, pause, cafile, lending)))
                 .withFiles(files)
                 .withEnvironment(wholeMachine ? environment : ConfinedEnvironment.confine(environment, files))
-                .withProcesses(new JavaProcess())
+                .withProcesses(new JavaProcess(lending))
                 .withClipboard(new JavaClipboard())
                 .withNetwork(new JavaSocket())
                 .withSecureTransport(new JavaSecureTransport())
