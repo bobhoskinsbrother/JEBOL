@@ -32,6 +32,27 @@ val listCarriedExtensions = tasks.register("listCarriedExtensions") {
     }
 }
 
+// R3's optional compressors ship inside the jar as well, so the desktop answers
+// every method R3's Bulk product does. Each part and the core name their
+// providers in the same services file, and the jar carries one: this one.
+val mergeOptionalCompressions = tasks.register("mergeOptionalCompressions") {
+    group = "build"
+    description = "Write the shipped jar's one services file naming every optional compressor it carries"
+    val merged = layout.buildDirectory.file("generated/optional-compressions/$OPTIONAL_COMPRESSION_SERVICES")
+    val named = files(listOf(core.file("src/main/resources/$OPTIONAL_COMPRESSION_SERVICES")) +
+        OPTIONAL_PARTS.map { core.file("optional/$it/src/main/resources/$OPTIONAL_COMPRESSION_SERVICES") })
+    inputs.files(named).withPropertyName("servicesFiles")
+    outputs.file(merged)
+    doLast {
+        merged.get().asFile.parentFile.mkdirs()
+        merged.get().asFile.writeText(named.files.filter { it.isFile }
+            .flatMap { it.readLines() }
+            .map(String::trim)
+            .filter { it.isNotEmpty() && !it.startsWith("#") }
+            .joinToString("\n", postfix = "\n"))
+    }
+}
+
 tasks.jar {
     archiveBaseName = "jebol-desktop"
 }
@@ -67,9 +88,16 @@ val shippedJar = tasks.register<Jar>("shippedJar") {
     from(launcher.output)
     listOf(core, project(":web")).forEach { part ->
         from(part.tasks.named<Jar>("jar").map { zipTree(it.archiveFile) }) {
-            exclude("META-INF/MANIFEST.MF")
+            exclude("META-INF/MANIFEST.MF", OPTIONAL_COMPRESSION_SERVICES)
         }
     }
+    OPTIONAL_PARTS.forEach { name ->
+        from(project(":optional:$name").tasks.named<Jar>("jar").map { zipTree(it.archiveFile) }) {
+            exclude("META-INF/MANIFEST.MF", OPTIONAL_COMPRESSION_SERVICES)
+        }
+    }
+    from(layout.buildDirectory.dir("generated/optional-compressions"))
+    dependsOn(mergeOptionalCompressions)
     CARRIED_EXTENSIONS.forEach { name ->
         val extensionJar = project(":extensions:$name").tasks.named<Jar>("jar").map { zipTree(it.archiveFile) }
         from(extensionJar) {

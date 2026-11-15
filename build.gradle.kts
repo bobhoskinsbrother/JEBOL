@@ -49,6 +49,12 @@ val extensionProjects = EVERY_EXTENSION
 fun extensionsWithSuite(sourceSet: String) =
     extensionProjects.filter { file("extensions/$it/src/$sourceSet").isDirectory }
 
+fun optionalPartsWithSuite(sourceSet: String) =
+    OPTIONAL_PARTS.filter { file("optional/$it/src/$sourceSet").isDirectory }
+
+fun optionalResultsName(part: String, suite: String) =
+    "optional" + part.replaceFirstChar(Char::uppercase) + suite
+
 tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)
     options.encoding = "UTF-8"
@@ -216,11 +222,14 @@ abstract class ArchiveTestResults : DefaultTask() {
 // display. The machine's cores are spent one stage at a time, because the
 // functional tests' five-second bounds do not survive sharing them.
 val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests") +
-    extensionsWithSuite("unitTest").map { ":extensions:$it:unitTests" }
+    extensionsWithSuite("unitTest").map { ":extensions:$it:unitTests" } +
+    optionalPartsWithSuite("unitTest").map { ":optional:$it:unitTests" }
 val functionalStage = listOf(":functionalTests", ":heapExhaustionTests", ":desktop:functionalTests",
-    ":web:functionalTests") + extensionsWithSuite("functionalTest").map { ":extensions:$it:functionalTests" }
+    ":web:functionalTests") + extensionsWithSuite("functionalTest").map { ":extensions:$it:functionalTests" } +
+    optionalPartsWithSuite("functionalTest").map { ":optional:$it:functionalTests" }
 val endToEndStage = listOf(":endToEndTests", ":desktop:endToEndTests", ":web:endToEndTests") +
-    extensionsWithSuite("endToEndTest").map { ":extensions:$it:endToEndTests" }
+    extensionsWithSuite("endToEndTest").map { ":extensions:$it:endToEndTests" } +
+    optionalPartsWithSuite("endToEndTest").map { ":optional:$it:endToEndTests" }
 val windowStage = listOf(":desktop:desktopWindowTests")
 val gateStages = listOf(unitStage, functionalStage, endToEndStage, windowStage)
 val gateTasks = gateStages.flatten()
@@ -230,7 +239,10 @@ val gateSuites = listOf("unitTests", "desktopUnitTests", "webUnitTests",
     "endToEndTests", "desktopEndToEndTests", "webEndToEndTests", "desktopWindowTests") +
     extensionsWithSuite("unitTest").map { "${it}UnitTests" } +
     extensionsWithSuite("functionalTest").map { "${it}FunctionalTests" } +
-    extensionsWithSuite("endToEndTest").map { "${it}EndToEndTests" }
+    extensionsWithSuite("endToEndTest").map { "${it}EndToEndTests" } +
+    optionalPartsWithSuite("unitTest").map { optionalResultsName(it, "UnitTests") } +
+    optionalPartsWithSuite("functionalTest").map { optionalResultsName(it, "FunctionalTests") } +
+    optionalPartsWithSuite("endToEndTest").map { optionalResultsName(it, "EndToEndTests") }
 
 val gateWasAskedFor = gradle.startParameter.taskNames
     .map { it.removePrefix(":") }

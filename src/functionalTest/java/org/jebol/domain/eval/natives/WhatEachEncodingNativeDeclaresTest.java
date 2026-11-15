@@ -282,23 +282,12 @@ class WhatEachEncodingNativeDeclaresTest {
                 compress/level "aaaaaaaa" 'zlib 0                         | #{7801010800F7FF61616161616161610DAC0309}
                 compress "aaaaaaaa" 'deflate                              | #{4B4C840000}
                 compress "aaaaaaaa" 'gzip                                 | #{1F8B08000000000002FF4B4C840000468084BF08000000}
-                compress "aaaaaaaa" 'lzma                                 | #{5D000000010030EA7C00000008000000}
-                compress "aaaaaaaa" 'crush                                | #{08000000C20A00}
-                compress/part "abcdef" 'lzw 3                             | #{07616263FF01}
                 decompress compress "abc" 'zlib 'zlib                     | #{616263}
                 decompress compress "abc" 'deflate 'deflate               | #{616263}
                 decompress compress "abc" 'gzip 'gzip                     | #{616263}
                 decompress #{} 'zlib                                      | #{}
                 decompress #{} 'gzip                                      | #{}
-                decompress #{0000000000} 'crush                           | #{}
                 decompress/size compress "abcdef" 'zlib 'zlib 6           | #{616263646566}
-                decompress/size compress "abcdef" 'br 'br 3               | #{616263}
-                decompress/size compress "abcdef" 'br 'br 100             | #{616263646566}
-                decompress/size compress "abcdef" 'lzma 'lzma 3           | #{616263}
-                decompress/size compress "abcdef" 'crush 'crush 3         | #{616263}
-                decompress/size compress "abcdef" 'crush 'crush 100       | #{616263646566}
-                decompress/size compress "abcdef" 'lzw 'lzw 3             | #{616263}
-                decompress/size compress "abcdef" 'lzw 'lzw 100           | #{616263646566}
                 """)
         void answersWhatRebolAnswers(String source, String wanted) {
             assertThat(answerTo(source)).isEqualTo(wanted);
@@ -313,19 +302,11 @@ class WhatEachEncodingNativeDeclaresTest {
                 decompress #{0102} 'zlib                                  | bad-press    | 1
                 decompress #{0102} 'deflate                               | bad-press    | 1
                 decompress #{0102} 'gzip                                  | bad-press    | 1
-                decompress #{0102} 'lzw                                   | bad-press    | 1
-                decompress #{0102} 'br                                    | bad-press    | 2
-                decompress #{} 'br                                        | bad-press    | 2
-                decompress #{0102} 'crush                                 | bad-press    | crush
-                decompress #{01} 'crush                                   | bad-press    | crush
-                decompress #{0102} 'lzma                                  | past-end     | _
-                decompress #{} 'lzma                                      | past-end     | _
                 decompress/size compress "abcdef" 'zlib 'zlib 5           | bad-press    | 3
                 decompress/size compress "abcdef" 'zlib 'zlib 100         | bad-press    | 2
                 decompress/size compress "abcdef" 'deflate 'deflate 3     | bad-press    | 3
                 decompress/size compress "abcdef" 'gzip 'gzip 3           | bad-press    | 3
                 decompress/size compress "abcdef" 'gzip 'gzip 100         | bad-press    | 2
-                decompress/size compress "abcdef" 'lzma 'lzma 100         | bad-press    | 6
                 decompress/size compress "abcdef" 'deflate 'deflate 0     | out-of-range | 0
                 decompress/size compress "abcdef" 'zlib 'zlib -1          | out-of-range | -1
                 decompress/part compress "abc" 'zlib 'zlib 4              | bad-press    | 1

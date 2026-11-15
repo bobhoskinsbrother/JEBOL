@@ -29,6 +29,12 @@ print (compress/level sentence 'br 5) = (compress/level sentence 'br 9)
 print (decompress (compress/level sentence 'br 11) 'br) = sentence
 wait 0:00:00.05
 print "waited"
+text: {The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.}
+print mold system/catalog/compressions
+foreach method system/catalog/compressions [
+    packed: compress text method
+    print [method checksum packed 'sha1 text = to string! decompress/size packed method length? text]
+]
 </script>
 <script type="text/rebol" id="gui">
 the-window: view/no-wait make gob! [size: 100x100 color: 250.10.10]

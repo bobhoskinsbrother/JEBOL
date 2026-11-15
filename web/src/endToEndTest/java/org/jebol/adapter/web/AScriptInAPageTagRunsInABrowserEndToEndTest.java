@@ -128,6 +128,23 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
     }
 
     @Test
+    @DisplayName("the site catalogues all nine compressions and writes each one's bytes as ./r3-head does")
+    void compressesAsRebolsBulkProduct() {
+        waitUntilTheOutputSays(18, "lzw ");
+        assertThat(readTheLinesSoFar().subList(8, 18)).containsExactly(
+                "[deflate zlib gzip br crush lz4 lzav lzma lzw]",
+                "deflate 218C73E64CC1E20225ADF9A6EF66042DBCECA2CB true",
+                "zlib B501DB7552919F7B6B2635D2F8BC8451F3AF769A true",
+                "gzip 646898C33F9FBC5BD21A3EA6A1E7F2BB6C17399D true",
+                "br 86A201AD8296E2DA783DF0E7DBC05CB1A80B4B65 true",
+                "crush A12E7D1D4330A7E5B2A2EC9D24EC6F9A78D03D62 true",
+                "lz4 E143E81125163763B80D3802A061EBC5BECC39BC true",
+                "lzav 34332985D2248A84C94E822365F165957243370C true",
+                "lzma A61B324BD0E62B9F687A439D21FEC90935C15A40 true",
+                "lzw 084FB1ED38E862111473EEC1C2F1ED082AA76A8B true");
+    }
+
+    @Test
     @DisplayName("the window the second script opens is painted on the canvas the page owns")
     void paintsTheWindowOnTheCanvas() {
         waitUntilTheOutputSays(9, "open");

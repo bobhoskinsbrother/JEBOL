@@ -1,6 +1,3 @@
-import com.sun.management.OperatingSystemMXBean
-import java.lang.management.ManagementFactory
-
 plugins {
     java
     `java-test-fixtures`
@@ -68,11 +65,18 @@ tasks.register<Test>("endToEndTests") {
     // had stopped answering: one waited 30 seconds for a browser, the other
     // timed out removing its BiDi user context on the way out. Four gibibytes
     // a fork leaves a machine with memory to spare at its processor count.
-    val memoryThisMachineHas =
-        (ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean).totalMemorySize
-    val forksItsMemoryAllows = (memoryThisMachineHas / (4L * 1024 * 1024 * 1024)).toInt()
-    maxParallelForks = providers.gradleProperty("endToEndForks").map(String::toInt)
-        .getOrElse(maxOf(2, minOf(maxParallelForks, forksItsMemoryAllows)))
+    // The memory counted is what is available when the stage starts, not the
+    // machine's total: the IDE and Gradle's own daemon hold six or seven
+    // gigabytes between them, and forks sized on the total sent a 23 GB machine
+    // two gigabytes into swap, where one shipped jar took more than twenty
+    // seconds to print its first prompt.
+    val processors = maxParallelForks
+    val forksAsked = providers.gradleProperty("endToEndForks").map(String::toInt)
+    doFirst {
+        (this as Test).maxParallelForks =
+            forksAsked.getOrElse(maxOf(2, minOf(processors, endToEndForksMemoryAllows())))
+        logger.lifecycle("{} runs in {} forks", path, (this as Test).maxParallelForks)
+    }
     systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
     val built = core.layout.buildDirectory
     systemProperty("jebol.webBuild", built.dir("generated/teavm/wasm-gc").get().asFile.path)

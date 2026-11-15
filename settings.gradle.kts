@@ -12,6 +12,8 @@ include("desktop", "web")
 
 include("extensions:sqlite")
 
+include("optional:lzw")
+
 include(
     "extensions:easing", "extensions:blurhash", "extensions:mathpresso", "extensions:deflate",
     "extensions:zlib-ng", "extensions:zstd", "extensions:bzip2", "extensions:brotli", "extensions:blend2d",

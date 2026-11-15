@@ -6,7 +6,9 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.getByType
+import com.sun.management.OperatingSystemMXBean
 import java.io.File
+import java.lang.management.ManagementFactory
 
 const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
 const val TESTS_THAT_OPEN_A_REAL_WINDOW = "opens-a-real-window"
@@ -79,6 +81,27 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: String, dumpsTheHeapWhenI
         showStackTraces = true
         exceptionFormat = TestExceptionFormat.FULL
     }
+}
+
+private const val MEMORY_AN_END_TO_END_FORK_NEEDS = 4L * 1024 * 1024 * 1024
+
+fun endToEndForksMemoryAllows(): Int =
+    ((readAvailableMemory() ?: readTotalMemory()) / MEMORY_AN_END_TO_END_FORK_NEEDS).toInt()
+
+private fun readTotalMemory(): Long =
+    (ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean).totalMemorySize
+
+private fun readAvailableMemory(): Long? {
+    val meminfo = File("/proc/meminfo")
+    if (!meminfo.isFile) {
+        return null
+    }
+    return meminfo.readLines()
+        .firstOrNull { it.startsWith("MemAvailable:") }
+        ?.split(Regex("\\s+"))
+        ?.getOrNull(1)
+        ?.toLongOrNull()
+        ?.times(1024)
 }
 
 fun Test.readsAlsoFrom(what: String, vararg files: Any) {

@@ -17,13 +17,12 @@ class CompressionLevelFromTheSourceTest {
     }
 
     private static final String THE_METHODS_AND_THEIR_TOPS =
-            "methods: [zlib deflate gzip crush lzw lzma br]\n"
-                    + "tops: [12 12 12 2 9 9 11]\n"
+            "methods: [zlib deflate gzip]\n"
+                    + "tops: [12 12 12]\n"
                     + "data: {Lorem ipsum dolor sit amet, consectetur adipisici "
                     + "elit, sed eiusmod tempor incidunt ut labore.}\n";
 
-    private static final String ALL_SEVEN_TRUE =
-            "[#(true) #(true) #(true) #(true) #(true) #(true) #(true)]";
+    private static final String ALL_THREE_TRUE = "[#(true) #(true) #(true)]";
 
     @Nested
     @DisplayName("a level outside the method's range")
@@ -40,7 +39,7 @@ class CompressionLevelFromTheSourceTest {
                             keep (compress/level data method top + 1)
                                 = compress/level data method top
                         ]
-                    ]""")).isEqualTo(ALL_SEVEN_TRUE);
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
 
         @Test
@@ -53,7 +52,7 @@ class CompressionLevelFromTheSourceTest {
                             keep (compress/level data method 99)
                                 = compress/level data method pick tops at
                         ]
-                    ]""")).isEqualTo(ALL_SEVEN_TRUE);
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
 
         @Test
@@ -66,7 +65,7 @@ class CompressionLevelFromTheSourceTest {
                             keep (compress/level data method -2)
                                 = compress/level data method pick tops at
                         ]
-                    ]""")).isEqualTo(ALL_SEVEN_TRUE);
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
 
         @Test
@@ -79,11 +78,11 @@ class CompressionLevelFromTheSourceTest {
                             keep (compress/level data method -99)
                                 = compress/level data method pick tops at
                         ]
-                    ]""")).isEqualTo(ALL_SEVEN_TRUE);
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
 
         @Test
-        @DisplayName("none of the seven refuses any of those")
+        @DisplayName("none of the three refuses any of those")
         void refusesNoneOfThem() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     refused: copy []
@@ -111,32 +110,20 @@ class CompressionLevelFromTheSourceTest {
                             keep (compress/level data method -1)
                                 = compress data method
                         ]
-                    ]""")).isEqualTo(ALL_SEVEN_TRUE);
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
 
         @Test
-        @DisplayName("five of the seven default to their hardest setting")
-        void fiveDefaultToTheirTop() {
+        @DisplayName("all three default to their hardest setting")
+        void defaultToTheirTop() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     collect [
-                        repeat at 5 [
+                        repeat at length? methods [
                             method: pick methods at
                             keep (compress data method)
                                 = compress/level data method pick tops at
                         ]
-                    ]""")).isEqualTo("[#(true) #(true) #(true) #(true) #(true)]");
-        }
-
-        @Test
-        @DisplayName("LZMA defaults to five of nine and Brotli to six of eleven")
-        void defaultsTwoToAMiddleLevel() {
-            assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
-                    reduce [
-                        (compress data 'lzma) = compress/level data 'lzma 5
-                        (compress data 'lzma) = compress/level data 'lzma 9
-                        (compress/level data 'lzma -1)
-                            = compress/level data 'lzma -2
-                    ]""")).isEqualTo("[#(true) #(false) #(false)]");
+                    ]""")).isEqualTo(ALL_THREE_TRUE);
         }
     }
 
@@ -145,7 +132,7 @@ class CompressionLevelFromTheSourceTest {
     class InversesAtEveryLevel {
 
         @Test
-        @DisplayName("for all seven methods, at eighteen levels each")
+        @DisplayName("for all three methods, at eighteen levels each")
         void holdForEveryMethodAtEveryLevel() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     bad: copy []

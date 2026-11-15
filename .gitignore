@@ -18,6 +18,7 @@
 /buildSrc/.kotlin/
 /buildSrc/build/
 /extensions/*/build/
+/optional/*/build/
 /desktop/build/
 /web/build/
 /android/.gradle/

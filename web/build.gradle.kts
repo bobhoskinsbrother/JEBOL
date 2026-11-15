@@ -17,6 +17,8 @@ dependencies {
     // against these, and they are never on the shipped jar's classpath.
     "teavmImplementation"(core)
     CARRIED_EXTENSIONS.forEach { "teavmImplementation"(project(":extensions:$it")) }
+    OPTIONAL_PARTS.forEach { "teavmImplementation"(project(":optional:$it")) }
+    OPTIONAL_PARTS.forEach { "functionalTestRuntimeOnly"(project(":optional:$it")) }
     "teavmCompileOnly"("org.teavm:teavm-classlib:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-core:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-extension-spi:0.16.0")
