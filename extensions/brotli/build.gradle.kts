@@ -8,3 +8,11 @@ jebolExtension {
     jvmProvider = "org.jebol.extension.brotli.BrotliExtension"
     webProvider = "org.jebol.extension.brotli.BrotliExtension"
 }
+
+dependencies {
+    jvmLibraries(project(":optional:brotli"))
+    listOf("unitTest", "functionalTest", "endToEndTest").forEach { suite ->
+        add("${suite}Implementation", testFixtures(project(":optional:brotli")))
+    }
+    "testFixturesImplementation"(testFixtures(project(":optional:brotli")))
+}

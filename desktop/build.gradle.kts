@@ -33,14 +33,13 @@ val listCarriedExtensions = tasks.register("listCarriedExtensions") {
 }
 
 // R3's optional compressors ship inside the jar as well, so the desktop answers
-// every method R3's Bulk product does. Each part and the core name their
-// providers in the same services file, and the jar carries one: this one.
+// every method R3's Bulk product does. Each part names its provider in the
+// same services file, and the jar carries one: this one.
 val mergeOptionalCompressions = tasks.register("mergeOptionalCompressions") {
     group = "build"
     description = "Write the shipped jar's one services file naming every optional compressor it carries"
     val merged = layout.buildDirectory.file("generated/optional-compressions/$OPTIONAL_COMPRESSION_SERVICES")
-    val named = files(listOf(core.file("src/main/resources/$OPTIONAL_COMPRESSION_SERVICES")) +
-        OPTIONAL_PARTS.map { core.file("optional/$it/src/main/resources/$OPTIONAL_COMPRESSION_SERVICES") })
+    val named = files(OPTIONAL_PARTS.map { core.file("optional/$it/src/main/resources/$OPTIONAL_COMPRESSION_SERVICES") })
     inputs.files(named).withPropertyName("servicesFiles")
     outputs.file(merged)
     doLast {
