@@ -3460,6 +3460,22 @@ whose engine reads generics through a method ART lacks. Hang guards in the
 tests' interpreters are stretched ten times on the emulator
 (`PlatformUnderTest.timeLimitFactor`).
 
+**The carried library, fonts and fixtures are Java resources in the APK, not
+assets** (owner's decision, 2026-11-14). The Android Gradle Plugin packages a
+jar's resources into the APK and `getResourceAsStream` reads them on ART, so
+`ClasspathFiles` and `LibrarySource` stay as they are and the suites' fixtures
+arrive the same way; assets would need an `AssetManager` adapter for no gain.
+
+**The gaps were closed on the JVM side, not around Android** (2026-11-14, goal
+2a steps 2 and 3). Measured from the class files by `AndroidApiGaps`: Java 9's
+covariant `flip` on `ByteBuffer` and `CharBuffer` (now `Buffers.flip`, on a
+`Buffer`), virtual threads and `Thread.Builder` (now named daemon platform
+threads), the DTLS-only `NEED_UNWRAP_AGAIN`, and `ProcessHandle` (the JVM's
+machine moved to `adapter.host`, Android's answers the process number its
+own way). Everything left was the desktop's and the command line's, which
+moved out of the core. `checkCoreForAndroid` fails the build on any new gap.
+`docs/android-port.md` is the record.
+
 **Rejected:** a lower API level with the sequenced calls replaced; native
 widgets; a Kotlin app; the Android build inside the root build, which would
 make every machine install the SDK.
