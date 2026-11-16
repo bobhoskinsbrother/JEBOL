@@ -6,6 +6,7 @@ import org.teavm.classlib.ResourceSupplierContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +34,9 @@ public class EveryLibraryResource implements ResourceSupplier {
     }
 
     private static List<String> readNames(URL list) throws IOException {
-        try (InputStream listing = list.openStream()) {
+        URLConnection uncached = list.openConnection();
+        uncached.setUseCaches(false);
+        try (InputStream listing = uncached.getInputStream()) {
             String names = new String(listing.readAllBytes(), StandardCharsets.UTF_8);
             return names.isEmpty() ? List.of() : List.of(names.split("\n"));
         }
