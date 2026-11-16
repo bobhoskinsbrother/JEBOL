@@ -130,44 +130,16 @@ and the owner's own phone saying whether it is quick enough.
 
 **The work, in order, keeping `allTests` and `androidTests` green after each.**
 
-0. **The Android build in the IDE, on Linux and on the Mac.** Before any app
-   code, so every later step is written with the IDE's help.
-   - **The root build includes `android/` when an Android SDK is there**, and
-     only then, so a machine without one imports and runs `allTests` exactly as
-     now (decision 73). `settings.gradle.kts` looks for the SDK where AGP
-     does -- `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `android/local.properties`'s
-     `sdk.dir` -- and then the two installs' defaults, `~/Android/Sdk` (Linux)
-     and `~/Library/Android/sdk` (macOS); finding one, it
-     `includeBuild("android")`, and writes `android/local.properties` if it is
-     missing, as Android Studio would. IntelliJ's Gradle sync then shows
-     `android:host` and `android:suites` (and from step 2 `app` and `endtoend`)
-     as Android modules with the SDK's classpath.
-   - **The cycle is the thing to check first.** `android/` includes the root
-     (`includeBuild("..")`) for the core; with the root including `android/`
-     back, Gradle must accept the pair. Try it with `./gradlew help` and an
-     IDE sync. If Gradle refuses, the fallback is the other shape: `android/`'s
-     projects become subprojects of the root (`include("android:host", ...)`,
-     still only when an SDK is found), the AGP plugins move into the root's
-     plugin management, `DeviceShards` into the root's `buildSrc`, and
-     `./gradlew -p android androidTests` becomes `./gradlew androidTests`;
-     CLAUDE.md and `docs/android-port.md` change with it. Either way
-     `allTests` never depends on an Android task, and the configuration cache
-     still holds.
-   - **The Mac gets an SDK.** `scripts/setup-machine.sh` gains a macOS branch:
-     `commandlinetools-mac`, the SDK in `~/Library/Android/sdk`, the same
-     platform 35 and build tools, and the system image for the processor --
-     `arm64-v8a` on Apple Silicon, `x86_64` on Intel -- with `ANDROID_HOME` in
-     the shell's profile. `emulator.sh` picks the image by `uname -m` and needs
-     KVM only on Linux (macOS uses its own hypervisor). Licences are accepted
-     by `sdkmanager --licenses` as on Ubuntu; the owner accepted them for this
-     project on 2026-11-14.
-   - **Done when** an IntelliJ sync on the Mac and on Linux shows the Android
-     modules, `ide_diagnostics` reports no unresolved symbol in
-     `android/host` and `android/suites`, `./gradlew -p android androidTests`
-     (or its fallback) passes on Linux, a device run of `-Pclasses` on one
-     class passes on the Mac's emulator, and a clone on a machine with no SDK
-     syncs and passes `allTests` untouched. The SDK lookup is a decision 73
-     paragraph.
+0. **The Android build in the IDE, on Linux and on the Mac.** The build half
+   is done (decision 73, 2026-11-16): the root includes `android/` when it
+   finds an SDK, Gradle accepts the two including each other, and the Mac has
+   a `setup-machine.sh` branch. What is left is the owner's, by hand:
+   - **On the Mac**, `scripts/check-android-build.sh` installs the SDK, runs
+     one class on the Mac's emulator and writes `build/android-check.txt`.
+   - **The IDE**: IntelliJ 2026.3 does not bundle the Android plugin, so the
+     sync lists `android.host` and `android.suites` with no source roots until
+     JetBrains' Android plugin is installed (owner, 2026-11-16: skipped for
+     now; Android code is checked by Gradle meanwhile).
 
 1. **Move the one-surface screen into the core** (JVM only, no Android yet).
    - `BrowserScreen` becomes `org.jebol.application.OneSurfaceScreen`, its

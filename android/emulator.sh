@@ -8,7 +8,10 @@
 #   android/emulator.sh stop [N]    shut them down
 #   android/emulator.sh serials [N] print the instances' serials, one a line
 #
-# An x86_64 API 35 Google APIs image under KVM. The instances take the ports
+# An API 35 Google APIs image for the machine's processor: x86_64 under KVM on
+# Linux and on an Intel Mac, arm64-v8a under the Mac's own hypervisor on Apple
+# Silicon. The SDK is ANDROID_HOME, else where Android Studio puts it on each
+# system (~/Android/Sdk, ~/Library/Android/sdk). The instances take the ports
 # from 5584 up, two apart, so they never take over an emulator someone is
 # using; read-only lets one AVD run several times at once. The suites are split
 # across them in shards (decision 73). scripts/setup-machine.sh installs the
@@ -17,10 +20,18 @@
 
 set -euo pipefail
 
-sdk="${ANDROID_HOME:-$HOME/Android/Sdk}"
-avd=jebol-api35
+if [ "$(uname -s)" = Darwin ]; then
+    sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+else
+    sdk="${ANDROID_HOME:-$HOME/Android/Sdk}"
+fi
+case "$(uname -m)" in
+arm64 | aarch64) abi=arm64-v8a ;;
+*) abi=x86_64 ;;
+esac
+avd="jebol-api35-$abi"
 first_port=5584
-image="system-images;android-35;google_apis;x86_64"
+image="system-images;android-35;google_apis;$abi"
 adb="$sdk/platform-tools/adb"
 seconds_a_boot_may_take=420
 megabytes_each=1536
@@ -36,7 +47,6 @@ booted() {
 
 wait_for_boot() {
     local serial=$1 log=$2 waited=0
-    timeout "$seconds_a_boot_may_take" "$adb" -s "$serial" wait-for-device
     until booted "$serial"; do
         if [ "$waited" -ge "$seconds_a_boot_may_take" ]; then
             echo "$serial did not finish booting in ${seconds_a_boot_may_take}s; its log is $log" >&2

@@ -12,8 +12,16 @@ plugins {
 // allTests, because it needs the Android SDK. CLAUDE.md, "Running the suite".
 val coreForAndroid = gradle.includedBuilds.single().task(":checkCoreForAndroid")
 val emulatorScript = layout.projectDirectory.file("emulator.sh").asFile.path
+val sdkDirFromLocalProperties = providers.fileContents(layout.projectDirectory.file("local.properties")).asText
+    .map { text -> java.util.Properties().apply { load(text.reader()) }.getProperty("sdk.dir") ?: "" }
+    .filter(String::isNotEmpty)
+val defaultSdkForThisSystem = providers.systemProperty("user.home").map { home ->
+    if (System.getProperty("os.name").startsWith("Mac")) "$home/Library/Android/sdk" else "$home/Android/Sdk"
+}
 val androidSdk = providers.environmentVariable("ANDROID_HOME")
-    .orElse(providers.systemProperty("user.home").map { "$it/Android/Sdk" })
+    .orElse(providers.environmentVariable("ANDROID_SDK_ROOT"))
+    .orElse(sdkDirFromLocalProperties)
+    .orElse(defaultSdkForThisSystem)
 
 // How many emulators the suites are split across: -Pemulators=N. Each takes
 // four cores and about two gigabytes with its own overhead; four at 2 GB ran a

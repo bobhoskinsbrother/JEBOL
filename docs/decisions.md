@@ -3476,9 +3476,37 @@ own way). Everything left was the desktop's and the command line's, which
 moved out of the core. `checkCoreForAndroid` fails the build on any new gap.
 `docs/android-port.md` is the record.
 
+**The root build takes `android/` in when it finds an SDK** (2026-11-16,
+goal 2b step 0). IntelliJ imports the root build, and a build nothing
+includes opens as plain folders, so `settings.gradle.kts` looks for the SDK
+where the Android Gradle Plugin does -- `ANDROID_HOME`, `ANDROID_SDK_ROOT`,
+`sdk.dir` in `android/local.properties` -- then where Android Studio installs
+it, `~/Android/Sdk` on Linux and `~/Library/Android/sdk` on macOS, and takes
+the first holding a `platforms` folder. Finding one, it `includeBuild`s
+`android/` and writes `android/local.properties` if it is missing, as Android
+Studio would; finding none, it includes nothing and the build is exactly as
+before. The two builds include each other -- `android/` takes the core with
+`includeBuild("..")` -- and Gradle 9.6 accepts the pair, so the fallback of
+making `android/`'s projects subprojects of the root was not needed; the gate
+is still `./gradlew -p android androidTests`. Checked: with the SDK hidden
+the root writes nothing and plans `allTests` task for task as it did, and
+with it found it plans the same, so `allTests` depends on no Android task.
+`android/build.gradle.kts` finds the SDK in the same order for the emulator
+script.
+
+- **The IDE needs JetBrains' Android plugin** to read the modules' Android
+  model: IntelliJ 2026.3 no longer bundles it, and without it the sync lists
+  `android.host` and `android.suites` with no source roots.
+- **A Mac gets an SDK too.** `scripts/setup-machine.sh` installs it on macOS,
+  with the command-line tools for the Mac's processor and the API 35 image it
+  runs (`arm64-v8a` on Apple Silicon, under the Mac's own hypervisor);
+  `android/emulator.sh` picks the image by `uname -m` and names the AVD after
+  it. `scripts/check-android-build.sh` runs one class on one emulator on any
+  machine and writes `build/android-check.txt`.
+
 **Rejected:** a lower API level with the sequenced calls replaced; native
-widgets; a Kotlin app; the Android build inside the root build, which would
-make every machine install the SDK.
+widgets; a Kotlin app; the Android build inside the root build unconditionally,
+which would make every machine install the SDK.
 
 ## 74. R3's Bulk compressors are optional parts of the core
 

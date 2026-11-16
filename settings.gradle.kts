@@ -8,6 +8,31 @@ plugins {
 
 rootProject.name = "jebol"
 
+val androidSdk: File? = run {
+    val localProperties = file("android/local.properties")
+    val sdkDirFromLocalProperties = if (localProperties.isFile) {
+        java.util.Properties().apply { localProperties.reader().use(::load) }.getProperty("sdk.dir")
+    } else {
+        null
+    }
+    val home = System.getProperty("user.home")
+    listOfNotNull(
+        System.getenv("ANDROID_HOME"),
+        System.getenv("ANDROID_SDK_ROOT"),
+        sdkDirFromLocalProperties,
+        "$home/Android/Sdk",
+        "$home/Library/Android/sdk",
+    ).map(::File).firstOrNull { it.resolve("platforms").isDirectory }
+}
+
+if (androidSdk != null) {
+    val localProperties = file("android/local.properties")
+    if (!localProperties.exists()) {
+        localProperties.writeText("sdk.dir=" + androidSdk.absolutePath.replace("\\", "\\\\") + "\n")
+    }
+    includeBuild("android")
+}
+
 include("desktop", "web")
 
 include("extensions:sqlite")

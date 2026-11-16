@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Installs what `./gradlew allTests` needs on a fresh Ubuntu machine.
+# Installs what `./gradlew allTests` needs on a fresh Ubuntu machine, and on a
+# Mac the Android SDK alone.
 #
 #   scripts/setup-machine.sh
 #
-# Safe to run again: each step checks before it installs. It asks for sudo.
+# Safe to run again: each step checks before it installs. On Ubuntu it asks
+# for sudo; on a Mac it needs none.
+#
+# On macOS it installs the Android SDK into ~/Library/Android/sdk, where
+# Android Studio puts it: the command-line tools for the Mac's processor, the
+# same platform, build tools and emulator as on Ubuntu, and the API 35 image
+# the processor runs -- arm64-v8a on Apple Silicon, x86_64 on Intel -- then
+# adds ANDROID_HOME to ~/.zprofile. Everything else allTests needs on a Mac is
+# the README's Building section.
 #
 #   Java 25           openjdk-25-jdk, for Gradle and the toolchain the build asks for
 #   allium            cargo install allium-cli, for checkSpec (needs rustup and a C linker)
@@ -28,6 +37,98 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s ==\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+failed=false
+check() {
+    local what=$1; shift
+    if "$@" >/dev/null 2>&1; then
+        printf '  ok    %s\n' "$what"
+    else
+        printf '  FAIL  %s\n' "$what"
+        failed=true
+    fi
+}
+
+# The command-line tools are pinned and checked against the digest Google
+# publishes for them in https://dl.google.com/android/repository/repository2-3.xml;
+# sdkmanager fetches and checks everything after them itself.
+install_android_sdk() {
+    local android_sdk=$1 command_line_tools=$2 command_line_tools_sha1=$3 image=$4
+    local sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
+    if [ -x "$sdkmanager" ]; then
+        echo "The Android command-line tools are already in $android_sdk"
+    else
+        local fetched
+        fetched=$(mktemp -d)
+        curl -fsSL -o "$fetched/$command_line_tools" "https://dl.google.com/android/repository/$command_line_tools"
+        if have sha1sum; then
+            echo "$command_line_tools_sha1  $fetched/$command_line_tools" | sha1sum -c -
+        else
+            echo "$command_line_tools_sha1  $fetched/$command_line_tools" | shasum -a 1 -c -
+        fi
+        mkdir -p "$android_sdk/cmdline-tools"
+        unzip -q -o "$fetched/$command_line_tools" -d "$fetched"
+        rm -rf "$android_sdk/cmdline-tools/latest"
+        mv "$fetched/cmdline-tools" "$android_sdk/cmdline-tools/latest"
+        rm -rf "$fetched"
+    fi
+    echo "Accepting the Android SDK licence, as the header of this script says."
+    # yes dies of SIGPIPE when sdkmanager stops reading, which pipefail would
+    # count as the pipeline failing; only sdkmanager's own status counts.
+    { yes || true; } | "$sdkmanager" --sdk_root="$android_sdk" --licenses >/dev/null
+    # sdkmanager can stop at a prompt of its own even with every licence accepted,
+    # and with nothing on its input it waits there for good.
+    { yes || true; } | "$sdkmanager" --sdk_root="$android_sdk" \
+        "platforms;android-35" "build-tools;37.0.0" "build-tools;36.0.0" "platform-tools" "emulator" \
+        "$image"
+}
+
+check_android_sdk() {
+    local android_sdk=$1 image_dir=$2
+    check "Android platform 35"         test -f "$android_sdk/platforms/android-35/android.jar"
+    check "Android build tools 37"      test -x "$android_sdk/build-tools/37.0.0/d8"
+    check "the Android emulator"        "$android_sdk/emulator/emulator" -version
+    check "an API 35 image ($image_dir)" test -f "$android_sdk/system-images/android-35/google_apis/$image_dir/system.img"
+}
+
+if [ "$(uname -s)" = Darwin ]; then
+    android_sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+    case "$(uname -m)" in
+    arm64)
+        command_line_tools=commandlinetools-mac_arm64-16111833_latest.zip
+        command_line_tools_sha1=ad03dc49bfacfd52c110b14104ea548b8a07e830
+        image_dir=arm64-v8a
+        ;;
+    *)
+        command_line_tools=commandlinetools-mac_x86_64-16111833_latest.zip
+        command_line_tools_sha1=112cf9618794a997ff273537d55bee02c22abffe
+        image_dir=x86_64
+        ;;
+    esac
+
+    step "Android SDK"
+    install_android_sdk "$android_sdk" "$command_line_tools" "$command_line_tools_sha1" \
+        "system-images;android-35;google_apis;$image_dir"
+
+    step "PATH"
+    if ! grep -qs 'ANDROID_HOME' "$HOME/.zprofile"; then
+        echo "export ANDROID_HOME=\"$android_sdk\"" >> "$HOME/.zprofile"
+        echo "Added ANDROID_HOME to ~/.zprofile; open a new shell to pick it up."
+    fi
+
+    step "Checking"
+    check "java on the PATH"            java -version
+    check_android_sdk "$android_sdk" "$image_dir"
+    check "gradle wrapper starts"       ./gradlew --version
+    if $failed; then
+        echo
+        echo "Something above failed; the build will name it too." >&2
+        exit 1
+    fi
+    echo
+    echo "Ready: ./gradlew -p android androidTests -Pemulators=1"
+    exit 0
+fi
 
 if [ ! -r /etc/os-release ] || ! grep -q '^ID=ubuntu' /etc/os-release; then
     echo "This script installs with apt on Ubuntu; on anything else read the README's Building section." >&2
@@ -97,32 +198,9 @@ sudo apt-get update
 sudo apt-get install -y --allow-downgrades firefox
 
 step "Android SDK"
-# The command-line tools are pinned and checked against the digest Google
-# publishes for them in https://dl.google.com/android/repository/repository2-3.xml;
-# sdkmanager fetches and checks everything after them itself.
 android_sdk="${ANDROID_HOME:-$HOME/Android/Sdk}"
-command_line_tools=commandlinetools-linux-16111833_latest.zip
-command_line_tools_sha1=e025545c62a8e64c7559119566a569fb1dec5f60
-sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
-if [ -x "$sdkmanager" ]; then
-    echo "The Android command-line tools are already in $android_sdk"
-else
-    fetched=$(mktemp -d)
-    wget -q -O "$fetched/$command_line_tools" "https://dl.google.com/android/repository/$command_line_tools"
-    echo "$command_line_tools_sha1  $fetched/$command_line_tools" | sha1sum -c -
-    mkdir -p "$android_sdk/cmdline-tools"
-    unzip -q -o "$fetched/$command_line_tools" -d "$fetched"
-    rm -rf "$android_sdk/cmdline-tools/latest"
-    mv "$fetched/cmdline-tools" "$android_sdk/cmdline-tools/latest"
-    rm -rf "$fetched"
-fi
-echo "Accepting the Android SDK licence, as the header of this script says."
-yes | "$sdkmanager" --sdk_root="$android_sdk" --licenses >/dev/null
-# sdkmanager can stop at a prompt of its own even with every licence accepted,
-# and with nothing on its input it waits there for good.
-yes | "$sdkmanager" --sdk_root="$android_sdk" \
-    "platforms;android-35" "build-tools;37.0.0" "build-tools;36.0.0" "platform-tools" "emulator" \
-    "system-images;android-35;google_apis;x86_64"
+install_android_sdk "$android_sdk" commandlinetools-linux-16111833_latest.zip \
+    e025545c62a8e64c7559119566a569fb1dec5f60 "system-images;android-35;google_apis;x86_64"
 if [ ! -w /dev/kvm ]; then
     echo "Adding $USER to the kvm group, so the emulator runs at full speed; log in again to pick it up."
     sudo usermod -aG kvm "$USER"
@@ -139,26 +217,13 @@ if ! grep -qs 'ANDROID_HOME' "$HOME/.bashrc" "$HOME/.profile"; then
 fi
 
 step "Checking"
-failed=false
-check() {
-    local what=$1; shift
-    if "$@" >/dev/null 2>&1; then
-        printf '  ok    %s\n' "$what"
-    else
-        printf '  FAIL  %s\n' "$what"
-        failed=true
-    fi
-}
 check "java 25 on the PATH"         sh -c 'java -version 2>&1 | grep -q "version \"25"'
 check "allium"                      allium --version
 check "python3"                     python3 --version
 check "google-chrome"               google-chrome --version
 check "firefox is an ELF, not a script" sh -c 'file -L "$(command -v firefox)" | grep -q ELF'
 check "Ubuntu's firefox placeholder is never installed" sh -c 'apt-cache policy firefox | grep -q "1snap1.* -1"'
-check "Android platform 35"         test -f "$android_sdk/platforms/android-35/android.jar"
-check "Android build tools 37"      test -x "$android_sdk/build-tools/37.0.0/d8"
-check "the Android emulator"        "$android_sdk/emulator/emulator" -version
-check "an x86_64 API 35 image"      test -f "$android_sdk/system-images/android-35/google_apis/x86_64/system.img"
+check_android_sdk "$android_sdk" x86_64
 check "/dev/kvm can be opened"      test -w /dev/kvm
 check "gradle wrapper starts"       ./gradlew --version
 check "spec/ passes allium"         ./gradlew checkSpec
