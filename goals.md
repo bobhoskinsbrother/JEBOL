@@ -94,6 +94,13 @@ and the owner's own phone saying whether it is quick enough.
 - `examples/r3-gui` needs a file port (2c's), and printing that reaches a
   person (2c's as first written). 2b takes both in their simplest form, so
   its done-when needs nothing a later stage builds.
+- **The IDE does not see `android/` as Android.** IntelliJ imports the root
+  Gradle build, and `android/` is a build of its own (`./gradlew -p
+  android`), included by nothing: its sources open as plain folders, with no
+  SDK and no classpath, on the Linux machine and on the owner's Mac alike.
+  And only Ubuntu can get an SDK: `scripts/setup-machine.sh` fetches
+  `commandlinetools-linux`, and `android/emulator.sh` boots an x86_64 image
+  under KVM, which an Apple Silicon Mac cannot run.
 
 **What the plan settles, the owner's decisions 2026-11-16:**
 
@@ -122,6 +129,45 @@ and the owner's own phone saying whether it is quick enough.
   where the time goes and the owner decides before 2c.
 
 **The work, in order, keeping `allTests` and `androidTests` green after each.**
+
+0. **The Android build in the IDE, on Linux and on the Mac.** Before any app
+   code, so every later step is written with the IDE's help.
+   - **The root build includes `android/` when an Android SDK is there**, and
+     only then, so a machine without one imports and runs `allTests` exactly as
+     now (decision 73). `settings.gradle.kts` looks for the SDK where AGP
+     does -- `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `android/local.properties`'s
+     `sdk.dir` -- and then the two installs' defaults, `~/Android/Sdk` (Linux)
+     and `~/Library/Android/sdk` (macOS); finding one, it
+     `includeBuild("android")`, and writes `android/local.properties` if it is
+     missing, as Android Studio would. IntelliJ's Gradle sync then shows
+     `android:host` and `android:suites` (and from step 2 `app` and `endtoend`)
+     as Android modules with the SDK's classpath.
+   - **The cycle is the thing to check first.** `android/` includes the root
+     (`includeBuild("..")`) for the core; with the root including `android/`
+     back, Gradle must accept the pair. Try it with `./gradlew help` and an
+     IDE sync. If Gradle refuses, the fallback is the other shape: `android/`'s
+     projects become subprojects of the root (`include("android:host", ...)`,
+     still only when an SDK is found), the AGP plugins move into the root's
+     plugin management, `DeviceShards` into the root's `buildSrc`, and
+     `./gradlew -p android androidTests` becomes `./gradlew androidTests`;
+     CLAUDE.md and `docs/android-port.md` change with it. Either way
+     `allTests` never depends on an Android task, and the configuration cache
+     still holds.
+   - **The Mac gets an SDK.** `scripts/setup-machine.sh` gains a macOS branch:
+     `commandlinetools-mac`, the SDK in `~/Library/Android/sdk`, the same
+     platform 35 and build tools, and the system image for the processor --
+     `arm64-v8a` on Apple Silicon, `x86_64` on Intel -- with `ANDROID_HOME` in
+     the shell's profile. `emulator.sh` picks the image by `uname -m` and needs
+     KVM only on Linux (macOS uses its own hypervisor). Licences are accepted
+     by `sdkmanager --licenses` as on Ubuntu; the owner accepted them for this
+     project on 2026-11-14.
+   - **Done when** an IntelliJ sync on the Mac and on Linux shows the Android
+     modules, `ide_diagnostics` reports no unresolved symbol in
+     `android/host` and `android/suites`, `./gradlew -p android androidTests`
+     (or its fallback) passes on Linux, a device run of `-Pclasses` on one
+     class passes on the Mac's emulator, and a clone on a machine with no SDK
+     syncs and passes `allTests` untouched. The SDK lookup is a decision 73
+     paragraph.
 
 1. **Move the one-surface screen into the core** (JVM only, no Android yet).
    - `BrowserScreen` becomes `org.jebol.application.OneSurfaceScreen`, its
@@ -279,7 +325,9 @@ and the owner's own phone saying whether it is quick enough.
     emulator and the two-emulator default. `docs/android-port.md` gains the
     screen, the app and the measurements; `docs/standing.md` the app APK's size
     and the phone's figures; `CLAUDE.md`'s Android gate paragraph names the
-    three suites, `-Pdevice` and the tablet AVD.
+    three suites, `-Pdevice`, the tablet AVD, and step 0's: that the root build
+    takes `android/` in when it finds an SDK, where it looks, and how a Mac gets
+    one.
 
 **Done when** `examples/r3-gui` runs in the app on the tablet emulator and the
 end-to-end suite drives it as the site's gate drives the page; the parity
