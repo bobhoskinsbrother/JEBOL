@@ -3463,3 +3463,66 @@ tests' interpreters are stretched ten times on the emulator
 **Rejected:** a lower API level with the sequenced calls replaced; native
 widgets; a Kotlin app; the Android build inside the root build, which would
 make every machine install the SDK.
+
+## 74. R3's Bulk compressors are optional parts of the core
+
+Owner's call, 2026-11-15, goal 2a step 6.
+
+**What R3 does.** Brotli, LZMA, LZ4, LZAV, LZW and Crush are C core code in R3
+behind compile switches (`INCLUDE_BROTLI`, `INCLUDE_LZMA`, ...): its Bulk
+product builds them in, its Core product leaves them out. Every method, the
+base three included, is registered at boot by `Init_Compression` through the
+same `Register_Compress_Method` an extension uses, so a Bulk build catalogues
+`[deflate zlib gzip br crush lz4 lzav lzma lzw]` and a Core build
+`[deflate zlib gzip]`. Nothing in R3's base library needs the six: compressed
+scripts, SAVE, HTTP, zip, PDF and extensions use the base three, and their
+optional uses ask first -- prot-http adds `br` to Accept-Encoding only when
+the catalogue holds it.
+
+**What JEBOL does.** The core is R3's Core product. Each of the six is a
+project of its own under `optional/`, built by the `jebol-optional` convention
+plugin, holding its codec, its tests, its fixtures and an `OptionalCompression`
+provider named in `META-INF/services`. `OptionalCompressions` finds the
+providers once per process through `ServiceLoader`, which the JVM, ART and
+TeaVM all support, and each interpreter registers what it finds in R3's
+order, whatever the classpath order. `CompressionMethods` holds two layers:
+the optional methods found at boot, and extensions' registrations over them,
+so an extension that registers `br` and is restored brings the optional one
+back. What a method's decoder answers for data it cannot read -- its
+`bad-press` code, Crush's length field, LZ4's and LZAV's sizing by their own
+decoder -- lives in its `CompressionMethod`, not in the natives.
+
+**Absent answers `invalid-arg`, naming the method, to both COMPRESS and
+DECOMPRESS.** Settled from a build, not from reading: R3's Core product built
+from the checkout (`scripts/build-r3.sh core r3-core`) answers exactly that,
+as `u-compress.c`'s `Trap1(RE_INVALID_ARG, method)` reads, though Rebol's own
+`compress-test.r3` expects `feature-na` there (rebol-findings 252). An LZMA
+movie or zip entry raises the same through the SWF and ZIP codecs (253).
+
+**How an optional part differs from an extension (decision 58).** An
+extension is imported: it has a descriptor, a module, commands, and it is in
+the catalogue only once a script asks for it. An optional part is never
+imported and has no descriptor; on the classpath its method is simply there
+from boot, as in a Bulk build, and off it the method is unknown, as in a Core
+build. Both are carried the same way: the shipped jar merges the six as it
+merges the nine extensions, with one services file merged from theirs, and
+the site puts them on TeaVM's classpath. The core and Android carry none.
+
+**Rebol's suite runs both ways.** The core's run takes the branch a Core
+build takes; `needs-an-optional-part.txt` names the assertions that need one
+of the six (by file, group, test or single assertion), the core expects none
+of them, and each optional project grades its own with the method present,
+so every one is still checked against R3 somewhere. `codecs-test.r3` is split
+in place so an LZMA load stops only its own test (`edited-here.txt`).
+
+**Why.** None of the six is needed to run REBOL, and two of them are large:
+Brotli carries its 122,784-byte static dictionary and the three tables that
+index it, about 190 KB of the jar, and
+its levels 10 and 11 were the slowest thing the device suite ran, 25 of its
+165 emulator-minutes. Android's APK and the core jar every platform carries
+lose them; a build that wants them puts the jar on the classpath.
+
+**Rejected:** answering `feature-na`, as Rebol's test expects, when no build
+of R3 does; making the six extensions, which a script would have to import
+where R3's Bulk product answers them from boot; and leaving them in the core,
+which is what a Bulk product is and not what every platform should carry.

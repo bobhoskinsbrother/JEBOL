@@ -483,7 +483,7 @@ The `brotli` module (goal 1b, decision 58) drives Brotli as a stream:
 `BrotliStreamEncoder` and `BrotliStreamDecoder` are the C's
 `BrotliEncoderCompressStream` and `BrotliDecoderDecompressStream` with unlimited
 output, which is how Rebol-Brotli calls them. Every call is checked against the
-C in `src/testFixtures/resources/brotli/module/stream-table.tsv`, a table
+C in `optional/brotli/src/testFixtures/resources/brotli/module/stream-table.tsv`, a table
 `stream-table.c` writes by driving Brotli's own API through the same calls.
 
 ### The encoder

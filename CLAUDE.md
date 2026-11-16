@@ -281,6 +281,7 @@ end-to-end suite, then the desktop's window, one stage at a time:
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
 | `:desktop:desktopWindowTests` | `desktop/src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
 | `:extensions:<name>:unitTests`, `:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>UnitTests`, `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11. Ten extensions: SQLite, and the nine of R3's the shipped jar and the site carry (decision 58) |
+| `:optional:<name>:unitTests`, `:functionalTests` | `optional/<name>/src/...` | R3's six Bulk compressors, which the core leaves out as R3's Core product does (decision 74): each part's codec tests, and the assertions of Rebol's suite that need it, with the method present. Archived as `optional<Name>UnitTests` and `optional<Name>FunctionalTests` |
 
 `./gradlew unitTests` runs every project's unit suite, and so on for each
 name; `./gradlew :desktop:unitTests` runs one. Results go to
@@ -432,11 +433,13 @@ Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail wit
 cleanFunctionalTests` (or `cleanUnitTests`, `cleanEndToEndTests`) instead.
 
 Selenium is a test dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 3,940 KB, of which
+has no dependencies and this does not change that** -- about 4,190 KB, of which
 556 KB is the carried font, 228 KB the borrowed REBOL library, and about 190 KB
 Brotli's static dictionary and the three tables that index it, all carried in
-the source because the domain may not read a file. The size is in
-`docs/standing.md` too and that is the copy to correct when it moves.
+the source because the domain may not read a file. The dictionary is
+`optional/brotli`'s, which the shipped jar merges and the core jar leaves out
+(decision 74). The size is in `docs/standing.md` too and that is the copy to
+correct when it moves.
 
 ## Code comments: never. Javadoc: only on the contract
 

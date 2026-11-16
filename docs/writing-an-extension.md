@@ -505,6 +505,16 @@ in a jar of its own. The command line and the desktop app take it from the
 classpath; a site takes it from the build. Decision 63 says why.
 `extensions/sqlite/` is the worked example.
 
+**An extension is not an optional part.** R3's six Bulk compressors live
+under `optional/` and look like extension jars from outside, but nothing
+imports them: an optional part has no descriptor, no module and no commands,
+only an `OptionalCompression` named in `META-INF/services`, and on the
+classpath its method is in `system/catalog/compressions` from boot, as in R3's
+Bulk product (decision 74). Write an extension when a script should `import`
+what it adds; an optional part is only ever one of R3's own compressions.
+An extension that builds on one names it in `jvmLibraries`, as
+`extensions/brotli` names `optional/brotli`.
+
 **The project.** Add `extensions/<name>/build.gradle.kts`, include it in
 `settings.gradle.kts`, and add the name to `extensionProjects` in the root
 build so the gate runs its tests:
