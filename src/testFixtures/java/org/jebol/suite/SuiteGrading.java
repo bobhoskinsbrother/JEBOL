@@ -125,7 +125,8 @@ final class SuiteGrading {
             String inFile = assertion.file();
             String inGroup = inFile + " / " + assertion.group();
             return place.equals(inFile) || place.equals(inGroup)
-                    || place.equals(inGroup + " / " + assertion.test());
+                    || place.equals(inGroup + " / " + assertion.test())
+                    || place.equals(assertion.toString());
         }
 
         boolean namesAnyOf(SuiteFile file) {

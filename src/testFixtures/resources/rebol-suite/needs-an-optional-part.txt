@@ -1,7 +1,8 @@
 # Assertions in Rebol's own suite that need one of R3's optional compressors,
-# each under the method it needs: a whole file, a group, or one test.
+# each under the method it needs: a whole file, a group, one test, or one
+# assertion.
 #
-#     <method>  <file> [/ <group> [/ <test>]]
+#     <method>  <file> [/ <group> [/ <test> [#<number>]]]
 #
 # R3's Bulk product registers six compressors its Core product leaves out --
 # br crush lz4 lzav lzma lzw -- and JEBOL's core carries none of them: each is
@@ -21,7 +22,17 @@
 # anything named here passes on a build without its method -- a line that
 # passes without the method does not need it.
 
+# An entry may also name one assertion by its number, where the others in its
+# test pass without the part. In codecs-test.r3 (split for this,
+# edited-here.txt) the LZMA movie is #80; #81 compares it with the zlib one,
+# and #82 is reached only past it. Load ZIP file opens on the LZMA archive, so
+# the core reaches none of that test.
+
 br     compress-test.r3 / Brotli compression / decompression
 lzma   compress-test.r3 / LZMA compression / decompression
+lzma   codecs-test.r3 / SWF codec / Load SWF file #80
+lzma   codecs-test.r3 / SWF codec / Load SWF file #81
+lzma   codecs-test.r3 / SWF codec / Load SWF file #82
+lzma   codecs-test.r3 / ZIP codec / Load ZIP file
 lzw    compress-test.r3 / LZW compression / decompression
 crush  compress-test.r3 / CRUSH compression / decompression

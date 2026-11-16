@@ -1,0 +1,27 @@
+# Vendored files that differ from Rebol's own copy on purpose, and why.
+#
+# A vendored file is a copy, and SuiteSelectionTest holds every one to the
+# bytes of rebol3-source/src/tests/units/ -- except the files named here. An
+# edit here may only move where a top-level block begins and ends: the same
+# test also holds each file named here to upstream's assertions, their text,
+# their group and test, and their number, so every list keyed by a number
+# (fails-on-rebol-too.txt, needs-an-optional-part.txt) still names what it
+# named upstream.
+#
+# Each entry is a file name at the start of a line; the indented lines under
+# it are its reason.
+
+codecs-test.r3   The SWF and ZIP groups are each one `if find codecs [...]`
+                 block upstream, and JEBOL's harness runs a top-level block as
+                 one step that stops at its first error. LZMA is an optional
+                 part of the core (goal 2a step 6, decision 74), so in the
+                 core `load %units/files/test2-lzma.swf` and
+                 `load %units/files/test-lzma.zip` answer invalid-arg, as R3's
+                 Core product does, and took every assertion after them in
+                 their block with them -- the ZIP codec's deflate and store
+                 tests included, which need no LZMA at all. Each block is
+                 split, keeping its guard, after "Load SWF file", after
+                 "Load ZIP file" and after "Decode ZIP using info", so an LZMA
+                 load stops only its own test. A real Core build stops the
+                 whole file there, since R3's --assert does not catch an
+                 error (quick-test-module.r3); docs/rebol-findings.md 253.

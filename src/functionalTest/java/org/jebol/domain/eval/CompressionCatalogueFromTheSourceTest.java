@@ -21,7 +21,7 @@ class CompressionCatalogueFromTheSourceTest {
     @DisplayName("the catalogue lists the methods this build has, in the order Rebol registers them")
     void listsTheMethodsInRebolsOrder() {
         assertThat(answerTo("system/catalog/compressions"))
-                .isEqualTo("[deflate zlib gzip br lzma]");
+                .isEqualTo("[deflate zlib gzip br]");
     }
 
     @Test
@@ -32,7 +32,7 @@ class CompressionCatalogueFromTheSourceTest {
                     foreach method system/catalog/compressions [
                         keep "test" = to string! decompress/size compress "test" method method 4
                     ]
-                ]""")).isEqualTo("[#(true) #(true) #(true) #(true) #(true)]");
+                ]""")).isEqualTo("[#(true) #(true) #(true) #(true)]");
     }
 
     @Test
@@ -45,7 +45,7 @@ class CompressionCatalogueFromTheSourceTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"lzw", "crush", "lzav", "lz4"})
+    @ValueSource(strings = {"lzw", "crush", "lzav", "lz4", "lzma"})
     @DisplayName("a method of R3's Bulk product that the core leaves out is an invalid argument naming it, to both, as R3's Core product answers")
     void raisesInvalidArgForAMethodTheCoreLeavesOut(String method) {
         assertThat(answerTo("""

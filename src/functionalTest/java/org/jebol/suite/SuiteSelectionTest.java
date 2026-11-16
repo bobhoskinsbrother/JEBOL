@@ -235,20 +235,103 @@ class SuiteSelectionTest {
 
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
-    @DisplayName("every vendored file is the upstream file, byte for byte")
+    @DisplayName("every vendored file is the upstream file, byte for byte, unless it is registered as edited here")
     void keepsEveryVendoredFileUnchanged() {
         List<String> altered = listWhatIsVendoredHere().stream()
-                .filter(name -> Files.exists(REBOL_TESTS.resolve("units").resolve(name)))
-                .filter(name -> !haveTheSameBytes(VENDORED.resolve(name),
-                        REBOL_TESTS.resolve("units").resolve(name)))
+                .filter(name -> Files.exists(upstreamOf(name)))
+                .filter(name -> !editedHere().contains(name))
+                .filter(name -> !haveTheSameBytes(VENDORED.resolve(name), upstreamOf(name)))
                 .toList();
 
         assertThat(altered)
                 .as("these differ from Rebol's own copy. A vendored file is a copy: "
                         + "editing one changes the measure without changing any "
-                        + "number that reports on it:%n  %s",
+                        + "number that reports on it, so an edit is registered in "
+                        + "edited-here.txt with its reason:%n  %s",
                         String.join("\n  ", altered))
                 .isEmpty();
+    }
+
+    @Test
+    @EnabledIf("rebolsOwnSourceIsHere")
+    @DisplayName("every file registered as edited here is vendored, and really differs from upstream")
+    void registersOnlyRealEdits() {
+        List<String> stale = editedHere().stream()
+                .filter(name -> !Files.exists(VENDORED.resolve(name))
+                        || !Files.exists(upstreamOf(name))
+                        || haveTheSameBytes(VENDORED.resolve(name), upstreamOf(name)))
+                .toList();
+
+        assertThat(editedHere())
+                .as("with no entries the check below holds vacuously")
+                .isNotEmpty();
+        assertThat(stale)
+                .as("registered as edited, but missing or identical to Rebol's own "
+                        + "copy, so the entry is stale:%n  %s", String.join("\n  ", stale))
+                .isEmpty();
+    }
+
+    @Test
+    @EnabledIf("rebolsOwnSourceIsHere")
+    @DisplayName("a file edited here keeps every assertion upstream has: its text, group, test and number")
+    void editsKeepEveryAssertionInPlace() {
+        List<String> drifted = editedHere().stream()
+                .filter(name -> !listAssertionsOf(VENDORED.resolve(name))
+                        .equals(listAssertionsOf(upstreamOf(name))))
+                .toList();
+
+        assertThat(drifted)
+                .as("an edit here may only move where a block begins and ends; these "
+                        + "changed an assertion, its heading or its number, which every "
+                        + "list keyed by that number would silently follow:%n  %s",
+                        String.join("\n  ", drifted))
+                .isEmpty();
+    }
+
+    private static Path upstreamOf(String name) {
+        return REBOL_TESTS.resolve("units").resolve(name);
+    }
+
+    private static List<String> listAssertionsOf(Path file) {
+        List<String> placed = SuiteFile.read(file).assertions().stream()
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+        List<String> written = readAll(file).lines()
+                .map(line -> line.split(";", 2)[0].strip())
+                .filter(line -> line.contains("--assert"))
+                .toList();
+        return java.util.stream.Stream.concat(placed.stream(), written.stream()).toList();
+    }
+
+    private static Set<String> editedHere() {
+        try {
+            Set<String> named = new TreeSet<>();
+            for (String line : Files.readAllLines(VENDORED.resolve("edited-here.txt"))) {
+                if (line.isBlank() || line.startsWith("#") || Character.isWhitespace(line.charAt(0))) {
+                    continue;
+                }
+                named.add(line.split("\\s+")[0]);
+            }
+            return named;
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+    }
+
+    @Test
+    @DisplayName("an entry needing an optional part may name one assertion by its number, and then names no other")
+    void optionalPartEntryCanNameOneAssertion() {
+        SuiteGrading.OptionalPartEntry entry =
+                new SuiteGrading.OptionalPartEntry("lzma", "codecs-test.r3 / SWF codec / Load SWF file #80");
+
+        List<String> named = SuiteGrading.filesInSuite().stream()
+                .filter(file -> file.name().equals("codecs-test.r3"))
+                .flatMap(file -> file.assertions().stream())
+                .filter(entry::names)
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+
+        assertThat(named).containsExactly("codecs-test.r3 / SWF codec / Load SWF file #80");
     }
 
     @Test

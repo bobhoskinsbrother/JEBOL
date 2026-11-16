@@ -7426,3 +7426,36 @@ product passes 64 of the file's 68 and fails exactly those four. They are in
 build runs them and they fail -- and JEBOL's core, which carries none of the
 six (goal 2a step 6), answers `invalid-arg` as the Core product does.
 `CompressionCatalogueFromTheSourceTest`.
+
+## 253. Without LZMA, an LZMA archive stops `codecs-test.r3`, ZIP's deflate tests with it
+
+The SWF codec decompresses a `ZWS` movie, and the ZIP codec an entry of
+method 14, with `decompress ... 'lzma` (`codec-zip.reb`'s `decompress-file`,
+which falls to "Unsupported compression method" only for a method it does not
+name). Neither guards the call, so on a build without LZMA the load raises
+the same `invalid-arg` COMPRESS does (252), and one LZMA entry aborts the
+whole archive rather than being skipped as an unknown method is. The ZIP
+codec needs LZMA for nothing else: it writes with deflate or store, and
+`decode/info` decompresses nothing. Asked with `scripts/core-codecs.r3`:
+
+    load test1-deflate.swf #(object!)
+    load test2-lzma.swf [Script invalid-arg lzma]
+    load test-deflate.zip #(block!)
+    load test-stored.zip #(block!)
+    load test-lzma.zip [Script invalid-arg lzma]
+    decode/info test-lzma.zip #(block!)
+    a block asserting the LZMA load [Script invalid-arg lzma]
+    the line after it ran: false
+    3.22.5 Core
+
+The Bulk build (`./r3-head`) loads all five, printing the CRC complaint the
+ZIP finding in `fails-on-rebol-too.txt` explains. R3's own `assert`
+(`quick-test-module.r3`) takes the assertion's value and catches nothing, so
+on the Core product `--assert object? swf2: load %units/files/test2-lzma.swf`
+raises out of `codecs-test.r3` and `run-tests.r3` records the file as failed:
+everything after it -- the rest of the SWF group, the whole ZIP group, its
+deflate and store tests included, and every codec group after that -- goes
+unrun. JEBOL's core answers each load as the Core product does, and its copy
+of `codecs-test.r3` is split so that the LZMA loads stop only their own tests
+(`rebol-suite/edited-here.txt`). `ArchivesWithoutLzmaFromTheSourceTest`,
+`ArchivesWithLzmaFromTheSourceTest`.

@@ -240,7 +240,9 @@ if find codecs 'swf [
 			--assert object? swf2: load %units/files/test2-lzma.swf
 			--assert swf1/tags = swf2/tags
 			--assert swf1/header/frames = 25
+]
 
+if find codecs 'swf [
 		codecs/swf/verbose: 3
 		--test-- "Load SWF file with decoding tags"
 			--assert not error? try [swf1: load %units/files/test3.swf]
@@ -259,7 +261,9 @@ if find codecs 'zip [
 			--assert block? load %units/files/test-lzma.zip
 			--assert block? load %units/files/test-stored.zip
 			--assert block? load %units/files/test-deflate.zip
+]
 
+if find codecs 'zip [
 		--test-- "Decode ZIP using the codec directly"
 			--assert block? data: codecs/zip/decode/only %units/files/test.aar [%classes.jar]
 			--assert data/2/3 = 646121705
@@ -272,7 +276,9 @@ if find codecs 'zip [
 			--assert info/2/1 = 18-Aug-2012/5:20:28
 			data: codecs/zip/decompress-file at bin info/2/2 reduce [info/2/5 info/2/3 info/2/4]
 			--assert info/2/6 = checksum data 'crc32
+]
 
+if find codecs 'zip [
 		--test-- "Encode ZIP using encode"
 			--assert binary? try [bin: encode 'ZIP [
 				%empty-folder/ none
