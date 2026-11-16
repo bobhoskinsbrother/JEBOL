@@ -56,7 +56,8 @@ val functionalTests = tasks.register<Test>("functionalTests") {
 
 tasks.register<Test>("endToEndTests") {
     description = "Tests that drive a real interface: the command line, a real browser, and local servers"
-    runsTheTestsIn(endToEndTest, suiteResultsName("endToEndTests"))
+    runsTheTestsIn(endToEndTest, suiteResultsName("endToEndTests"),
+        memoryEachForkNeeds = MEMORY_AN_END_TO_END_FORK_NEEDS, fewestForks = 2)
     // Each process here holds a browser for every configuration its classes
     // touch, and a Chrome with its renderers is hundreds of megabytes, so what
     // bounds these forks is memory and not the processor count the other two
@@ -70,13 +71,7 @@ tasks.register<Test>("endToEndTests") {
     // gigabytes between them, and forks sized on the total sent a 23 GB machine
     // two gigabytes into swap, where one shipped jar took more than twenty
     // seconds to print its first prompt.
-    val processors = maxParallelForks
-    val forksAsked = providers.gradleProperty("endToEndForks").map(String::toInt)
-    doFirst {
-        (this as Test).maxParallelForks =
-            forksAsked.getOrElse(maxOf(2, minOf(processors, endToEndForksMemoryAllows())))
-        logger.lifecycle("{} runs in {} forks", path, (this as Test).maxParallelForks)
-    }
+    providers.gradleProperty("endToEndForks").map(String::toInt).orNull?.let { maxParallelForks = it }
     systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$OrderAnnotation")
     val built = core.layout.buildDirectory
     systemProperty("jebol.webBuild", built.dir("generated/teavm/wasm-gc").get().asFile.path)

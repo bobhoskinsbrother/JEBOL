@@ -6,9 +6,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.getByType
-import com.sun.management.OperatingSystemMXBean
 import java.io.File
-import java.lang.management.ManagementFactory
 
 const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
 const val TESTS_THAT_OPEN_A_REAL_WINDOW = "opens-a-real-window"
@@ -43,7 +41,13 @@ fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
     }
 }
 
-fun Test.runsTheTestsIn(suite: SourceSet, resultsName: String, dumpsTheHeapWhenItRunsOut: Boolean = true) {
+fun Test.runsTheTestsIn(
+    suite: SourceSet,
+    resultsName: String,
+    dumpsTheHeapWhenItRunsOut: Boolean = true,
+    memoryEachForkNeeds: Long? = null,
+    fewestForks: Int = 1,
+) {
     val root = project.rootProject
     group = "verification"
     // The suites run on the oldest Java JEBOL supports, the level every source
@@ -73,6 +77,7 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: String, dumpsTheHeapWhenI
     jvmArgs("-Xss2m")
     leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut)
     maxParallelForks = Runtime.getRuntime().availableProcessors()
+    takesForksFromMemoryLeft(memoryEachForkNeeds, fewestForks)
     inputs.dir(root.layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -81,27 +86,6 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: String, dumpsTheHeapWhenI
         showStackTraces = true
         exceptionFormat = TestExceptionFormat.FULL
     }
-}
-
-private const val MEMORY_AN_END_TO_END_FORK_NEEDS = 4L * 1024 * 1024 * 1024
-
-fun endToEndForksMemoryAllows(): Int =
-    ((readAvailableMemory() ?: readTotalMemory()) / MEMORY_AN_END_TO_END_FORK_NEEDS).toInt()
-
-private fun readTotalMemory(): Long =
-    (ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean).totalMemorySize
-
-private fun readAvailableMemory(): Long? {
-    val meminfo = File("/proc/meminfo")
-    if (!meminfo.isFile) {
-        return null
-    }
-    return meminfo.readLines()
-        .firstOrNull { it.startsWith("MemAvailable:") }
-        ?.split(Regex("\\s+"))
-        ?.getOrNull(1)
-        ?.toLongOrNull()
-        ?.times(1024)
 }
 
 fun Test.readsAlsoFrom(what: String, vararg files: Any) {
