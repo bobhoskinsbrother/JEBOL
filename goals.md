@@ -186,7 +186,7 @@ plugged into this machine for the closing run.
 | files | `FileSystemPort.rootFileSystem` at a folder in `Context.getFilesDir()`, so the app's own storage, private to it, is the script's whole world. Home is the root `/`, by decision 69's rule. The carried files stay readable beneath it (step 1 settles how). |
 | carried files | `ClasspathFiles`, as now |
 | digests | `JvmDigests`, as now |
-| environment | Confined (step 1 settles what it holds) |
+| environment | A new `AndroidEnvironment`: a standard desktop configuration's variables, wrapped to the app's own places, and none of the device's (decision 77) |
 | images | A new `AndroidImage`. It decodes with `ImageDecoder`/`BitmapFactory`: PNG, JPEG, GIF, BMP, and WebP and HEIF besides. It encodes PNG, JPEG and WebP with `Bitmap.compress`. BMP is written by hand as `JavaImage` writes it, the writer moved to the core so both share it. GIF, every frame and encoding, goes through a GIF codec in the core (decision 77). |
 | console | None. Printing goes to logcat, as 2b made it. |
 | windows, screen | 2b's `OneSurfaceScreen`, as now |
@@ -213,10 +213,22 @@ plugged into this machine for the closing run.
      new ones; or they are copied in on the first run of each version.
      Recommend the overlay, as a `FilePort` in the core that layers a
      writable port over a read-only one, which the page's store could use too.
-   - *The environment.* Either confined, with `HOME` answering the root and
-     nothing of the device's own environment; or none. Recommend confined,
-     so `sys-start.reb`'s `get-env "HOME"` agrees with `system/options/home`
-     as decision 69 asks.
+   - *The environment* is settled (decision 77, the owner, 2026-11-17). It
+     answers what a standard desktop configuration answers, wrapped to mean
+     the app's own places, through an `AndroidEnvironment` adapter of
+     `EnvironmentPort`. The device's own process environment (`PATH`,
+     `ANDROID_DATA`, `BOOTCLASSPATH` and the rest) never reaches a script.
+     The plan writes down the list, and the starting point is:
+     - `HOME`: the root `/`, so `sys-start.reb`'s `get-env "HOME"` agrees
+       with `system/options/home` as decision 69 asks;
+     - `TMPDIR`: a folder in the app's cache, as the script sees it;
+     - `LANG`: the device's locale, as `en_GB.UTF-8`;
+     - `USER` and `LOGNAME`: a name the plan picks;
+     - `SHELL` and `PATH`: absent, since nothing can be started.
+
+     A `set-env` is the script's own and lasts as long as the process. The
+     list is checked against what Rebol's suite and `sys-start.reb` read, and
+     against `ConfinedEnvironment`, which the adapter reuses where it can.
    - *GIF* is settled: every frame decodes and GIF encodes on Android, as on
      the desktop (decision 77, the owner, 2026-11-17). Android has no API
      for either, since `ImageDecoder` gives an animated GIF as a drawable and

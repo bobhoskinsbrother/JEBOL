@@ -3731,3 +3731,15 @@ the core. IDNA becomes a port that `JavaSocket` is handed, the same split
 decision 65 made for TLS: each platform's own, behind a port the domain
 names. Where ICU answers a case differently from `Uts46`,
 `docs/android-port.md` lists the case with both answers.
+
+**The environment answers what a standard configuration would, wrapped to the
+app's own places.** An Android app's process environment is the system's
+plumbing (`PATH`, `ANDROID_DATA`, `BOOTCLASSPATH`), which means nothing to a
+script and describes the device. So it is never shown. `AndroidEnvironment`,
+the app's `EnvironmentPort`, answers the variables a script on a desktop
+would expect, with values that mean the app's own places:
+- `HOME` is the root `/`, by decision 69's rule;
+- `TMPDIR` is a folder in the app's cache;
+- `LANG` is the device's locale.
+
+A script's `set-env` is its own. Goal 2c's plan writes the full list.
