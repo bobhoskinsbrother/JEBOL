@@ -194,7 +194,7 @@ plugged into this machine for the closing run.
 | processes | `ProcessPort.none()`. CALL refuses as a page's does, and `system/options/boot` is none. |
 | machine | `AndroidMachine`, as now |
 | network | `JavaSocket`, given Android's host names (`android.icu.text.IDNA`) where the desktop's is given `Uts46`. Plain `http://` is refused in the port wherever Android's policy refuses it (decision 77; step 3). |
-| certificate authority | `JavaCertificateAuthority`, the system's CA store |
+| certificate authority | `JavaCertificateAuthority`, the system's CA store. A release build trusts the system's roots alone, Android's own default. The debug build's network security config adds the user's (`<debug-overrides>`), so a developer can watch the app's HTTPS through a proxy of their own (decision 77). |
 | secure transport | `JavaSecureTransport`, which on Android is Conscrypt |
 | http | Empty, as on the desktop: `http://` goes through `prot-http.reb` over the network port |
 | clipboard | A new `AndroidClipboard` on `ClipboardManager`. Android 10 and later give the clipboard only to the app in focus, so a read in the background answers none. Android 13 and later show their own notice on a copy. |
@@ -388,6 +388,35 @@ plugged into this machine for the closing run.
 through REBOL; the app is given every port in the table; the `not-on-a-device`
 lists hold nothing whose reason was 2c; both new end-to-end tests pass on
 the emulator; and `androidTests` and `allTests` pass.
+
+#### 2c2. The user's own files, through Android's picker
+
+The owner, 2026-11-17. After 2c a script sees its own storage alone, as
+Android's scoped storage allows. To reach a file the user chooses -- in
+Downloads, Documents, a cloud drive -- an app asks Android's own picker:
+- `ACTION_OPEN_DOCUMENT` and `ACTION_CREATE_DOCUMENT` for a file;
+- `ACTION_OPEN_DOCUMENT_TREE` for a folder.
+
+The picker is Android's UI, so nothing of the GUI is ported. What comes back
+is a `content://` reference, read and written through `ContentResolver`, not
+a path.
+
+- `request-file` and `request-dir` answer through the picker. What they
+  answer is a file the script can READ, WRITE and QUERY, and for a folder
+  list and walk.
+- The file port reaches those references, as the page's store reaches the
+  files a browser's picker lends it. The page is the closest shape JEBOL
+  already has, so its plan reads `PageWindows` and the page's file chooser
+  first.
+- A grant lasts as long as the app asks Android to keep it
+  (`takePersistableUriPermission`). The plan settles whether a script's
+  choice survives a restart.
+- What the script sees as the file's name and path is the plan's to settle,
+  with the C's `request-file` and Rebol's suite read first.
+
+**Done when** a script opens, reads, writes and saves through the picker,
+and walks a folder chosen with it. An end-to-end test drives the picker
+with UI Automator on the emulator.
 
 #### 2d. Touch in the 2010 GUI
 

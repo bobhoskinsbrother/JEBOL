@@ -3763,3 +3763,10 @@ scheme asks before it opens, so a script gets a REBOL error that names the
 policy. Letting `http://` through as the desktop does was rejected: it
 would quietly break the rule every other app on the phone keeps. A raw
 `tcp://` is not HTTP, and is not asked.
+
+**A release app trusts the system's certificate authorities alone; a debug
+build adds the user's.** This is Android's own default for apps since API
+24. The debug build's `<debug-overrides>` lets a developer watch the app's
+HTTPS through a proxy of their own, with its root installed on the phone,
+and a shipped app keeps the strict default. The desktop's `--cafile` has no
+Android equivalent.
