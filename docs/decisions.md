@@ -3702,3 +3702,15 @@ to read the Android modules. Raise it when the plugin does.
 **Rejected:** keeping 25 as the toolchain with 21 everywhere else, which is
 where the build stood and what made two JDKs necessary; keeping AGP 9.5.1
 and an IDE that cannot see `android/`.
+
+## 77. Android's ports
+
+Owner's decisions, from 2026-11-17, for goal 2c. Each of the stage's open
+questions is answered here as the owner answers it.
+
+**What a script prints goes to the console alone: on Android, logcat.**
+Nothing printed shows on the app's screen. A developer reads the console,
+and an app owns its whole screen (decision 64). A script that wants text on
+its screen draws it. The owner may come back to this when layout across
+every platform is taken up, as Flutter does layout; until then nothing
+here plans for a console view.

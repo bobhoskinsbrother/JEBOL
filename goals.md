@@ -205,10 +205,9 @@ plugged into this machine for the closing run.
 
 1. **The owner's questions, before anything is built.** Put them to the
    owner with `AskUserQuestion`, each with a recommendation, and write the
-   answers into a new decision 77 ("Android's ports"):
-   - *Printing on the screen.* The first goal text said a console view;
-     decision 64 says an app owns its whole screen. Recommend: no, logcat
-     only. A script that wants a console draws one.
+   answers into decision 77 ("Android's ports"), which holds the first:
+   - *Printing on the screen* is settled: logcat only, nothing on the
+     screen (decision 77, the owner, 2026-11-17).
    - *The carried files under the app's storage.* Either the store lies over
      the APK's files, so reads fall through to them and an app update brings
      new ones; or they are copied in on the first run of each version.
