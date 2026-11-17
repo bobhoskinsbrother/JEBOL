@@ -3752,3 +3752,14 @@ own file first, a write always lands in the store, and a directory lists
 both. Copying the APK's files into storage on the first run was rejected:
 after an update the old copies stay unless versions are tracked and copied
 again.
+
+**Plain http is refused in the port where Android's policy refuses it.**
+Since API 28 Android allows no cleartext traffic unless the app's manifest
+says so. Its own HTTP stacks enforce that, but a raw socket is not checked,
+and JEBOL's `http://` runs over a raw socket. So the network port answers
+whether a host may be reached in the clear. Android's answer is
+`NetworkSecurityPolicy.isCleartextTrafficPermitted(host)`, and the http
+scheme asks before it opens, so a script gets a REBOL error that names the
+policy. Letting `http://` through as the desktop does was rejected: it
+would quietly break the rule every other app on the phone keeps. A raw
+`tcp://` is not HTTP, and is not asked.

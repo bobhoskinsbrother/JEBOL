@@ -193,7 +193,7 @@ plugged into this machine for the closing run.
 | pause | `WakeablePause`, so a network event wakes WAIT as on the desktop |
 | processes | `ProcessPort.none()`. CALL refuses as a page's does, and `system/options/boot` is none. |
 | machine | `AndroidMachine`, as now |
-| network | `JavaSocket`, given Android's host names (`android.icu.text.IDNA`) where the desktop's is given `Uts46` |
+| network | `JavaSocket`, given Android's host names (`android.icu.text.IDNA`) where the desktop's is given `Uts46`. Plain `http://` is refused in the port wherever Android's policy refuses it (decision 77; step 3). |
 | certificate authority | `JavaCertificateAuthority`, the system's CA store |
 | secure transport | `JavaSecureTransport`, which on Android is Conscrypt |
 | http | Empty, as on the desktop: `http://` goes through `prot-http.reb` over the network port |
@@ -311,6 +311,23 @@ plugged into this machine for the closing run.
      with both answers. Check that `checkCoreForAndroid` no longer sees
      `Uts46`, and record what the APK loses.
 
+   **Plain http** (decision 77). Android's cleartext policy is enforced by
+   its own HTTP stacks, not by sockets. JEBOL's `http://` is `prot-http.reb`
+   over a raw `tcp://` socket, so Android would let it through unasked.
+   - The network port gains a question, whether a host may be reached in
+     the clear, which the http scheme asks before it opens. `https://` does
+     not ask.
+   - Android answers from `NetworkSecurityPolicy.isCleartextTrafficPermitted(host)`,
+     which since API 28 is no for every host unless the manifest says
+     otherwise. The desktop and the page answer yes.
+   - A refusal is a REBOL error that names Android's policy, and is never a
+     host exception.
+   - A raw `tcp://` is not HTTP, and Android does not restrict it, so it is
+     not asked.
+   - The debug build's network security config allows cleartext to
+     `10.0.2.2` and `localhost` alone, so step 6's end-to-end test can reach
+     the host. The release build allows none.
+
    The adapters go in `android/host`, beside `AndroidMachine`. Anything
    moved to the core, such as the BMP writer or the layered `FilePort`, keeps
    its JVM tests passing and gains one in the core's own suites. Try a fix
@@ -322,6 +339,21 @@ plugged into this machine for the closing run.
    `AppSession.appBounds()` grants what is now supplied, the same services
    the command line grants but processes, MIDI and the web. Give `TheAndroidPlatform` the same ports, so the
    core's own functional tests run on them on the device.
+
+   **Memory** (the owner, 2026-11-17). An app's heap is fixed: a few hundred
+   MB (`ActivityManager.getMemoryClass()`, or `getLargeMemoryClass()` with
+   `largeHeap`), far below a desktop JVM's.
+   - An `OutOfMemoryError` nobody catches does not end one thread. Android's
+     default handler ends the whole process, so the app vanishes.
+   - In the background, Android's low-memory killer ends the process
+     whatever its heap holds.
+   - So the app's `Bounds` take a memory limit from the device's memory
+     class, low enough that a script which grows too large gets REBOL's own
+     out-of-memory error and the app lives. The plan reads how the core
+     bounds memory today and what `heapExhaustionTests` proves on the JVM,
+     and measures the margin on the emulator.
+   - An `androidFunctionalTests` test grows a block until it fails, and
+     asserts the REBOL error and a process still alive.
 
 5. **Bring the tests back.** Remove from the two `not-on-a-device` lists
    every entry 2c answers: the picture codec's, `system/options/boot`'s, and
@@ -394,6 +426,42 @@ the emulator, and the gate drives that APK.
 
 **Its plan settles:** the app's name, icon and identity, and where the
 signing key comes from.
+
+#### 2e2. Services: a script that keeps running when the app is not on screen
+
+The owner, 2026-11-17: Android needs a way of handling services, because
+nothing keeps working without one.
+- When the app leaves the screen, Doze and the app-standby buckets defer
+  its timers and cut its network.
+- The process can be ended at any time. Today a script that polls a server,
+  or waits on a long task, stops when the app is not in front. That never
+  happens on the desktop.
+
+Android's own answers:
+- a *foreground service*: work the user is told about by a notification
+  that stays while it runs. Since Android 14 each one must declare a type
+  (`dataSync`, `mediaPlayback`, `location`, `specialUse`, ...), and since
+  Android 13 the notification needs `POST_NOTIFICATIONS`;
+- *WorkManager*, for work that may wait for the system to choose when, such
+  as periodic or deferred jobs;
+- *alarms*, for a moment that must be kept.
+
+**Its plan settles:**
+- what a script says to ask for each. Search Rebol's suite, the C and R3's
+  ports for a shape to follow before inventing one, as 2f to 2h do;
+- whether a service runs the app's own script, or a second one the app
+  names;
+- how a service and the app on screen share state, by decision 70's deep
+  copy between interpreters;
+- what the desktop and the page do with the same words. The desktop simply
+  keeps running. The page has service workers.
+
+The notification permission it needs is the same one 2h asks for, so the
+order of 2e2 and 2h is this stage's to settle.
+
+**Done when** a script can keep a timer and a connection alive with the
+app off screen, under Doze on the emulator (`adb shell dumpsys deviceidle
+force-idle`), with the notification shown. An end-to-end test drives it.
 
 #### 2f, 2g, 2h. The camera, location, notifications
 
@@ -899,3 +967,31 @@ effect block. Until it lands, DRAW's `effect` refuses, as decision 72 says.
 **Done when** all 31 are rules with tests against the reference chosen in
 step 1, DRAW's `effect` and an effect gob both paint, and the renderer
 comparison covers an effect.
+
+### 17. The system's own settings, on every platform
+
+The owner, 2026-11-17: what a user sets for the whole system is to be
+thought about for every platform at once, not for Android alone. Each
+applies to at least two of the three.
+
+- *Text size.* Android's font scale, the desktop's scaling, and a
+  browser's zoom and minimum font size.
+- *Dark mode.* Android's night mode, the desktop's dark theme, and
+  `prefers-color-scheme` in a browser.
+- *Right-to-left languages.* Android's layout direction, the desktop
+  locale's, and a page's `dir`.
+
+The 2010 GUI ignores all three today. This goal decides once what a
+script is told and what the GUI does with each:
+- how a script reads them, for which Rebol's suite and the C are searched
+  first;
+- whether the GUI follows them by itself;
+- how a change while running reaches a script, as a resize does.
+
+It belongs with the owner's later thought of one layout across every
+platform, as Flutter does layout. 2d's layouts that scale to the screen
+are the first piece of that.
+
+**Done when** each setting is read on the desktop, on Android and in the
+page, a script can ask for it, and the GUI's examples follow text size and
+dark mode on all three.
