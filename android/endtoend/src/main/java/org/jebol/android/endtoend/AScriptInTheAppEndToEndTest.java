@@ -1,5 +1,8 @@
 package org.jebol.android.endtoend;
 
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.Until;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AScriptInTheAppEndToEndTest {
 
     private static final Duration PATIENCE = Duration.ofSeconds(30);
+
+    private static final Duration A_MOMENT_TO_LEAVE_IN = Duration.ofSeconds(3);
 
     private static final String A_FACE_THAT_HEARS_TAPS = """
             window: view/no-wait make gob! [size: 300x200 color: 200.40.40]
@@ -41,6 +46,38 @@ class AScriptInTheAppEndToEndTest {
 
         assertThat(app.waitForLineStarting("hello, logcat", PATIENCE)).isEqualTo("hello, logcat");
         assertThat(app.waitForLineStarting("held", PATIENCE)).isEqualTo("held until it ends");
+    }
+
+    @Test
+    @DisplayName("QUIT leaves the app, and nothing is logged as an error")
+    void quitLeavesTheApp() {
+        TheApp app = TheApp.runningScript("""
+                view/no-wait make gob! [size: 300x200 color: 40.200.40]
+                print "ready"
+                quit
+                """);
+        app.waitForLineStarting("ready", PATIENCE);
+
+        app.device().wait(Until.gone(By.pkg(TheApp.PACKAGE).depth(0)), PATIENCE.toMillis());
+
+        assertThat(app.isInFront()).isFalse();
+        assertThat(app.printedAsErrors()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a script that runs to its end leaves its window showing")
+    void aScriptThatEndsStays() {
+        TheApp app = TheApp.runningScript("""
+                view/no-wait make gob! [size: 300x200 color: 40.40.200]
+                print "ended"
+                """);
+        app.waitForLineStarting("ended", PATIENCE);
+
+        boolean left = app.device().wait(Until.gone(By.pkg(TheApp.PACKAGE).depth(0)), A_MOMENT_TO_LEAVE_IN.toMillis());
+
+        assertThat(left).isFalse();
+        assertThat(app.isInFront()).isTrue();
+        assertThat(app.printedAsErrors()).isEmpty();
     }
 
     @Test

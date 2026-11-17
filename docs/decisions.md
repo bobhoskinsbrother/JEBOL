@@ -3655,6 +3655,18 @@ measures cold start to the first picture, tap to repaint, and frame times
 while the slider is dragged; `scripts/android-on-my-phone.sh` runs it on a
 phone over USB and leaves the app installed to be used by hand.
 
+**QUIT leaves the app** (added 2026-11-17, found on the owner's phone). The
+app had treated every end but a value as an error. So a script's QUIT left
+its last picture on screen with no interpreter behind it, and logged
+`#(unset)` as an error. Now:
+- QUIT finishes the activity, as it ends the command line's process. An
+  app has no exit code to give what QUIT carries.
+- A script that runs to its end leaves its windows showing.
+- The app ending its own interpreter is not logged as an error.
+
+`spec/android.allium`'s "How a script ends" holds the three rules, and
+`AScriptInTheAppEndToEndTest` drives the first two.
+
 **Rejected:** Android's own widgets (decision 73); recreating the activity
 on a turn, which would restart the script; keeping the places behind the
 saved one, which would need the whole history in the saved state for a case

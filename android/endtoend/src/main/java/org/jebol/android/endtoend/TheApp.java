@@ -84,6 +84,12 @@ final class TheApp {
                 .toList();
     }
 
+    List<String> printedAsErrors() {
+        return shell("logcat -d -v raw -s " + LOG_TAG + ":E").lines()
+                .filter(line -> !line.startsWith("---------"))
+                .toList();
+    }
+
     String waitForLineStarting(String start, Duration patience) {
         long givenUpAt = System.nanoTime() + patience.toNanos();
         while (System.nanoTime() < givenUpAt) {

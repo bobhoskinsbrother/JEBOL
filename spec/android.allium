@@ -205,6 +205,40 @@ rule CancelStays {
 }
 
 ------------------------------------------------------------
+-- How a script ends
+------------------------------------------------------------
+
+-- QUIT leaves the app, as it ends the command line's process. Nothing is
+-- logged as an error for it, whatever it carries: the command line turns
+-- what QUIT carries into its exit code, and an app has no exit code to give.
+rule AQuitLeavesTheApp {
+    when: the_script_ends(outcome)
+    requires: outcome.conclusion = quit_early
+
+    ensures: the_app_leaves()
+    ensures: nothing_is_logged_as_an_error()
+}
+
+-- A script that runs to its end leaves its windows showing, as the command
+-- line's window stays until it is closed. Only an error is logged as one.
+rule AScriptThatEndsLeavesItsScreen {
+    when: the_script_ends(outcome)
+    requires: outcome.conclusion = produced_value
+
+    ensures: the_app_stays()
+    ensures: nothing_is_logged_as_an_error()
+}
+
+-- The app ending its own interpreter, as it does when it is closed, is not
+-- the script's error either.
+rule ACancelIsNotAnError {
+    when: the_script_ends(outcome)
+    requires: outcome.conclusion = cancelled
+
+    ensures: nothing_is_logged_as_an_error()
+}
+
+------------------------------------------------------------
 -- The life Android gives the app
 ------------------------------------------------------------
 

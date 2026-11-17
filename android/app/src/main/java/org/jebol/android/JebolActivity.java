@@ -72,8 +72,11 @@ public final class JebolActivity extends Activity {
         Interpreter interpreter = opened.interpreter();
         ScriptOutcome outcome = interpreter.run(source);
         output.flush();
-        if (!outcome.succeeded()) {
-            Log.e(LogcatOutput.TAG, interpreter.display(outcome));
+        switch (outcome.conclusion()) {
+            case QUIT_EARLY -> runOnUiThread(this::finish);
+            case PRODUCED_VALUE, CANCELLED -> {
+            }
+            default -> Log.e(LogcatOutput.TAG, interpreter.display(outcome));
         }
     }
 
