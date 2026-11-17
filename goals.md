@@ -129,8 +129,8 @@ After this stage a script in the app can read and write its own files, open
 clipboard. Each port Android cannot supply refuses the way a page's does,
 never with a host exception (`NoFailureEscapesAsAHostException`).
 
-**Who does what.** All of it is the session's, on the emulators, with the
-plan's questions put to the owner first (step 1). The owner's phone stays
+**Who does what.** All of it is the session's, on the emulators. The owner
+has already answered the plan's questions (step 1). The owner's phone stays
 plugged into this machine for the closing run.
 
 **What is true on 2026-11-17, before any step below.**
@@ -183,7 +183,7 @@ plugged into this machine for the closing run.
 
 | Port | Android's, after 2c |
 | --- | --- |
-| files | `FileSystemPort.rootFileSystem` at a folder in `Context.getFilesDir()`, so the app's own storage, private to it, is the script's whole world. Home is the root `/`, by decision 69's rule. The carried files stay readable beneath it (step 1 settles how). |
+| files | `FileSystemPort.rootFileSystem` at a folder in `Context.getFilesDir()`, so the app's own storage, private to it, is the script's whole world. Home is the root `/`, by decision 69's rule. The APK's carried files are read in place beneath it, through a layered `FilePort` in the core (decision 77). |
 | carried files | `ClasspathFiles`, as now |
 | digests | `JvmDigests`, as now |
 | environment | A new `AndroidEnvironment`: a standard desktop configuration's variables, wrapped to the app's own places, and none of the device's (decision 77) |
@@ -203,16 +203,25 @@ plugged into this machine for the closing run.
 
 **The steps, in order.**
 
-1. **The owner's questions, before anything is built.** Put them to the
-   owner with `AskUserQuestion`, each with a recommendation, and write the
-   answers into decision 77 ("Android's ports"), which holds the first:
+1. **The owner's answers, all given on 2026-11-17 and recorded in decision
+   77 ("Android's ports").** Nothing is left to ask before the plan commit.
+   The plan writes down only the details each answer leaves to it:
    - *Printing on the screen* is settled: logcat only, nothing on the
      screen (decision 77, the owner, 2026-11-17).
-   - *The carried files under the app's storage.* Either the store lies over
-     the APK's files, so reads fall through to them and an app update brings
-     new ones; or they are copied in on the first run of each version.
-     Recommend the overlay, as a `FilePort` in the core that layers a
-     writable port over a read-only one, which the page's store could use too.
+   - *The carried files* are settled (decision 77, the owner, 2026-11-17).
+     They stay in the APK and are read in place, beneath the app's storage.
+     The core gets a `FilePort` that lays a writable port over a read-only
+     one:
+     - a read finds the store's file first, then the APK's;
+     - a write goes to the store, so a script's own `main.reb` shadows the
+       carried one;
+     - a directory lists both;
+     - deleting a carried file is refused, as the APK's own files cannot be
+       deleted.
+
+     An app update brings its new files with it, and nothing is copied.
+     Whether the page's store takes the same layering is the plan's to look
+     at, not to do.
    - *The environment* is settled (decision 77, the owner, 2026-11-17). It
      answers what a standard desktop configuration answers, wrapped to mean
      the app's own places, through an `AndroidEnvironment` adapter of

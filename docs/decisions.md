@@ -3743,3 +3743,12 @@ would expect, with values that mean the app's own places:
 - `LANG` is the device's locale.
 
 A script's `set-env` is its own. Goal 2c's plan writes the full list.
+
+**The APK's files are read in place, beneath the app's storage.** This is how
+Android expects an app to treat what it ships: the APK is read-only, and an
+app's data goes in `Context.getFilesDir()`. A layered `FilePort` in the core
+lays the writable store over the carried files. A read finds the script's
+own file first, a write always lands in the store, and a directory lists
+both. Copying the APK's files into storage on the first run was rejected:
+after an update the old copies stay unless versions are tracked and copied
+again.
