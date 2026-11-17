@@ -44,270 +44,30 @@ to the core.
 
 #### 2b. The app: one screen, touch, the keyboard, the lifecycle, Back
 
-The first stage a person can hold: `examples/r3-gui` running in an app on a
-device, drawn by the domain's paint list on Android's `Canvas`, driven by
-touch and the soft keyboard, with Back, rotation and the background handled,
-and the owner's own phone saying whether it is quick enough.
+`examples/r3-gui` runs in the app on the tablet emulator, drawn by Android's
+`Canvas` and driven by touch and the keyboard as the site's gate drives the
+page, with Back, rotation and the background handled (decision 75,
+`docs/android-port.md`). What is left is the owner's, by hand, since it needs
+their phone and their Mac (owner, 2026-11-16: scripts the owner runs):
 
-**What is true today (measured 2026-11-16).**
+- **The phone.** `scripts/android-on-my-phone.sh` with the phone plugged in
+  and USB debugging allowed: it checks for API 35, installs the app, measures
+  cold start, tap to repaint and frames while dragging, and writes
+  `build/phone-timings.txt`. The owner uses the app and says whether it feels
+  snappy; the figures go in `docs/standing.md`. If it does not,
+  `--profile` records a drag with `simpleperf`, and the owner decides before
+  2c. The emulator's figures for comparison are in decision 75's record in
+  `docs/android-port.md`.
+- **The Mac.** `scripts/check-android-build.sh` installs the SDK, runs one
+  class on the Mac's emulator and writes `build/android-check.txt`.
+- **The IDE.** JetBrains' Android plugin, which IntelliJ 2026.3 no longer
+  bundles: installed on Linux 2026-11-16, and needed on the Mac too. A sync
+  should then show `android.app`, `android.endtoend` and `android.host` as
+  Android modules, with `ide_diagnostics` resolving their Android classes.
 
-- The core runs on ART: `./gradlew -p android androidTests` runs the core's
-  functional tests and Rebol's suite on emulators in shards, 25,601 cases, none
-  failing (`docs/android-port.md`). Nothing draws: `android/host`'s
-  `AndroidHost` (17 lines) gives carried files, digests, the machine and a
-  pause, and no screen. The only APKs are `android/suites`, a test harness
-  whose own comment says 2b replaces it with the app.
-- The view's logic is the domain's and already runs on ART: gob trees, text
-  layout by the carried font's metrics (`DefaultFont`, `DefaultFontRenderer`),
-  DRAW, and `PaintList`, which a screen turns into `DrawingCommand`s -- `Fill`,
-  `Stroke`, `Picture`, `Text` -- executed one at a time on a `Surface`
-  (decision 35). `Java2DSurface` (desktop) and the page's `jebol-paint.js` are
-  the two executors; Android's is the third.
-- **A phone is a page, not a desktop.** `BrowserScreen`
-  (`web/src/main/java/org/jebol/adapter/web/`) is the one-surface screen:
-  windows painted on one viewport (`WindowsOnOneSurface`, already in the
-  core), events `report`ed into it, sizes `measure`d into it, and everything
-  the platform must do behind its `Viewer` interface -- `paint`,
-  `takeTyping`, `releaseTyping`, `useCursor`, `changeHistory`, `guardLeaving`,
-  `showTitle`, `paintOffscreen`. It depends on nothing but the core; its
-  constructor builds its history as `new PageHistory(viewer)`. `WebFiles`,
-  the page's in-memory `FilePort`, depends on nothing but the core either.
-- **Back is already the domain's.** `Navigation` takes a
-  `reportMoveRequest(BACK)` from an operator and finds the target in
-  `History`; at the first place there is none. Every `push`, `replace` and
-  `back` hands the screen's `NavigationPort` a `HistoryEntry` with its index,
-  and `isGuarding()` is the unsaved-work flag (decision 50).
-- **Pixel parity** for the page is `PageRendersLikeTheDesktopTest`
-  (`desktop/src/endToEndTest`): four shape scenes (gob panels, a DRAW block,
-  stroked curves, see-through colours and rounded corners) painted by Java2D
-  and by Chrome in one process and compared with `Differences`: no pixel inside
-  a shape may differ, and edge pixels may differ by 24 of 255 over at most a
-  fortieth of the picture (decision 35's bound), with three text scenes checked
-  by where their ink falls. On Android, Java2D is not there, so the two
-  pictures cannot be made in one process.
-- `examples/r3-gui/main.reb` reads `sliders.r` and `survey.r` with `load`,
-  opens the sliders window at 20x20 and the survey at 620x20, and prints where
-  its slider, field and scroller are -- which is how the site's gate drives it.
-  The survey opening at 620 dp, before its own width, is already wider than
-  a phone in portrait (about 411 dp) and leaves it little room in landscape
-  (about 914 dp); its laid-out width is not yet measured.
-- `examples/r3-gui` needs a file port (2c's), and printing that reaches a
-  person (2c's as first written). 2b takes both in their simplest form, so
-  its done-when needs nothing a later stage builds.
-- **The IDE does not see `android/` as Android.** IntelliJ imports the root
-  Gradle build, and `android/` is a build of its own (`./gradlew -p
-  android`), included by nothing: its sources open as plain folders, with no
-  SDK and no classpath, on the Linux machine and on the owner's Mac alike.
-  And only Ubuntu can get an SDK: `scripts/setup-machine.sh` fetches
-  `commandlinetools-linux`, and `android/emulator.sh` boots an x86_64 image
-  under KVM, which an Apple Silicon Mac cannot run.
-
-**What the plan settles, the owner's decisions 2026-11-16:**
-
-- **A rotation is a resize.** The Activity declares
-  `android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"`,
-  so it is not recreated; the view's new size is `measure`d into the screen
-  and a maximised window refits, as a resized page does, and the script hears
-  `resize`.
-- **The background is `minimize`, coming back is `restore`.** `onStop` queues
-  `minimize` on every open window and the screen stops painting; `onStart`
-  queues `restore` and repaints (decision 72's events, which R3's own hosts
-  send). If Android ends the process with no warning, the script hears
-  nothing -- there is nothing to hear it with -- and the next launch starts
-  the app afresh **at the place it was on**: the current place's address is
-  saved in `onSaveInstanceState`, and a relaunch hands it to the history as a
-  reloaded page's address is (decision 50, `Navigation.reportStart`).
-- **2b's done-when runs on a tablet-sized emulator** (1280 by 800 dp). Step 2
-  confirms both windows fit it by printing `survey-window/size` on the
-  desktop first; if they do not, the AVD grows until they do, and the size
-  chosen goes in decision 75. Fitting the examples on a phone is 2d's, whose
-  done-when is a phone-sized emulator.
-- **Speed is judged on the owner's own phone, by hand.** The measurements
-  matter -- cold start to first picture, and tap to repaint -- and are taken
-  on the phone over USB and recorded, but the test is whether using the app
-  feels snappy. The owner uses it and says so; if it does not, the numbers say
-  where the time goes and the owner decides before 2c.
-
-**The work, in order, keeping `allTests` and `androidTests` green after each.**
-
-0. **The Android build in the IDE, on Linux and on the Mac.** The build half
-   is done (decision 73, 2026-11-16): the root includes `android/` when it
-   finds an SDK, Gradle accepts the two including each other, and the Mac has
-   a `setup-machine.sh` branch. What is left is the owner's, by hand:
-   - **On the Mac**, `scripts/check-android-build.sh` installs the SDK, runs
-     one class on the Mac's emulator and writes `build/android-check.txt`.
-   - **The IDE**: IntelliJ 2026.3 does not bundle the Android plugin, so the
-     sync lists `android.host` and `android.suites` with no source roots until
-     JetBrains' Android plugin is installed (owner, 2026-11-16: skipped for
-     now; Android code is checked by Gradle meanwhile).
-
-1. **Move the one-surface screen into the core** (JVM only, no Android yet).
-   - `BrowserScreen` becomes `org.jebol.application.OneSurfaceScreen`, its
-     `Viewer` with it, by `ide_move_file` and `ide_refactor_rename`
-     (`relatedRenamingStrategy: "none"`). Its constructor takes the
-     `NavigationPort` instead of building a `PageHistory`, so the page passes
-     `PageHistory` (which stays in `web/`) and Android its own.
-   - `WebFiles` becomes `org.jebol.application.MemoryFiles` the same way.
-   - `PageRendersLikeTheDesktopTest`'s comparison leaves the test for the
-     core's test fixtures: `PixelAgreement` over two `int[]` ARGB pictures (no
-     AWT, so ART can run it), with decision 35's two allowances as its
-     constants, and `ParityScenes` holding the seven scenes' REBOL. The page
-     test uses both and asserts exactly what it asserted.
-   - **References a device can compare with.** A desktop functional test,
-     `Java2DParityReferencesFromTheSourceTest`, paints each shape scene with
-     `Java2DSurface` at 420x260 on white and holds it against a checked-in
-     reference, `src/testFixtures/resources/parity/<scene>.rgba` (width, height,
-     then RGBA bytes); a `-Dparity.write=true` run writes them. Text scenes have
-     no reference: hinting differs by platform, so they are checked by where the
-     ink falls, as on the page.
-   - Gate green; nothing a script sees has changed.
-2. **Reshape `android/`** into the three suites `goals.md`'s Android preamble
-   names.
-   - `android/app` (`com.android.application`, `org.jebol.android`): the app.
-     Its `androidTest` holds `androidUnitTests` (package
-     `org.jebol.android.unit`) and `androidFunctionalTests` (the core's
-     functional tests and Rebol's suite, as `suites` ran them, plus
-     `org.jebol.android.functional`). `android/suites` is deleted;
-     `NotOnADevice`, `TheAndroidPlatform`, the two not-on-a-device lists and
-     `TheCoreBootsOnArtTest` move with their history.
-   - `android/endtoend` (`com.android.test`, `targetProjectPath = ":app"`):
-     `androidEndToEndTests`, UI Automator driving the installed app from its
-     own process.
-   - `deviceShards` runs the unit and functional suites as two runs of the
-     shards, told apart by the runner's `package`/`notPackage` arguments, and
-     archives `androidUnitTests/` and `androidFunctionalTests/`; then
-     `androidEndToEndTests` runs on the first emulator alone, since UI tests
-     share a screen, into `androidEndToEndTests/`.
-   - `emulator.sh` makes the AVD a tablet profile (1280 by 800 dp), so the
-     shards and the end-to-end suite run on one kind of device. The default
-     becomes two emulators: three left under 2 GB beside IntelliJ on
-     2026-11-16, the condition that crashed the machine on 2026-11-15.
-   - `-Pdevice=<serial>` runs the suites on a phone plugged in over USB instead
-     of starting emulators.
-   - `androidTests` green with the same counts as before; the app opens to an
-     empty screen.
-3. **Spec**: `spec/android.allium`, beside `spec/web.allium` as that file says
-   it will be, for the screen and the lifecycle (2c adds the ports):
-   - sizes are dp, the view's pixels divided by the display's density; the
-     viewport is the view's size in dp, `screen-dpi` 160 times the density;
-   - one finger is the pointer: `down`, `move`, `up` at its position in dp; a
-     second finger is ignored until the first lifts (2d may add gestures);
-   - `takeTyping` raises the soft keyboard and `releaseTyping` lowers it; text
-     the keyboard commits is one `key` event per code point, delete is
-     `key` 8 and the action key `key` 13, the arrow keys `control` events named
-     as the desktop names them;
-   - Back is enabled while the history has a place behind the current one, or
-     while unsaved work is flagged; it is the history's Back, and at the first
-     place it leaves the app -- asking first, with the app's own dialog, when
-     unsaved work is flagged;
-   - stop is `minimize` on every window, start is `restore`, a rotation is a
-     resize, and a relaunch after the process was ended resumes at the saved
-     place;
-   - what a script prints is one logcat line per finished line, tag `jebol`,
-     `Log.i` (and `Log.e` while error output is on), a part line held until it
-     ends -- the shape decision 64 gives a site's console.
-   The spec check counts 13 files.
-4. **Failing tests first**, each standing on its own and reading no `.r3`:
-   - `androidUnitTests` (adapters alone, no interpreter): `AndroidSurface` --
-     a fill's colour at a pixel, a stroke's width, a clip, a transform, opacity
-     over white, an image's pixels, a text run's ink inside its box;
-     `AndroidPixelSurface` -- RGBA out, alpha kept; the key mapping table; dp
-     from pixels at densities 1, 2 and 2.625; `AndroidHistory` -- Back enabled
-     after a push, disabled after Back to the first place, enabled while
-     guarding; `LogcatOutput` -- part lines held, one line per finished line.
-   - `androidFunctionalTests` (an interpreter on ART with Android's screen):
-     `view` puts a paint list in front of a viewer; a measured size reaches
-     `system/view/screen-gob/size`; a reported `down`/`up` at a face's
-     position reaches its handler; `go` then a reported Back arrives as a `back`
-     event with the place; `to image!` of a gob is the pixels
-     `AndroidPixelSurface` painted; the four parity scenes agree with their
-     Java2D references (`PixelAgreement`, decision 35's bound) and the three text
-     scenes put their ink where the page's test says.
-   - `androidEndToEndTests` (the installed app, UI Automator): a script prints
-     and the line is in logcat; a tap clicks a face; typing reaches a field
-     through the soft keyboard; Back moves the history and, at the first place,
-     leaves the app; Back with unsaved work asks, and Cancel stays; a rotation
-     reaches the script as `resize`; Home then return reach it as `minimize`
-     then `restore`; `am kill` then relaunch resumes at the saved place; and
-     `examples/r3-gui`: a drag moves the slider, typed letters reach the
-     survey's field, a drag moves the scroller -- the three the site's gate
-     drives (`TheExamplesWithNoServerEndToEndTest`).
-   - A debug build accepts a script in its launch `Intent` (extra `script`), so
-     each end-to-end test starts the app on its own few lines; a release build
-     ignores the extra and runs only the app it carries.
-5. **`AndroidSurface`**, in `android/host`, executing each `DrawingCommand` on a
-   `Canvas` and deciding nothing, as `Java2DSurface` does (read beside it, method
-   for method): the path from `PathStep`s into `android.graphics.Path` with the
-   `FillRule` as its `FillType`; fills with `Paint.Style.FILL` and a
-   `LinearGradient`/`RadialGradient` for a `Gradient`; strokes with the width,
-   `Cap`, `Join`, miter limit and a `DashPathEffect` from `PaintState`, drawn
-   where the call puts them (decision 35's "pure" strokes); the `Transform` as a
-   `Matrix` concatenated after the density scale; clips and opacity per
-   command, saved and restored around it; a `Picture` from the image's RGBA
-   (decision 20) into an `ARGB_8888` `Bitmap`; `Text` drawn piece by piece where
-   `PlacedText` puts it, with the carried font as a `Typeface` built from its
-   bytes (`android.graphics.fonts.Font.Builder(ByteBuffer)`, API 29), the run's
-   size, colour, shadow and selection patches as `Java2DSurface.write` paints
-   them. `AndroidPixelSurface` paints a list onto an `ARGB_8888` `Bitmap` over
-   white and reads it back as RGBA, for `to image!`.
-6. **The screen and the view.** `OneSurfaceScreen` with Android's `Viewer`:
-   `JebolView`, one `View` filling the Activity. `paint` hands the newest
-   command list to the view and calls `postInvalidate()`; `onDraw` scales by
-   the density and replays it with `AndroidSurface` -- the interpreter never
-   touches the view. `onSizeChanged` measures the viewport in dp into the screen;
-   `onTouchEvent` reports `down`/`move`/`up` in dp; `onCreateInputConnection`
-   returns an `InputConnection` turning committed text, delete and the action
-   key into reports as the spec says; `takeTyping`/`releaseTyping` show and hide
-   the keyboard through `InputMethodManager`; the cursor and the title do
-   nothing (an app owns its screen, decision 64). `AndroidHistory`, Android's
-   `NavigationPort`, keeps the current index from the entries it is handed and
-   enables the Activity's `OnBackInvokedCallback` (registered at
-   `PRIORITY_DEFAULT`) while Back has somewhere to go or work is unsaved.
-7. **The app.** `JebolActivity` starts one interpreter on a thread of its own,
-   built on Android's host ports with `OneSurfaceScreen`, `MemoryFiles` holding
-   the app's files, `LogcatOutput`, and of the services `ShippedPageBounds`
-   grants a page, those 2b can serve: `FILES`, `WORKING_DIRECTORY`, `CLOCK`,
-   `WINDOWS` and `NAVIGATION` (the clipboard, MIDI and the web are 2c's
-   adapters, and refuse until then as a page's do). The manifest sets
-   `android:enableOnBackInvokedCallback="true"`, which Back's callback needs from
-   Android 13. The app's files are `examples/r3-gui`, copied into
-   the APK as Java resources under `jebol-app/` with an `app.json` naming them
-   and the entry `main.reb`, as `assembleSite` writes one (decision 73: resources,
-   not assets); `MemoryFiles` is filled from it and the script runs from `/`.
-   `onStop`/`onStart`, Back and the saved place as the spec says. The
-   interpreter thread is a daemon; `onDestroy` with `isFinishing()` ends it.
-8. **Parity and the examples on the tablet emulator**: the functional and
-   end-to-end tests of step 4 pass, `androidTests` green, `allTests` green.
-9. **On the owner's phone.** `-Pdevice=<serial>` runs `androidEndToEndTests`
-   there too. `AndroidTimingsTest` (end-to-end, not in the default run; asked
-   for with `-Pclasses`) measures, over ten launches each: cold start to the
-   first picture drawn (`am start -W`'s TotalTime, and the time to the first
-   `onDraw` the app logs), tap to repaint (the touch event's time to the end of
-   the next `onDraw` that follows its handler), and frame times while the
-   slider is dragged (median and 95th percentile), on `examples/r3-gui`'s sliders
-   window, which fits a phone. The same run on the emulator gives the
-   comparison. Then the owner installs the app (`./gradlew -p android
-   :app:installDebug`, the phone plugged in) and uses it. If it does not feel
-   snappy, the timings and a `simpleperf` profile of a drag go to the owner
-   before 2c, with where the time goes.
-10. **Docs.** Decision 75: the screen and the lifecycle -- the one-surface
-    screen moved into the core, rotation as a resize, the background as
-    `minimize`/`restore`, the saved place, Back's enabling, logcat, the debug
-    build's script extra, references painted ahead for parity, the tablet
-    emulator and the two-emulator default. `docs/android-port.md` gains the
-    screen, the app and the measurements; `docs/standing.md` the app APK's size
-    and the phone's figures; `CLAUDE.md`'s Android gate paragraph names the
-    three suites, `-Pdevice`, the tablet AVD, and step 0's: that the root build
-    takes `android/` in when it finds an SDK, where it looks, and how a Mac gets
-    one.
-
-**Done when** `examples/r3-gui` runs in the app on the tablet emulator and the
-end-to-end suite drives it as the site's gate drives the page; the parity
-scenes agree with Java2D's references within decision 35's bound; every test
-of step 4 passes; `allTests` and `androidTests` are green; and the owner has
-used the app on their own phone and called it snappy, with the measurements in
-`docs/standing.md`.
-
+**Done when** the owner has used the app on their own phone and called it
+snappy, the measurements are in `docs/standing.md`, the Mac's check passes,
+and the IDE reads the Android modules on both machines.
 #### 2c. Android's adapters
 
 Every port in `HostPorts`, Android's: files in the app's own storage, the

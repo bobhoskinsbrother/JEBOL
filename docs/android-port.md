@@ -19,13 +19,15 @@ on ART in shards, and archives the results into
 | Piece | Where |
 | --- | --- |
 | The build | `android/`, a Gradle build of its own that takes the core through `includeBuild("..")`, so the root build and `allTests` need no Android SDK (decision 73) |
-| The host | `android/host`: `AndroidHost` and `AndroidMachine`, which gives the process number; it runs no programs and has no picture codec until 2c |
-| The device suites | `android/suites`, a test application whose instrumentation tests run under Jupiter (android-junit5); `TheAndroidPlatform` is the `PlatformUnderTest` the core's tests find through `ServiceLoader` on a device |
-| The emulators | `android/emulator.sh` creates the AVD from the installed x86_64 API 35 image, boots N read-only instances with no window and waits for `sys.boot_completed` |
-| The shards | `deviceShards` installs both APKs on each emulator and runs `am instrument -r` with `numShards`/`shardIndex` on all at once, writing `TEST-shard-i.xml` |
+| The host | `android/host`: `AndroidHost` and `AndroidMachine`, which gives the process number; the screen's adapters -- `AndroidSurface`, `AndroidPixelSurface`, `Density`, `AndroidKeys`, `AndroidHistory` -- and `LogcatOutput`; it runs no programs and has no picture codec until 2c |
+| The app | `android/app`, `org.jebol.android`: `JebolActivity`, `JebolView` (the `OneSurfaceScreen.Viewer`), `AppSession`, and `examples/r3-gui` carried as Java resources under `jebol-app/` with an `app.json` |
+| The device suites | `androidUnitTests` and `androidFunctionalTests` are the app's `androidTest`, told apart by package (`org.jebol.android.unit` against the rest); `androidEndToEndTests` is `android/endtoend`, a self-instrumenting `com.android.test` APK that drives the installed app with UI Automator. All run under Jupiter (android-junit5); `TheAndroidPlatform` is the `PlatformUnderTest` the core's tests find through `ServiceLoader` on a device |
+| The emulators | `android/emulator.sh` creates a Pixel Tablet AVD (1280 by 800 dp) from the API 35 image for the machine's processor, boots N read-only instances with no window and waits for `sys.boot_completed`; two by default |
+| The shards | `androidUnitTests` and `androidFunctionalTests` each install both APKs on every device and run `am instrument -r` with `numShards`/`shardIndex` on all at once, writing `TEST-shard-i.xml`; `androidEndToEndTests` runs on the first device alone, since UI tests share a screen |
+| A phone | `-Pdevice=<serial>` runs the suites on a phone over USB and starts no emulator; `scripts/android-on-my-phone.sh` installs the app, measures it and writes `build/phone-timings.txt` |
 | What a device cannot run | `not-on-a-device.txt` (the core's tests, by class or method) and `not-on-a-device-in-rebols-suite.txt` (Rebol's, by file, group or test), each entry with why |
 | The API check | `scripts/AndroidApiGaps.java`, run by `./gradlew checkCoreForAndroid` with `--fail-on-gaps` over the core's jar |
-| The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk`; `ANDROID_HOME` must point there |
+| The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk` on Ubuntu and `~/Library/Android/sdk` on a Mac; the root build finds it there, or by `ANDROID_HOME`, and takes `android/` in (decision 73) |
 
 Measured on 2026-11-16: the app's debug APK is 6,195 KB and the test APK,
 which dexes every core test and fixture, 37,674 KB. The first interpreter on
@@ -102,6 +104,62 @@ with a test:
 Hang guards in the tests' interpreters stretch ten times on the emulator
 (`PlatformUnderTest.timeLimitFactor`), since ART under emulation is slower
 than the JVM on the same machine.
+
+## The app (goal 2b)
+
+`examples/r3-gui` runs in the app on the tablet emulator, drawn by the
+domain's paint list on Android's `Canvas` and driven by touch and the
+keyboard, as the site's gate drives the page. Decision 75 has the choices;
+`spec/android.allium` the rules.
+
+**A phone is a page.** The app's screen is the core's `OneSurfaceScreen`, the
+page's one-surface screen moved into the core, with `JebolView` as its viewer
+and `AndroidHistory` as its `NavigationPort`. `JebolView` is one `View`
+filling the activity inside the system bars: `paint` keeps the newest command
+list and asks for a redraw, and `onDraw` scales by the density and replays it
+through `AndroidSurface` -- the interpreter, on a daemon thread of its own,
+never touches the view. Sizes are dp, rounded down; `screen-dpi` is 160 times
+the density.
+
+**`AndroidSurface` executes each command as `Java2DSurface` does**, read
+beside it method for method. Two things ART lacks shaped it: the Android
+modules are compiled against `android.jar`, which has neither
+`SwitchBootstraps` nor `MatchException`, so a switch over the sealed commands
+is an `instanceof` chain and a switch over cap and join is a table; and Java2D
+applies a composite's opacity to each primitive, so Android's comes on each
+`Paint` rather than a layer. Arcs pass their angles straight through: Java2D's
+negated degrees in a y-up frame are Canvas's clockwise ones.
+
+**Parity is checked against references painted ahead.** Java2D is not on a
+device, so `Java2DParityReferencesFromTheSourceTest` (desktop) paints the four
+shape scenes at 420x260 and holds them against
+`src/testFixtures/resources/parity/*.rgba`, and `ParityWithJava2DTest` on the
+device paints the same scenes with `AndroidPixelSurface` and compares by
+`PixelAgreement`, decision 35's bound. All four agree; the three text scenes
+put their ink where the page's test says.
+
+**The end-to-end suite drives the app from its own process.** A
+`com.android.test` APK runs in the app's process by default, so a test that
+force-stops the app ended itself; `android.experimental.self-instrumenting`
+gives it its own, as Macrobenchmark's are, and a `<queries>` entry lets it see
+the app. A debug build runs the script in its launch intent's `script` extra;
+the tests print markers to logcat and read them back.
+
+**How quick it is, on the emulator** (2026-11-16, a Pixel Tablet AVD at
+2560x1600, x86_64 under KVM with the software GPU; `AndroidTimingsTest`, ten
+of each, the comparison for the owner's phone):
+
+| What | Median | 95th percentile |
+| --- | --- | --- |
+| cold start, `am start -W`'s TotalTime | 415 ms | 455 ms |
+| cold start, asked to the first picture drawn | 2,978 ms | 3,029 ms |
+| a tap on the slider to the end of its repaint | 45 ms | 61 ms |
+| a frame while the slider is dragged | 48 ms | 81 ms |
+
+The first picture waits on the interpreter's boot and the GUI's loading on
+ART, which is most of the three seconds; a frame on the emulator is the
+software renderer filling 4 million pixels. The phone's own figures are the
+judgement (goal 2b).
 
 ## The optional core on Android
 

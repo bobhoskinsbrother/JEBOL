@@ -3570,3 +3570,85 @@ lose them; a build that wants them puts the jar on the classpath.
 of R3 does; making the six extensions, which a script would have to import
 where R3's Bulk product answers them from boot; and leaving them in the core,
 which is what a Bulk product is and not what every platform should carry.
+
+## 75. The Android app: one surface, the life Android gives it, and parity painted ahead
+
+Owner's decisions, 2026-11-16, planning goal 2b; the rest settled building it.
+
+**A phone is a page, not a desktop.** Every window is painted on the one view
+the app owns, so the page's one-surface screen moved into the core as
+`org.jebol.application.OneSurfaceScreen`, with the page's in-memory files as
+`MemoryFiles`. It takes its `NavigationPort` rather than building the page's:
+the page passes `PageHistory` through `PageScreen.showTo`, Android its own
+`AndroidHistory`. Its `Viewer` keeps only what any one-surface platform does;
+the page's `PageViewer` adds the history calls and the cursor message. A
+viewer answers its own dpi -- the page CSS's 96, Android 160 times the
+density -- and sizes on Android are dp, the view's pixels divided by the
+density, rounded down so a window never reaches past the view. The view sits
+inside the system bars, which an app targeting API 35 is otherwise drawn
+under, and has no action bar: an app owns its whole screen (decision 64).
+
+**A rotation is a resize.** The activity declares the configuration changes a
+turn brings, so it is kept; the view's new size is measured into the screen,
+a maximised window refits as on a resized page, and the script hears
+`resize`.
+
+**The background is `minimize`, coming back is `restore`.** `onStop` asks the
+screen to hide its surface and `onStart` to show it again, each taken on the
+interpreter's thread as every report is: hiding minimizes every window not
+already minimized, showing restores exactly those, so a window the script had
+minimized stays so and a maximized one comes back maximized with no resize.
+The view stops painting in between, and the keyboard is lowered.
+
+**A process Android ends resumes at its place.** The script hears nothing --
+there is nothing left to hear it with -- but the current place's address is
+saved whenever Android asks, and a relaunch starts the history there, as a
+reloaded page starts at its address. Only the place is kept, at index 0: the
+places behind it went with the process, so Back from there leaves the app.
+
+**Back is the history's.** The activity takes Back, through
+`OnBackInvokedCallback` at `PRIORITY_DEFAULT`, only while the history has a
+place behind the current one or unsaved work is flagged; otherwise Android's
+own Back leaves. Taken, it moves the history -- `AndroidHistory` follows the
+operator and the script hears `back` -- and at the first place with unsaved
+work it asks with the app's own dialog, Cancel staying.
+
+**Printing is logcat.** One line per finished line under the tag `jebol`, at
+info, or error for error output; a part line is held until it ends. Whether
+printing also shows on the screen is 2c's to settle.
+
+**A debug build runs the script it is given.** The launch intent's `script`
+extra replaces the carried app, so an end-to-end test starts the app on its
+own few lines; a release build ignores it. The carried app is
+`examples/r3-gui`, as Java resources under `jebol-app/` with an `app.json`
+written as `assembleSite` writes one, copied into `MemoryFiles` and run from
+`/`.
+
+**Parity is checked against Java2D's pictures painted ahead.** The two
+renderers cannot paint in one process on a device, so the four shape scenes'
+Java2D pictures are checked in (`src/testFixtures/resources/parity/`, width,
+height and RGBA), a desktop test keeps them current, and the device compares
+its own against them within decision 35's bound. The text scenes are judged by
+where the ink falls, since hinting differs by platform.
+
+**The examples are proved on a tablet.** Both windows fit a Pixel Tablet's
+1280 by 800 dp -- laid out, sliders is 330x399 at 20x20 and the survey
+465x431.5 at 620x20 -- so every device suite runs on that AVD; fitting a
+phone's screen is goal 2d's. The default is two emulators: three left under
+2 GB free beside IntelliJ, the condition that ran the machine out of memory
+on 2026-11-15.
+
+**The end-to-end suite drives the app from outside.** A self-instrumenting
+`com.android.test` APK, since one that instruments the app runs in its process
+and is ended with it; UI Automator taps and drags in the view's own
+coordinates, and the tests read what the script printed from logcat.
+
+**Speed is the owner's judgement on their own phone.** `AndroidTimingsTest`
+measures cold start to the first picture, tap to repaint, and frame times
+while the slider is dragged; `scripts/android-on-my-phone.sh` runs it on a
+phone over USB and leaves the app installed to be used by hand.
+
+**Rejected:** Android's own widgets (decision 73); recreating the activity
+on a turn, which would restart the script; keeping the places behind the
+saved one, which would need the whole history in the saved state for a case
+Android rarely reaches; and a `com.android.test` APK in the app's process.

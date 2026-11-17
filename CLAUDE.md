@@ -307,19 +307,32 @@ log it finds.
 
 **Android has a gate of its own, `./gradlew -p android androidTests`**, outside
 `allTests` because it needs the Android SDK (`scripts/setup-machine.sh`
-installs it). It runs the core's `checkCoreForAndroid` first, then boots three
-x86_64 API 35 emulators with `android/emulator.sh`, runs the device tests split
-across them in shards (`deviceShards`, about an hour), shuts them down, and
-archives the results into `test-history/<timestamp>-android/`.
-`-Pemulators=N` sets how many (each holds about 3.6 GB; four do not fit beside
-IntelliJ) and `-Pclasses=a.B,c.D` runs only those classes, which is how to try
-a fix on the device in a couple of minutes. `ANDROID_HOME` must be set. Run it
-at the close of every Android stage and after any change to the core.
-`android/` is a build of its own that takes the core through
-`includeBuild("..")`; tests that cannot run on a device by their nature are
-listed with why in `android/suites/src/androidTest/resources/not-on-a-device.txt`,
-and Rebol's suite entries in `not-on-a-device-in-rebols-suite.txt` beside it
-(decision 73).
+installs it, on Ubuntu or a Mac). It runs the core's `checkCoreForAndroid`
+first, then boots two Pixel Tablet API 35 emulators (1280 by 800 dp) with
+`android/emulator.sh` and runs Android's three suites: `androidUnitTests`
+(Android's adapters alone, package `org.jebol.android.unit`) and
+`androidFunctionalTests` (an interpreter on ART, Rebol's suite included), each
+split across the emulators in shards, then `androidEndToEndTests` (the
+installed app driven by UI Automator from `android/endtoend`) on the first
+emulator alone. It shuts them down and archives the results into
+`test-history/<timestamp>-android/`, one folder a suite; about an hour and a
+quarter. `-Pemulators=N` sets how many (each holds about 3.6 GB; three leave
+under 2 GB beside IntelliJ), `-Pclasses=a.B,c.D` runs only those classes, each
+in the suite whose package it is in, which is how to try a fix on the device
+in a couple of minutes, and `-Pdevice=<serial>` runs on a phone plugged in
+over USB instead of starting emulators. Run it at the close of every Android
+stage and after any change to the core. `android/` is a build of its own that
+takes the core through `includeBuild("..")`, and the root build takes
+`android/` in -- so the IDE sees its modules -- when it finds an SDK in
+`ANDROID_HOME`, `ANDROID_SDK_ROOT`, `android/local.properties`,
+`~/Android/Sdk` or `~/Library/Android/sdk` (decision 73); IntelliJ needs
+JetBrains' Android plugin to read them. A Mac gets its SDK from
+`scripts/setup-machine.sh` too, and `scripts/check-android-build.sh` proves a
+machine with one class on one emulator. The app on a phone of one's own is
+`scripts/android-on-my-phone.sh` (decision 75). Tests that cannot run on a
+device by their nature are listed with why in
+`android/app/src/androidTest/resources/not-on-a-device.txt`, and Rebol's suite
+entries in `not-on-a-device-in-rebols-suite.txt` beside it (decision 73).
 
 A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 `./gradlew networkTests` runs the twelve suite assertions named in
