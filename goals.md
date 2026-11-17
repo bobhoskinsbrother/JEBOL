@@ -87,9 +87,15 @@ back.
   machine (owner, 2026-11-17), so the phone's steps run here, by the
   session, through `scripts/android-on-my-phone.sh`; using the app and the
   verdict on it stay the owner's. The Mac is still the owner's to run.
-- `scripts/android-on-my-phone.sh` and `scripts/check-android-build.sh` have
-  run on nothing but the machine they were written on; neither has seen a
-  phone or a Mac.
+- The phone is done (steps 4 to 6), 2026-11-17: a Galaxy S24 Ultra on
+  Android 16, measured by `scripts/android-on-my-phone.sh --with-tests`,
+  recorded in `docs/standing.md` and `docs/android-port.md`, and called
+  "pretty quick" by the owner. Eleven of its twelve end-to-end tests pass;
+  the twelfth types into the survey's field, which opens off that phone's
+  screen, and is written into 2d. What is left of 2b is the Mac (step 8)
+  and the IDE's JDK 21 (step 2).
+- `scripts/check-android-build.sh` has run on nothing but the machine it
+  was written on; it has not seen a Mac.
 - `docs/standing.md`'s row "the app on a phone" says "to be measured", with
   the emulator's medians beside it.
 
@@ -261,6 +267,14 @@ And Chrome on the emulator (an image that carries it; which one is this
 stage's to find) opens the shipped site served from the host, and a swipe
 from the screen's edge moves its history -- the web on a phone, moved here
 from 2b, which is the app's.
+
+Seen on a real phone, 2026-11-17: on a Galaxy S24 Ultra (SM-S928B, Android
+16, 1080 by 2340 at density 450, so 384 dp wide upright) the sliders' window
+fits, but the survey's window opens to its right, with its field at
+905 dp across, off the screen. `TheExamplesInTheAppEndToEndTest`'s "letters
+typed reach the survey's field" taps there and fails on that phone for that
+reason alone; it passes on the 1280 dp tablet. Laying the windows out for
+the screen is what makes it pass.
 
 **Done when** every example works by touch alone, on a phone-sized emulator
 and in Chrome's phone emulation, and the edge swipe moves the site's history.

@@ -161,6 +161,23 @@ ART, which is most of the three seconds; a frame on the emulator is the
 software renderer filling 4 million pixels. The phone's own figures are the
 judgement (goal 2b).
 
+**How quick it is, on a phone** (2026-11-17, the owner's Samsung Galaxy S24
+Ultra, SM-S928B, Android 16, API 36, arm64, 1080x2340 at density 450; the
+same `AndroidTimingsTest`, through `scripts/android-on-my-phone.sh`):
+
+| What | Median | 95th percentile |
+| --- | --- | --- |
+| cold start, `am start -W`'s TotalTime | 215 ms | 228 ms |
+| cold start, asked to the first picture drawn | 2,819 ms | 2,848 ms |
+| a tap on the slider to the end of its repaint | 77 ms | 97 ms |
+| a frame while the slider is dragged | 49 ms | 87 ms |
+
+The owner used it by hand and called it "pretty quick": snappy enough, so
+the phone part of goal 2b closed without a profile. A tap answers inside the
+100 ms that reads as instant; a drag runs at about twenty frames a second,
+which is goal 9's to raise. On that phone the sliders' window fits upright
+and the survey's opens off the screen's right edge, which is goal 2d's.
+
 ## The optional core on Android
 
 R3's six Bulk compressors are optional parts of the core (decision 74), and
