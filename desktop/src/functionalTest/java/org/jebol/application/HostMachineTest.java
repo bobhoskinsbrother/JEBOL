@@ -2,7 +2,6 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaMachine;
-import org.jebol.adapter.web.WebFiles;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.host.OutputPort;
@@ -537,7 +536,7 @@ class HostMachineTest {
             String answer = Interpreter.createOn(
                     AnInterpreter.standardPorts()
                             .withMachine(new DescribedMachine().homeAt("/home/someone").startedIn("/work"))
-                            .withFiles(new WebFiles()),
+                            .withFiles(new MemoryFiles()),
                     OutputPort.discard(),
                     Bounds.standard()).run("""
                     reduce [system/options/home  system/options/data  system/options/path]""").display();

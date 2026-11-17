@@ -2,11 +2,12 @@ package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.application.Bounds;
-import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
+import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.TheCarriedFace;
 import org.jebol.application.TheCarriedFont;
+import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.PaintList;
@@ -39,7 +40,7 @@ class BothRenderersSideBySideTest {
 
     private final PageBrowsers browsers;
     private WebScreenServer serving;
-    private BrowserScreen screen;
+    private OneSurfaceScreen screen;
     private AnOperatorAtThePage operator;
     private WebDriver browser;
     private ObjectValue theDrawDialect;
@@ -51,7 +52,7 @@ class BothRenderersSideBySideTest {
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0, new ClasspathFiles());
-        screen = BrowserScreen.showTo(serving, new ClasspathFiles());
+        screen = PageScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
 
         operator = new AnOperatorAtThePage(browsers, "chrome", serving.address()).opensThePage();

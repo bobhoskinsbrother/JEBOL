@@ -11,9 +11,9 @@ final class PageHistory implements NavigationPort {
     private static final String BACK = "back";
     private static final String FORWARD = "forward";
 
-    private final BrowserScreen.Viewer viewer;
+    private final PageViewer viewer;
 
-    PageHistory(BrowserScreen.Viewer viewer) {
+    PageHistory(PageViewer viewer) {
         this.viewer = viewer;
     }
 

@@ -118,7 +118,6 @@
 7	BrotliMetaBlock.java:chooseContextMap
 7	BrotliMetaBlockWriter.java:writeTheFewSymbolsOutright
 7	BrotliTwoPassEncoder.java:isMatch
-7	BrowserScreen.java:measure
 7	Codecs.java:endOfTag
 7	Comparison.java:atOneDatatype
 7	DesktopWindows.java:browse
@@ -131,6 +130,7 @@
 7	LzmaDecoder.java:decodeRepeat
 7	LzmaEncoder.java:Settings
 7	Molder.java:renderDouble
+7	OneSurfaceScreen.java:measure
 7	Parser.java:matchNamedRule
 7	Repl.java:run
 7	Trace.java:line

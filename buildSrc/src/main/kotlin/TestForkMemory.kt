@@ -30,6 +30,12 @@ private const val LONGEST_WAIT_FOR_MEMORY_NANOS = 5L * 60 * 1_000_000_000
 
 private const val MEMORY_RECHECK_MILLIS = 10_000L
 
+// A stage that asks for at least `fewest` forks gets them even when memory
+// affords fewer: two end-to-end forks on a machine with room for one ran the
+// stage, where the old coerceIn(fewest, wanted) refused it outright.
+internal fun forksToRun(affordable: Int, fewest: Int, wanted: Int): Int =
+    affordable.coerceIn(fewest, maxOf(fewest, wanted))
+
 abstract class TestForkMemory : BuildService<BuildServiceParameters.None>, OperationCompletionListener {
 
     private val claims = LinkedHashMap<String, Long>()
@@ -48,7 +54,7 @@ abstract class TestForkMemory : BuildService<BuildServiceParameters.None>, Opera
             val affordable = ((budget - claims.values.sum()) / memoryEachForkNeeds).toInt()
             val waitedLongEnough = System.nanoTime() >= giveUpWaitingAt
             if (claims.isEmpty() || affordable * 2 >= wanted || waitedLongEnough) {
-                val forks = affordable.coerceIn(minOf(fewestForks, ceiling), wanted)
+                val forks = forksToRun(affordable, minOf(fewestForks, ceiling), wanted)
                 claims[taskPath] = forks * memoryEachForkNeeds
                 return forks
             }

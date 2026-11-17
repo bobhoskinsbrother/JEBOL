@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.application.MemoryFiles;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheDialogsAPageAnswersFromTheSourceTest {
 
     private final AScriptedPage page = new AScriptedPage();
-    private final PickedFiles picked = new PickedFiles(new WebFiles(), "/picked/", page);
+    private final PickedFiles picked = new PickedFiles(new MemoryFiles(), "/picked/", page);
     private final Interpreter interpreter = Interpreter.createOn(
             AnInterpreter.standardPorts()
                     .withFiles(picked)

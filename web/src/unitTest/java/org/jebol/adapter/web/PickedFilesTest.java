@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.application.MemoryFiles;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.WindowPort;
 import org.junit.jupiter.api.DisplayName;
@@ -14,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PickedFilesTest {
 
-    private final WebFiles store = new WebFiles();
+    private final MemoryFiles store = new MemoryFiles();
     private final AScriptedPage page = new AScriptedPage();
     private final PickedFiles picked = new PickedFiles(store, "/picked/", page);
 

@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.application.MemoryFiles;
 import org.jebol.domain.host.WindowPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PageWindowsTest {
 
-    private final WebFiles store = new WebFiles();
+    private final MemoryFiles store = new MemoryFiles();
     private final AScriptedPage page = new AScriptedPage();
     private final PageWindows windows = new PageWindows(page, new PickedFiles(store, "/picked/", page));
 

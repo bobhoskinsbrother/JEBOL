@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -27,14 +28,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheCommandLinesPageCarriesTheHistoryTest {
 
     private WebScreenServer serving;
-    private BrowserScreen screen;
+    private OneSurfaceScreen screen;
     private InputStream messages;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     @BeforeEach
     void startServing() throws IOException {
         serving = WebScreenServer.on(0, new ClasspathFiles());
-        screen = BrowserScreen.showTo(serving, new ClasspathFiles());
+        screen = PageScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
     }
 

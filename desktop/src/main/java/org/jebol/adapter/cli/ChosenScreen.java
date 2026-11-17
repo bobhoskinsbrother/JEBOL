@@ -2,7 +2,8 @@ package org.jebol.adapter.cli;
 
 import org.jebol.adapter.host.DesktopScreen;
 import org.jebol.adapter.host.DesktopWindows;
-import org.jebol.adapter.web.BrowserScreen;
+import org.jebol.application.OneSurfaceScreen;
+import org.jebol.adapter.web.PageScreen;
 import org.jebol.adapter.web.PageWindows;
 import org.jebol.adapter.web.PickedFiles;
 import org.jebol.adapter.web.WebScreenServer;
@@ -94,7 +95,7 @@ final class ChosenScreen {
     private HostPorts attachPage(HostPorts ports, PrintStream out, boolean forScript) {
         try {
             WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, ports.carriedFiles());
-            BrowserScreen screen = BrowserScreen.showTo(serving, ports.carriedFiles());
+            OneSurfaceScreen screen = PageScreen.showTo(serving, ports.carriedFiles());
             serving.reportTo(screen);
             PickedFiles picked = new PickedFiles(ports.files(), PICK_FOLDER, serving);
             if (forScript) {
@@ -113,7 +114,7 @@ final class ChosenScreen {
         }
     }
 
-    private void waitForBrowser(BrowserScreen screen) {
+    private void waitForBrowser(OneSurfaceScreen screen) {
         while (!screen.hasDisplay()) {
             try {
                 Thread.sleep(BROWSER_POLLING_WAIT_MILLISECONDS);

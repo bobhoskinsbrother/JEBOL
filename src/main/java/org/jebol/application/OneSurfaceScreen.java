@@ -1,9 +1,8 @@
-package org.jebol.adapter.web;
+package org.jebol.application;
 
-import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
-import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.ImagePort;
+import org.jebol.domain.host.NavigationPort;
 import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
@@ -31,9 +30,11 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.LongSupplier;
 
-public final class BrowserScreen extends GobScreen {
+public final class OneSurfaceScreen extends GobScreen {
 
     private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000;
+
+    public static final int CSS_PIXELS_PER_INCH = 96;
 
     private final Viewer viewer;
     private final DefaultFont font;
@@ -43,22 +44,25 @@ public final class BrowserScreen extends GobScreen {
     private final Queue<ScreenMeasurement> measurements = new ConcurrentLinkedQueue<>();
     private final Map<GobStorage, PlaceBeforeMaximising> maximised = new IdentityHashMap<>();
     private final Set<GobStorage> minimised = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<GobStorage> minimisedByThePlatform = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Queue<SurfaceVisibility> visibilityChanges = new ConcurrentLinkedQueue<>();
     private PairValue viewport = PairValue.of(0, 0);
     private boolean isPictureRequired;
     private Optional<String> titleShown = Optional.empty();
 
-    private BrowserScreen(Viewer viewer, DefaultFont font, LongSupplier millisecondsNow) {
-        super(millisecondsNow, new PageHistory(viewer));
+    private OneSurfaceScreen(Viewer viewer, NavigationPort navigation, DefaultFont font, LongSupplier millisecondsNow) {
+        super(millisecondsNow, navigation);
         this.viewer = viewer;
         this.font = font;
     }
 
-    public static BrowserScreen showTo(Viewer viewer, FilePort files) {
-        return showTo(viewer, files, () -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND);
+    public static OneSurfaceScreen showTo(Viewer viewer, NavigationPort navigation, FilePort files) {
+        return showTo(viewer, navigation, files, () -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND);
     }
 
-    public static BrowserScreen showTo(Viewer viewer, FilePort files, LongSupplier millisecondsNow) {
-        return new BrowserScreen(viewer, DefaultFont.readFrom(files), millisecondsNow);
+    public static OneSurfaceScreen showTo(Viewer viewer, NavigationPort navigation, FilePort files,
+                                          LongSupplier millisecondsNow) {
+        return new OneSurfaceScreen(viewer, navigation, DefaultFont.readFrom(files), millisecondsNow);
     }
 
 
@@ -91,7 +95,7 @@ public final class BrowserScreen extends GobScreen {
         return switch (metric) {
             case SCREEN_SIZE, WORK_SIZE -> viewport;
             case LOG_SIZE, PHYS_SIZE -> PairValue.of(1, 1);
-            case SCREEN_DPI -> PairValue.of(96, 96);
+            case SCREEN_DPI -> PairValue.of(viewer.screenDpi(), viewer.screenDpi());
             case SCREEN_ORIGIN, WORK_ORIGIN, TITLE_SIZE, BORDER_SIZE,
                     BORDER_FIXED, WINDOW_MIN_SIZE -> PairValue.of(0, 0);
             case SCREENS -> PairValue.of(displayCount(), displayCount());
@@ -142,11 +146,48 @@ public final class BrowserScreen extends GobScreen {
         posts.add(new ScreenPost(kind, detail));
     }
 
+    public void hideSurface() {
+        visibilityChanges.add(SurfaceVisibility.HIDDEN);
+    }
+
+    public void showSurface() {
+        visibilityChanges.add(SurfaceVisibility.SHOWN);
+    }
+
     @Override
     public void acceptPendingReports() {
         viewer.takePostedLines();
         acceptMeasurements();
+        acceptVisibilityChanges();
         super.acceptPendingReports();
+    }
+
+    private void acceptVisibilityChanges() {
+        for (SurfaceVisibility next = visibilityChanges.poll(); next != null; next = visibilityChanges.poll()) {
+            switch (next) {
+                case HIDDEN -> minimiseEveryWindow();
+                case SHOWN -> restorePlatformMinimisedWindows();
+            }
+            isPictureRequired = true;
+        }
+    }
+
+    private void minimiseEveryWindow() {
+        for (GobValue window : List.copyOf(gobValues)) {
+            if (minimised.add(window.storage())) {
+                minimisedByThePlatform.add(window.storage());
+                queued.add(ScreenEventType.MINIMIZE, window, new ScreenEventDetail.NothingMore());
+            }
+        }
+    }
+
+    private void restorePlatformMinimisedWindows() {
+        for (GobValue window : List.copyOf(gobValues)) {
+            if (minimisedByThePlatform.remove(window.storage())) {
+                minimised.remove(window.storage());
+                queued.add(ScreenEventType.RESTORE, window, new ScreenEventDetail.NothingMore());
+            }
+        }
     }
 
     @Override
@@ -189,6 +230,7 @@ public final class BrowserScreen extends GobScreen {
         gobValues.removeIf(gob::sharesStorageWith);
         maximised.remove(gob.storage());
         minimised.remove(gob.storage());
+        minimisedByThePlatform.remove(gob.storage());
     }
 
     @Override
@@ -320,7 +362,7 @@ public final class BrowserScreen extends GobScreen {
 
     @Override
     public void useCursor(ScreenCursor cursor) {
-        viewer.useCursor(new CursorMessage(cursor).write());
+        viewer.useCursor(cursor);
     }
 
     public interface Viewer {
@@ -332,11 +374,10 @@ public final class BrowserScreen extends GobScreen {
         }
         default void releaseTyping() {
         }
-        default void useCursor(String message) {
+        default void useCursor(ScreenCursor cursor) {
         }
-        default void changeHistory(String move, HistoryEntry entry) {
-        }
-        default void guardLeaving(boolean unsavedWork) {
+        default int screenDpi() {
+            return CSS_PIXELS_PER_INCH;
         }
         default void showTitle(String title) {
         }
@@ -349,6 +390,11 @@ public final class BrowserScreen extends GobScreen {
     }
 
     private record ScreenMeasurement(int width, int height) {
+    }
+
+    private enum SurfaceVisibility {
+        HIDDEN,
+        SHOWN
     }
 
 }

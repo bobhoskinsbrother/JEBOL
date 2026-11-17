@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.application.MemoryFiles;
 import org.jebol.domain.host.FilePort;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSObject;
@@ -13,17 +14,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-final class BrowserStore implements WebFiles.Store {
+final class BrowserStore implements MemoryFiles.Store {
 
-    static WebFiles.Store openForPage() {
-        return isTheStoreHere() ? new BrowserStore() : WebFiles.Store.keepInMemory();
+    static MemoryFiles.Store openForPage() {
+        return isTheStoreHere() ? new BrowserStore() : MemoryFiles.Store.keepInMemory();
     }
 
     @Override
-    public WebFiles.Store.Tree listAll() {
+    public MemoryFiles.Store.Tree listAll() {
         WhatIsStored stored = jebolStoreEverything().await();
         if (stored.getFailed() != null) {
-            return WebFiles.Store.Tree.empty();
+            return MemoryFiles.Store.Tree.empty();
         }
         Map<String, byte[]> files = new LinkedHashMap<>();
         Set<String> directories = new TreeSet<>();
@@ -36,7 +37,7 @@ final class BrowserStore implements WebFiles.Store {
                 files.put(entry.getPath(), asBytes(entry.getOctets()));
             }
         }
-        return new WebFiles.Store.Tree(files, directories);
+        return new MemoryFiles.Store.Tree(files, directories);
     }
 
     @Override

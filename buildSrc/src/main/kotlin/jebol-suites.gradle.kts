@@ -51,6 +51,9 @@ val functionalTests = tasks.register<Test>("functionalTests") {
     description = "Tests that build an interpreter and run REBOL through it"
     runsTheTestsIn(functionalTest, suiteResultsName("functionalTests"))
     useJUnitPlatform { excludeTags(TESTS_THAT_EXHAUST_THE_HEAP) }
+    // -Dparity.write=true repaints the Java2D references a device's pictures
+    // are compared with (decision 75), instead of checking them.
+    providers.systemProperty("parity.write").orNull?.let { systemProperty("parity.write", it) }
     mustRunAfter(unitTests)
 }
 

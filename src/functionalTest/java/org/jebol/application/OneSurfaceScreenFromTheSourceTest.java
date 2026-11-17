@@ -1,17 +1,12 @@
-package org.jebol.adapter.web;
+package org.jebol.application;
 
-import org.jebol.application.Bounds;
 import org.jebol.adapter.host.ClasspathFiles;
-import org.jebol.application.Conclusion;
 import org.jebol.adapter.host.FileSystemPort;
-import org.jebol.application.AnInterpreter;
-import org.jebol.application.Interpreter;
-import org.jebol.application.ScriptOutcome;
-import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.PaintList;
@@ -38,11 +33,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class BrowserScreenFromTheSourceTest {
+class OneSurfaceScreenFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    private static final class SomebodyLooking implements BrowserScreen.Viewer {
+    private static final class SomebodyLooking implements OneSurfaceScreen.Viewer {
 
         private final List<List<DrawingCommand>> painted = new ArrayList<>();
         private boolean looking = true;
@@ -76,16 +71,16 @@ class BrowserScreenFromTheSourceTest {
         }
     }
 
-    private static BrowserScreen onThisPage(BrowserScreen.Viewer viewer) {
-        return BrowserScreen.showTo(viewer, new ClasspathFiles());
+    private static OneSurfaceScreen onThisPage(OneSurfaceScreen.Viewer viewer) {
+        return OneSurfaceScreen.showTo(viewer, new WindowHistory(), new ClasspathFiles());
     }
 
-    private static Interpreter makeAnInterpreterWithABrowser(BrowserScreen screen) {
+    private static Interpreter makeAnInterpreterWithABrowser(OneSurfaceScreen screen) {
         return makeAnInterpreterWithABrowser(screen, 800, 600);
     }
 
     private static Interpreter makeAnInterpreterWithABrowser(
-            BrowserScreen screen, int wide, int high) {
+            OneSurfaceScreen screen, int wide, int high) {
 
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts().withScreen(screen),
@@ -97,14 +92,14 @@ class BrowserScreenFromTheSourceTest {
         return interpreter;
     }
 
-    private static Interpreter makeAnInterpreterWithASilentBrowser(BrowserScreen screen) {
+    private static Interpreter makeAnInterpreterWithASilentBrowser(OneSurfaceScreen screen) {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withScreen(screen),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
     }
 
-    private static String sessionOn(BrowserScreen screen, String script) {
+    private static String sessionOn(OneSurfaceScreen screen, String script) {
         Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
         interpreter.defineNewWordsIn(script);
         return interpreter.display(interpreter.run(script));
@@ -195,7 +190,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void paintsThreeShowsInOneEventAsOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -246,6 +241,30 @@ class BrowserScreenFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("a page's dpi is CSS's 96, and a surface that knows its own answers that")
+        void answerTheViewersDpi() {
+            assertThat(describeAPageOf1280By800("gui-metric 'screen-dpi")).isEqualTo("96x96");
+
+            OneSurfaceScreen.Viewer aPhone = new OneSurfaceScreen.Viewer() {
+                @Override
+                public boolean isConnected() {
+                    return true;
+                }
+
+                @Override
+                public void paint(List<DrawingCommand> painting) {
+                }
+
+                @Override
+                public int screenDpi() {
+                    return 420;
+                }
+            };
+            Interpreter interpreter = makeAnInterpreterWithABrowser(onThisPage(aPhone), 411, 914);
+            assertThat(interpreter.display(interpreter.run("wait 0 gui-metric 'screen-dpi"))).isEqualTo("420x420");
+        }
+
+        @Test
         @DisplayName("and there is one of it")
         void countOneDisplay() {
             assertThat(describeAPageOf1280By800("gui-metric 'screens")).isEqualTo("1");
@@ -282,7 +301,7 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("and it follows the page being resized, not only the first measure")
         void thescreenGobFollowsAResize() {
-            BrowserScreen screen = onThisPage(new SomebodyLooking());
+            OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 1280, 800);
 
             screen.measure(640, 480);
@@ -311,7 +330,7 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("nothing changes until the interpreter looks, and a look takes what was posted")
         void changesNothingUntilTheInterpreterLooks() {
-            BrowserScreen screen = onThisPage(new SomebodyLooking());
+            OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
 
             assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
@@ -327,7 +346,7 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("the last measurement posted before a take is the one taken")
         void keepsTheLastMeasurementPosted() {
-            BrowserScreen screen = onThisPage(new SomebodyLooking());
+            OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
             screen.measure(100, 50);
 
@@ -340,7 +359,7 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("a posting that cannot be a size is dropped, and the taken viewport stands")
         void dropsAPostingThatCannotBeASize() {
-            BrowserScreen screen = onThisPage(new SomebodyLooking());
+            OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
             interpreter.run("1");
 
@@ -355,7 +374,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         @DisplayName("a resize arriving while the script waits is taken at the next take, inside the wait")
         void takesAResizeWhileWaiting() throws Exception {
-            BrowserScreen screen = onThisPage(new SomebodyLooking());
+            OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
             Interpreter interpreter = Interpreter.createOn(
                     AnInterpreter.standardPorts().withScreen(screen),
                     OutputPort.discard(),
@@ -372,7 +391,7 @@ class BrowserScreenFromTheSourceTest {
                     .isEqualTo(Conclusion.CANCELLED);
         }
 
-        private void waitUntilTheViewportIs(BrowserScreen screen, int wide, int high) {
+        private void waitUntilTheViewportIs(OneSurfaceScreen screen, int wide, int high) {
             long givenUpAt = System.nanoTime() + Duration.ofSeconds(10).toNanos();
             while (!screen.measure(ScreenMetric.SCREEN_SIZE, 0).equals(PairValue.of(wide, high))) {
                 if (System.nanoTime() > givenUpAt) {
@@ -421,7 +440,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void abrowserThatLeavesTakesTheScreen() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String script = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
@@ -444,7 +463,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void aneventJoinsTheSameQueue() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -472,7 +491,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void endAWaitingScriptOnClose() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
@@ -494,7 +513,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void tellAHandlerWhereTheClickWas() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -520,7 +539,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void reachOnlyTheWindowAClickLandedOn() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -557,7 +576,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void reachOnlyTheWindowTheWheelTurnedOver() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -592,7 +611,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void reachNobodyWhenTheWheelTurnsOnTheBarePage() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -620,7 +639,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void judgeAClickWhenTaken() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -646,7 +665,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void giveNoClickToAGobNeverShown() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     append system/view/screen-gob make gob! [offset: 0x0 size: 100x100]
@@ -670,7 +689,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         void closeEveryWindowWhenThePageCloses() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     first-window: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -707,7 +726,7 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("a resize or an offset posted from the page names no window and reaches nothing")
         void deliverNoPostedResizeOrOffset() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = onThisPage(viewer);
+            OneSurfaceScreen screen = onThisPage(viewer);
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
@@ -732,7 +751,7 @@ class BrowserScreenFromTheSourceTest {
     @DisplayName("a wait on a window nobody closes")
     class AWaitNobodyEnds {
 
-        private final BrowserScreen screen = onThisPage(new SomebodyLooking());
+        private final OneSurfaceScreen screen = onThisPage(new SomebodyLooking());
 
         private Interpreter openAWindowUnder(Bounds bounds) {
             Interpreter interpreter = Interpreter.createOn(
@@ -797,8 +816,8 @@ class BrowserScreenFromTheSourceTest {
         Files.createDirectories(where.getParent());
         Files.write(where, TestFont.bytes());
 
-        BrowserScreen screen = BrowserScreen.showTo(
-                new SomebodyLooking(), FileSystemPort.rootFileSystem(build));
+        OneSurfaceScreen screen = OneSurfaceScreen.showTo(
+                new SomebodyLooking(), new WindowHistory(), FileSystemPort.rootFileSystem(build));
 
         assertThat(measureOn(screen, "AB"))
                 .isCloseTo(9.6, org.assertj.core.data.Offset.offset(1e-9));
@@ -808,7 +827,7 @@ class BrowserScreenFromTheSourceTest {
                         .wide(), org.assertj.core.data.Offset.offset(1e-3));
     }
 
-    private static double measureOn(BrowserScreen screen, String text) {
+    private static double measureOn(OneSurfaceScreen screen, String text) {
         return screen.textMeasurement()
                 .textExtent(new TextRun(text, Colour.BLACK, 12, false, false))
                 .wide();
@@ -820,7 +839,9 @@ class BrowserScreenFromTheSourceTest {
         private final Thread running;
 
         AScriptOnItsOwnThread(Interpreter interpreter, String source) {
-            running = Thread.ofPlatform().start(() -> outcome.complete(interpreter.run(source)));
+            running = new Thread(() -> outcome.complete(interpreter.run(source)), "a-script-on-its-own-thread");
+            running.setDaemon(true);
+            running.start();
         }
 
         void waitUntilItIsParkedInsideTheWait() {

@@ -1,4 +1,4 @@
-package org.jebol.adapter.web;
+package org.jebol.application;
 
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
-public final class WebFiles implements FilePort {
+public final class MemoryFiles implements FilePort {
 
     private final Map<String, byte[]> files = new LinkedHashMap<>();
 
@@ -26,11 +26,11 @@ public final class WebFiles implements FilePort {
 
     private final Store store;
 
-    public WebFiles() {
+    public MemoryFiles() {
         this(Store.keepInMemory());
     }
 
-    public WebFiles(Store store) {
+    public MemoryFiles(Store store) {
         this.store = store;
         Store.Tree stored = store.listAll();
         directories.addAll(stored.directories());

@@ -31,7 +31,7 @@ The pieces:
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
 | The page and its scripts | `web/site/runner.html` is the runner every site is built around -- a canvas and the scripts above, unchanged by the build; the app's file list and entry are in an `app.json` beside it that `jebol-runner.js` reads; the browser tests serve it as it ships through `ShippedRunner`, and `src/testFixtures/resources/web/rebol-on-a-page.html` is the one gate page of its own |
 | The site a host serves | `assembleSite` copies the app (`examples/r3-gui` by default, `-PsiteDir=my-app`), the module, its loader, the worker's shell, the page's scripts and the font with its licence into `build/site`, copies `web/site/runner.html` as `index.html` unless the app has one, and writes `app.json` naming the app's files and its entry; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
-| The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
+| The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInMemoryTest` (the core's, since the page's files became `MemoryFiles`) and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
 | The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real wheel turn changes the scroller, and a real click and real keys put a name in the survey's field |
 
 Measured on 2026-10-12, `gzip -9`: the module is 13.7 MB unobfuscated and 4.1 MB
@@ -57,8 +57,14 @@ that has its own supplies it when the interpreter is built. And `ScreenEventQueu
 storage again: an adapter that hears a toolkit's listener leaves the event in a
 `ConcurrentLinkedQueue` through `GobScreen.posted`, and `acceptNextEvent`
 moves what was posted into the interpreter's own queue on the interpreter's
-own thread. `BrowserScreen` already worked this way; `DesktopScreen` now does
+own thread. The page's screen already worked this way; `DesktopScreen` now does
 too.
+
+**The page's screen is the core's `OneSurfaceScreen`** (goal 2b, decision 75),
+since a phone paints the same way: every window on one surface the platform
+owns. The page supplies its `Viewer` as a `PageViewer` -- which adds the
+history calls and the cursor message -- and its `NavigationPort` as
+`PageHistory`; `PageScreen.showTo` builds the two together.
 
 The worker closes the gap this note used to carry: a page script that waits
 now prints its later lines, and the worker posts a `finished` message when the
@@ -192,8 +198,9 @@ promise while it is in flight, which is the pause-and-resume decision 28
 describes. Decision 32 has the shape; a page that fetches outside its own
 origin is subject to the browser's CORS rules like any other page.
 
-**Files are the page's private store for the site** - `WebFiles` and
-`BrowserStore` (`org.jebol.adapter.web`). The whole store is loaded once at
+**Files are the page's private store for the site** - the core's
+`MemoryFiles` (`org.jebol.application`, which Android's app uses too) and the
+page's `BrowserStore` (`org.jebol.adapter.web`). The whole store is loaded once at
 boot and every change is awaited into it, so a reload finds what a script
 wrote; a browser without OPFS falls back to memory. Decision 33.
 

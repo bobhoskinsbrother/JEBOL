@@ -30,7 +30,7 @@ class TheCommandLinesPageAnswersTest {
     @BeforeEach
     void startServing() throws IOException {
         serving = WebScreenServer.on(0, new ClasspathFiles());
-        serving.reportTo(BrowserScreen.showTo(serving, new ClasspathFiles()));
+        serving.reportTo(PageScreen.showTo(serving, new ClasspathFiles()));
         client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 

@@ -143,7 +143,7 @@ entity ScreenPort {
     -- arithmetic of an edge pixel and in how a letter is hinted, and in
     -- nothing else a script can see, which is the whole claim this spec
     -- makes.
-    renderer: DesktopScreen | BrowserScreen
+    renderer: DesktopScreen | OneSurfaceScreen
 
     open_windows: windows where standing = showing
 }
@@ -153,14 +153,15 @@ variant DesktopScreen : ScreenPort {
     toolkit: String          -- which one, for a person reading a log
 }
 
--- A browser somewhere else, painted by whatever the page runs.
+-- Every window painted on one surface the platform owns: a browser's page,
+-- or a phone's one view (spec/android.allium), painted by whatever runs there.
 --
--- A browser implements the same port the desktop does. VIEW, UNVIEW,
--- DO-EVENTS and the handler list are the same borrowed REBOL either way, and
--- the only difference is which adapter executes the paint list.
-variant BrowserScreen : ScreenPort {
-    connected: boolean       -- whether a browser is attached right now
-    reported_size: Integer   -- what the browser said its viewport measures,
+-- It implements the same port the desktop does. VIEW, UNVIEW, DO-EVENTS and
+-- the handler list are the same borrowed REBOL either way, and the only
+-- difference is which adapter executes the paint list.
+variant OneSurfaceScreen : ScreenPort {
+    connected: boolean       -- whether a browser or a view is attached right now
+    reported_size: Integer   -- what the surface said its viewport measures,
                              -- written when the interpreter takes the
                              -- measurement and never where the posting arrives
 
@@ -666,7 +667,7 @@ rule AnEventFromTheScreenIsQueuedRatherThanDelivered {
         -- the interpreter's own thread, like every other part of the domain;
         -- the adapter that hears a toolkit's listener leaves the event
         -- somewhere safe for the crossing and moves it across when the
-        -- interpreter asks for one. BrowserScreen already worked this way
+        -- interpreter asks for one. OneSurfaceScreen already worked this way
         -- for a page's events, and a desktop window now does too, which is
         -- what leaves the domain with no lock in it at all.
 }

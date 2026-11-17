@@ -1,10 +1,8 @@
-package org.jebol.adapter.web;
+package org.jebol.application;
 
 import org.jebol.adapter.host.ClasspathFiles;
-import org.jebol.application.AnInterpreter;
-import org.jebol.application.Bounds;
-import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.WindowHistory;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
@@ -23,7 +21,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(30)
-class ABrowsersWindowsArrangedOnThePageFromTheSourceTest {
+class WindowsArrangedOnOneSurfaceFromTheSourceTest {
 
     private static final Colour LEFTS = new Colour(1, 1, 1);
     private static final Colour RIGHTS = new Colour(2, 2, 2);
@@ -47,7 +45,7 @@ class ABrowsersWindowsArrangedOnThePageFromTheSourceTest {
                 ]
             ]""";
 
-    private static final class SomebodyLooking implements BrowserScreen.Viewer {
+    private static final class SomebodyLooking implements OneSurfaceScreen.Viewer {
 
         private final List<List<DrawingCommand>> painted = new ArrayList<>();
 
@@ -78,13 +76,13 @@ class ABrowsersWindowsArrangedOnThePageFromTheSourceTest {
     }
 
     private final SomebodyLooking viewer = new SomebodyLooking();
-    private final BrowserScreen screen = BrowserScreen.showTo(viewer, new ClasspathFiles());
+    private final OneSurfaceScreen screen = OneSurfaceScreen.showTo(viewer, new WindowHistory(), new ClasspathFiles());
     private final Interpreter interpreter = Interpreter.createOn(
             AnInterpreter.standardPorts().withScreen(screen),
             OutputPort.discard(),
             Bounds.standard().grant(HostService.WINDOWS).withTimeLimit(Duration.ofSeconds(20)));
 
-    private ABrowsersWindowsArrangedOnThePageFromTheSourceTest() {
+    private WindowsArrangedOnOneSurfaceFromTheSourceTest() {
         screen.measure(800, 600);
         run(TWO_WINDOWS);
     }
@@ -98,6 +96,51 @@ class ABrowsersWindowsArrangedOnThePageFromTheSourceTest {
         run(source);
         run("wait [system/ports/event 0]");
         return run("seen");
+    }
+
+    @Nested
+    @DisplayName("the platform hiding and showing its surface")
+    class TheSurfaceHiddenAndShown {
+
+        @Test
+        @DisplayName("hiding the surface minimizes every window, and showing it restores each")
+        void minimizesThenRestoresEveryWindow() {
+            screen.hideSurface();
+            assertThat(runAndTakeEvents("")).isEqualTo("[minimize left minimize right]");
+
+            screen.showSurface();
+            assertThat(runAndTakeEvents("")).isEqualTo("[minimize left minimize right restore left restore right]");
+        }
+
+        @Test
+        @DisplayName("a window the script had minimized itself stays minimized when the surface is shown again")
+        void leavesTheScriptsOwnMinimizeAlone() {
+            runAndTakeEvents("gui-metric/set 'minimize left");
+            screen.hideSurface();
+            screen.showSurface();
+
+            assertThat(runAndTakeEvents("")).isEqualTo("[minimize left minimize right restore right]");
+        }
+
+        @Test
+        @DisplayName("a maximized window comes back maximized, with no resize")
+        void aMaximizedWindowComesBackMaximized() {
+            runAndTakeEvents("gui-metric/set 'maximize right");
+            screen.hideSurface();
+            screen.showSurface();
+
+            assertThat(runAndTakeEvents("")).isEqualTo(
+                    "[resize right 800x600 maximize right minimize left minimize right restore left restore right]");
+            assertThat(run("reduce [right/offset right/size]")).isEqualTo("[0x0 800x600]");
+        }
+
+        @Test
+        @DisplayName("nothing changes until the interpreter looks")
+        void waitsForTheInterpreter() {
+            screen.hideSurface();
+
+            assertThat(run("seen")).isEqualTo("[]");
+        }
     }
 
     @Nested

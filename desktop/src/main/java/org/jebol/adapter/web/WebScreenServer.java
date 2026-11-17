@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.jebol.adapter.host.Java2DSurface;
+import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
@@ -27,7 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTrip, AutoCloseable {
+public final class WebScreenServer implements PageViewer, PageRoundTrip, AutoCloseable {
 
     private static final AtomicInteger CONNECTIONS = new AtomicInteger();
 
@@ -44,7 +45,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
     private final List<OutputStream> browserConnections = new CopyOnWriteArrayList<>();
     private final AtomicInteger asksMade = new AtomicInteger();
     private final Map<Integer, CompletableFuture<PageAnswer>> waitingForAnswers = new ConcurrentHashMap<>();
-    private BrowserScreen screen;
+    private OneSurfaceScreen screen;
     private volatile Font face;
     private volatile int width;
     private volatile int height;
@@ -89,7 +90,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, PageRoundTri
         return "http://" + server.getAddress().getAddress().getHostAddress() + ":" + port() + "/";
     }
 
-    public void reportTo(BrowserScreen given) {
+    public void reportTo(OneSurfaceScreen given) {
         this.screen = given;
     }
 

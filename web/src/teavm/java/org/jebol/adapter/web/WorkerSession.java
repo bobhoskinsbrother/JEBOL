@@ -4,6 +4,8 @@ import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.adapter.host.PropertiesMachine;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.MemoryFiles;
+import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.ThreadPause;
 import org.jebol.application.WebExtensionProvider;
 import org.jebol.domain.host.FilePort;
@@ -20,13 +22,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 
-final class WorkerSession implements BrowserScreen.Viewer {
+final class WorkerSession implements PageViewer {
 
     private static final String PICK_FOLDER = "/picked/";
 
     private final PickedFiles files;
     private final PageMidiDevices midi;
-    private final BrowserScreen screen;
+    private final OneSurfaceScreen screen;
     private final Interpreter interpreter;
     private final HistoryMessage history = new HistoryMessage();
     private final WebConsole console = new WebConsole();
@@ -35,7 +37,7 @@ final class WorkerSession implements BrowserScreen.Viewer {
 
     WorkerSession() {
         WorkerRoundTrip page = new WorkerRoundTrip();
-        files = new PickedFiles(new WebFiles(BrowserStore.openForPage()), PICK_FOLDER, page);
+        files = new PickedFiles(new MemoryFiles(BrowserStore.openForPage()), PICK_FOLDER, page);
         midi = new PageMidiDevices(page, this::takePostedLines);
         HostPorts ports = HostPorts.none()
                 .withCarriedFiles(new ClasspathFiles())
@@ -49,7 +51,7 @@ final class WorkerSession implements BrowserScreen.Viewer {
                 .withClipboard(new PageClipboard(page))
                 .withMidiDevices(midi)
                 .withImages(new BrowserImageCodec(new BrowserImages()));
-        screen = BrowserScreen.showTo(this, ports.carriedFiles());
+        screen = PageScreen.showTo(this, ports.carriedFiles());
         interpreter = Interpreter.createOn(ports.withScreen(screen), this::relayPrinted,
                 addSiteExtensions(new ShippedPageBounds().bounds()));
     }

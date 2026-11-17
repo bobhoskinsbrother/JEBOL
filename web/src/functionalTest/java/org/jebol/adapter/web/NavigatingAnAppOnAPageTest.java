@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostService;
@@ -23,7 +24,7 @@ class NavigatingAnAppOnAPageTest {
 
     private static final String TRUE = "#(true)";
 
-    private final class APageWithAHistory implements BrowserScreen.Viewer {
+    private final class APageWithAHistory implements PageViewer {
 
         private final List<String> historyChanges = new ArrayList<>();
         private final List<Boolean> guards = new ArrayList<>();
@@ -59,7 +60,7 @@ class NavigatingAnAppOnAPageTest {
 
     private long millisecondsNow = 5_000;
 
-    private final BrowserScreen screen = BrowserScreen.showTo(page, new ClasspathFiles(), () -> millisecondsNow);
+    private final OneSurfaceScreen screen = PageScreen.showTo(page, new ClasspathFiles(), () -> millisecondsNow);
 
     private final Interpreter interpreter = interpreterGranting(Bounds.standard()
             .grant(HostService.WINDOWS)
