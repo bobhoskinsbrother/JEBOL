@@ -27,7 +27,7 @@ on ART in shards, and archives the results into
 | A phone | `-Pdevice=<serial>` runs the suites on a phone over USB and starts no emulator; `scripts/android-on-my-phone.sh` installs the app, measures it and writes `build/phone-timings.txt` |
 | What a device cannot run | `not-on-a-device.txt` (the core's tests, by class or method) and `not-on-a-device-in-rebols-suite.txt` (Rebol's, by file, group or test), each entry with why |
 | The API check | `scripts/AndroidApiGaps.java`, run by `./gradlew checkCoreForAndroid` with `--fail-on-gaps` over the core's jar |
-| The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk` on Ubuntu and `~/Library/Android/sdk` on a Mac; the root build finds it there, or by `ANDROID_HOME`, and takes `android/` in (decision 73) |
+| The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk` on Ubuntu and `~/Library/Android/sdk` on a Mac; the root build finds it there, or by `ANDROID_HOME`, and takes `android/` in (decision 73). Checked on Ubuntu only: the Mac's branch and `scripts/check-android-build.sh` there were left unrun when goal 2b closed (owner, 2026-11-17) |
 
 Measured on 2026-11-16: the app's debug APK is 6,195 KB and the test APK,
 which dexes every core test and fixture, 37,674 KB. The first interpreter on
