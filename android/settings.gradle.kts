@@ -25,4 +25,4 @@ rootProject.name = "jebol-android"
 
 includeBuild("..")
 
-include("host", "suites")
+include("host", "app", "endtoend")

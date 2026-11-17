@@ -14,7 +14,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-class="${1:-org.jebol.android.TheCoreBootsOnArtTest}"
+class="${1:-org.jebol.android.functional.TheCoreBootsOnArtTest}"
 report=build/android-check.txt
 mkdir -p build
 : > "$report"

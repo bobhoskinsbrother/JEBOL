@@ -1,4 +1,4 @@
-package org.jebol.android;
+package org.jebol.android.functional;
 
 import org.jebol.adapter.android.AndroidHost;
 import org.jebol.application.Bounds;

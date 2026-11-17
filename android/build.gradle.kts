@@ -4,13 +4,16 @@ import java.time.format.DateTimeFormatter
 plugins {
     id("com.android.library") version "9.5.1" apply false
     id("com.android.application") version "9.5.1" apply false
+    id("com.android.test") version "9.5.1" apply false
     id("de.mannodermaus.android-junit") version "2.0.2" apply false
 }
 
 // Android's gate: first that the core reaches nothing Android lacks, then the
-// suites on an emulator this build boots and shuts down itself. Not part of
-// allTests, because it needs the Android SDK. CLAUDE.md, "Running the suite".
-val coreForAndroid = gradle.includedBuilds.single().task(":checkCoreForAndroid")
+// three device suites on emulators this build boots and shuts down itself, or
+// on a phone plugged in over USB. Not part of allTests, because it needs the
+// Android SDK. CLAUDE.md, "Running the suite"; decisions 73 and 75.
+val core = gradle.includedBuilds.single { it.name != "android" }
+val coreForAndroid = core.task(":checkCoreForAndroid")
 val emulatorScript = layout.projectDirectory.file("emulator.sh").asFile.path
 val sdkDirFromLocalProperties = providers.fileContents(layout.projectDirectory.file("local.properties")).asText
     .map { text -> java.util.Properties().apply { load(text.reader()) }.getProperty("sdk.dir") ?: "" }
@@ -23,14 +26,23 @@ val androidSdk = providers.environmentVariable("ANDROID_HOME")
     .orElse(sdkDirFromLocalProperties)
     .orElse(defaultSdkForThisSystem)
 
-// How many emulators the suites are split across: -Pemulators=N. Each takes
-// four cores and about two gigabytes with its own overhead; four at 2 GB ran a
-// 22 GB machine out of memory beside IDEA and Gradle (decision 73).
-val emulators = providers.gradleProperty("emulators").map(String::toInt).orElse(3)
+// How many emulators the suites are split across: -Pemulators=N, two unless
+// asked. Each holds about 3.6 GB beyond what Android is given; three left less
+// than 2 GB free beside IntelliJ on 2026-11-16, the condition that ran a 22 GB
+// machine out of memory the day before (decision 75).
+val emulators = providers.gradleProperty("emulators").map(String::toInt).orElse(2)
+
+// -Pdevice=<serial> runs the suites on that device, a phone over USB, and
+// starts and stops no emulator.
+val device = providers.gradleProperty("device")
+val deviceSerials = device.map { listOf(it) }
+    .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 + 2 * it}" } })
+val isOnEmulators = !device.isPresent
 
 val startEmulators = tasks.register<Exec>("startEmulators") {
     group = "verification"
-    description = "Boot the API 35 emulators the device suites run on, and wait until each has booted"
+    description = "Boot the API 35 tablet emulators the device suites run on, and wait until each has booted"
+    onlyIf { isOnEmulators }
     environment("ANDROID_HOME", androidSdk.get())
     commandLine(emulatorScript, "start", emulators.get().toString())
 }
@@ -38,46 +50,110 @@ val startEmulators = tasks.register<Exec>("startEmulators") {
 val stopEmulators = tasks.register<Exec>("stopEmulators") {
     group = "verification"
     description = "Shut down the emulators the device suites ran on"
+    onlyIf { isOnEmulators }
     environment("ANDROID_HOME", androidSdk.get())
     commandLine(emulatorScript, "stop", emulators.get().toString())
 }
 
-val shardResults = layout.projectDirectory.dir("suites/build/outputs/androidTest-results/shards")
+val deviceResults = layout.projectDirectory.dir("build/device-results")
+
+// A suite that does not run -- skipped by -Pclasses, or never reached because
+// an earlier one failed -- must not leave its last run's results to be
+// archived as this one's, so every suite's are cleared once, first.
+val forgetLastDeviceResults = tasks.register<Delete>("forgetLastDeviceResults") {
+    delete(deviceResults)
+}
+val runnerBuilder = "runnerBuilder" to "de.mannodermaus.junit5.AndroidJUnit5Builder"
+val unitPackage = "org.jebol.android.unit"
+val endToEndPackage = "org.jebol.android.endtoend"
+
+// -Pclasses=a.B,c.D runs only those classes. AndroidJUnitRunner drops its
+// package filter once it is given classes, so each run is handed the named
+// classes that are its own, and a run with none of them is skipped.
+val namedClasses = providers.gradleProperty("classes").map { it.split(",").map(String::trim).filter(String::isNotEmpty) }
+fun classesOf(isOwn: (String) -> Boolean) = namedClasses.map { named -> named.filter(isOwn) }
+val isUnit = { name: String -> name.startsWith("$unitPackage.") }
+val timingsPackage = "org.jebol.android.timings"
+val isEndToEnd = { name: String -> name.startsWith("$endToEndPackage.") || name.startsWith("$timingsPackage.") }
+val unitClasses = classesOf(isUnit)
+val functionalClasses = classesOf { !isUnit(it) && !isEndToEnd(it) }
+val endToEndClasses = classesOf(isEndToEnd)
+
+fun argumentsFor(classes: Provider<List<String>>, packageFilter: Pair<String, String>) =
+    classes.map { named -> mapOf(runnerBuilder, "class" to named.joinToString(",")) }
+        .orElse(mapOf(runnerBuilder, packageFilter))
+
+fun isWanted(classes: Provider<List<String>>) = !namedClasses.isPresent || classes.get().isNotEmpty()
+
+val theAppsApk = layout.projectDirectory.file("app/build/outputs/apk/debug/app-debug.apk")
+val appTestApk = layout.projectDirectory.file("app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk")
 
 // AGP's connected task runs every test on every device, so the shards are run
 // here instead: shard i of N on the i-th emulator, all at once. The archive and
-// the shutdown hang off it, so a failing run is archived and stopped too.
-val deviceShards = tasks.register<DeviceShards>("deviceShards") {
+// the shutdown hang off each run, so a failing run is archived and stopped too.
+val androidUnitTests = tasks.register<DeviceShards>("androidUnitTests") {
     group = "verification"
-    description = "Every device test, split across the emulators in shards"
-    dependsOn(coreForAndroid, startEmulators, ":suites:assembleDebug", ":suites:assembleDebugAndroidTest")
-    serials = emulators.map { count -> (0 until count).map { "emulator-${5584 + 2 * it}" } }
+    description = "Android's adapters on their own, with no interpreter, in shards across the devices"
+    dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":app:assembleDebugAndroidTest")
+    onlyIf { isWanted(unitClasses) }
+    serials = deviceSerials
     adb = androidSdk.map { "$it/platform-tools/adb" }
-    appApk = layout.projectDirectory.file("suites/build/outputs/apk/debug/suites-debug.apk")
-    testApk = layout.projectDirectory.file("suites/build/outputs/apk/androidTest/debug/suites-debug-androidTest.apk")
-    instrumentation = "org.jebol.android.suites.test/androidx.test.runner.AndroidJUnitRunner"
-    runnerArguments = providers.gradleProperty("classes")
-        .map { mapOf("runnerBuilder" to "de.mannodermaus.junit5.AndroidJUnit5Builder", "class" to it) }
-        .orElse(mapOf("runnerBuilder" to "de.mannodermaus.junit5.AndroidJUnit5Builder"))
-    results = shardResults
+    appApk = theAppsApk
+    testApk = appTestApk
+    instrumentation = "org.jebol.android.test/androidx.test.runner.AndroidJUnitRunner"
+    runnerArguments = argumentsFor(unitClasses, "package" to unitPackage)
+    results = deviceResults.dir("androidUnitTests")
     finalizedBy(stopEmulators, "archiveAndroidTestResults")
 }
+
+val androidFunctionalTests = tasks.register<DeviceShards>("androidFunctionalTests") {
+    group = "verification"
+    description = "An interpreter on ART running REBOL, Rebol's suite included, in shards across the devices"
+    dependsOn(forgetLastDeviceResults, coreForAndroid, startEmulators, ":app:assembleDebug",
+        ":app:assembleDebugAndroidTest")
+    onlyIf { isWanted(functionalClasses) }
+    serials = deviceSerials
+    adb = androidSdk.map { "$it/platform-tools/adb" }
+    appApk = theAppsApk
+    testApk = appTestApk
+    instrumentation = "org.jebol.android.test/androidx.test.runner.AndroidJUnitRunner"
+    runnerArguments = argumentsFor(functionalClasses, "notPackage" to unitPackage)
+    results = deviceResults.dir("androidFunctionalTests")
+    mustRunAfter(androidUnitTests)
+    finalizedBy(stopEmulators, "archiveAndroidTestResults")
+}
+
+val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") {
+    group = "verification"
+    description = "The installed app driven from outside by UI Automator, on the first device alone"
+    dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":endtoend:assembleDebug")
+    onlyIf { isWanted(endToEndClasses) }
+    serials = deviceSerials.map { listOf(it.first()) }
+    adb = androidSdk.map { "$it/platform-tools/adb" }
+    appApk = theAppsApk
+    testApk = layout.projectDirectory.file("endtoend/build/outputs/apk/debug/endtoend-debug.apk")
+    instrumentation = "org.jebol.android.endtoend/androidx.test.runner.AndroidJUnitRunner"
+    runnerArguments = argumentsFor(endToEndClasses, "package" to endToEndPackage)
+    results = deviceResults.dir("androidEndToEndTests")
+    mustRunAfter(androidUnitTests, androidFunctionalTests)
+    finalizedBy(stopEmulators, "archiveAndroidTestResults")
+}
+
+stopEmulators { mustRunAfter(androidUnitTests, androidFunctionalTests, androidEndToEndTests) }
 
 val archiveAndroidTestResults = tasks.register<Copy>("archiveAndroidTestResults") {
     group = "verification"
     description = "Copy the device suites' results into test-history/<timestamp>-android"
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-    from(shardResults) {
-        include("**/*.xml")
-        into("androidFunctionalTests")
+    from(deviceResults) {
+        include("*/*.xml")
     }
     into(layout.projectDirectory.dir("../test-history/$stamp-android"))
-    mustRunAfter(deviceShards)
+    mustRunAfter(androidUnitTests, androidFunctionalTests, androidEndToEndTests)
 }
 
 tasks.register("androidTests") {
     group = "verification"
-    description = "The core's check against Android 35, then every device test across the emulators, then the archive"
-    dependsOn(coreForAndroid)
-    dependsOn(deviceShards)
+    description = "The core's check against Android 35, then the unit, functional and end-to-end device suites, then the archive"
+    dependsOn(coreForAndroid, androidUnitTests, androidFunctionalTests, androidEndToEndTests)
 }

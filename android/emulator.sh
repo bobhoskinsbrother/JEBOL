@@ -8,7 +8,9 @@
 #   android/emulator.sh stop [N]    shut them down
 #   android/emulator.sh serials [N] print the instances' serials, one a line
 #
-# An API 35 Google APIs image for the machine's processor: x86_64 under KVM on
+# A Pixel Tablet -- 2560 by 1600 pixels at 320 dpi, so 1280 by 800 dp, the size
+# goal 2b proves the examples on (decision 75) -- running the API 35 Google APIs
+# image for the machine's processor: x86_64 under KVM on
 # Linux and on an Intel Mac, arm64-v8a under the Mac's own hypervisor on Apple
 # Silicon. The SDK is ANDROID_HOME, else where Android Studio puts it on each
 # system (~/Android/Sdk, ~/Library/Android/sdk). The instances take the ports
@@ -29,7 +31,8 @@ case "$(uname -m)" in
 arm64 | aarch64) abi=arm64-v8a ;;
 *) abi=x86_64 ;;
 esac
-avd="jebol-api35-$abi"
+avd="jebol-api35-tablet-$abi"
+profile=pixel_tablet
 first_port=5584
 image="system-images;android-35;google_apis;$abi"
 adb="$sdk/platform-tools/adb"
@@ -61,7 +64,7 @@ wait_for_boot() {
 case "${1:-}" in
 start)
     if ! "$sdk/cmdline-tools/latest/bin/avdmanager" list avd -c | grep -qx "$avd"; then
-        echo no | "$sdk/cmdline-tools/latest/bin/avdmanager" create avd -n "$avd" -k "$image" -d pixel_6 --force
+        echo no | "$sdk/cmdline-tools/latest/bin/avdmanager" create avd -n "$avd" -k "$image" -d "$profile" --force
     fi
     for ((at = 0; at < count; at++)); do
         serial=$(serial_of "$at")

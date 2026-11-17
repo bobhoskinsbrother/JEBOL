@@ -1,0 +1,296 @@
+-- allium: 3
+--
+-- JEBOL: what an Android app does with the screen, the operator's hands and
+-- the life Android gives it.
+--
+-- Scope: the app's one view, which is the screen every window is painted on;
+-- one finger as the pointer; the soft keyboard; Back; and what Android does to
+-- the app -- turning the device, sending it to the background, ending its
+-- process -- as a script hears them. And printing, which on a phone reaches a
+-- person only through the log.
+--
+-- Excludes:
+--   - The ports behind files, sockets, TLS, pictures, the clipboard and the
+--     machine. They are goal 2c's and get their rules here then; until then
+--     the app's files are the memory filesystem its APK fills, and a port a
+--     page cannot have refuses as a page's does (embed.allium).
+--   - Gestures with more than one finger. A second finger is ignored here;
+--     goal 2d may give them a meaning, in the GUI's REBOL.
+--   - What a window looks like. The paint list is screen.allium's and the
+--     view executes it as the desktop and the page do (decision 35).
+--
+-- Dependencies: OneSurfaceScreen, ScreenWindow and the screen events in
+-- screen.allium; the history, Back and the unsaved-work flag in nav.allium.
+--
+-- A phone is a page and not a desktop: one surface the platform owns, every
+-- window painted on it, so the app's screen is the core's OneSurfaceScreen with
+-- Android's viewer and Android's history behind it (decision 75).
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- The app's one view, filling its activity.
+entity AppView {
+    width_in_pixels: Integer
+    height_in_pixels: Integer
+    density: Decimal                 -- the display's pixels per dp, 1 at 160 dpi
+    finger_down: Boolean             -- whether the finger that is the pointer is on the glass
+    keyboard_raised: Boolean
+    painting: Boolean                -- false while the app is in the background
+}
+
+-- A view in the background paints nothing, and a keyboard is never raised
+-- over a view nobody can see.
+invariant AViewInTheBackgroundShowsNothing {
+    for view in AppView:
+        not view.painting implies not view.keyboard_raised
+}
+
+-- What the app keeps so a process Android ended can come back where it was.
+entity SavedPlace {
+    address: String                  -- the current place's address when it was saved
+}
+
+------------------------------------------------------------
+-- Sizes
+------------------------------------------------------------
+
+-- A size a script sees is in dp: the view's pixels divided by the display's
+-- density, so a window is the same size to the eye on any phone. The
+-- viewport is the view's size in dp, and the screen's dpi is 160 times the
+-- density, which is what dp means.
+rule TheViewportIsTheViewInDp {
+    when: the_view_changes_size(view)
+
+    ensures: the_viewport_is(view.width_in_pixels / view.density, view.height_in_pixels / view.density)
+    ensures: screen_dpi = 160 * view.density
+}
+
+-- The view paints in pixels: every command is scaled by the density before
+-- it is executed, and nothing else changes on the way.
+rule TheViewScalesThePaintListByTheDensity {
+    when: the_view_paints(view, painting)
+
+    ensures: each_command_is_executed_scaled_by(painting, view.density)
+}
+
+------------------------------------------------------------
+-- Touch
+------------------------------------------------------------
+
+-- One finger is the pointer. Its touching the glass is a press, its moving a
+-- move, its lifting a release, each at its position in dp.
+rule OneFingerIsThePointer {
+    when: a_finger_touches(view, position_in_pixels)
+    requires: not view.finger_down
+
+    ensures: view.finger_down = true
+    ensures: the_screen_hears(down, position_in_pixels / view.density)
+}
+
+rule TheFingerMovingIsAMove {
+    when: the_pointer_finger_moves(view, position_in_pixels)
+    requires: view.finger_down
+
+    ensures: the_screen_hears(move, position_in_pixels / view.density)
+}
+
+rule TheFingerLiftingIsARelease {
+    when: the_pointer_finger_lifts(view, position_in_pixels)
+    requires: view.finger_down
+
+    ensures: view.finger_down = false
+    ensures: the_screen_hears(up, position_in_pixels / view.density)
+}
+
+-- A second finger is ignored until the first lifts.
+rule ASecondFingerIsIgnored {
+    when: another_finger_touches(view)
+    requires: view.finger_down
+
+    ensures: the_screen_hears_nothing()
+}
+
+------------------------------------------------------------
+-- The keyboard
+------------------------------------------------------------
+
+-- A field taking the typing raises the soft keyboard, and its releasing the
+-- typing lowers it.
+rule TakingTheTypingRaisesTheKeyboard {
+    when: the_screen_takes_typing(view)
+
+    ensures: view.keyboard_raised = true
+}
+
+rule ReleasingTheTypingLowersTheKeyboard {
+    when: the_screen_releases_typing(view)
+
+    ensures: view.keyboard_raised = false
+}
+
+-- Text the keyboard commits is one key event per code point, in order. A
+-- keyboard commits a word at a time, and a script reads keys one at a time.
+rule CommittedTextIsOneKeyPerCodePoint {
+    when: the_keyboard_commits(view, text)
+
+    ensures: for code_point in text: the_screen_hears(key, code_point)
+}
+
+-- Delete is the key 8, backspace, and the keyboard's action key is 13,
+-- return, as a desktop keyboard sends them.
+rule DeleteIsBackspace {
+    when: the_keyboard_deletes_before_the_cursor(view)
+
+    ensures: the_screen_hears(key, 8)
+}
+
+rule TheActionKeyIsReturn {
+    when: the_keyboard_sends_its_action(view)
+
+    ensures: the_screen_hears(key, 13)
+}
+
+-- The arrow keys a keyboard sends are control events named as the desktop
+-- names them.
+rule AnArrowIsNamedAsTheDesktopNamesIt {
+    when: the_keyboard_sends_an_arrow(view, arrow)
+
+    ensures: the_screen_hears(control, the_desktops_name_for(arrow))
+}
+
+------------------------------------------------------------
+-- Back
+------------------------------------------------------------
+
+-- Back is the history's Back (nav.allium). The app takes it -- Android does
+-- not -- while the history has a place behind the current one, or while
+-- unsaved work is flagged.
+rule TheAppTakesBackWhileItHasSomewhereToGo {
+    when: the_history_or_the_unsaved_work_flag_changes(history)
+
+    ensures: the_app_takes_back = (history.has_a_place_behind or history.unsaved_work)
+}
+
+rule BackMovesTheHistory {
+    when: the_operator_goes_back(history)
+    requires: history.has_a_place_behind
+
+    ensures: the_history_goes_back()
+}
+
+-- At the first place Back leaves the app. With unsaved work flagged it asks
+-- first, with the app's own dialog, and staying is the answer to Cancel.
+rule BackAtTheFirstPlaceLeaves {
+    when: the_operator_goes_back(history)
+    requires: not history.has_a_place_behind
+    requires: not history.unsaved_work
+
+    ensures: the_app_leaves()
+}
+
+rule BackWithUnsavedWorkAsksFirst {
+    when: the_operator_goes_back(history)
+    requires: not history.has_a_place_behind
+    requires: history.unsaved_work
+
+    ensures: the_app_asks_whether_to_leave()
+}
+
+rule CancelStays {
+    when: the_operator_cancels_leaving()
+
+    ensures: the_app_stays()
+}
+
+------------------------------------------------------------
+-- The life Android gives the app
+------------------------------------------------------------
+
+-- Turning the device is a resize: the activity is not made again, the
+-- view's new size is measured into the screen, a maximised window refits as
+-- a resized page's does, and the script hears resize.
+rule ARotationIsAResize {
+    when: the_device_turns(view)
+
+    ensures: the_activity_is_kept()
+    ensures: the_view_changes_size(view)
+    ensures: for window in open_windows: the_script_hears(resize, window)
+}
+
+-- Going to the background is minimize on every open window, and the view
+-- stops painting; coming back is restore on each, and a repaint. R3's own
+-- hosts send the same two events (decision 72).
+rule TheBackgroundIsMinimize {
+    when: the_app_stops(view)
+
+    ensures: view.painting = false
+    ensures: view.keyboard_raised = false
+    ensures: for window in open_windows: the_script_hears(minimize, window)
+}
+
+rule ComingBackIsRestore {
+    when: the_app_starts_again(view)
+
+    ensures: view.painting = true
+    ensures: for window in open_windows: the_script_hears(restore, window)
+    ensures: the_view_repaints(view)
+}
+
+-- Android may end the process with no warning, and the script hears nothing:
+-- there is nothing left to hear it with. The current place's address is kept
+-- whenever Android asks the app to save its state, and a relaunch after the
+-- process was ended starts the app afresh at that place, as a reloaded page
+-- starts at its address (nav.allium).
+rule ThePlaceIsSavedWhenAndroidAsks {
+    when: android_asks_the_app_to_save_its_state()
+
+    ensures: SavedPlace.created(address: the_current_places_address())
+}
+
+rule ARelaunchResumesAtTheSavedPlace {
+    when: the_app_is_launched_after_its_process_was_ended(saved)
+
+    ensures: the_history_starts_at(saved.address)
+}
+
+------------------------------------------------------------
+-- Printing
+------------------------------------------------------------
+
+-- What a script prints is one logcat line per finished line, under the tag
+-- jebol: info, or error while error output is on. A part line is held until
+-- it ends, which is the shape decision 64 gives a site's console.
+rule AFinishedLineIsOneLogLine {
+    when: the_script_prints_up_to_a_line_end(text)
+
+    ensures: one_log_line(tag: "jebol", priority: the_priority_for_the_output_now(), text: held_text_and(text))
+}
+
+rule APartLineIsHeld {
+    when: the_script_prints_without_a_line_end(text)
+
+    ensures: the_text_is_held(text)
+}
+
+------------------------------------------------------------
+-- A script given at launch
+------------------------------------------------------------
+
+-- A debug build runs a script given in its launch intent, under the extra
+-- named script, instead of the app it carries, so a test can start the app on
+-- a few lines of its own. A release build ignores the extra.
+rule ADebugBuildRunsTheScriptItIsGiven {
+    when: the_app_is_launched_with_a_script(script)
+    requires: is_a_debug_build()
+
+    ensures: the_app_runs(script)
+}
+
+rule AReleaseBuildRunsOnlyItsOwnApp {
+    when: the_app_is_launched_with_a_script(script)
+    requires: not is_a_debug_build()
+
+    ensures: the_app_runs_the_app_it_carries()
+}
