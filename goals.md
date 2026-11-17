@@ -123,24 +123,184 @@ It starts from the phone's figures in `docs/android-port.md`, "How quick it
 is, on a phone": a Galaxy S24 Ultra, 2,819 ms to the first picture, 77 ms
 tap to repaint, 49 ms a frame while dragging.
 
-Every port in `HostPorts`, Android's: files in the app's own storage, the
-script's home inside its root (decision 69), replacing 2b's `MemoryFiles`
-with the app's bundled files still readable beneath it; real sockets, on platform
-threads where the desktop's take virtual ones (Android has none); TLS
-through Android's own (decision 65) and its trust store; IDNA through
-`android.icu.text.IDNA`, so `Uts46` stays the desktop's; pictures through
-`BitmapFactory` and `Bitmap.compress`, which brings WebP to Android (goal
-10); the clipboard; the machine; CALL refused; MIDI none for now. Printing
-to logcat is 2b's. A port Android cannot supply refuses as a page's does,
+Every port in `HostPorts` gets Android's answer, and the app is given them.
+After this stage a script in the app can read and write its own files, open
+`tcp://`, `tls://` and `http(s)://`, load and save pictures and use the
+clipboard. Each port Android cannot supply refuses the way a page's does,
 never with a host exception (`NoFailureEscapesAsAHostException`).
 
-**Done when** each port has a `spec/android.allium` rule, an
-`androidUnitTests` test of the adapter and an `androidFunctionalTests` test
-through REBOL.
+**Who does what.** All of it is the session's, on the emulators, with the
+plan's questions put to the owner first (step 1). The owner's phone stays
+plugged into this machine for the closing run.
 
-**Its plan settles:** whether printing also shows on the screen (the first
-goal text said a console view; decision 64 says an app owns its whole
-screen).
+**What is true on 2026-11-17, before any step below.**
+
+- `AndroidHost.ports()` (`android/host`) gives four ports: the carried files
+  (`ClasspathFiles`), digests (`JvmDigests`), the machine (`AndroidMachine`)
+  and the pause (`ThreadPause`). `AppSession.open` adds `MemoryFiles` filled
+  from the APK by `CarriedApp`, so whatever a script writes is lost when the
+  process ends. `AppSession.appBounds()` grants files, the working
+  directory, the clock, windows and navigation. It marks clipboard, MIDI,
+  web, network, processes, environment and certificates unavailable.
+- The desktop's ports are put together in `Repl.hostServicesFor`
+  (`desktop/.../cli/Repl.java`). Several of the adapters it uses already live
+  in the core, and `checkCoreForAndroid` finds nothing in them that Android
+  35 lacks:
+  - `FileSystemPort`, the confined filesystem, with `findScriptPath` for
+    decision 69's home;
+  - `JavaSocket`, the network, whose threads are platform daemon threads
+    (`DaemonThreads`), not virtual ones;
+  - `JavaSecureTransport` (TLS on `SSLEngine`), `JavaCertificateAuthority`
+    and `JavaTrustAnchors`;
+  - `ProcessEnvironment` and `ConfinedEnvironment`;
+  - `ThreadTasks` and `WakeablePause`;
+  - `Uts46`, IDNA, which `JavaSocket` uses for host names. It is 489 lines,
+    plus a 55 KB `Uts46Tables`.
+
+  The adapters that live in `desktop/` are `JavaImage` (ImageIO, Java2D),
+  `JavaClipboard` (AWT), `JavaProcess` and `JavaMachine`.
+- On ART, `JavaTrustAnchors.jdksOwn()` asks `TrustManagerFactory` for the
+  default store. On Android that is the system's CA store, which is the
+  trust decision 65 wants. Its `platformsOwn()` reads `/etc/ssl` bundles that
+  Android does not have, and finds none.
+- The device's functional suite already drives TLS through
+  `JavaSecureTransport` on Conscrypt, Android's own TLS: those tests pass on
+  the emulators. One is kept off the device because BoringSSL will not serve
+  a chain out of order.
+- `android/app/src/androidTest/resources/not-on-a-device.txt` lists 31
+  tests, and `not-on-a-device-in-rebols-suite.txt` 49 suite entries.
+  - Of the 31, five are 2c's: three need a picture codec, one starts a
+    program, one signals a process.
+  - Among the suite entries, the groups headed "Until 2c, Android has no
+    picture codec" and "system/options/boot ... until 2c" are 2c's.
+  - The rest stay off the device for reasons 2c does not change: CALL, the
+    repository's files, `com.sun.net.httpserver`, `ProcessHandle`, ArchUnit.
+- `TheAndroidPlatform` (the device's `PlatformUnderTest`) answers
+  `ImagePort.none()` and `ProcessPort.none()`.
+- The manifest already asks for `android.permission.INTERNET`.
+
+**The ports, and what each becomes.**
+
+| Port | Android's, after 2c |
+| --- | --- |
+| files | `FileSystemPort.rootFileSystem` at a folder in `Context.getFilesDir()`, so the app's own storage, private to it, is the script's whole world. Home is the root `/`, by decision 69's rule. The carried files stay readable beneath it (step 1 settles how). |
+| carried files | `ClasspathFiles`, as now |
+| digests | `JvmDigests`, as now |
+| environment | Confined (step 1 settles what it holds) |
+| images | A new `AndroidImage`. It decodes with `ImageDecoder`/`BitmapFactory`: PNG, JPEG, GIF, BMP, and WebP and HEIF besides. It encodes PNG, JPEG and WebP with `Bitmap.compress`. BMP is written by hand as `JavaImage` writes it, the writer moved to the core so both share it. A GIF's later frames and GIF encoding are step 1's to settle. |
+| console | None. Printing goes to logcat, as 2b made it. |
+| windows, screen | 2b's `OneSurfaceScreen`, as now |
+| pause | `WakeablePause`, so a network event wakes WAIT as on the desktop |
+| processes | `ProcessPort.none()`. CALL refuses as a page's does, and `system/options/boot` is none. |
+| machine | `AndroidMachine`, as now |
+| network | `JavaSocket` |
+| certificate authority | `JavaCertificateAuthority`, the system's CA store |
+| secure transport | `JavaSecureTransport`, which on Android is Conscrypt |
+| http | Empty, as on the desktop: `http://` goes through `prot-http.reb` over the network port |
+| clipboard | A new `AndroidClipboard` on `ClipboardManager`. Android 10 and later give the clipboard only to the app in focus, so a read in the background answers none. Android 13 and later show their own notice on a copy. |
+| MIDI | None, as on a page |
+| tasks | `ThreadTasks`, with a factory that builds each task's ports as the app's own |
+
+**The steps, in order.**
+
+1. **The owner's questions, before anything is built.** Put them to the
+   owner with `AskUserQuestion`, each with a recommendation, and write the
+   answers into a new decision 77 ("Android's ports"):
+   - *Printing on the screen.* The first goal text said a console view;
+     decision 64 says an app owns its whole screen. Recommend: no, logcat
+     only. A script that wants a console draws one.
+   - *The carried files under the app's storage.* Either the store lies over
+     the APK's files, so reads fall through to them and an app update brings
+     new ones; or they are copied in on the first run of each version.
+     Recommend the overlay, as a `FilePort` in the core that layers a
+     writable port over a read-only one, which the page's store could use too.
+   - *The environment.* Either confined, with `HOME` answering the root and
+     nothing of the device's own environment; or none. Recommend confined,
+     so `sys-start.reb`'s `get-env "HOME"` agrees with `system/options/home`
+     as decision 69 asks.
+   - *GIF.* `ImageDecoder` reads an animated GIF as a drawable, not as
+     frames. The choice is between the first frame only, with a later frame
+     refused, and a GIF decoder in the core. GIF encoding has no Android
+     API, so the same choice applies: refuse, or an encoder in the core.
+     Recommend: refuse both for now, each listed in `docs/standing.md` as a
+     difference from the desktop. Check first what Rebol's suite asserts
+     about GIF frames and encoding, and say so in the question.
+   - *IDNA.* The first goal text moved IDNA to `android.icu.text.IDNA`, so
+     that `Uts46` stays the desktop's. Measure what that saves in the APK and
+     whether ICU's answers match `Uts46`'s on the cases its tests hold, and
+     recommend from the numbers. Keeping `Uts46` everywhere is one answer to
+     fewer, and is the likely recommendation.
+
+2. **The spec.** A section of `spec/android.allium` for the ports, one rule
+   a port, in the shape of its existing rules:
+   - the store is private and survives the process;
+   - home is `/`;
+   - the carried files read beneath the store;
+   - a picture decodes and encodes in each format the table names, and is
+     refused in the others;
+   - the clipboard answers none from the background;
+   - CALL refuses by the name a page's uses;
+   - a socket and a TLS connection reach a local server;
+   - the trust is the system's.
+
+   Commit the spec and this goal's plan as the stage's plan commit
+   (`Plan goal 2c: Android's ports`), as 2b's step 0 did.
+
+3. **Failing tests, then the adapters, one port at a time.** Files and the
+   environment first, because the rest write files. Then pictures, the
+   clipboard, the network and TLS together, tasks last. Each port gets:
+   - an `androidUnitTests` test of the adapter alone, in
+     `org.jebol.android.unit`;
+   - an `androidFunctionalTests` test through REBOL, an interpreter on the
+     app's ports, in `org.jebol.android.functional`;
+   - its rule in the spec.
+
+   The adapters go in `android/host`, beside `AndroidMachine`. Anything
+   moved to the core, such as the BMP writer or the layered `FilePort`, keeps
+   its JVM tests passing and gains one in the core's own suites. Try a fix
+   on the device in minutes with
+   `-Pclasses=org.jebol.android.functional.TheClass`.
+
+4. **The app takes them.** `AndroidHost.ports()` builds the full set from a
+   `Context`. `AppSession` stops building `MemoryFiles`.
+   `AppSession.appBounds()` grants what is now supplied, the same services
+   the command line grants but processes, MIDI and the web. Give `TheAndroidPlatform` the same ports, so the
+   core's own functional tests run on them on the device.
+
+5. **Bring the tests back.** Remove from the two `not-on-a-device` lists
+   every entry 2c answers: the picture codec's, `system/options/boot`'s, and
+   any other whose reason is now gone. Read each reason, and do not just
+   delete the "until 2c" lines. An entry that still cannot run gets its
+   reason rewritten to say why. Tests a GIF refusal keeps off the device are
+   listed, with the decision named.
+
+6. **End to end.** Two new tests in `android/endtoend`:
+   - "what a script saves is there after Android ends the app": write a
+     file, end the process, relaunch, read it back;
+   - "a script reaches a server on the host": a local server the test
+     starts, reached from the emulator at `10.0.2.2`, over `tcp://`, and
+     over `tls://` with a root the test supplies.
+
+   The second runs on the emulator only, and is skipped by assumption on a
+   phone, where 10.0.2.2 is not this machine.
+
+7. **The docs.** `docs/android-port.md` gets a "Ports" section: the table
+   above as built, and what differs from the desktop with each reason.
+   `docs/standing.md` lists each difference: GIF, the clipboard in the
+   background, CALL. `using-jebol.md` says what an Android app's script may
+   reach.
+
+8. **The gates, then the phone.** Run `./gradlew allTests` for anything
+   moved into the core, then `./gradlew -p android androidTests`. Then run
+   `scripts/android-on-my-phone.sh --with-tests` on the owner's phone, and
+   ask the owner to try a script that saves a file and reaches the network.
+   Commit after both gates pass.
+
+**Done when** each port in the table has an `android.allium` rule, an
+`androidUnitTests` test of its adapter and an `androidFunctionalTests` test
+through REBOL; the app is given every port in the table; the `not-on-a-device`
+lists hold nothing whose reason was 2c; both new end-to-end tests pass on
+the emulator; and `androidTests` and `allTests` pass.
 
 #### 2d. Touch in the 2010 GUI
 
