@@ -187,7 +187,7 @@ plugged into this machine for the closing run.
 | carried files | `ClasspathFiles`, as now |
 | digests | `JvmDigests`, as now |
 | environment | Confined (step 1 settles what it holds) |
-| images | A new `AndroidImage`. It decodes with `ImageDecoder`/`BitmapFactory`: PNG, JPEG, GIF, BMP, and WebP and HEIF besides. It encodes PNG, JPEG and WebP with `Bitmap.compress`. BMP is written by hand as `JavaImage` writes it, the writer moved to the core so both share it. A GIF's later frames and GIF encoding are step 1's to settle. |
+| images | A new `AndroidImage`. It decodes with `ImageDecoder`/`BitmapFactory`: PNG, JPEG, GIF, BMP, and WebP and HEIF besides. It encodes PNG, JPEG and WebP with `Bitmap.compress`. BMP is written by hand as `JavaImage` writes it, the writer moved to the core so both share it. GIF, every frame and encoding, goes through a GIF codec in the core (decision 77). |
 | console | None. Printing goes to logcat, as 2b made it. |
 | windows, screen | 2b's `OneSurfaceScreen`, as now |
 | pause | `WakeablePause`, so a network event wakes WAIT as on the desktop |
@@ -217,13 +217,10 @@ plugged into this machine for the closing run.
      nothing of the device's own environment; or none. Recommend confined,
      so `sys-start.reb`'s `get-env "HOME"` agrees with `system/options/home`
      as decision 69 asks.
-   - *GIF.* `ImageDecoder` reads an animated GIF as a drawable, not as
-     frames. The choice is between the first frame only, with a later frame
-     refused, and a GIF decoder in the core. GIF encoding has no Android
-     API, so the same choice applies: refuse, or an encoder in the core.
-     Recommend: refuse both for now, each listed in `docs/standing.md` as a
-     difference from the desktop. Check first what Rebol's suite asserts
-     about GIF frames and encoding, and say so in the question.
+   - *GIF* is settled: every frame decodes and GIF encodes on Android, as on
+     the desktop (decision 77, the owner, 2026-11-17). Android has no API
+     for either, since `ImageDecoder` gives an animated GIF as a drawable and
+     not as frames, so the core carries a GIF codec of its own (step 3).
    - *IDNA.* The first goal text moved IDNA to `android.icu.text.IDNA`, so
      that `Uts46` stays the desktop's. Measure what that saves in the APK and
      whether ICU's answers match `Uts46`'s on the cases its tests hold, and
@@ -254,6 +251,32 @@ plugged into this machine for the closing run.
      app's ports, in `org.jebol.android.functional`;
    - its rule in the spec.
 
+   **The GIF codec** (decision 77) is the core's own Java, written from the
+   GIF89a specification. Nothing is ported from a copyleft decoder
+   (licensing is strict). The CLAUDE.md rules for byte-exact ports apply:
+   - *The reference is built first.* The reference is `JavaImage`. A desktop
+     test decodes every frame of every GIF in a set through both and asserts
+     the same pixels.
+   - *The set is a list of boundaries, not a count of files.* Each of these
+     is listed with the file that covers it, or `(none)`:
+     - LZW minimum code sizes 2 to 8, the code width growing to 12, a clear
+       code, and the table full at 4,096 with no clear after it;
+     - interlaced and not;
+     - a global palette, a local one, and neither;
+     - transparency;
+     - disposal methods 0 to 3, a frame smaller than the screen and offset
+       within it;
+     - one frame, two, and a hundred.
+   - *Decoding composes frames as `JavaImage.composeEveryEarlierFrame` does*,
+     so `frame` means the same picture on both.
+   - *Encoding answers the same when decoded back.* A picture of 256 colours
+     or fewer is written against its own palette as `JavaImage` writes it,
+     and decodes back to the same pixels. Above 256, `JavaImage` leaves the
+     choice to ImageIO's own quantiser, which a core codec cannot match. So
+     the desktop's `JavaImage` moves to the core codec for GIF too, and one
+     quantiser, chosen and documented in `docs/android-port.md`, answers on
+     every platform. The web's GIF follows if it has one of its own.
+
    The adapters go in `android/host`, beside `AndroidMachine`. Anything
    moved to the core, such as the BMP writer or the layered `FilePort`, keeps
    its JVM tests passing and gains one in the core's own suites. Try a fix
@@ -270,8 +293,7 @@ plugged into this machine for the closing run.
    every entry 2c answers: the picture codec's, `system/options/boot`'s, and
    any other whose reason is now gone. Read each reason, and do not just
    delete the "until 2c" lines. An entry that still cannot run gets its
-   reason rewritten to say why. Tests a GIF refusal keeps off the device are
-   listed, with the decision named.
+   reason rewritten to say why.
 
 6. **End to end.** Two new tests in `android/endtoend`:
    - "what a script saves is there after Android ends the app": write a
@@ -285,8 +307,8 @@ plugged into this machine for the closing run.
 
 7. **The docs.** `docs/android-port.md` gets a "Ports" section: the table
    above as built, and what differs from the desktop with each reason.
-   `docs/standing.md` lists each difference: GIF, the clipboard in the
-   background, CALL. `using-jebol.md` says what an Android app's script may
+   `docs/standing.md` lists each difference: the clipboard in the
+   background, and CALL. `using-jebol.md` says what an Android app's script may
    reach.
 
 8. **The gates, then the phone.** Run `./gradlew allTests` for anything

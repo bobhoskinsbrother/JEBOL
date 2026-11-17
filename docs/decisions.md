@@ -3714,3 +3714,12 @@ and an app owns its whole screen (decision 64). A script that wants text on
 its screen draws it. The owner may come back to this when layout across
 every platform is taken up, as Flutter does layout; until then nothing
 here plans for a console view.
+
+**GIF works on Android as on the desktop: every frame decodes, and a picture
+saves as GIF.** Android gives no frame-by-frame GIF decoding, since
+`ImageDecoder` hands an animated GIF back as a drawable, and it has no GIF
+encoder at all. So the core carries a GIF codec of its own, written from the
+GIF89a specification. Refusing a later frame, or refusing to save, would have
+been a difference from the desktop that a script cannot detect in advance.
+The desktop takes the same codec for GIF, so one quantiser decides a picture
+of more than 256 colours everywhere, where ImageIO's own decided it before.
