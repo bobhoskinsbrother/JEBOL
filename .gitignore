@@ -28,6 +28,7 @@
 /android/buildSrc/.gradle/
 /android/buildSrc/.kotlin/
 /android/local.properties
+/local.properties
 
 # Every gate run's test results and summary, one timestamped folder each,
 # written by `archiveTestResults` at the end of `allTests`. Outside build/ so

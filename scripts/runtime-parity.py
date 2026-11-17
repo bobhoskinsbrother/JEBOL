@@ -40,11 +40,21 @@ import os
 import subprocess
 import sys
 import collections
+import glob
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRATCH = os.path.join(REPO, "build", "runtime-parity")
-JAVA = os.path.expanduser(
-    "~/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.4+7/Contents/Home/bin/java")
+
+
+def java_21():
+    provisioned = os.path.expanduser("~/.gradle/jdks/eclipse_adoptium-21-*")
+    found = sorted(glob.glob(provisioned + "/bin/java") + glob.glob(provisioned + "/*/Contents/Home/bin/java"))
+    if not found:
+        sys.exit("No Java 21 in ~/.gradle/jdks; any ./gradlew build provisions one.")
+    return found[-1]
+
+
+JAVA = java_21()
 
 ASKING = r"""
 ask: func [w [word!] /local v t s p] [

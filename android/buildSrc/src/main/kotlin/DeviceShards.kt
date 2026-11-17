@@ -192,6 +192,7 @@ abstract class DeviceShards : DefaultTask() {
                 xml.append("  <system-err>${escape("the shard never finished: $ending")}</system-err>\n")
             }
             xml.append("</testsuite>\n")
+            folder.mkdirs()
             File(folder, "TEST-shard-$index.xml").writeText(xml.toString())
         }
 

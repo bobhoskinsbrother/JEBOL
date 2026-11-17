@@ -265,6 +265,9 @@ demonstrates it rather than a comment that warns about it.
 
 ## 10. Java 25, not 21
 
+**Reversed entirely, 2026-11-17 (decision 76): every JVM the build uses is
+21.**
+
 **Reversed for what runs, 2026-11-14 (decision 73).** Every source set is
 compiled at `release 21` and the jar runs on any Java from 21; the launcher
 refuses 20 and older. The toolchain stays 25 (decision 55). The reason below
@@ -2378,6 +2381,9 @@ daemon opens no socket at all.
 
 ## 55. The toolchain is 25 because ArchUnit reads a 26's classes as nothing
 
+**Amended 2026-11-17 (decision 76): the toolchain is 21.** The ArchUnit ceiling
+below still holds for anyone raising it.
+
 **Amended 2026-11-14 (decision 73): the project's level is 21, the toolchain
 stays 25.** ArchUnit caps the class files at 25's and puts no floor under
 them, so compiling at `release 21` costs it nothing. The Foreign Function and
@@ -3386,7 +3392,8 @@ replacing every one. Taken knowing it leaves most phones out today.
 
 **The project's level is Java 21.** The core already compiles at `release
 21` for TeaVM, so the language JEBOL is written in is 21's; the project says
-so, and Android's compiler reads it. The toolchain stays 25 (decision 55).
+so, and Android's compiler reads it. The toolchain stays 25 (decision 55);
+decision 76 takes it to 21.
 
 **One way of drawing, still.** Building Android's screen from its own
 widgets was considered, since Android's toolkit is close to Swing's, and set
@@ -3652,3 +3659,46 @@ phone over USB and leaves the app installed to be used by hand.
 on a turn, which would restart the script; keeping the places behind the
 saved one, which would need the whole history in the saved state for a case
 Android rarely reaches; and a `com.android.test` APK in the app's process.
+
+## 76. Every JVM the build uses is 21, and AGP is the IDE's newest
+
+Owner's decisions, 2026-11-17, during goal 2b.
+
+**One Java, 21, for everything the build runs.** The toolchain that compiles
+every source set, the launcher every test runs on (already 21), the launcher
+for `checkCoreForAndroid`, and Gradle's own daemon, which
+`gradle/gradle-daemon-jvm.properties` and
+`android/gradle/gradle-daemon-jvm.properties` pin to 21 (written by
+`./gradlew updateDaemonJvm --jvm-version=21`), so the JDK on the PATH no
+longer decides it. The IDE's Gradle JVM and project SDK are 21 too. Decision
+73 had made 21 the project's level and kept a 25 toolchain only to write it;
+a second JDK on every machine bought nothing.
+
+**What was checked before the switch.** The five TLS probes in
+`src/testFixtures/resources/tls/probe/` -- the JDK's TLS defaults with and
+without the legacy algorithms disabled, `CertPathBuilder`'s reasons, JSSE's
+chain order and the resolver's loading -- give the same answers on 21.0.13
+as their transcripts record from 25.0.4, apart from the version line, so the
+transcripts stand.
+
+**`AndroidApiGaps` reads class files itself.** It used `java.lang.classfile`,
+final only in Java 24, so on 21 it no longer compiled and the first Android
+gate after the switch failed at `checkCoreForAndroid`. It now walks the
+constant pool, fields and methods with a reader of its own, about a hundred
+lines and no dependency. Its report on the core jar and on the shipped jar
+(90 missing classes, 4 missing members) is identical, line for line, to the
+old checker's run on 25.
+
+**What stays 25.** `LaunchingOnAJavaTooOldEndToEndTest` launches the shipped
+jar on 21 and on 25, because a user may run either: that is the product's
+reach, not a JVM the build uses. Its 17 checks the refusal.
+
+**AGP is 9.3.0, the newest the IDE's Android plugin reads.** IntelliJ
+2026.3's Android plugin (263.7307.200) refuses to sync AGP 9.5.1 ("Latest
+supported version is AGP 9.3.0"), and the Marketplace has nothing newer, so
+`android/build.gradle.kts` dropped to 9.3.0 rather than leave the IDE unable
+to read the Android modules. Raise it when the plugin does.
+
+**Rejected:** keeping 25 as the toolchain with 21 everywhere else, which is
+where the build stood and what made two JDKs necessary; keeping AGP 9.5.1
+and an IDE that cannot see `android/`.

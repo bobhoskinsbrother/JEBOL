@@ -21,18 +21,17 @@ group = "org.jebol"
 version = "3.22.5"
 
 java {
-    // The toolchain is 25, the current LTS, and every source set is compiled
-    // at release 21 (the JavaCompile block below), so the jar runs on any
-    // Java from 21 and nothing newer than 21 creeps in on any platform:
-    // Android's ART and TeaVM both stop at 21. Decision 73.
+    // Every JVM the build uses is 21: the toolchain, the tests' launcher and
+    // the daemon (gradle/gradle-daemon-jvm.properties). Android's ART and
+    // TeaVM both stop at 21, so nothing newer creeps in on any platform.
+    // Decision 76.
     //
-    // And 25 rather than 26, which this reader will be tempted by: ArchUnit
-    // 1.4.1 carries an ASM that stops at class file 69, so a 26 compiles a
-    // test tree that ClassFileImporter reads as empty and every rule over it
-    // passes saying nothing. EveryPropertyIsActuallyRunTest's guards caught
-    // it; decision 55 has the rest.
+    // A reader raising this should know ArchUnit 1.4.1 carries an ASM that
+    // stops at class file 69, so a 26 compiles a test tree that
+    // ClassFileImporter reads as empty and every rule over it passes saying
+    // nothing. EveryPropertyIsActuallyRunTest's guards caught it; decision 55.
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -315,7 +314,7 @@ tasks.register<Exec>("checkCoreForAndroid") {
     inputs.file(script)
     outputs.file(report)
     executable(
-        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
             .get().executablePath.asFile.path,
     )
     args(
