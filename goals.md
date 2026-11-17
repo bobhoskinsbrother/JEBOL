@@ -193,7 +193,7 @@ plugged into this machine for the closing run.
 | pause | `WakeablePause`, so a network event wakes WAIT as on the desktop |
 | processes | `ProcessPort.none()`. CALL refuses as a page's does, and `system/options/boot` is none. |
 | machine | `AndroidMachine`, as now |
-| network | `JavaSocket` |
+| network | `JavaSocket`, given Android's host names (`android.icu.text.IDNA`) where the desktop's is given `Uts46` |
 | certificate authority | `JavaCertificateAuthority`, the system's CA store |
 | secure transport | `JavaSecureTransport`, which on Android is Conscrypt |
 | http | Empty, as on the desktop: `http://` goes through `prot-http.reb` over the network port |
@@ -221,11 +221,9 @@ plugged into this machine for the closing run.
      the desktop (decision 77, the owner, 2026-11-17). Android has no API
      for either, since `ImageDecoder` gives an animated GIF as a drawable and
      not as frames, so the core carries a GIF codec of its own (step 3).
-   - *IDNA.* The first goal text moved IDNA to `android.icu.text.IDNA`, so
-     that `Uts46` stays the desktop's. Measure what that saves in the APK and
-     whether ICU's answers match `Uts46`'s on the cases its tests hold, and
-     recommend from the numbers. Keeping `Uts46` everywhere is one answer to
-     fewer, and is the likely recommendation.
+   - *IDNA* is settled: Android uses its own `android.icu.text.IDNA`, and
+     `Uts46` becomes the desktop's (decision 77, the owner, 2026-11-17).
+     Step 3 does the work.
 
 2. **The spec.** A section of `spec/android.allium` for the ports, one rule
    a port, in the shape of its existing rules:
@@ -276,6 +274,21 @@ plugged into this machine for the closing run.
      the desktop's `JavaImage` moves to the core codec for GIF too, and one
      quantiser, chosen and documented in `docs/android-port.md`, answers on
      every platform. The web's GIF follows if it has one of its own.
+
+   **Host names** (decision 77). IDNA becomes a port, an interface in
+   `org.jebol.domain.host` that turns a host name into its ASCII form or
+   refuses it, and `JavaSocket` takes one where it calls
+   `Uts46.toAsciiHostName` today, which is its only caller.
+   - `Uts46`, `Uts46Tables` and `Uts46Test` move to `desktop/`, and the
+     desktop's ports give `JavaSocket` the `Uts46` one.
+   - Android gets an `AndroidHostNames` on `android.icu.text.IDNA`, with
+     UTS #46's nontransitional processing and the same flags `Uts46`
+     follows.
+   - `Uts46Test`'s cases become a fixture both platforms run: the desktop
+     against `Uts46`, and an `androidUnitTests` test against ICU. A case
+     where ICU answers differently is listed in `docs/android-port.md`
+     with both answers. Check that `checkCoreForAndroid` no longer sees
+     `Uts46`, and record what the APK loses.
 
    The adapters go in `android/host`, beside `AndroidMachine`. Anything
    moved to the core, such as the BMP writer or the layered `FilePort`, keeps

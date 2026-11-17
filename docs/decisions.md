@@ -3723,3 +3723,11 @@ GIF89a specification. Refusing a later frame, or refusing to save, would have
 been a difference from the desktop that a script cannot detect in advance.
 The desktop takes the same codec for GIF, so one quantiser decides a picture
 of more than 256 colours everywhere, where ImageIO's own decided it before.
+
+**Host names go through the platform's own IDNA.** On Android that is
+`android.icu.text.IDNA`, as the phone's other apps use it. `Uts46`, JEBOL's
+own UTS #46 with its 55 KB of tables, becomes the desktop's alone and leaves
+the core. IDNA becomes a port that `JavaSocket` is handed, the same split
+decision 65 made for TLS: each platform's own, behind a port the domain
+names. Where ICU answers a case differently from `Uts46`,
+`docs/android-port.md` lists the case with both answers.
