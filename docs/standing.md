@@ -6,7 +6,7 @@ here and nowhere else. `README.md`, `docs/porting-guide.md`, `using-jebol.md` an
 
 ## The measures
 
-Measured on 2026-10-12, the jar, APK and ART rows on 2026-11-16, the web build row on 2026-11-06,
+Measured on 2026-10-12, the jar, APK, ART and phone rows on 2026-11-18, the web build row on 2026-11-06,
 and the timing rows on 2026-10-13. The timing rows were taken on an arm64 Mac; the same two figures on
 an Intel one read about 122ms median and 187ms p95, so compare a change against
 a baseline from the same machine rather than against the row.
@@ -19,11 +19,11 @@ a baseline from the same machine rather than against the row.
 | `scripts/error-parity.py`     | 120 of Rebol's 142 error ids can be raised                                                                                                                                                                        |
 | `PortingBacklogTest`          | reports `init-schemes` missing, wrongly -- see goal 5                                                                                                                                                             |
 | `corpus/`                     | 1,140 of 1,140 entries pass                                                                                                                                                                                       |
-| the shipped jar               | 4,185 KB, of which the 2010 GUI is 75 KB before compression and the UTS #46 tables 56 KB, and no dependencies; it carries the nine of R3's extensions JEBOL ports (decision 58) and R3's six Bulk compressors (decision 74) |
-| the core jar                  | 2,939 KB, what every platform carries and Android's APK takes; the nine extensions' jars beside it are 583 KB together, and the six optional compressors' 459 KB, Brotli's 373 KB of it                     |
-| the Android APK               | 5,856 KB for the app (debug), which carries the core, `examples/r3-gui` and none of the optional compressors; its test APK 37,472 KB, the end-to-end APK 19,120 KB                                           |
-| the app on a phone            | Galaxy S24 Ultra, Android 16 (2026-11-17, `scripts/android-on-my-phone.sh`): `am start` 215 ms, first picture 2,819 ms after launch, tap to repaint 77 ms, a frame while dragging 49 ms (medians); the owner: "pretty quick" |
-| the suites on ART             | 25,601 cases, none failing, 74 skipped with why: the JVM's 26,834 functional cases less the corpus, the programs, picture codecs and JDK-only classes `docs/android-port.md` lists; 69 minutes on two emulators |
+| the shipped jar               | 4,213 KB, of which the 2010 GUI is 75 KB before compression and the UTS #46 tables 56 KB, and no dependencies; it carries the nine of R3's extensions JEBOL ports (decision 58) and R3's six Bulk compressors (decision 74) |
+| the core jar                  | 2,934 KB, what every platform carries and Android's APK takes, with the GIF codec in it and the UTS #46 tables out of it (decision 77); the nine extensions' jars beside it are 583 KB together, and the six optional compressors' 459 KB, Brotli's 373 KB of it                     |
+| the Android APK               | 6,017 KB for the app (debug), which carries the core, `examples/r3-gui` and none of the optional compressors; its test APK 47,742 KB, the end-to-end APK 10,876 KB                                           |
+| the app on a phone            | Galaxy S24 Ultra, Android 16 (2026-11-18, `scripts/android-on-my-phone.sh`): `am start` 202 ms, first picture 2,938 ms after launch, tap to repaint 62 ms, a frame while dragging 47 ms (medians); the owner, 2026-11-17: "pretty quick" |
+| the suites on ART             | 25,734 cases, none failing, 42 skipped with why: the JVM's 26,902 functional cases less the corpus, the programs and JDK-only classes `docs/android-port.md` lists, with Android's own 30; 73 minutes on two emulators, the unit and end-to-end suites included |
 | the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
@@ -60,6 +60,19 @@ a baseline from the same machine rather than against the row.
   at allow. Links that stay inside are followed. `AFileIsJudgedByWhereItReallyLeads`
   in `spec/natives.allium` and `ALinkLeavingTheRootIsRefused` in
   `spec/embed.allium`.
+- **A GIF's frame is the frames before it composed by their disposal methods,
+  and a GIF of more than 256 colours is dithered, on every platform, on
+  purpose.** The core carries its own GIF codec (decision 77), so frame 2 of
+  an animation is what a browser shows of it; R3's Windows and macOS codecs
+  hand back each frame on its own. Rebol's suite asserts three frames of an
+  animation whose frames all keep what came before, and those agree.
+- **An Android app's script cannot start a program, reads the clipboard only
+  while the app is in front, and cannot send plain http where Android's
+  policy forbids it, on purpose.** CALL refuses as a page's does and
+  `system/options/boot` is none; a clipboard read from the background is
+  none; `read http://` to a host the app's network security config does not
+  name is `access no-connect` naming the policy. Decision 77 and
+  `docs/android-port.md`, "Ports".
 - **An app has a history, and `system/catalog/event-types` has 49 types where
   R3 has 47, on purpose.** `back` and `forward` come after the C's last, so no
   index the C fixed moves; `go`, `go-back`, `go-forward`, `current-place` and

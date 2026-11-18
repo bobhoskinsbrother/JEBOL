@@ -1,7 +1,6 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.CertificateAuthority;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.SecureTransport;
@@ -49,7 +48,7 @@ class SecureConnectionsFromTheSourceTest {
 
     private Interpreter makeAnInterpreter(CertificateAuthority authority, Bounds bounds) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(new JavaSocket()).withCertificateAuthority(authority),
+                AnInterpreter.standardPorts().withNetwork(AnInterpreter.socket()).withCertificateAuthority(authority),
                 printed::append,
                 bounds);
     }
@@ -132,7 +131,7 @@ class SecureConnectionsFromTheSourceTest {
             try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), TLS_1_3)) {
                 Interpreter withoutTransport = Interpreter.createOn(
                         AnInterpreter.standardPorts()
-                                .withNetwork(new JavaSocket())
+                                .withNetwork(AnInterpreter.socket())
                                 .withCertificateAuthority(trustingTheTestRoot())
                                 .withSecureTransport(SecureTransport.none()),
                         printed::append,

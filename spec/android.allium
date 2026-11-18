@@ -436,7 +436,9 @@ rule TheEnvironmentIsTheAppsOwn {
 
 -- A picture decodes from PNG, JPEG, GIF, BMP, WebP and HEIF, and encodes to
 -- PNG, JPEG, WebP, BMP and GIF. Any other format is one the codec has not got,
--- and is refused as the desktop refuses one. GIF, both ways, is the core's own
+-- and is refused as the desktop refuses one. A picture's stored colours are
+-- what it decodes to: no gamma or colour profile is applied, as ImageIO and
+-- R3 apply none. GIF, both ways, is the core's own
 -- codec, so a frame is the same picture on every platform: the frames before
 -- it composed by their disposal methods (GIF89a), and a picture of more than
 -- 256 colours quantised by median cut with Floyd-Steinberg dithering.
@@ -462,8 +464,8 @@ rule AnotherPictureFormatIsRefused {
 }
 
 -- Android gives the clipboard only to the app in front. Read from the
--- background, it answers none, as an empty clipboard does; a write from the
--- background changes nothing.
+-- background, it answers none; read in front, an empty clipboard is an empty
+-- string, as on the desktop. A write is Android's to allow from anywhere.
 rule TheClipboardInTheBackgroundIsNone {
     when: the_script_reads_the_clipboard()
     requires: not the_app_is_in_front()
@@ -503,7 +505,9 @@ rule PlainHttpIsRefusedWhereAndroidsPolicyRefusesIt {
 }
 
 -- The certificates trusted are the system's; a debug build adds those the
--- user installed, so a developer can watch the app's HTTPS through a proxy.
+-- user installed, so a developer can watch the app's HTTPS through a proxy,
+-- and, for one launch, the roots its launch intent carries in the extra named
+-- trust, so a test can supply its own. A release build ignores the extra.
 rule TheTrustIsTheSystems {
     when: the_script_opens(tls, host, port)
 

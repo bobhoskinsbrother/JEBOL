@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.host.HostNames;
 import org.jebol.domain.host.NetworkPort;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** The network as the JDK already provides it, with nothing cached. */
 public final class JavaSocket implements NetworkPort {
@@ -36,16 +38,33 @@ public final class JavaSocket implements NetworkPort {
 
     private static final int LARGEST_WRITE_R3_SENDS_AT_ONCE = 32_000;
 
+    private final HostNames hostNames;
+    private final Predicate<String> cleartextAllowed;
     private final Runnable afterBytesLeave;
     private final WritesInFlight inFlight = new WritesInFlight(LONGEST_WAIT_FOR_A_PEERS_WRITE);
 
-    public JavaSocket() {
-        this(() -> {
+    public JavaSocket(HostNames hostNames) {
+        this(hostNames, anyHost -> true);
+    }
+
+    public JavaSocket(HostNames hostNames, Predicate<String> cleartextAllowed) {
+        this(hostNames, cleartextAllowed, () -> {
         });
     }
 
-    JavaSocket(Runnable afterBytesLeave) {
+    JavaSocket(HostNames hostNames, Runnable afterBytesLeave) {
+        this(hostNames, anyHost -> true, afterBytesLeave);
+    }
+
+    private JavaSocket(HostNames hostNames, Predicate<String> cleartextAllowed, Runnable afterBytesLeave) {
+        this.hostNames = hostNames;
+        this.cleartextAllowed = cleartextAllowed;
         this.afterBytesLeave = afterBytesLeave;
+    }
+
+    @Override
+    public boolean allowsCleartextTo(String hostName) {
+        return cleartextAllowed.test(hostName);
     }
 
     @Override
@@ -83,7 +102,7 @@ public final class JavaSocket implements NetworkPort {
     public Optional<String> asciiHostName(String hostName) {
         return hostName.chars().allMatch(each -> each < LAST_ASCII_PLUS_ONE)
                 ? Optional.of(hostName)
-                : Uts46.toAsciiHostName(hostName);
+                : hostNames.asciiHostName(hostName);
     }
 
     @Override

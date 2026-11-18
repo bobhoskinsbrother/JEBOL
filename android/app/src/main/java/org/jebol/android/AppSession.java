@@ -1,17 +1,23 @@
 package org.jebol.android;
 
+import android.content.Context;
+
 import org.jebol.adapter.android.AndroidHistory;
 import org.jebol.adapter.android.AndroidHost;
+import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.application.MemoryFiles;
 import org.jebol.application.OneSurfaceScreen;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ScreenEventType;
 
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class AppSession implements AutoCloseable {
@@ -26,32 +32,45 @@ public final class AppSession implements AutoCloseable {
         this.interpreter = interpreter;
     }
 
-    public static AppSession open(JebolView view, MemoryFiles files, OutputPort output,
-            Consumer<Boolean> backWanted) {
+    public static AppSession open(JebolView view, FilePort carriedApp, OutputPort output,
+            Consumer<Boolean> backWanted, BooleanSupplier inFront) {
 
+        return open(view, carriedApp, output, backWanted, inFront, Optional.empty());
+    }
+
+    public static AppSession open(JebolView view, FilePort carriedApp, OutputPort output,
+            Consumer<Boolean> backWanted, BooleanSupplier inFront, Optional<Path> rootsForThisLaunch) {
+
+        Context context = view.getContext().getApplicationContext();
+        AndroidHost.emptyTemporaryFolder(context);
         AndroidHistory history = new AndroidHistory(backWanted);
-        HostPorts ports = new AndroidHost().ports().withFiles(files);
+        Bounds bounds = appBounds();
+        HostPorts given = AndroidHost.appPorts(context, carriedApp, inFront, bounds);
+        HostPorts ports = rootsForThisLaunch
+                .map(roots -> given.withCertificateAuthority(JavaCertificateAuthority.trustingMachineAnd(roots)))
+                .orElse(given);
         OneSurfaceScreen screen = OneSurfaceScreen.showTo(view, history, ports.carriedFiles());
         view.reportTo(screen);
-        Interpreter interpreter = Interpreter.createOn(ports.withScreen(screen), output, appBounds());
+        Interpreter interpreter = Interpreter.createOn(ports.withScreen(screen), output, bounds);
         return new AppSession(history, screen, interpreter);
     }
 
-    static Bounds appBounds() {
+    public static Bounds appBounds() {
         return Bounds.standard()
                 .withoutTimeLimit()
+                .withMemoryCeiling(AndroidHost.memoryCeiling())
                 .grant(HostService.FILES)
                 .grant(HostService.WORKING_DIRECTORY)
+                .grant(HostService.ENVIRONMENT)
                 .grant(HostService.CLOCK)
                 .grant(HostService.WINDOWS)
                 .grant(HostService.NAVIGATION)
-                .markUnavailable(HostService.CLIPBOARD)
+                .grant(HostService.CLIPBOARD)
+                .grant(HostService.NETWORK)
+                .grant(HostService.CERTIFICATES)
                 .markUnavailable(HostService.MIDI)
                 .markUnavailable(HostService.WEB)
-                .markUnavailable(HostService.NETWORK)
                 .markUnavailable(HostService.PROCESSES)
-                .markUnavailable(HostService.ENVIRONMENT)
-                .markUnavailable(HostService.CERTIFICATES)
                 .calls("an Android app");
     }
 

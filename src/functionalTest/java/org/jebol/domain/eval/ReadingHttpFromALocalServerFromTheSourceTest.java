@@ -1,7 +1,6 @@
 package org.jebol.domain.eval;
 
 import com.sun.net.httpserver.HttpServer;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
@@ -68,7 +67,7 @@ class ReadingHttpFromALocalServerFromTheSourceTest {
 
     private static Interpreter reachingTheNetwork() {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(new JavaSocket()),
+                AnInterpreter.standardPorts().withNetwork(AnInterpreter.socket()),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.NETWORK)

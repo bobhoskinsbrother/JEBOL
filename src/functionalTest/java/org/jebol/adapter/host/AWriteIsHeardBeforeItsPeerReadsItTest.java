@@ -3,6 +3,7 @@ package org.jebol.adapter.host;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,7 +65,7 @@ class AWriteIsHeardBeforeItsPeerReadsItTest {
     void theWroteComesFirst(@TempDir Path root) throws IOException {
         String script = readResource("/tls/listening/echo.r3");
         String whatRPrinted = readResource("/tls/listening/echo.txt");
-        Interpreter interpreter = interpreterWithSocket(new JavaSocket(this::lingerAfterTheEcho), root);
+        Interpreter interpreter = interpreterWithSocket(new JavaSocket(PlatformUnderTest.current().hostNames(), this::lingerAfterTheEcho), root);
 
         interpreter.defineNewWordsIn(script);
         interpreter.run(script);

@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaSecureTransport;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.OutputPort;
@@ -37,6 +38,10 @@ public final class AnInterpreter {
             return bounds;
         }
         return bounds.withTimeLimit(limit.multipliedBy(factor));
+    }
+
+    public static JavaSocket socket() {
+        return new JavaSocket(PlatformUnderTest.current().hostNames());
     }
 
     public static HostPorts standardPorts() {

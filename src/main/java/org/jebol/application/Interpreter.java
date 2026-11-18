@@ -48,6 +48,7 @@ public final class Interpreter {
     private final Evaluator evaluator;
     private final RebolLibraryLoader library;
     private final Bounds bounds;
+    private final HeapInUse heapInUse;
     private final HostPorts ports;
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
     private final AtomicBoolean escapeRequested = new AtomicBoolean();
@@ -66,6 +67,7 @@ public final class Interpreter {
         Boot boot = Boot.makeStandard(
                 this.ports.machine(), this.ports.digests(), rebolFiles, duringBoot);
         this.bounds = bounds;
+        this.heapInUse = bounds.hasMemoryCeiling() ? new HeapInUse(bounds.memoryCeiling()) : null;
         SystemObject system = boot.start();
         this.systemContext = system.lib();
         this.systemPaths = new SystemPaths(systemContext);
@@ -86,6 +88,11 @@ public final class Interpreter {
                     @Override
                     public boolean takeEscape() {
                         return escapeRequested.getAndSet(false);
+                    }
+
+                    @Override
+                    public boolean isPastMemoryCeiling() {
+                        return heapInUse != null && heapInUse.isOver();
                     }
                 },
                 bounds.checkEvery());

@@ -1,8 +1,11 @@
 package org.jebol.android;
 
 import org.jebol.adapter.android.AndroidHost;
+import org.jebol.adapter.android.AndroidHostNames;
+import org.jebol.adapter.android.AndroidImage;
 import org.jebol.adapter.android.AndroidMachine;
 import org.jebol.application.PlatformUnderTest;
+import org.jebol.domain.host.HostNames;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.MachinePort;
@@ -37,7 +40,12 @@ public final class TheAndroidPlatform implements PlatformUnderTest {
 
     @Override
     public ImagePort images() {
-        return ImagePort.none();
+        return new AndroidImage();
+    }
+
+    @Override
+    public HostNames hostNames() {
+        return new AndroidHostNames();
     }
 
     @Override

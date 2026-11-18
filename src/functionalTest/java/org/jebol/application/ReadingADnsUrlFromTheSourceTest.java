@@ -1,6 +1,5 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
 import org.jebol.domain.host.OutputPort;
@@ -122,25 +121,25 @@ class ReadingADnsUrlFromTheSourceTest {
         @Test
         @DisplayName("localhost is 127.0.0.1, as r3 answers")
         void localhost() {
-            assertThat(answerTo(new JavaSocket(), "read dns://localhost")).isEqualTo("127.0.0.1");
+            assertThat(answerTo(AnInterpreter.socket(), "read dns://localhost")).isEqualTo("127.0.0.1");
         }
 
         @Test
         @DisplayName("127.0.0.1 is named, as r3 answers with a string")
         void resolvesTheLoopback() {
-            assertThat(answerTo(new JavaSocket(), "string? read dns://127.0.0.1")).isEqualTo("#(true)");
+            assertThat(answerTo(AnInterpreter.socket(), "string? read dns://127.0.0.1")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("this machine has a name")
         void namesThisMachine() {
-            assertThat(answerTo(new JavaSocket(), "string? read dns://")).isEqualTo("#(true)");
+            assertThat(answerTo(AnInterpreter.socket(), "string? read dns://")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a name under .invalid, which no resolver answers, is none")
         void answersNoneForAnInvalidName() {
-            assertThat(answerTo(new JavaSocket(), "read dns://nonexistent.invalid")).isEqualTo("_");
+            assertThat(answerTo(AnInterpreter.socket(), "read dns://nonexistent.invalid")).isEqualTo("_");
         }
     }
 }

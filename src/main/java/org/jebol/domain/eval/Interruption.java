@@ -23,6 +23,11 @@ public interface Interruption {
         return false;
     }
 
+    /** Whether the heap holds more than the host allows a script, after one collection to be sure. */
+    default boolean isPastMemoryCeiling() {
+        return false;
+    }
+
     /** An interruption that never fires, for a script nothing is watching. */
     static Interruption never() {
         return Optional::empty;

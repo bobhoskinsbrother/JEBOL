@@ -1,6 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.PlatformUnderTest;
+import org.jebol.domain.host.HostNames;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.MachinePort;
@@ -26,6 +27,11 @@ public final class TheJvmDesktop implements PlatformUnderTest {
     @Override
     public ImagePort images() {
         return new JavaImage();
+    }
+
+    @Override
+    public HostNames hostNames() {
+        return Uts46::toAsciiHostName;
     }
 
     @Override

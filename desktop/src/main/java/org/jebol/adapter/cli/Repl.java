@@ -12,6 +12,7 @@ import org.jebol.adapter.host.JavaSecureTransport;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.host.ThreadTasks;
+import org.jebol.adapter.host.Uts46;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
@@ -237,7 +238,7 @@ public final class Repl {
                 .withEnvironment(wholeMachine ? environment : ConfinedEnvironment.confine(environment, files))
                 .withProcesses(new JavaProcess(lending))
                 .withClipboard(new JavaClipboard())
-                .withNetwork(new JavaSocket())
+                .withNetwork(new JavaSocket(Uts46::toAsciiHostName))
                 .withSecureTransport(new JavaSecureTransport())
                 .withPause(pause)
                 .withCertificateAuthority(cafile.isEmpty()

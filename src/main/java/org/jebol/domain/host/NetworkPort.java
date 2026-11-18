@@ -42,6 +42,16 @@ public interface NetworkPort {
     Optional<String> asciiHostName(String hostName);
 
     /**
+     * Whether plain HTTP may be sent to a host, which the http scheme asks
+     * before it opens. A platform with a policy on cleartext answers from it;
+     * one without answers yes. Specified in {@code spec/android.allium} as
+     * PlainHttpIsRefusedWhereAndroidsPolicyRefusesIt.
+     */
+    default boolean allowsCleartextTo(String hostName) {
+        return true;
+    }
+
+    /**
      * Starts looking a name up and returns at once. The answer arrives on a
      * thread of the host's, through the lookup given.
      */

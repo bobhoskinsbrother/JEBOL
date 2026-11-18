@@ -2,7 +2,6 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaSecureTransport;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.tls.LegacyTlsServer;
 import org.jebol.tls.LocalTlsServer;
@@ -47,7 +46,7 @@ class QuirksOfTheHandshakeEndToEndTest {
     private Interpreter makeAnInterpreterTrusting(String... roots) {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts()
-                        .withNetwork(new JavaSocket())
+                        .withNetwork(AnInterpreter.socket())
                         .withSecureTransport(new JavaSecureTransport())
                         .withCertificateAuthority(new JavaCertificateAuthority(
                                 fixtures.trustOnly(roots),

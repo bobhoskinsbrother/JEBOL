@@ -29,34 +29,37 @@ on ART in shards, and archives the results into
 | The API check | `scripts/AndroidApiGaps.java`, run by `./gradlew checkCoreForAndroid` with `--fail-on-gaps` over the core's jar |
 | The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk` on Ubuntu and `~/Library/Android/sdk` on a Mac; the root build finds it there, or by `ANDROID_HOME`, and takes `android/` in (decision 73). Checked on Ubuntu only: the Mac's branch and `scripts/check-android-build.sh` there were left unrun when goal 2b closed (owner, 2026-11-17) |
 
-Measured on 2026-11-16: the app's debug APK is 6,195 KB and the test APK,
-which dexes every core test and fixture, 37,674 KB. The first interpreter on
+Measured on 2026-11-18: the app's debug APK is 6,017 KB and the test APK,
+which dexes every core test and fixture, 47,742 KB. The first interpreter on
 ART boots in about 1.2 seconds; a cold emulator boot under KVM takes about 19.
 
 ## The device run
 
 The core's functional tests and Rebol's suite run on ART with the same cases
-as the JVM, apart from those listed with why. On 2026-11-16, after the Bulk
-compressors left the core (decision 74): **25,601 cases, none failed, 74
-skipped**, on two emulators in 1 hour 9 minutes, build and boots included.
+as the JVM, apart from those listed with why. On 2026-11-18, with Android's
+ports in (decision 77): **25,734 cases, none failed, 42 skipped**, on two
+emulators in 1 hour 13 minutes, build, boots and the unit and end-to-end
+suites included.
 
-Against the JVM's 26,834 the difference is all named:
+Against the JVM's 26,902 the difference is all named:
 
 | Cases | Why they do not run on a device |
 | --- | --- |
 | 1,139 | `EvaluationCorpusTest` reads `corpus/`, which only the repository has |
-| 63 | Rebol's suite withholds what `not-on-a-device-in-rebols-suite.txt` names: programs, picture codecs, creation times, the launcher |
+| 25 | Rebol's suite withholds what `not-on-a-device-in-rebols-suite.txt` names: programs, creation times, the launcher |
 | 21 | `WhatEachRemainingNativeDeclaresTest$AccessOs` compares with `ProcessHandle`, which Android lacks |
 | 13 | `ReadingHttpFromALocalServerFromTheSourceTest` and `TheThruCacheFunctionsFromTheSourceTest` serve from the JDK's `com.sun.net.httpserver` |
 | 1 | `ScreenAndGobTreeAgreeProperties`: jqwik's engine reads generics through `Class.getAnnotatedSuperclass`, which ART lacks |
 
-The device also runs three cases of its own (`TheCoreBootsOnArtTest`), and
+The device also runs thirty cases of its own: `TheCoreBootsOnArtTest`'s
+three, `AndroidPortsThroughRebolTest`'s fourteen, and `AndroidScreenTest`'s
+and `ParityWithJava2DTest`'s thirteen; and it
 reports the one `exhausts-the-heap` case as skipped, which the JVM runs in its
 own fork.
 
-Sharding is by class, so the shard that takes `RebolSuiteTest` takes 9,820 of
-its 19,308 cases in that one class; the two shards still ran 66 and 64 minutes
-of tests, because Rebol's assertions are quick. Three emulators ran the same
+Sharding is by class, so the shard that takes `RebolSuiteTest` takes 9,859 of
+its 19,389 cases in that one class; the two shards still finish close
+together, because Rebol's assertions are quick. Three emulators ran the same
 suite in 63 minutes on 2026-11-15, and four do not fit beside the IDE: each
 holds about 3.6 GB beyond what Android is given. On a machine running
 IntelliJ, two leave room; `-Pemulators=N` sets how many.
@@ -199,3 +202,125 @@ Android carries none: the APK takes the core, which is R3's Core product.
 Their tests moved to `optional/`, so the device suite lost them, Brotli's
 levels 10 and 11 among them, which had been 25 of 165 emulator-minutes.
 Rebol's suite on the device takes the branch a Core build takes.
+
+## Ports (goal 2c)
+
+Every port in `HostPorts` has Android's answer, put together by
+`AndroidHost.appPorts` from a `Context`. Decision 77 has the owner's choices;
+`spec/android.allium`, "The ports", the rules.
+
+| Port | Android's | Where it differs from the desktop, and why |
+| --- | --- | --- |
+| files | `LayeredFiles`: a `FileSystemPort` rooted at `files/jebol` in the app's private storage, laid over `ListedFiles`, the APK's `jebol-app/` files read in place | The script's whole world is the app's storage, as Android's scoped storage allows; the user's own files are goal 2c2's. A carried file cannot be deleted or renamed (`read-only`); deleting the store's own file of a carried name shows the carried one again |
+| carried files, digests, machine | `ClasspathFiles`, `JvmDigests`, `AndroidMachine`, as before | |
+| environment | `AndroidEnvironment`: `HOME` and `PWD` `/`, `TMPDIR` `/tmp`, `LANG` the device's locale as `en_GB.UTF-8`, `USER` and `LOGNAME` the app's identifier | Nothing of the device's process environment (`PATH`, `ANDROID_DATA`, `BOOTCLASSPATH`) is told. `TMPDIR` is in the store, not the cache, because the cache is outside what a script can reach; the app empties it as it starts |
+| images | `AndroidImage`: `BitmapFactory` decodes PNG, JPEG, BMP, WebP and HEIF in each picture's own colour space, and the stored bytes are copied out with `copyPixelsToBuffer`; `Bitmap.compress` writes PNG, JPEG (quality 75) and lossless WebP; the core's `BitmapWriter` and GIF codec do BMP and GIF both ways | No TIFF, which Android cannot read; WebP and HEIF, which the desktop cannot, reached through `image/load/as` and `image/save/as`, since Rebol's library registers no codec for WebP and HEIF's on macOS alone. Only GIF has frames past the first |
+| console | none: printing is logcat (decision 77) | |
+| windows, screen | 2b's `OneSurfaceScreen` | |
+| pause | `WakeablePause` | |
+| processes | `ProcessPort.none()`, PROCESSES marked unavailable | CALL refuses as a page's does, and `system/options/boot` is none |
+| network | `JavaSocket` with `AndroidHostNames` (`android.icu.text.IDNA`), asking `NetworkSecurityPolicy` before plain http | Plain `http://` is refused where Android's policy refuses it: everywhere in a release build, everywhere but `10.0.2.2` and `localhost` in a debug one. `tcp://` and `https://` are never asked |
+| certificate authority | `JavaCertificateAuthority`, the system's store through `TrustManagerFactory`; a debug build adds the user's (`debug-overrides`) and, for one launch, roots given in its `trust` extra | No `--cafile` |
+| secure transport | `JavaSecureTransport`, on Conscrypt | |
+| http | none: `http://` is `prot-http.reb` over the network port | |
+| clipboard | `AndroidClipboard` on `ClipboardManager` | Read while the app is not in front, it answers none: Android gives the clipboard only to the focused app |
+| MIDI, web | none, marked unavailable | |
+| tasks | `ThreadTasks`, each task given the app's own ports with the store's working directory copied | |
+
+**A PNG's colours are read as stored.** Asked for sRGB, `BitmapFactory`
+applies a PNG's `gAMA` chunk, and `Bitmap.getPixels` converts to sRGB
+whatever it is asked, so Rebol's `flower.png` came out with other colours
+than ImageIO and a real R3 read, and Rebol's BLUR and IMAGE-DIFF assertions
+failed on the device. Decoded in the picture's own colour space and copied
+out as stored, it reads as on the desktop; `AndroidImageTest` holds the PNG
+to the same flower's BMP, byte for byte.
+
+**Memory.** The app's bounds hold a ceiling of three quarters of the heap
+Android gives it (`Runtime.maxMemory()`, which follows `largeHeap`). Every
+thousand steps the evaluator compares the heap in use with it, collects once
+when it is over, and raises `no-memory` when it is still over, so a script
+that grows too large gets REBOL's own error and the app lives on rather than
+being ended by an `OutOfMemoryError` on some other thread. A collection's
+answer is trusted for a quarter of a second, so a script making garbage just
+under the ceiling does not collect on every check.
+
+### The GIF codec
+
+Android decodes an animated GIF only as a drawable and writes no GIF at all,
+so the core carries its own (decision 77), written from the GIF89a
+specification: `GifDecoder`, `LzwDecoder`, `GifEncoder`, `LzwEncoder` and
+`MedianCutQuantiser` in `org.jebol.domain.image`. The desktop's `JavaImage`
+takes it too, both ways, so a GIF is the same picture on every platform.
+
+A frame is the frames before it composed by their disposal methods, on a
+canvas the logical screen's size: 0 and 1 leave a frame in place, 2 clears its
+rectangle to transparent, 3 puts back what was there before it. A pixel no
+frame has painted is `0.0.0.0`. `JavaImage` had drawn each frame over the last
+whatever its disposal, and given the first frame's transparent pixels their
+palette colour.
+
+A picture of 256 colours or fewer is written against its own palette, in the
+order its colours are first met, as `JavaImage` wrote it. Above 256 it is
+quantised by median cut, the box with the widest channel times its pixels
+split at its weighted median, and mapped back with Floyd-Steinberg
+dithering; every tie breaks by the colour's own value, so ART and the JVM
+write the same bytes (`QuantisedGif.MD5`, asserted on both). The owner chose
+it on the phone from the sheets `scripts/GifQuantiserComparison.java` draws.
+A GIF is written opaque: the alpha is dropped and the colour kept.
+
+The reference is ImageIO, through
+`TheCoresGifCodecAgreesWithImageIoTest` (desktop), which decodes every frame
+of every fixture both ways. Its fixtures are built by `HandBuiltGif`, whose
+own LZW encoder reports what it did, so each fixture is checked to be what
+it says. The boundaries, and what covers each:
+
+| Boundary | Covered by |
+| --- | --- |
+| LZW minimum code size 2, 3, 4, 5, 6, 7, 8 | `eachCodeSize`, each asserting the code-size byte written |
+| the code width growing to 12 | `eachCodeSize`, asserting the widest code written is 12 |
+| a clear code mid-stream | `aClearCodeMidStream`, asserting a clear after the first |
+| the table full at 4,096 with no clear after it | `aFullTableWithNoClear`, asserting over 100 codes written with the table full |
+| interlaced, 1 to 5, 7 to 9, 16 and 17 rows | `interlacedFramesPutEachRowBack`, against the rows written; ImageIO from 5 rows up |
+| not interlaced | every other fixture |
+| a global palette | `eachCodeSize` and most others |
+| a local palette alone | `aLocalPaletteAlone` |
+| a local palette over a global one, for its frame only | `aLocalPaletteOverTheGlobal` |
+| neither palette | `neitherPalette`: black, the specification leaving it to the decoder |
+| transparency, on the first frame and a later one | `transparency` |
+| disposal 0 and 1 | `offsetFramesUnderDisposalNoneAndKeep`, `disposalKeep` |
+| disposal 2 | `disposalRestoresTheBackground`, by hand |
+| disposal 3 | `disposalRestoresThePrevious`, by hand |
+| a frame smaller than the screen, offset within it | `offsetFramesUnderDisposalNoneAndKeep` |
+| one frame, two, a hundred | `frameCounts` |
+| a frame past the last | every `assertEveryFrameAgrees` |
+| bytes that are not a GIF, or stop short | `notAGif` |
+| Rebol's own flower, rbgw and animation | `rebolsOwnGifs`; the animation's three frames by MD5 in Rebol's suite and `AndroidImageTest` |
+| 1, 2, 3, 255 and 256 colours written | `ownPaletteRoundTrips` (desktop), `ownPaletteReadsBackExactly` (core) |
+| more than 256 colours written | `manyColoursAreQuantised`, `quantisingIsTheSameEveryTime` |
+| a picture spanning many LZW tables | `aLargePicture` |
+
+**ImageIO misreads an interlaced frame under five rows high.** Given a GIF of
+one column and three rows, interlaced, whose rows are red, green and blue,
+ImageIO's reader answers red, red, green; Pillow and the core answer red,
+green, blue. `imageIoMisreadsShortInterlacedFrames` keeps the evidence, and
+the desktop no longer meets it, since it no longer decodes GIF with ImageIO.
+
+### Host names on Android
+
+`AndroidHostNames` runs ICU's UTS #46 without transitional processing,
+checking Bidi and ContextJ and leaving off the checks a browser leaves off
+(hyphens, DNS lengths, empty labels), as `Uts46` does. Every host-name case
+`HostNameCases` holds answers alike on both. On Unicode's conformance file
+for version 16.0.0, 86 of its 6,389 cases differ:
+`android/app/src/androidTest/resources/icu-differs-from-uts46.txt` lists each
+with both answers, and `AndroidHostNamesTest` asserts exactly that list.
+Android 35's ICU is older than the 16.0 file. 84 cases are names ICU refuses
+and the file converts: nearly all hold a Georgian capital (Ⴀ to Ⴭ), which the
+file maps to its small letter, or ≠, ≮, ≯ or `?`, which the file lets through
+with STD3 rules off. The other two, `xn--xn--a--gua.pt` and `xn--xn---epa`,
+are names ICU accepts as they are and the file refuses. A refusal is the
+cautious answer: a name ICU refuses fails to resolve, and no name resolves
+to a host it should not.
+
+`Uts46` and its 55 KB of tables left the core for the desktop, so the APK no
+longer carries them.

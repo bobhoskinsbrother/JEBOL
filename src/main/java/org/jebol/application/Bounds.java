@@ -19,12 +19,14 @@ public record Bounds(
         Set<HostService> unavailableServices,
         String hostName,
         List<Extension> extensions,
-        List<ExtensionReport> refusedExtensions) {
+        List<ExtensionReport> refusedExtensions,
+        long memoryCeiling) {
 
     private static final Duration DEFAULT_TIME_LIMIT = Duration.ofSeconds(5);
     private static final int DEFAULT_MAXIMUM_NESTING = 10_000;
     private static final int DEFAULT_CHECK_EVERY = 1_000;
     private static final String DEFAULT_HOST_NAME = "this host";
+    private static final long NO_MEMORY_CEILING = 0;
 
     public Bounds {
         if (timeLimit == null || timeLimit.isNegative() || timeLimit.isZero()) {
@@ -54,6 +56,9 @@ public record Bounds(
             throw new IllegalArgumentException(
                     "extensions is a decision; use an empty list to add none");
         }
+        if (memoryCeiling < 0) {
+            throw new IllegalArgumentException("a memory ceiling is a number of bytes, or none");
+        }
         extensions = List.copyOf(extensions);
         refusedExtensions = List.copyOf(refusedExtensions);
     }
@@ -62,12 +67,12 @@ public record Bounds(
     public static Bounds standard() {
         return new Bounds(
                 DEFAULT_TIME_LIMIT, DEFAULT_MAXIMUM_NESTING, DEFAULT_CHECK_EVERY,
-                Set.of(), Set.of(), DEFAULT_HOST_NAME, List.of(), List.of());
+                Set.of(), Set.of(), DEFAULT_HOST_NAME, List.of(), List.of(), NO_MEMORY_CEILING);
     }
 
     public Bounds withTimeLimit(Duration limit) {
         return new Bounds(limit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, hostName, extensions, refusedExtensions);
+                unavailableServices, hostName, extensions, refusedExtensions, memoryCeiling);
     }
 
     public Bounds withoutTimeLimit() {
@@ -84,12 +89,27 @@ public record Bounds(
 
     public Bounds withMaximumNesting(int nesting) {
         return new Bounds(timeLimit, nesting, checkEvery, grantedServices,
-                unavailableServices, hostName, extensions, refusedExtensions);
+                unavailableServices, hostName, extensions, refusedExtensions, memoryCeiling);
     }
 
     public Bounds withCheckEvery(int steps) {
         return new Bounds(timeLimit, maximumNesting, steps, grantedServices,
-                unavailableServices, hostName, extensions, refusedExtensions);
+                unavailableServices, hostName, extensions, refusedExtensions, memoryCeiling);
+    }
+
+    /**
+     * Holds the heap a script may fill below the given number of bytes: past
+     * it, the script gets REBOL's own no-memory error rather than the host
+     * meeting a full heap. Specified in {@code spec/android.allium} as
+     * AScriptPastTheCeilingGetsNoMemory.
+     */
+    public Bounds withMemoryCeiling(long bytes) {
+        return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
+                unavailableServices, hostName, extensions, refusedExtensions, bytes);
+    }
+
+    public boolean hasMemoryCeiling() {
+        return memoryCeiling != NO_MEMORY_CEILING;
     }
 
     public Bounds grant(HostService service) {
@@ -103,7 +123,7 @@ public record Bounds(
         wider.addAll(grantedServices);
         wider.add(service);
         return new Bounds(timeLimit, maximumNesting, checkEvery, wider,
-                unavailableServices, hostName, extensions, refusedExtensions);
+                unavailableServices, hostName, extensions, refusedExtensions, memoryCeiling);
     }
 
     public Bounds markUnavailable(HostService service) {
@@ -118,26 +138,26 @@ public record Bounds(
         fewer.addAll(unavailableServices);
         fewer.add(service);
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                fewer, hostName, extensions, refusedExtensions);
+                fewer, hostName, extensions, refusedExtensions, memoryCeiling);
     }
 
     public Bounds calls(String name) {
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, name, extensions, refusedExtensions);
+                unavailableServices, name, extensions, refusedExtensions, memoryCeiling);
     }
 
     public Bounds add(Extension extension) {
         List<Extension> more = new ArrayList<>(extensions);
         more.add(extension);
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, hostName, more, refusedExtensions);
+                unavailableServices, hostName, more, refusedExtensions, memoryCeiling);
     }
 
     public Bounds refuse(ExtensionReport refusal) {
         List<ExtensionReport> more = new ArrayList<>(refusedExtensions);
         more.add(refusal);
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
-                unavailableServices, hostName, extensions, more);
+                unavailableServices, hostName, extensions, more, memoryCeiling);
     }
 
     public boolean grants(HostService service) {

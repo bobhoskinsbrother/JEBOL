@@ -8,12 +8,9 @@
 # Class lacks, so the test APK compiles against jqwik's API and carries no engine
 # to run them.
 
-org.jebol.domain.eval.AccessOsFromTheSourceTest$Setting#deniesSignallingWhatCannotBeSignalled it signals a process, and Android has no process port until 2c
-org.jebol.domain.eval.natives.WhatEachPortNativeDeclaresTest#refusesAProgramThatIsNotThere it starts a program, and Android runs none (CALL is 2c's)
-org.jebol.application.EnvironmentWritingFromTheSourceTest#passesItToAStartedProgram it starts a program, and Android runs none (CALL is 2c's)
-org.jebol.application.SecurityPoliciesFromTheSourceTest$TheFileActions#leaveImageSaveUnchecked it saves a PNG, and Android has no picture codec until 2c
-org.jebol.application.ImageCodecFromTheSourceTest it decodes and encodes pictures, and Android has no picture codec until 2c
-org.jebol.application.BlurringARealPictureFromTheSourceTest it decodes a real picture, and Android has no picture codec until 2c
+org.jebol.domain.eval.AccessOsFromTheSourceTest$Setting#deniesSignallingWhatCannotBeSignalled it signals a process, and an Android app starts none to signal: its process port refuses as a page's does (decision 77)
+org.jebol.domain.eval.natives.WhatEachPortNativeDeclaresTest#refusesAProgramThatIsNotThere it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)
+org.jebol.application.EnvironmentWritingFromTheSourceTest#passesItToAStartedProgram it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)
 
 org.jebol.domain.eval.natives.EveryBuiltInNativeIsRegisteredTest ArchUnit reads class files, and a device carries dex
 org.jebol.domain.eval.ReadingHttpFromALocalServerFromTheSourceTest it serves from the JDK's com.sun.net.httpserver, which Android does not have
@@ -28,6 +25,6 @@ org.jebol.application.TheModuleTableIsRebolsFromTheSourceTest it reads sysobj.re
 org.jebol.application.QueryingAFilesDatesFromTheSourceTest#anAppendMovesOnlyModified Android's file system keeps no creation time, so created moves on with modified
 org.jebol.application.SecureConnectionsFromTheSourceTest$AnUntrustedServer#endsSayingTheChainIsBroken its server must send a chain out of order, and Android's TLS (BoringSSL) refuses to serve one
 org.jebol.suite.PortingBacklogTest it writes its report into the repository's build/, which only the repository has
-org.jebol.suite.SuiteHostTest#aprocessCanBeStarted it starts a program, and Android runs none (CALL is 2c's)
+org.jebol.suite.SuiteHostTest#aprocessCanBeStarted it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)
 org.jebol.corpus.CorpusCoverageReportTest it reads corpus/, which only the repository has
 org.jebol.corpus.EvaluationCorpusTest it reads corpus/, which only the repository has

@@ -208,8 +208,9 @@ class ImageCodecFromTheSourceTest {
                 destination: copy #{DEADBEEF}
                 image/save/as (next destination) make image! 2x2 'PNG
                 whole: head destination
-                reduce [length? whole  copy/part whole 4]"""))
-                .isEqualTo("[72 #{DE89504E}]");
+                encoded: image/save/as none make image! 2x2 'PNG
+                reduce [(length? whole) = (1 + length? encoded)  copy/part whole 4]"""))
+                .isEqualTo("[#(true) #{DE89504E}]");
     }
 
     @Test

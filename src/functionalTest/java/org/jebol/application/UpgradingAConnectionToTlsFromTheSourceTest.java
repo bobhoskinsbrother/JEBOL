@@ -1,7 +1,6 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.tls.LocalSmtpServer;
 import org.jebol.tls.LocalTlsServer.Identity;
@@ -30,7 +29,7 @@ class UpgradingAConnectionToTlsFromTheSourceTest {
     private Interpreter makeAnInterpreterTrustingTheTestRoot() {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts()
-                        .withNetwork(new JavaSocket())
+                        .withNetwork(AnInterpreter.socket())
                         .withCertificateAuthority(new JavaCertificateAuthority(
                                 fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
                 printed::append,

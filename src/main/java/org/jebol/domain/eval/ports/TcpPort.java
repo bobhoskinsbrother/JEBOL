@@ -38,6 +38,9 @@ public final class TcpPort {
     private static final int CLIENT_DEFAULT_PORT = 80;
     private static final int LISTENER_DEFAULT_PORT = 8000;
     private static final int OPEN_FAILED = -12;
+    private static final String HTTP = "http";
+    private static final String CLEARTEXT_REFUSED =
+            "the platform's network security policy refuses cleartext traffic to this host";
 
     public PortValue open(PortValue port, Evaluator evaluator) {
         Optional<Connecting> held = findConnectingBehind(port);
@@ -48,6 +51,7 @@ public final class TcpPort {
         port.setField("state", JavaObjectValue.of(connecting));
         Value host = readSpecField(port, "host");
         NetworkPort network = evaluator.ports().network();
+        refuseForbiddenCleartext(port, host, network);
         switch (host) {
             case AnyStringValue named when !named.text().isEmpty() -> lookUp(port, connecting, named.text(), evaluator);
             case TupleValue address -> {
@@ -67,6 +71,24 @@ public final class TcpPort {
             }
         }
         return port;
+    }
+
+    private static void refuseForbiddenCleartext(PortValue port, Value host, NetworkPort network) {
+        if (!(port.readFieldValue("parent") instanceof PortValue parent) || !parent.schemeName().equals(HTTP)) {
+            return;
+        }
+        String named = switch (host) {
+            case AnyStringValue written -> written.text();
+            case TupleValue address -> writeDotted(address);
+            default -> "";
+        };
+        if (!named.isEmpty() && !network.allowsCleartextTo(named)) {
+            Value reference = parent.reference();
+            throw new Raised(ErrorValue.of(ErrorCategory.ACCESS, "no-connect",
+                    "cannot connect: " + (reference instanceof AnyStringValue url ? url.text() : named)
+                            + " reason: " + CLEARTEXT_REFUSED,
+                    reference, StringValue.of(CLEARTEXT_REFUSED)));
+        }
     }
 
     private void lookUp(PortValue port, Connecting connecting, String written, Evaluator evaluator) {

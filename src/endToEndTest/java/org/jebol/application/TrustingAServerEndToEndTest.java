@@ -1,7 +1,6 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.tls.LocalTlsServer;
 import org.jebol.tls.LocalTlsServer.Identity;
@@ -60,7 +59,7 @@ class TrustingAServerEndToEndTest {
     private Interpreter makeAnInterpreterTrustingTheTestRoot(Instant now) {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts()
-                        .withNetwork(new JavaSocket())
+                        .withNetwork(AnInterpreter.socket())
                         .withCertificateAuthority(new JavaCertificateAuthority(
                                 fixtures.trustOnly("test-root"),
                                 Clock.fixed(now, ZoneOffset.UTC))),
@@ -70,7 +69,7 @@ class TrustingAServerEndToEndTest {
 
     private Interpreter makeANetworkedInterpreter(Bounds bounds) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(new JavaSocket()),
+                AnInterpreter.standardPorts().withNetwork(AnInterpreter.socket()),
                 printed::append,
                 bounds);
     }
@@ -283,7 +282,7 @@ class TrustingAServerEndToEndTest {
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
                 Interpreter interpreter = Interpreter.createOn(
                         AnInterpreter.standardPorts()
-                                .withNetwork(new JavaSocket())
+                                .withNetwork(AnInterpreter.socket())
                                 .withCertificateAuthority(new JavaCertificateAuthority(
                                         fixtures.trustOnly("test-root"),
                                         Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),

@@ -143,7 +143,7 @@ class ParityWithJava2DTest {
         AtomicReference<JebolView> made = new AtomicReference<>();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> made.set(new JebolView(context)));
         session = AppSession.open(made.get(), new MemoryFiles(), OutputPort.discard(), wanted -> {
-        });
+        }, () -> false);
         JebolView view = made.get();
         view.measureViewport(
                 Math.round(ParityScenes.WIDE * view.density().pixelsPerDp()),

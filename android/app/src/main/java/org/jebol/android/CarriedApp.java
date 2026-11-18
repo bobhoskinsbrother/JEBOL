@@ -1,6 +1,7 @@
 package org.jebol.android;
 
-import org.jebol.application.MemoryFiles;
+import org.jebol.application.ListedFiles;
+import org.jebol.domain.host.FilePort;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,14 +33,8 @@ public record CarriedApp(List<String> files, String entry) {
         }
     }
 
-    public void copyInto(MemoryFiles memory) {
-        for (String name : files) {
-            int lastSlash = name.lastIndexOf('/');
-            if (lastSlash > 0) {
-                memory.makeDirectory("/" + name.substring(0, lastSlash), true);
-            }
-            memory.write("/" + name, readResource(name));
-        }
+    public FilePort asFiles() {
+        return ListedFiles.of(files, CarriedApp::readResource);
     }
 
     public String readEntry() {

@@ -15,9 +15,14 @@ import android.window.OnBackInvokedDispatcher;
 
 import org.jebol.adapter.android.LogcatOutput;
 import org.jebol.application.Interpreter;
-import org.jebol.application.MemoryFiles;
 import org.jebol.application.ScriptOutcome;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +31,8 @@ public final class JebolActivity extends Activity {
 
     static final String SCRIPT_EXTRA = "script";
     static final String RESTART_EXTRA = "restart";
+    static final String TRUST_EXTRA = "trust";
+    private static final String ROOTS_FOR_THIS_LAUNCH = "roots-for-this-launch.pem";
     static final String RESTART_MARKER = "restarted ";
 
     private static final String SAVED_PLACE = "place";
@@ -35,6 +42,7 @@ public final class JebolActivity extends Activity {
     private final OnBackInvokedCallback back = this::goBack;
     private JebolView view;
     private volatile AppSession session;
+    private volatile boolean inFront;
     private Thread interpreting;
     private AlertDialog askingToLeave;
     private int restarts;
@@ -49,6 +57,12 @@ public final class JebolActivity extends Activity {
         Optional<String> resumeAt = Optional.ofNullable(saved).map(state -> state.getString(SAVED_PLACE));
         String source = scriptGivenBy(getIntent());
         interpreting = startInterpreting(() -> run(source, resumeAt));
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        inFront = focused;
     }
 
     @Override
@@ -128,11 +142,25 @@ public final class JebolActivity extends Activity {
         return given.orElseGet(() -> CarriedApp.read().readEntry());
     }
 
+    private Optional<Path> rootsGivenBy(Intent intent) {
+        File written = new File(getCacheDir(), ROOTS_FOR_THIS_LAUNCH);
+        written.delete();
+        Optional<String> given = isDebugBuild() ? Optional.ofNullable(intent.getStringExtra(TRUST_EXTRA))
+                : Optional.empty();
+        if (given.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Files.write(written.toPath(), given.get().getBytes(StandardCharsets.US_ASCII)));
+        } catch (IOException unwritable) {
+            throw new UncheckedIOException(unwritable);
+        }
+    }
+
     private void run(String source, Optional<String> resumeAt) {
-        MemoryFiles files = new MemoryFiles();
-        CarriedApp.read().copyInto(files);
         LogcatOutput output = LogcatOutput.toLogcat();
-        AppSession opened = AppSession.open(view, files, output, wanted -> runOnUiThread(() -> takeBack(wanted)));
+        AppSession opened = AppSession.open(view, CarriedApp.read().asFiles(), output,
+                wanted -> runOnUiThread(() -> takeBack(wanted)), () -> inFront, rootsGivenBy(getIntent()));
         session = opened;
         resumeAt.ifPresent(opened::resumeAt);
         Interpreter interpreter = opened.interpreter();

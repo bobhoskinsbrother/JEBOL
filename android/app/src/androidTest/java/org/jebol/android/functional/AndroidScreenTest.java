@@ -32,7 +32,7 @@ class AndroidScreenTest {
     private AppSession openSession() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> made.set(new JebolView(context)));
         session = AppSession.open(made.get(), new MemoryFiles(), OutputPort.discard(), wanted -> {
-        });
+        }, () -> false);
         return session;
     }
 

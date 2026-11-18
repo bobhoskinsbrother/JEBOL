@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -20,13 +21,16 @@ class SavingAPdfFromTheSourceTest {
     private static final Path THE_VENDORED_FIXTURE =
             CarriedFixtures.file("pdf/hello-linearized.pdf");
 
+    private static final Duration LOADING_THE_CODEC_COLD_ON_ART = Duration.ofSeconds(30);
+
     private static Interpreter makeAnInterpreterReaching(Path directory) {
         return Interpreter.createOn(
                 AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
-                        .grant(HostService.CLOCK));
+                        .grant(HostService.CLOCK)
+                        .withTimeLimit(LOADING_THE_CODEC_COLD_ON_ART));
     }
 
     private static String answerTo(Path directory, String source) {

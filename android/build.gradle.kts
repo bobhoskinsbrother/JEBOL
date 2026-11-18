@@ -134,6 +134,7 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     testApk = layout.projectDirectory.file("endtoend/build/outputs/apk/debug/endtoend-debug.apk")
     instrumentation = "org.jebol.android.endtoend/androidx.test.runner.AndroidJUnitRunner"
     runnerArguments = argumentsFor(endToEndClasses, "package" to endToEndPackage)
+    hostServerIdentity = layout.projectDirectory.dir("endtoend/host-server")
     results = deviceResults.dir("androidEndToEndTests")
     mustRunAfter(androidUnitTests, androidFunctionalTests)
     finalizedBy(stopEmulators, "archiveAndroidTestResults")

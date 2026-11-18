@@ -306,6 +306,12 @@ Accessing an ungranted service raises a RAISED outcome error specifying one of t
 
 Explicit security errors prevent ambiguous failures, ensuring scripts can distinguish between missing permissions and empty or missing files.
 
+### **What a script in an Android app may reach**
+
+The Android app gives its script its own private storage as its whole file system, with home and the working directory at `/` and the files the app carries readable beneath it: a script may shadow a carried file with its own, but not delete one. What it writes is still there after Android ends the app. `TMPDIR` names `/tmp`, which the app empties each time it starts.
+
+It may read the environment Android's app is given, `HOME`, `PWD`, `TMPDIR`, `LANG`, `USER` and `LOGNAME`, and nothing of the device's own. It may load and save PNG, JPEG, GIF and BMP pictures, every frame of a GIF included, but not TIFF; WebP, both ways, and HEIF, to read, are reached through `image/load/as` and `image/save/as`, since Rebol's library registers no codec for them on Android. It may open `tcp://` and `tls://` connections and read `https://`, against the device's trusted authorities; plain `http://` is refused wherever Android's network security policy refuses cleartext, which in a released app is everywhere. It may read the clipboard while the app is in front, and gets none from the background. It cannot start a program: CALL refuses as it does on a page. What it prints goes to logcat under the tag `jebol`. `docs/android-port.md` has the full table.
+
 ### **Creating Custom Extensions**
 
 For a complete guide and worked example, see `docs/writing-an-extension.md`. Below is a summary of the extension architecture.

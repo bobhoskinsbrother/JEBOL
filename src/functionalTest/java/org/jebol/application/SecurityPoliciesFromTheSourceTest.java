@@ -51,7 +51,7 @@ class SecurityPoliciesFromTheSourceTest {
                 .withFiles(FileSystemPort.rootFileSystem(root))
                 .withEnvironment(new ProcessEnvironment())
                 .withProcesses(PlatformUnderTest.current().processes())
-                .withNetwork(new JavaSocket())
+                .withNetwork(AnInterpreter.socket())
                 .withImages(PlatformUnderTest.current().images());
     }
 

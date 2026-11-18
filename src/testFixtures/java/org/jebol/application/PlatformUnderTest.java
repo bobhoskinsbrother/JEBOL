@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.host.HostNames;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.MachinePort;
@@ -17,6 +18,8 @@ public interface PlatformUnderTest {
     ProcessPort processes();
 
     ImagePort images();
+
+    HostNames hostNames();
 
     default List<String> suiteEntriesItCannotRun() {
         return List.of();

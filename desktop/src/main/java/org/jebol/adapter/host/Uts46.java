@@ -1,5 +1,7 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.host.HostNames;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -41,11 +43,6 @@ public final class Uts46 {
     private static final int LAST_ASCII = 0x7F;
     private static final String ACE_PREFIX = "xn--";
 
-    private static final Set<Integer> FORBIDDEN_IN_A_DOMAIN = Set.of(
-            0x20, (int) '#', (int) '%', (int) '/', (int) ':', (int) '<', (int) '>', (int) '?', (int) '@',
-            (int) '[', (int) '\\', (int) ']', (int) '^', (int) '|', 0x7F);
-    private static final int FIRST_PRINTABLE_ASCII = 0x20;
-
     private static final Set<Integer> RTL_LABEL_ALLOWS = Set.of(
             BIDI_R, BIDI_AL, BIDI_AN, BIDI_EN, BIDI_ES, BIDI_CS, BIDI_ET, BIDI_ON, BIDI_BN, BIDI_NSM);
     private static final Set<Integer> LTR_LABEL_ALLOWS = Set.of(
@@ -55,7 +52,7 @@ public final class Uts46 {
     }
 
     public static Optional<String> toAsciiHostName(String host) {
-        return toAscii(host).filter(ascii -> !ascii.isEmpty() && ascii.codePoints().noneMatch(Uts46::isForbiddenInADomain));
+        return HostNames.keepUsableAsHostName(toAscii(host));
     }
 
     public static Optional<String> toAscii(String domain) {
@@ -76,10 +73,6 @@ public final class Uts46 {
             return Optional.empty();
         }
         return Optional.of(String.join(".", labels.stream().map(Uts46::encodeLabelToAscii).toList()));
-    }
-
-    private static boolean isForbiddenInADomain(int codePoint) {
-        return codePoint < FIRST_PRINTABLE_ASCII || FORBIDDEN_IN_A_DOMAIN.contains(codePoint);
     }
 
     private static Optional<String> mapEachCodePoint(String domain) {

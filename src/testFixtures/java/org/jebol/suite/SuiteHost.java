@@ -80,7 +80,7 @@ final class SuiteHost {
                 .withEnvironment(new ProcessEnvironment())
                 .withProcesses(platform.processes())
                 .withImages(platform.images())
-                .withNetwork(new JavaSocket())
+                .withNetwork(new JavaSocket(PlatformUnderTest.current().hostNames()))
                 .withSecureTransport(new JavaSecureTransport())
                 .withPause(new WakeablePause())
                 .withCertificateAuthority(new JavaCertificateAuthority());

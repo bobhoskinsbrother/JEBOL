@@ -612,6 +612,9 @@ public final class Evaluator {
         interruption.reasonToStop().ifPresent(reason -> {
             throw new Stopped(reason);
         });
+        if (interruption.isPastMemoryCeiling()) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
+        }
     }
 
     public void haltIfEscaped() {

@@ -6,7 +6,9 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -45,8 +47,28 @@ abstract class DeviceShards : DefaultTask() {
     @get:OutputDirectory
     abstract val results: DirectoryProperty
 
+    @get:Optional
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val hostServerIdentity: DirectoryProperty
+
+    private val hostServerArguments = mutableMapOf<String, String>()
+
     @TaskAction
     fun runEveryShard() {
+        if (!hostServerIdentity.isPresent) {
+            runOnDevices()
+            return
+        }
+        val identity = hostServerIdentity.get().asFile
+        HostServers(File(identity, "emulator-host.pem"), File(identity, "emulator-host-key.pem")).use { servers ->
+            hostServerArguments["hostPlainPort"] = servers.plainPort.toString()
+            hostServerArguments["hostSecurePort"] = servers.securePort.toString()
+            runOnDevices()
+        }
+    }
+
+    private fun runOnDevices() {
         val devices = serials.get()
         val folder = results.get().asFile
         folder.listFiles()?.forEach { it.delete() }
@@ -76,7 +98,7 @@ abstract class DeviceShards : DefaultTask() {
 
     private fun runShard(serial: String, index: Int, count: Int): Shard {
         val command = mutableListOf(adb.get(), "-s", serial, "shell", "am", "instrument", "-w", "-r")
-        runnerArguments.get().forEach { (name, value) -> command += listOf("-e", name, value) }
+        (runnerArguments.get() + hostServerArguments).forEach { (name, value) -> command += listOf("-e", name, value) }
         command += listOf("-e", "numShards", count.toString(), "-e", "shardIndex", index.toString())
         command += instrumentation.get()
         val shard = Shard(index, serial)

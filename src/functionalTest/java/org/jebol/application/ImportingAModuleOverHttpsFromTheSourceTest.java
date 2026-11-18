@@ -2,7 +2,6 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.tls.LocalTlsServer;
@@ -38,7 +37,7 @@ class ImportingAModuleOverHttpsFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
                         .withFiles(FileSystemPort.rootFileSystem(root))
-                        .withNetwork(new JavaSocket())
+                        .withNetwork(AnInterpreter.socket())
                         .withCertificateAuthority(new JavaCertificateAuthority(
                                 fixtures.trustOnly("test-root"),
                                 Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),

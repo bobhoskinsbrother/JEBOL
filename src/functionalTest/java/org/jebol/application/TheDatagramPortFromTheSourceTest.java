@@ -1,6 +1,5 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,7 +21,7 @@ class TheDatagramPortFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts().withNetwork(new JavaSocket()),
+                AnInterpreter.standardPorts().withNetwork(AnInterpreter.socket()),
                 message -> { },
                 Bounds.standard().grant(HostService.NETWORK));
         interpreter.defineNewWordsIn(source);

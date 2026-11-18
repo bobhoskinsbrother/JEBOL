@@ -29,6 +29,7 @@ final class TheApp {
     private static final String LOG_TAG = "jebol";
     private static final String SCRIPT_EXTRA = "script";
     private static final String RESTART_EXTRA = "restart";
+    private static final String TRUST_EXTRA = "trust";
     private static final String RESTART_MARKER = "restarted ";
     private static final int COLOUR_SAMPLE_STEP = 12;
     private static final Duration TO_OPEN = Duration.ofSeconds(30);
@@ -63,6 +64,16 @@ final class TheApp {
         return app;
     }
 
+    static TheApp launchedAfreshTrusting(String script, String roots) {
+        TheApp app = new TheApp();
+        app.startAfresh(Optional.of(script), Optional.of(roots));
+        return app;
+    }
+
+    void endProcess() {
+        shell("am force-stop " + PACKAGE);
+    }
+
     private void restartOrStart(Optional<String> script) {
         if (isInFront()) {
             restartInPlace(script);
@@ -72,12 +83,17 @@ final class TheApp {
     }
 
     private void startAfresh(Optional<String> script) {
+        startAfresh(script, Optional.empty());
+    }
+
+    private void startAfresh(Optional<String> script, Optional<String> roots) {
         shell("am force-stop " + PACKAGE);
         shell("logcat -c");
         turnUpright();
         Intent launch = launchIntent();
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         script.ifPresent(source -> launch.putExtra(SCRIPT_EXTRA, source));
+        roots.ifPresent(pem -> launch.putExtra(TRUST_EXTRA, pem));
         context.startActivity(launch);
         waitUntilInFront();
     }
