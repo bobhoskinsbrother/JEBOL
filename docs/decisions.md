@@ -3667,6 +3667,36 @@ its last picture on screen with no interpreter behind it, and logged
 `spec/android.allium`'s "How a script ends" holds the three rules, and
 `AScriptInTheAppEndToEndTest` drives the first two.
 
+**A debug build restarts in place** (added 2026-11-18, the owner's request
+on watching the suite relaunch the app for every test). An intent that
+carries the extra `restart` reaches the running activity's `onNewIntent`.
+The test sends the launcher intent with `FLAG_ACTIVITY_SINGLE_TOP`. The
+activity then:
+- cancels the interpreter, and cancels again every 100 ms until its thread
+  ends. A restart can come while the last interpreter is still booting, when
+  there is no session to cancel yet, and `Interpreter.run` clears a cancel
+  that arrives before it starts;
+- drops the session, so the history, Back and the unsaved-work flag go with
+  it, and dismisses its dialog and lowers the keyboard;
+- clears the view, logs `restarted <n>` under `jebol`, and runs the script
+  in a fresh interpreter;
+- calls `setIntent`, so a process Android ends comes back running the
+  restart's script and not the first launch's.
+
+The manifest keeps the default launch mode. A release build ignores the
+extra, and a launcher tap delivers no new intent to a running app.
+
+`TheApp.runningScript` restarts whenever the app is in front and launches
+cold when it is not. So the suite launches the app once and again only after
+a test leaves it, not once a class as the goal first proposed. The restart
+leaves nothing of the last script, and
+`ARestartInPlaceLeavesNothingBehindEndToEndTest` proves that. The GUI is
+not shared between interpreters: each restart of the examples loads `r3-gui`
+again, about 1.7 s on the emulator. Sharing it would let one test's widgets
+reach the next, which is exactly what the restart is meant to rule out. Only
+`TheAppOpensEndToEndTest`, `AndroidTimingsTest` and the restart-while-booting
+test launch cold on purpose.
+
 **Rejected:** Android's own widgets (decision 73); recreating the activity
 on a turn, which would restart the script; keeping the places behind the
 saved one, which would need the whole history in the saved state for a case

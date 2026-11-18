@@ -2,6 +2,7 @@ package org.jebol.android;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -17,17 +18,26 @@ import org.jebol.application.Interpreter;
 import org.jebol.application.MemoryFiles;
 import org.jebol.application.ScriptOutcome;
 
+import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 public final class JebolActivity extends Activity {
 
     static final String SCRIPT_EXTRA = "script";
+    static final String RESTART_EXTRA = "restart";
+    static final String RESTART_MARKER = "restarted ";
 
     private static final String SAVED_PLACE = "place";
+    private static final Duration TO_END_AN_INTERPRETER = Duration.ofSeconds(10);
+    private static final Duration TO_CANCEL_AGAIN = Duration.ofMillis(100);
 
     private final OnBackInvokedCallback back = this::goBack;
     private JebolView view;
     private volatile AppSession session;
+    private Thread interpreting;
+    private AlertDialog askingToLeave;
+    private int restarts;
     private boolean isTakingBack;
     private boolean hasStartedBefore;
 
@@ -37,13 +47,62 @@ public final class JebolActivity extends Activity {
         view = new JebolView(this);
         setContentView(keepClearOfSystemBars(view));
         Optional<String> resumeAt = Optional.ofNullable(saved).map(state -> state.getString(SAVED_PLACE));
-        MemoryFiles files = new MemoryFiles();
-        CarriedApp carried = CarriedApp.read();
-        carried.copyInto(files);
-        String source = givenScript().orElseGet(carried::readEntry);
-        Thread interpreting = new Thread(() -> run(files, source, resumeAt), "jebol-interpreter");
-        interpreting.setDaemon(true);
-        interpreting.start();
+        String source = scriptGivenBy(getIntent());
+        interpreting = startInterpreting(() -> run(source, resumeAt));
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (isDebugBuild() && intent.getBooleanExtra(RESTART_EXTRA, false)) {
+            setIntent(intent);
+            restartInPlace(scriptGivenBy(intent));
+        }
+    }
+
+    private void restartInPlace(String source) {
+        if (askingToLeave != null) {
+            askingToLeave.dismiss();
+            askingToLeave = null;
+        }
+        view.releaseTyping();
+        Thread ending = interpreting;
+        int restart = ++restarts;
+        interpreting = startInterpreting(() -> {
+            if (!cancelUntilEnded(ending)) {
+                Log.e(LogcatOutput.TAG, "the last interpreter did not end in " + TO_END_AN_INTERPRETER);
+                return;
+            }
+            session = null;
+            runOnUiThread(() -> takeBack(false));
+            view.paint(List.of());
+            Log.i(LogcatOutput.TAG, RESTART_MARKER + restart);
+            run(source, Optional.empty());
+        });
+    }
+
+    private boolean cancelUntilEnded(Thread ending) {
+        long givenUpAt = System.nanoTime() + TO_END_AN_INTERPRETER.toNanos();
+        while (ending.isAlive() && System.nanoTime() < givenUpAt) {
+            AppSession stale = session;
+            if (stale != null) {
+                stale.close();
+            }
+            try {
+                ending.join(TO_CANCEL_AGAIN.toMillis());
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return !ending.isAlive();
+    }
+
+    private static Thread startInterpreting(Runnable work) {
+        Thread started = new Thread(work, "jebol-interpreter");
+        started.setDaemon(true);
+        started.start();
+        return started;
     }
 
     private FrameLayout keepClearOfSystemBars(JebolView content) {
@@ -59,12 +118,19 @@ public final class JebolActivity extends Activity {
         return frame;
     }
 
-    private Optional<String> givenScript() {
-        boolean isDebugBuild = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-        return isDebugBuild ? Optional.ofNullable(getIntent().getStringExtra(SCRIPT_EXTRA)) : Optional.empty();
+    private boolean isDebugBuild() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
 
-    private void run(MemoryFiles files, String source, Optional<String> resumeAt) {
+    private String scriptGivenBy(Intent intent) {
+        Optional<String> given = isDebugBuild() ? Optional.ofNullable(intent.getStringExtra(SCRIPT_EXTRA))
+                : Optional.empty();
+        return given.orElseGet(() -> CarriedApp.read().readEntry());
+    }
+
+    private void run(String source, Optional<String> resumeAt) {
+        MemoryFiles files = new MemoryFiles();
+        CarriedApp.read().copyInto(files);
         LogcatOutput output = LogcatOutput.toLogcat();
         AppSession opened = AppSession.open(view, files, output, wanted -> runOnUiThread(() -> takeBack(wanted)));
         session = opened;
@@ -111,10 +177,11 @@ public final class JebolActivity extends Activity {
     }
 
     private void askBeforeLeaving() {
-        new AlertDialog.Builder(this)
+        askingToLeave = new AlertDialog.Builder(this)
                 .setMessage(R.string.leave_with_unsaved_work)
                 .setPositiveButton(R.string.leave, (dialog, which) -> finish())
                 .setNegativeButton(android.R.string.cancel, null)
+                .setOnDismissListener(dialog -> askingToLeave = null)
                 .show();
     }
 

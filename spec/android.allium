@@ -322,9 +322,43 @@ rule ADebugBuildRunsTheScriptItIsGiven {
     ensures: the_app_runs(script)
 }
 
+-- A debug build restarts in place when it is sent an intent marked restart
+-- while it is in front, so a test class pays for one launch and not one a
+-- test. The process, ART's compiled classes and the view are kept; nothing a
+-- script made is. The running interpreter is cancelled and its thread is
+-- waited for; the screen is cleared of every window; the history is emptied,
+-- Back given back to Android and the unsaved-work flag dropped; a dialog the
+-- app shows is dismissed and the keyboard lowered. Then one line, restarted
+-- and a count, is printed under jebol, and a fresh interpreter runs the
+-- script the intent carries, or the app the build carries without one. A
+-- test reads only what was printed after the latest such line.
+rule ADebugBuildRestartsInPlace {
+    when: the_app_is_sent_a_restart(script)
+    requires: is_a_debug_build()
+
+    ensures: the_running_interpreter_is_cancelled_and_has_ended()
+    ensures: no_window_is_shown()
+    ensures: the_history_is_empty()
+    ensures: not the_app_takes_back
+    ensures: not unsaved_work
+    ensures: no_dialog_is_shown()
+    ensures: for view in AppView: not view.keyboard_raised
+    ensures: one_log_line(tag: "jebol", priority: info, text: "restarted " + restarts_so_far)
+    ensures: the_app_runs(script)
+}
+
+-- A release build ignores both: a launch runs the app it carries, and an
+-- intent marked restart, or carrying a script, changes nothing it is running.
 rule AReleaseBuildRunsOnlyItsOwnApp {
     when: the_app_is_launched_with_a_script(script)
     requires: not is_a_debug_build()
 
     ensures: the_app_runs_the_app_it_carries()
+}
+
+rule AReleaseBuildIgnoresARestart {
+    when: the_app_is_sent_a_restart(script)
+    requires: not is_a_debug_build()
+
+    ensures: the_app_keeps_running_what_it_runs()
 }

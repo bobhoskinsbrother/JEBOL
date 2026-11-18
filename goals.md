@@ -43,79 +43,25 @@ does. It is not part of `allTests`: it needs the Android SDK, which not every
 machine has. Run it at the close of every Android stage and after any change
 to the core.
 
-#### Before 2c: the end-to-end suite launches the app once a class
+#### Before 2c: the end-to-end suite restarts the app in place
 
 The owner, 2026-11-17, watching the suite on their phone: restarting the app
 for every test is wasteful; there should be a way to clear its state down
 and reuse the same app.
 
-**What is true on 2026-11-17.**
+**Built, 2026-11-18** (decision 75, "A debug build restarts in place"):
+- the restart, its rules in `spec/android.allium`, and
+  `ARestartInPlaceLeavesNothingBehindEndToEndTest`;
+- every test but the launch tests runs on it;
+- the emulator's before and after are in `docs/android-port.md`: 69.9 s to
+  52.7 s for the same fourteen tests.
 
-- Every test in `android/endtoend` but one begins with `TheApp.startAfresh`:
-  `am force-stop`, `logcat -c`, the device turned upright, a cold launch with
-  `FLAG_ACTIVITY_CLEAR_TASK` and the script in the `script` extra, then a
-  wait for the app to be in front. A test then reads what the script printed
-  from logcat under the tag `jebol`.
-- Twelve tests in four classes. `androidEndToEndTests` took 56 s on the
-  emulator in the last gate (`test-history/2026-11-17_15-16-26-android/`),
-  3 to 6 s a test; the three examples tests load `r3-gui` and are the
-  slowest. Cold start to the first picture of the examples is 2,978 ms on
-  the emulator and 2,819 ms on the owner's phone, most of it the
-  interpreter's boot and the GUI's loading on ART.
-- So the saving today is about half a minute of a two-hour gate, nearly all
-  of which is `androidFunctionalTests`. The reason to do it now is 2d, which
-  adds an end-to-end test by touch for every example, and every one of those
-  would pay a cold start.
-- `JebolActivity` builds one `AppSession` in `onCreate` (the history, the
-  `OneSurfaceScreen` on the `JebolView`, an interpreter on Android's ports)
-  and runs the script on a daemon thread, `jebol-interpreter`.
-  `AppSession.close` cancels the interpreter. The activity has the default
-  launch mode, so a second launch intent while it runs recreates nothing it
-  has been told about. `spec/android.allium` has `ADebugBuildRunsTheScriptItIsGiven`
-  and `AReleaseBuildRunsOnlyItsOwnApp`.
-
-**The design, for its plan to confirm or replace.**
-
-- The debug build takes a *restart in place*: an intent to the running
-  activity (`onNewIntent`, the activity `singleTop`, or a broadcast the debug
-  build alone registers -- the plan picks) carrying a script, or none for the
-  app it carries. The activity cancels the running interpreter and waits for
-  its thread to end, closes every window on the screen, empties the history
-  and unregisters Back, drops the unsaved-work guard, dismisses a dialog it
-  is showing, lowers the keyboard, and opens a fresh `AppSession` on the same
-  view. Then it prints one marker line under `jebol` (say `restarted <n>`) and
-  runs the script. A release build ignores the intent, as it ignores the
-  `script` extra.
-- What is reused is the process, ART's loaded and compiled classes, and the
-  view. The interpreter is a new one every test, so nothing a script defined
-  can leak to the next. Whether the GUI's loading can be shared too is a
-  question for the plan, settled by measuring: a fresh interpreter today loads
-  `r3-gui` for itself.
-- `TheApp` opens the app once a class (`@BeforeAll`) and restarts it in place
-  before each test. It reads only what was printed after the latest marker,
-  so it no longer clears logcat between tests, and a line the last script
-  printed late cannot be read as this test's. If the app is not in front --
-  the last test left it, or Android ended it -- it falls back to a cold
-  launch.
-- Tests about launching keep a real one: `TheAppOpensEndToEndTest`, "a
-  process Android ended comes back at the place it was on", and
-  `AndroidTimingsTest`'s cold starts, which measure exactly that.
-
-**Done when**
-
-- A new end-to-end test proves a restart in place leaves nothing behind, as
-  `ABrowserSharedByTheSuiteStartsEachTestCleanEndToEndTest` does for the
-  browser. The first script opens a window, moves to a second place, marks
-  unsaved work and raises the keyboard. The second script finds: no window,
-  `current-place` empty, the keyboard down, and that Back leaves the app
-  without asking.
-- `spec/android.allium` has the rule for a restart in place, and
-  `AReleaseBuildRunsOnlyItsOwnApp` covers its intent too.
-- Every end-to-end test but the launch tests runs on the restart.
-  `androidEndToEndTests` passes on the emulator, and on the owner's phone
-  (`-Pdevice=`) but for the survey's field, which is 2d's. Its time before and after, on both, is in
-  `docs/android-port.md`.
-- `./gradlew -p android androidTests` passes.
+**Left:** the suite on the owner's phone, once Stay awake is on
+(`./gradlew -p android androidEndToEndTests -Pdevice=<serial>`). It has to
+pass but for the survey's field, which is 2d's. Its time goes in
+`docs/android-port.md` beside the phone's before: 12 tests in 111.8 s with
+one failure (`test-history/2026-11-17_17-22-22-android/`). Then this goal
+leaves this file.
 
 #### 2c. Android's adapters
 

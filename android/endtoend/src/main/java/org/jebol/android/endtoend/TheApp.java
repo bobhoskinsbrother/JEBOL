@@ -3,6 +3,9 @@ package org.jebol.android.endtoend;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Rect;
 
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -11,17 +14,23 @@ import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 final class TheApp {
 
     static final String PACKAGE = "org.jebol.android";
 
     private static final String LOG_TAG = "jebol";
+    private static final String SCRIPT_EXTRA = "script";
+    private static final String RESTART_EXTRA = "restart";
+    private static final String RESTART_MARKER = "restarted ";
+    private static final int BLANK_SAMPLE_STEP = 12;
     private static final Duration TO_OPEN = Duration.ofSeconds(30);
     private static final long POLL_MILLISECONDS = 200;
 
@@ -32,14 +41,34 @@ final class TheApp {
 
     static TheApp runningScript(String script) {
         TheApp app = new TheApp();
-        app.startAfresh(Optional.of(script));
+        app.restartOrStart(Optional.of(script));
         return app;
     }
 
     static TheApp runningWhatItCarries() {
         TheApp app = new TheApp();
+        app.restartOrStart(Optional.empty());
+        return app;
+    }
+
+    static TheApp launchedAfresh(String script) {
+        TheApp app = new TheApp();
+        app.startAfresh(Optional.of(script));
+        return app;
+    }
+
+    static TheApp launchedAfreshWithWhatItCarries() {
+        TheApp app = new TheApp();
         app.startAfresh(Optional.empty());
         return app;
+    }
+
+    private void restartOrStart(Optional<String> script) {
+        if (isInFront()) {
+            restartInPlace(script);
+        } else {
+            startAfresh(script);
+        }
     }
 
     private void startAfresh(Optional<String> script) {
@@ -48,9 +77,36 @@ final class TheApp {
         turnUpright();
         Intent launch = launchIntent();
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        script.ifPresent(source -> launch.putExtra("script", source));
+        script.ifPresent(source -> launch.putExtra(SCRIPT_EXTRA, source));
         context.startActivity(launch);
         waitUntilInFront();
+    }
+
+    void restartWith(String script) {
+        restartInPlace(Optional.of(script));
+    }
+
+    private void restartInPlace(Optional<String> script) {
+        turnUpright();
+        long restartsBefore = markers().count();
+        Intent restart = launchIntent();
+        restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        restart.putExtra(RESTART_EXTRA, true);
+        script.ifPresent(source -> restart.putExtra(SCRIPT_EXTRA, source));
+        context.startActivity(restart);
+        long givenUpAt = System.nanoTime() + TO_OPEN.toNanos();
+        while (markers().count() == restartsBefore) {
+            if (System.nanoTime() > givenUpAt) {
+                throw new AssertionError(PACKAGE + " did not restart in place in " + TO_OPEN + "; printed: "
+                        + printedSinceLaunch());
+            }
+            pause();
+        }
+        waitUntilInFront();
+    }
+
+    private Stream<String> markers() {
+        return printedSinceLaunch().stream().filter(line -> line.startsWith(RESTART_MARKER));
     }
 
     void bringBack() {
@@ -79,15 +135,44 @@ final class TheApp {
     }
 
     List<String> printed() {
-        return shell("logcat -d -v raw -s " + LOG_TAG + ":*").lines()
-                .filter(line -> !line.startsWith("---------"))
-                .toList();
+        return loggedSinceRestart().stream().map(LogLine::text).toList();
     }
 
     List<String> printedAsErrors() {
-        return shell("logcat -d -v raw -s " + LOG_TAG + ":E").lines()
+        return loggedSinceRestart().stream().filter(LogLine::isError).map(LogLine::text).toList();
+    }
+
+    private List<String> printedSinceLaunch() {
+        return loggedSinceLaunch().stream().map(LogLine::text).toList();
+    }
+
+    private List<LogLine> loggedSinceRestart() {
+        List<LogLine> lines = loggedSinceLaunch();
+        for (int at = lines.size() - 1; at >= 0; at--) {
+            if (lines.get(at).text().startsWith(RESTART_MARKER)) {
+                return lines.subList(at + 1, lines.size());
+            }
+        }
+        return lines;
+    }
+
+    private List<LogLine> loggedSinceLaunch() {
+        return shell("logcat -d -v tag -s " + LOG_TAG + ":*").lines()
                 .filter(line -> !line.startsWith("---------"))
+                .map(LogLine::parse)
                 .toList();
+    }
+
+    private record LogLine(char priority, String text) {
+
+        static LogLine parse(String tagged) {
+            int textStarts = tagged.indexOf(": ");
+            return new LogLine(tagged.charAt(0), textStarts < 0 ? "" : tagged.substring(textStarts + 2));
+        }
+
+        boolean isError() {
+            return priority == 'E';
+        }
     }
 
     String waitForLineStarting(String start, Duration patience) {
@@ -147,6 +232,39 @@ final class TheApp {
 
     boolean isKeyboardShown() {
         return shell("dumpsys input_method").contains("mInputShown=true");
+    }
+
+    boolean waitUntilKeyboardShownIs(boolean shown, Duration patience) {
+        long givenUpAt = System.nanoTime() + patience.toNanos();
+        while (isKeyboardShown() != shown) {
+            if (System.nanoTime() > givenUpAt) {
+                return false;
+            }
+            pause();
+        }
+        return true;
+    }
+
+    boolean isViewBlank() {
+        Rect bounds = theViewsBounds();
+        File shot = new File(context.getCacheDir(), "the-view.png");
+        if (!device.takeScreenshot(shot)) {
+            throw new IllegalStateException("no screenshot could be taken");
+        }
+        Bitmap screen = BitmapFactory.decodeFile(shot.getPath());
+        try {
+            for (int y = bounds.top; y < bounds.bottom; y += BLANK_SAMPLE_STEP) {
+                for (int x = bounds.left; x < bounds.right; x += BLANK_SAMPLE_STEP) {
+                    if (screen.getPixel(x, y) != Color.WHITE) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } finally {
+            screen.recycle();
+            shot.delete();
+        }
     }
 
     void pressBack() {

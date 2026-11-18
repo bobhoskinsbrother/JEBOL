@@ -145,6 +145,14 @@ gives it its own, as Macrobenchmark's are, and a `<queries>` entry lets it see
 the app. A debug build runs the script in its launch intent's `script` extra;
 the tests print markers to logcat and read them back.
 
+**A test restarts the app rather than launching it** (decision 75). On the
+emulator (2026-11-18, one Pixel Tablet AVD), the fourteen tests the suite had
+before took 69.9 s with a cold launch each, and 52.7 s restarting in place.
+A test that only restarts went from 4 to 7 s down to 2 to 4 s. The process-death
+test still launches cold and takes about 9 s. The whole suite, with the
+restart's own two tests, is 16 tests in 67.8 s. The phone's before and after
+are still to come: it needs Stay awake on.
+
 **How quick it is, on the emulator** (2026-11-16, a Pixel Tablet AVD at
 2560x1600, x86_64 under KVM with the software GPU; `AndroidTimingsTest`, ten
 of each, the comparison for the owner's phone):
