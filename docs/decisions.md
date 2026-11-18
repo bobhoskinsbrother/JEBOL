@@ -3704,7 +3704,9 @@ Android rarely reaches; and a `com.android.test` APK in the app's process.
 
 ## 76. Every JVM the build uses is 21, and AGP is the IDE's newest
 
-Owner's decisions, 2026-11-17, during goal 2b.
+Owner's decisions, 2026-11-17, during goal 2b. Decision 78 changes it: the
+desktop and the shipped jar move to 25 for FFM, and the core and Android
+stay at 21.
 
 **One Java, 21, for everything the build runs.** The toolchain that compiles
 every source set, the launcher every test runs on (already 21), the launcher
@@ -3854,3 +3856,87 @@ tcp scheme's open asks the network port whether the host may be reached in
 the clear only when that parent's scheme is `http`, so Rebol's file is not
 edited and a `tcp://` a script opens itself is never asked. A refusal is R3's
 own `access no-connect`, with Android's policy as its reason.
+
+## 78. The camera, location and notifications are ports on every platform
+
+Owner's decisions, 2026-11-18, for goals 2f, 2g and 2h.
+
+**Every platform, not Android alone.** Each of the three -- notifications,
+location and the camera, in that order -- is a feature of the
+web, of the desktop on Linux, macOS and Windows, and of Android, and of iOS
+when goal 3 arrives. The goal had planned one extension jar each, led by
+Android.
+
+**A port scheme in the core: `camera://`, `location://` and
+`notification://`.** Each is a `HostPorts` port that every platform answers
+with an adapter of its own, behind a `HostService` grant, as the clipboard
+is. Rebol has nothing for any of the three -- its C, its mezz and its suite
+were searched on 2026-11-18 -- so the REBOL is JEBOL's own, written in
+`spec/` before any code.
+
+**The desktop reaches each operating system through the Foreign Function and
+Memory API, and so needs Java 25.** The JDK has none of the three, and FFM is
+final only from Java 22, so `desktop/` compiles at 25, the LTS, and the
+shipped jar requires 25 to run. The core stays at 21, Android's level. Nothing
+is compiled in C, and no native binary is shipped or fetched. This changes
+decision 76: the build uses 21 for the core and Android and 25 for the
+desktop, and `LaunchingOnAJavaTooOldEndToEndTest` moves its line from 21 to
+25.
+
+**The camera gives stills and a frame stream.** `read camera://` is one
+`image!`; an opened port delivers frames as events, which a script draws in a
+gob for a live preview. Recording video is out.
+
+**The command line keeps what each system gives an unpackaged program.**
+On Linux that is notifications and the camera; on Windows, location behind
+the desktop-apps switch. Where a system serves only an app it can name,
+`java -jar` refuses with `no-service` and says a packaged app is needed.
+
+**Location comes coarse and fine,** in a scheme whose form leaves room for
+both and for what follows (goal 2g).
+
+**One kind of notification, for now.** Android has several flavours (heads-up,
+ongoing, progress, messaging, big picture, actions, groups). 2f does the
+plain one alone: a title and a body, on one channel, with a click and a
+dismissal heard. The other platforms match that and nothing more.
+
+**JEBOL provides a packager, not an app.** Each operating system gives the
+three only to an app it can name: a bundle identifier with usage strings on
+macOS, a Start-menu shortcut carrying an AppUserModelID on Windows, a desktop
+ID on Linux. So someone writing REBOL packages a directory of it as an app of
+their own, for the web, Android, Linux, macOS and Windows. The app's name,
+identity, icons and the services it uses are declared once. The packager is
+goal 2e, widened from Android alone, and the move to Java 25 is its first
+step. JEBOL builds an example app with it to prove it works, and ships no
+app of its own.
+
+**Each platform follows the convention other frameworks use.** On Windows
+the developer declares the app's ID once. The packager's installer sets it on
+the Start-menu shortcut, as Electron's installers do, and the app declares the
+same ID when it starts. A portable app, run without installing, registers its
+ID in the registry on first start, as the Windows App SDK and Firefox do, and
+this is in 2e rather than later. A bare `java -jar` never registers. On
+Android the example app is signed with the debug key. A developer's release
+build is signed with their own key, through `android-signing.properties` with
+Gradle's four field names, or the `JEBOL_ANDROID_*` variables in CI, kept out
+of version control as Flutter's `key.properties` is, and the packager makes an
+app bundle for the Play Store as well as an APK.
+Store registration and signing with the store stay the developer's own.
+
+**The example app on macOS is signed ad hoc,** which is enough to prove the
+packager on the owner's Mac. Signing with a Developer ID and notarising, so
+an app can go to anyone, is left to a later goal.
+
+**macOS and Windows are checked by scripts the owner runs** on the owner's
+own machines, which paste their results back. The build gains nothing for either,
+because jpackage only builds for the system it runs on.
+
+**Rejected:** an extension jar each, since a feature every platform carries
+belongs in the ports the core names; a C shim built from source for each
+operating system through JNI, which needs a C toolchain on every build
+machine; calling system tools such as `gdbus` or `ffmpeg`, which ties a
+script's reach to what a machine happens to have installed; a multi-release
+jar that keeps 21 users running with the three answering not-present, which
+needs both JDKs in the build again; stills only; recording; a JEBOL app of
+its own for each desktop; a Windows virtual machine or a CI runner, which
+would add to the build.

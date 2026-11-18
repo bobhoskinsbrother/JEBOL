@@ -102,19 +102,166 @@ are deleted from `TheExamplesInTheAppEndToEndTest`, and "letters typed reach
 the survey's field" runs and passes on every screen, the owner's phone
 included.
 
-#### 2e. An app of one's own
+#### 2e. An app of one's own, on every platform: the packager
 
-`./gradlew assembleApk -PappDir=my-app` is `assembleSite` for Android: the
-app's files and its `app.json` entry, the extensions it names (decision 63)
-inside the APK, signed. The gate drives `examples/r3-gui` in the APK it
-built, as the browser gate drives the assembled site. `using-jebol.md` says
-how.
+The owner, 2026-11-18 (decision 78): JEBOL provides a packager, not an app.
+Someone writing REBOL turns a directory of it into an app of their own for
+each platform: its own name, identity and icons, with the services it uses
+declared. JEBOL builds an example app with the packager, to prove the
+packager works, and ships no app of its own.
 
-**Done when** an APK built from a directory of REBOL installs and runs on
-the emulator, and the gate drives that APK.
+**What is true today.**
+- `./gradlew assembleSite -PsiteDir=my-app` writes a static site. It
+  generates `app.json`, which names the app's files and its entry. Nothing
+  the author writes names the app, its icon or what it uses.
+- The Android app is JEBOL's own, `org.jebol.android`, built from
+  `android/app` with the debug key. It runs a script given by intent, or
+  `examples/r3-gui`.
+- The desktop is the shipped jar, run with `java -jar` on whatever Java the
+  machine has, from 21 up.
+- No platform has an identity a script's app can claim. That matters from
+  2f on: an operating system gives notifications, location and the camera
+  only to an app it can name (below).
 
-**Its plan settles:** the app's name, icon and identity, and where the
-signing key comes from.
+**Why the desktop needs packaging.** Researched on 2026-11-18, with the
+sources in `docs/platform-services-research.md`:
+- macOS's `UNUserNotificationCenter` and CoreLocation need an app bundle
+  with an identifier, and usage strings in its `Info.plist`. A bare process
+  crashes (`bundleProxyForCurrentProcess is nil`) or is refused. The camera's
+  consent falls to whichever signed app launched the process, usually
+  Terminal, and a bundle without `NSCameraUsageDescription` is ended on
+  first use.
+- Windows raises a toast only for an app whose Start-menu shortcut carries
+  its `System.AppUserModel.ID`. jpackage has no option for that property.
+- Linux's GeoClue authorises an app by its desktop ID, through
+  `geoclue.conf` or the desktop's agent, which names the app from its
+  `.desktop` file.
+- jpackage builds a package only on the system it targets. The macOS app is
+  built on the Mac and the Windows one on Windows, each by a script the
+  owner runs there. The build gains nothing for either (owner, 2026-11-18).
+
+**The app declares itself.** The plan settles where: proposed, the header
+of the app's entry script, since a REBOL script already carries one. It
+declares:
+- a title;
+- an identity in reverse-DNS form (`com.example.notes`), which becomes the
+  Android application id, the macOS bundle identifier, the Windows
+  AppUserModelID and the Linux desktop ID;
+- a version;
+- one square PNG icon of at least 1024 pixels, from which the packager
+  makes every size and format each platform wants (`.icns`, `.ico`,
+  Android's adaptive icon, the web manifest's sizes), with its own writers
+  for the two container formats;
+- what it uses, with the sentence each platform shows when it asks the user:
+  `notifications`, `location`, `camera`. That one list becomes Android's
+  manifest permissions, macOS's usage strings, and the `HostService` grants
+  the app's interpreter is given. An app cannot reach a service it did not
+  declare, so a host's grants and the app's declaration are one fact.
+
+**What it makes.**
+
+| Platform | Package | Built by | Its identity |
+| --- | --- | --- | --- |
+| The web | the site `assembleSite` writes, plus a web app manifest and its icons | this machine | the site's origin |
+| Android | an APK: the app's files and the extensions it names (decision 63), signed | this machine | the application id |
+| Linux | a `.deb` from jpackage, with a jlinked Java 25 runtime and a `.desktop` file | this machine | the desktop ID |
+| macOS | a `.app` from jpackage, ad-hoc signed (`codesign -s -`), with the usage strings in its `Info.plist` | the owner's Mac, by script | the bundle identifier |
+| Windows | an app image or installer from jpackage, with a Start-menu shortcut carrying the AppUserModelID | the owner's Windows machine, by script | the AppUserModelID |
+
+A packaged desktop app carries its own runtime, so its user needs no Java.
+
+**Steps.**
+0. Plan commit: the header's fields, each platform's task and its output,
+   the icon writers, the signing on each platform, and the example app.
+1. Move `desktop/` and the shipped jar to Java 25 (decision 78), with the core
+   and Android staying on 21, and `allTests` passing before anything else
+   changes. Every desktop test runs on 25. `LaunchingOnAJavaTooOldEndToEndTest`
+   moves its line from 21 to 25. The plan lists what else names a Java
+   version: the toolchains, the daemon pins, `scripts/setup-machine.sh`, the
+   IDE's SDK.
+2. Spec: the header, the declared uses becoming grants, and each platform's
+   package.
+3. Failing tests, then the packager:
+   - the header read and refused when wrong;
+   - the icon in every size, and the `.icns` and `.ico` writers checked
+     against the formats;
+   - each package's contents.
+4. The example app, under `examples/`, packaged for all five platforms. Its
+   first version just opens a window; 2f to 2h add one use each.
+5. End to end:
+   - this machine builds the `.deb`, unpacks it into a scratch root, starts
+     the launcher, and drives its window, as the gate drives the site;
+   - the APK is installed on the emulator and driven.
+6. The owner's scripts: one for the Mac (`.app`, signed ad hoc, launched from
+   Finder, a screenshot and a log back) and one for Windows (PowerShell, with
+   a JDK 25 and jpackage's WiX installed by the script). Each pastes back
+   what it measured, as `scripts/android-on-my-phone.sh` does.
+7. Docs: `using-jebol.md` says how to make an app for each platform;
+   decision 78 gains whatever the plan settled.
+
+**Done when** the example app is packaged for the web, Android, Linux, macOS
+and Windows from one directory and one header, and each package installs and
+opens its window; `allTests` and `androidTests` pass; and the owner's Mac and
+Windows scripts report the app running.
+
+**Its plan settles:**
+- the header's exact fields, and what a missing or wrong one raises;
+- which part of the registry a per-user portable app registers its ID
+  under (below). Microsoft's page shows `HKEY_LOCAL_MACHINE`, and whether
+  `HKEY_CURRENT_USER` serves was not confirmed. The plan checks it on the
+  owner's Windows machine before writing the route.
+
+**The developer's part and the framework's** (owner, 2026-11-18). JEBOL is
+the framework other developers build their apps with, and the example app
+shows how. Each platform follows the convention other frameworks use, with
+the sources in `docs/platform-services-research.md`:
+- **Windows.** The developer declares the app's ID once, in the header, and
+  does nothing more, as with Electron and its installers. The packager's
+  installer puts that ID on the Start-menu shortcut as its
+  `System.AppUserModel.ID`, through jpackage's WiX template, overridden by
+  `--resource-dir`. The app declares the same ID to Windows when it starts
+  (`SetCurrentProcessExplicitAppUserModelID`), so its toasts and windows
+  match the shortcut.
+- **Windows, portable** (owner, 2026-11-18: in 2e, not later). A packaged app
+  run without installing it, from jpackage's app image unzipped anywhere,
+  registers its own ID when it first starts. It writes
+  `Software\Classes\AppUserModelId\<ID>` with its display name and icon, as
+  the Windows App SDK and Firefox's portable builds do, and a COM activator,
+  so a click on a toast reaches it even when it is not running. Its toasts
+  then work with no shortcut. It removes that registration when the app
+  removes itself, and the plan says how an app that is simply deleted leaves
+  nothing harmful behind. A bare `java -jar` never registers itself: the
+  command line keeps only what Windows gives an unpackaged program.
+- **Android, as Flutter does it.** The example app is signed with the
+  machine's debug key. A developer's release build is signed with their own
+  key: they make a keystore with `keytool`, and the packager reads
+  `android-signing.properties` in the app's directory, with Gradle's own four
+  field names:
+
+  ```properties
+  storeFile=/home/me/keys/notes-upload.jks
+  storePassword=...
+  keyAlias=upload
+  keyPassword=...
+  ```
+
+  `JEBOL_ANDROID_STORE_FILE`, `JEBOL_ANDROID_STORE_PASSWORD`,
+  `JEBOL_ANDROID_KEY_ALIAS` and `JEBOL_ANDROID_KEY_PASSWORD` stand in for
+  each field, and each wins over the file, so in CI no password is written
+  to disk. The name says Android, since macOS notarising and Windows code
+  signing will have files of their own. With neither file nor variables, a
+  build is signed with the debug key and says so, and a release build refuses,
+  giving the `keytool` command. The packager warns when the signing file or
+  the keystore is tracked by git. The packager makes an app bundle (`.aab`) as well as an APK,
+  since the Play Store takes bundles. Registering with the Play Store, and
+  Play App Signing, are the developer's own; `using-jebol.md` says how, and
+  says to back the key up.
+
+**Settled by the owner, 2026-11-18:** the command line (`java -jar`) keeps
+whatever an operating system gives an unpackaged program: on Linux,
+notifications and the camera through V4L2; on Windows, location behind the
+one desktop-apps switch. It refuses, with `no-service` saying a packaged app
+is needed, only where the system will not serve a program it cannot name.
 
 #### 2e2. Services: a script that keeps running when the app is not on screen
 
@@ -145,21 +292,251 @@ Android's own answers:
 - what the desktop and the page do with the same words. The desktop simply
   keeps running. The page has service workers.
 
-The notification permission it needs is the same one 2h asks for, so the
-order of 2e2 and 2h is this stage's to settle.
+The notification permission it needs is the one 2f asks for, so 2e2 may
+come after 2f; that order is this stage's to settle.
 
 **Done when** a script can keep a timer and a connection alive with the
 app off screen, under Doze on the emulator (`adb shell dumpsys deviceidle
 force-idle`), with the notification shown. An end-to-end test drives it.
 
-#### 2f, 2g, 2h. The camera, location, notifications
+#### 2f, 2g, 2h. Notifications, location and the camera, on every platform
 
-One extension each (`using-jebol.md`, section 4; decision 63), each its own
-stage and plan: the REBOL it offers, Android's permission asked at the
-moment of use, and where it can come to the web or the desktop too -- the
-camera and location in a browser, notifications on both -- it comes there
-as well. Each plan searches Rebol's suite and the C for a shape to follow
-before inventing one.
+The owner, 2026-11-18 (decision 78): each is a feature of every platform JEBOL
+runs on, not of Android alone -- the web, Android, and the desktop on Linux,
+macOS and Windows -- and iOS answers the same three when goal 3 arrives.
+
+**What is true today.**
+- `HostPorts` holds eighteen ports, and none of these three.
+- `HostService` has thirteen grants, and none of these three.
+- Rebol has nothing for any of them. Its C, its mezz, its boot files and its
+  suite were searched on 2026-11-18 for a camera, a webcam, location,
+  geolocation and notifications, and the only hit was JEBOL's own "camera"
+  example of an extension. So the REBOL is JEBOL's own, and each plan writes
+  it into `spec/` before any code.
+- The web's interpreter runs in a worker. It reaches the page by
+  `PageRoundTrip`, as `PageClipboard` does, and the page answers. A worker
+  can ask for none of the three itself: the Notifications API's permission,
+  the Geolocation API and `getUserMedia` are the window's.
+- The Android app asks for no runtime permission today.
+- The desktop calls nothing native. The three need each operating system's
+  own API, through FFM on Java 25, which 2e step 1 moves the desktop to.
+  Nothing is compiled in C, and no native binary is shipped or fetched.
+- Each operating system gives the three only to an app it can name, and 2e's
+  packager gives an app that name.
+
+**Shared by all three.**
+- **A port scheme in the core:** `notification://`, `location://` and
+  `camera://`. Each is a `HostPorts` port, which each platform answers with
+  an adapter of its own and `none()` refuses, behind a `HostService` grant of
+  its own (`NOTIFICATIONS`, `LOCATION`, `CAMERA`). A packaged app is given
+  the grants its header declares (2e).
+- **Events from a device thread.** Each platform's callback arrives on a
+  thread of its own and is queued for the interpreter, as the screen's events
+  are (decision 27). The interpreter's thread is never held by a device, and
+  a device never touches a value.
+- **The event types come from R3's catalogue** (`reb-evtypes.h`), which has
+  no `click`: `open`, `read`, `active`, `close` and `error` are the ones
+  proposed below, and each plan confirms them against how R3's own ports use
+  them.
+- **Refusals, the same on every platform.**
+  - Not granted, or no such device here: JEBOL's own `access no-service`, as
+    every host service answers today.
+  - The user said no: `access cannot-open`, with the port as `arg1` and
+    "the user refused" as `arg2`.
+  - The operating system needs an app it can name, and the script is not in
+    one: `access no-service`, saying so.
+  A script can catch each one, and tell them apart by `id` and `arg2`.
+- **Permission is asked at the moment of first use,** by each platform's own
+  means: Android's runtime permission through the activity, the browser's
+  prompt, macOS's privacy consent, Windows's first-use prompt. A script never
+  asks for permission separately. An app off screen (2e2) cannot be asked,
+  and refuses.
+- **The tests reach no real device and no site on the internet.** Each
+  platform is faked at its own boundary, as the table under each stage says.
+  The fakes are checked in, written in Java where the boundary is a protocol.
+- **New desktop machinery, written once and shared:**
+  - a D-Bus client for Linux, over a Unix-domain socket (Java 16 and up),
+    with SASL `EXTERNAL`, the marshalling of the types the three services
+    use, method calls and signals. It is tested against a real
+    `dbus-daemon` on a private bus. 2f writes it.
+  - an Objective-C bridge for macOS through FFM: `objc_msgSend` in each call
+    shape, classes made at run time with `objc_allocateClassPair` for
+    delegates, and blocks for completion handlers, built as the block ABI
+    lays them out with an upcall stub. Nothing found on 2026-11-18 shows Java
+    doing blocks this way, so 2f's first Mac step is a probe that proves it.
+  - a WinRT and COM bridge for Windows through FFM: `RoInitialize`,
+    `HSTRING`, `RoGetActivationFactory`, calls through a vtable, and
+    delegates implemented as COM objects with upcalls (`IUnknown`,
+    `IAgileObject`) for events and `IAsyncOperation` completions.
+- **macOS and Windows are checked by the owner's scripts** from 2e step 6,
+  each extended per stage, and their reports are pasted back. The build gains
+  nothing for either.
+
+**2f. Notifications.**
+
+The REBOL proposed, for the plan to settle:
+
+```rebol
+write notification:// [title: "Backup" body: "Finished at 14:02"]
+
+n: open notification://
+write n [title: "New message" body: "From Sam" tag: "inbox"]
+n/awake: func [event] [
+    switch event/type [
+        active [print "the user clicked it"]
+        close  [print "the user dismissed it"]
+    ]
+    false
+]
+wait [n 60]
+close n
+```
+
+`write` shows one and answers at once. A second `write` with the same `tag`
+replaces the first, rather than adding another. `close` takes back whatever
+the port showed.
+
+**One kind of notification, for now** (owner, 2026-11-18). Android has
+several: heads-up, ongoing, progress, the messaging and big-picture styles,
+action buttons, groups, and the importance a channel gives. 2f does one,
+the plain one with a title and a body, on one channel. The others are left
+for later, and so are their equivalents on the other platforms.
+
+| Platform | Shown by | Asks the user | Click and dismiss | The test's fake |
+| --- | --- | --- | --- | --- |
+| The web | the page, `new Notification` | the page, `Notification.requestPermission`. Firefox wants a click or a key first, so the page shows a bar of its own the user clicks. | `onclick`, `onclose` | a preload script replacing `Notification` with a recorder, plus `permissions.setPermission` over BiDi in Firefox and `Browser.grantPermissions` over CDP in Chrome |
+| Android | `NotificationManager`, with a channel made on first use | `POST_NOTIFICATIONS`, API 33 and up, through the activity | a `PendingIntent` to the activity, and a `deleteIntent` | UI Automator opens the shade, finds it by its text, and clicks or swipes it; `pm revoke` for a refusal |
+| Linux | `org.freedesktop.Notifications.Notify` on the session bus, with the `desktop-entry` hint | nothing: the desktop shows what it is sent | `ActionInvoked` for the `default` action, and `NotificationClosed` with reason 2 | a fake `Notifications` service on a private `dbus-daemon`, written with JEBOL's own D-Bus code |
+| macOS | `UNUserNotificationCenter`, from the packaged `.app` | `requestAuthorizationWithOptions:completionHandler:` | a delegate's `didReceiveNotificationResponse:`, and a category with `customDismissAction` for a dismissal | the owner's Mac script: the Mac shows it, and a person clicks it |
+| Windows | `ToastNotificationManager.CreateToastNotifier`, with the app's AppUserModelID | the first-use prompt | the toast's `Activated` and `Dismissed` events | the owner's Windows script, the same way |
+
+Steps:
+0. Plan commit: the REBOL, the event types, the refusals, and the order of
+   2e2 against 2f.
+1. The Mac probe: from the example `.app`, through FFM, ask for permission
+   with a block and show one notification. If FFM cannot do blocks, the plan
+   comes back to the owner before any other step.
+2. Spec: `spec/notification.allium`.
+3. Failing tests, then the adapters, one platform at a time: the web,
+   Android, Linux with the D-Bus client, macOS, Windows.
+4. The example app gains a notification. End to end: Chrome and Firefox; the
+   emulator; the `.deb` with the fake service; and the owner's two scripts.
+5. Docs: `using-jebol.md`, and decision 78 with what the plan settled.
+
+**2g. Location.**
+
+The REBOL proposed:
+
+```rebol
+here: read location://
+here/latitude here/longitude here/accuracy
+
+p: open location://
+p/awake: func [event] [
+    if event/type = 'read [print [p/data/latitude p/data/longitude]]
+    false
+]
+```
+
+A position is an `object!` with `latitude` and `longitude` in degrees,
+`accuracy` in metres, `altitude` in metres or `none`, and `time`, the
+`date!` it was fixed at. `read` waits for one fix, up to the time the port's
+spec gives. An open port reports each move as `read`.
+
+**Coarse and fine are both offered** (owner, 2026-11-18), and the scheme's
+form leaves room for both and for what may follow. Proposed:
+`location://coarse` and `location://fine`, with the host naming the
+accuracy, and bare `location://` meaning coarse, the one that asks the user
+for less. A block spec (`open [scheme: 'location accuracy: 'fine
+timeout: 0:00:30]`) says the same and carries the port's other settings.
+Each platform's word for it:
+
+| Platform | Coarse | Fine |
+| --- | --- | --- |
+| The web | `enableHighAccuracy: false` | `enableHighAccuracy: true`. The browser has one permission for both, so `accuracy` is what tells them apart. |
+| Android | `ACCESS_COARSE_LOCATION` | `ACCESS_FINE_LOCATION`. From Android 12 the user may give only coarse when fine is asked for. |
+| Linux | GeoClue's `RequestedAccuracyLevel` city (4) | exact (8) |
+| macOS | `kCLLocationAccuracyReduced` | `kCLLocationAccuracyBest`. The user may switch off precise location for the app. |
+| Windows | `PositionAccuracy.Default` | `PositionAccuracy.High` |
+
+The plan settles what a script asking for fine is given when the user allowed
+only coarse. Proposed: the coarse position, with `accuracy` saying so and
+`query` naming the accuracy granted, rather than a refusal.
+
+| Platform | Asked by | Asks the user | The test's fake |
+| --- | --- | --- | --- |
+| The web | the page: `getCurrentPosition` and `watchPosition` | the browser's prompt, which needs no click first | `emulation.setGeolocationOverride` and `permissions.setPermission` over BiDi in Firefox (139 and up); Chrome's CDP `Emulation.setGeolocationOverride`, or BiDi if Chrome has it by then |
+| Android | `LocationManager.getCurrentLocation` (API 30 and up) and `requestLocationUpdates`, through AOSP's own providers, never Google Play services | `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION` | `adb emu geo fix` on the emulator |
+| Linux | GeoClue2 on the system bus: `GetClient`, then `DesktopId` (the packaged app's), `RequestedAccuracyLevel`, `Start`, and the `LocationUpdated` signal | GeoClue's agent (GNOME Shell's), or `geoclue.conf` | a fake `org.freedesktop.GeoClue2` on a private bus, with `DBUS_SYSTEM_BUS_ADDRESS` pointed at it |
+| macOS | `CLLocationManager` with a delegate, from the packaged `.app` with `NSLocationUsageDescription` | `requestWhenInUseAuthorization` | the owner's Mac script |
+| Windows | `Windows.Devices.Geolocation.Geolocator`, `GetGeopositionAsync` | an unpackaged app shares the one "desktop apps" switch, and 24H2 prompts on first use; `RequestAccessAsync` is for packaged apps and throws outside an app container | the owner's Windows script |
+
+Two things the plan has to answer:
+- **A machine that cannot find itself.** Since Mozilla's location service
+  shut down in June 2024, a desktop with no GPS and no Wi-Fi database may
+  get no fix at all from GeoClue; Debian moved GeoClue to BeaconDB. Such a
+  machine answers `timeout`, or `no-service` if it never has a source: the
+  plan says which.
+- **The run loop on macOS.** `CLLocationManager` delivers on the run loop of
+  the thread that made it. The plan says which thread that is, beside the
+  window's AppKit thread.
+
+Steps: as 2f's, with `spec/location.allium`, and no probe beyond 2f's
+bridges.
+
+**2h. The camera.**
+
+The REBOL proposed:
+
+```rebol
+shot: read camera://
+
+cam: open camera://
+cam/awake: func [event] [
+    if event/type = 'read [preview/image: copy cam  show preview]
+    false
+]
+query camera://
+```
+
+`read` is one `image!`. An open port reports each frame as `read`, and
+`copy` takes the newest. A frame the script has not taken is replaced by the
+next, never queued, so a slow script misses frames and never runs a device
+out of memory. `query camera://` lists the cameras, and `camera://2` picks
+one. The plan settles how a script asks for a size and a rate, and what it is
+given when the device offers neither.
+
+| Platform | Captured by | Its frames | Asks the user | The test's fake |
+| --- | --- | --- | --- | --- |
+| The web | the page: `getUserMedia` | the page draws the newest into an `OffscreenCanvas` and hands the worker its pixels when asked | the browser's prompt | Chrome's `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream`; Firefox's `media.navigator.streams.fake` and `media.navigator.permission.disabled` |
+| Android | Camera2, with no `androidx.camera` dependency | an `ImageReader` in `YUV_420_888`, turned into RGB | `CAMERA` | the emulator's virtual scene (back) and emulated (front) cameras |
+| Linux | V4L2 through FFM: `VIDIOC_QUERYCAP`, `S_FMT`, `REQBUFS`, `mmap`, `QBUF`, `DQBUF`, `STREAMON` | `YUYV` turned into RGB; `MJPEG` through ImageIO, with the standard Huffman tables a camera leaves out put back | nothing: the device file's permissions | a `v4l2loopback` device the test writes frames of a known picture into. `scripts/setup-machine.sh` installs `v4l2loopback-dkms`, which needs `sudo` once. |
+| macOS | `AVCaptureSession` and `AVCaptureVideoDataOutput`, with a sample-buffer delegate, from the packaged `.app` with `NSCameraUsageDescription` | `CVPixelBuffer` in BGRA | `AVCaptureDevice requestAccessForMediaType:completionHandler:` | the owner's Mac script, with the Mac's own camera |
+| Windows | Media Foundation: `MFEnumDeviceSources`, `IMFSourceReader` and a synchronous `ReadSample` | RGB32, through the reader's own video processing | the one "desktop apps" camera switch | the owner's Windows script |
+
+The plan has to answer:
+- what the fake pictures are, so a test checks pixels rather than only a
+  size: the Linux loopback's are the test's own; Chrome's and the emulator's
+  are theirs, and the plan reads what they draw;
+- how a frame crosses from the page to the worker without copying it more
+  than once.
+
+Steps: as 2f's, with `spec/camera.allium`; the Linux loopback fixture first,
+since every Linux test stands on it.
+
+**Done when**, for each stage:
+- the port has its rules in `spec/`;
+- every platform above has an adapter with a unit test, a functional test
+  through REBOL in that platform's suite, and an end-to-end test that drives
+  the packaged example app;
+- the refusals are the same on every platform, with a test of each;
+- `using-jebol.md` says what a script may reach on each platform;
+- `allTests` and `androidTests` pass, and the owner's macOS and Windows
+  scripts report it working.
+
+The research behind 2e to 2h, with every source and how far each can be
+trusted, is `docs/platform-services-research.md`. Each plan re-checks there
+what it builds on.
 
 ### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 
