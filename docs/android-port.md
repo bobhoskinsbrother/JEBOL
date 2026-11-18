@@ -150,8 +150,14 @@ emulator (2026-11-18, one Pixel Tablet AVD), the fourteen tests the suite had
 before took 69.9 s with a cold launch each, and 52.7 s restarting in place.
 A test that only restarts went from 4 to 7 s down to 2 to 4 s. The process-death
 test still launches cold and takes about 9 s. The whole suite, with the
-restart's own two tests, is 16 tests in 67.8 s. The phone's before and after
-are still to come: it needs Stay awake on.
+restart's own two tests, is 16 tests in 67.8 s. On the owner's phone
+(2026-11-18), the twelve tests both runs share went from 111.8 s to 90.0 s.
+One of them is the survey's field, which fails on a phone and waits out its
+minute either way (goal 2d's). Without it, eleven tests went from 47.5 s to
+28.4 s. The phone needs Stay awake on, which `adb shell svc power stayon usb`
+sets. The restart's test asks whether the last window's colour is left on
+the screen, not whether the view is blank, because a Samsung draws its Edge
+panel handle over every app.
 
 **How quick it is, on the emulator** (2026-11-16, a Pixel Tablet AVD at
 2560x1600, x86_64 under KVM with the software GPU; `AndroidTimingsTest`, ten

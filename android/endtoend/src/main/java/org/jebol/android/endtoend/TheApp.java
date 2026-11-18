@@ -30,7 +30,7 @@ final class TheApp {
     private static final String SCRIPT_EXTRA = "script";
     private static final String RESTART_EXTRA = "restart";
     private static final String RESTART_MARKER = "restarted ";
-    private static final int BLANK_SAMPLE_STEP = 12;
+    private static final int COLOUR_SAMPLE_STEP = 12;
     private static final Duration TO_OPEN = Duration.ofSeconds(30);
     private static final long POLL_MILLISECONDS = 200;
 
@@ -245,22 +245,23 @@ final class TheApp {
         return true;
     }
 
-    boolean isViewBlank() {
+    boolean isShowingColour(int red, int green, int blue) {
         Rect bounds = theViewsBounds();
         File shot = new File(context.getCacheDir(), "the-view.png");
         if (!device.takeScreenshot(shot)) {
             throw new IllegalStateException("no screenshot could be taken");
         }
         Bitmap screen = BitmapFactory.decodeFile(shot.getPath());
+        int sought = Color.rgb(red, green, blue);
         try {
-            for (int y = bounds.top; y < bounds.bottom; y += BLANK_SAMPLE_STEP) {
-                for (int x = bounds.left; x < bounds.right; x += BLANK_SAMPLE_STEP) {
-                    if (screen.getPixel(x, y) != Color.WHITE) {
-                        return false;
+            for (int y = bounds.top; y < bounds.bottom; y += COLOUR_SAMPLE_STEP) {
+                for (int x = bounds.left; x < bounds.right; x += COLOUR_SAMPLE_STEP) {
+                    if (screen.getPixel(x, y) == sought) {
+                        return true;
                     }
                 }
             }
-            return true;
+            return false;
         } finally {
             screen.recycle();
             shot.delete();

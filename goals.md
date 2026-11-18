@@ -25,7 +25,8 @@ has unit, functional and end-to-end suites as the other platforms do, run
 by an `androidTests` gate.
 
 The stages left, in this order, from 2c; 2b, the app, is done (decision 75,
-`docs/android-port.md`). Each is planned in full -- what is true today,
+`docs/android-port.md`), and so is the end-to-end suite's restart in place
+that came after it. Each is planned in full -- what is true today,
 spec, failing tests, code, docs -- in its own plan commit before work on it
 starts, as 1l was; what follows is each stage's reach, its done-when and the
 questions its plan has to settle. A defect that would hurt a stage is fixed
@@ -42,26 +43,6 @@ and stops (decision 73), and archives into `test-history/` as `allTests`
 does. It is not part of `allTests`: it needs the Android SDK, which not every
 machine has. Run it at the close of every Android stage and after any change
 to the core.
-
-#### Before 2c: the end-to-end suite restarts the app in place
-
-The owner, 2026-11-17, watching the suite on their phone: restarting the app
-for every test is wasteful; there should be a way to clear its state down
-and reuse the same app.
-
-**Built, 2026-11-18** (decision 75, "A debug build restarts in place"):
-- the restart, its rules in `spec/android.allium`, and
-  `ARestartInPlaceLeavesNothingBehindEndToEndTest`;
-- every test but the launch tests runs on it;
-- the emulator's before and after are in `docs/android-port.md`: 69.9 s to
-  52.7 s for the same fourteen tests.
-
-**Left:** the suite on the owner's phone, once Stay awake is on
-(`./gradlew -p android androidEndToEndTests -Pdevice=<serial>`). It has to
-pass but for the survey's field, which is 2d's. Its time goes in
-`docs/android-port.md` beside the phone's before: 12 tests in 111.8 s with
-one failure (`test-history/2026-11-17_17-22-22-android/`). Then this goal
-leaves this file.
 
 #### 2c. Android's adapters
 
