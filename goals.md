@@ -364,10 +364,15 @@ fits, but the survey's window opens to its right, with its field at
 905 dp across, off the screen. `TheExamplesInTheAppEndToEndTest`'s "letters
 typed reach the survey's field" taps there and fails on that phone for that
 reason alone; it passes on the 1280 dp tablet. Laying the windows out for
-the screen is what makes it pass.
+the screen is what makes it pass. Until then it skips itself on any screen
+narrower than the survey's right edge (`isNarrowerThanTheSurvey`, 1085 dp).
 
 **Done when** every example works by touch alone, on a phone-sized emulator
 and in Chrome's phone emulation, and the edge swipe moves the site's history.
+And the special case is gone: `isNarrowerThanTheSurvey` and its `@DisabledIf`
+are deleted from `TheExamplesInTheAppEndToEndTest`, and "letters typed reach
+the survey's field" runs and passes on every screen, the owner's phone
+included.
 
 #### 2e. An app of one's own
 
