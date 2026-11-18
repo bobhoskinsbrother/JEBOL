@@ -3812,3 +3812,45 @@ build adds the user's.** This is Android's own default for apps since API
 HTTPS through a proxy of their own, with its root installed on the phone,
 and a shipped app keeps the strict default. The desktop's `--cafile` has no
 Android equivalent.
+
+**A GIF's frame is composed by the disposal methods, on every platform** (the
+owner, 2026-11-18). `JavaImage` built frame N by drawing every earlier frame
+over the last and ignored each frame's disposal method, so a frame that
+restores the background or the previous picture came out as no viewer shows
+it. The core's codec follows GIF89a's four methods, and the desktop decodes
+GIF with it too: a frame that disposes by 2 or 3 now answers differently on
+the desktop, and correctly. Matching `JavaImage` was rejected, as it would
+carry a known wrong answer onto a second platform.
+
+**A picture of more than 256 colours is quantised by median cut with
+Floyd-Steinberg dithering** (the owner, 2026-11-18). The owner chose it on
+the phone from sheets `scripts/GifQuantiserComparison.java` draws: a
+photograph, a hue sweep and soft shading, each through ImageIO's own,
+octree and median cut, with and without dithering. Undithered palettes
+banded every gradient; median cut fits its palette to the picture's own
+colours where an octree divides a fixed cube.
+
+**USER and LOGNAME are the app's identifier** (the owner, 2026-11-18), the
+`applicationId` the app was built with, so a script can tell which app it
+runs in, and nothing about the device or its user is told.
+
+**TMPDIR is `/tmp` in the store, emptied as the app starts.** The goal asked
+for a folder in the app's cache. The cache sits outside the store, which is
+the script's whole world, so a path there would name a place the script
+cannot reach. A folder in the store that the app empties at each start is
+what a temporary folder promises, and the script can use it.
+
+**The app's bounds hold a memory ceiling.** The evaluator already turns an
+`OutOfMemoryError` on its own thread into REBOL's `no-memory`. On Android the
+danger is another thread meeting the full heap first, since Android ends the
+process on any uncaught one. So `Bounds` gains a ceiling below the heap: every
+so many steps the evaluator compares the heap in use with it, collects once
+when it is over, and raises `no-memory` when it is still over. The desktop's
+bounds hold none and behave as before.
+
+**Plain http is asked in `TcpPort`, not in `prot-http.reb`.** The http scheme
+opens a `tcp://` port whose parent is the http port, before it opens it. The
+tcp scheme's open asks the network port whether the host may be reached in
+the clear only when that parent's scheme is `http`, so Rebol's file is not
+edited and a `tcp://` a script opens itself is never asked. A refusal is R3's
+own `access no-connect`, with Android's policy as its reason.

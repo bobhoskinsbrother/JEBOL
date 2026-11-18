@@ -172,6 +172,13 @@ plugged into this machine for the closing run.
    - *IDNA* is settled: Android uses its own `android.icu.text.IDNA`, and
      `Uts46` becomes the desktop's (decision 77, the owner, 2026-11-17).
      Step 3 does the work.
+   - *Settled on 2026-11-18* (decision 77): a GIF's frames compose by their
+     disposal methods on every platform; above 256 colours the quantiser is
+     median cut with Floyd-Steinberg dithering; USER and LOGNAME are the
+     app's identifier; TMPDIR is `/tmp` in the store, emptied at start; the
+     memory ceiling is checked by the evaluator; plain http is asked in
+     `TcpPort` when the parent port is http's. The stage is committed once,
+     after both gates and the phone, beside the plan commit.
 
 2. **The spec.** A section of `spec/android.allium` for the ports, one rule
    a port, in the shape of its existing rules:
@@ -213,8 +220,10 @@ plugged into this machine for the closing run.
      - disposal methods 0 to 3, a frame smaller than the screen and offset
        within it;
      - one frame, two, and a hundred.
-   - *Decoding composes frames as `JavaImage.composeEveryEarlierFrame` does*,
-     so `frame` means the same picture on both.
+   - *Decoding composes frames by their disposal methods* (decision 77,
+     2026-11-18), so `JavaImage` is the reference for the first frame and for
+     frames whose earlier frames dispose by 0 or 1; a frame after a 2 or a 3
+     is checked against pixels worked out by hand from the specification.
    - *Encoding answers the same when decoded back.* A picture of 256 colours
      or fewer is written against its own palette as `JavaImage` writes it,
      and decodes back to the same pixels. Above 256, `JavaImage` leaves the

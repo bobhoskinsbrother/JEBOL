@@ -7,13 +7,12 @@
 -- one finger as the pointer; the soft keyboard; Back; and what Android does to
 -- the app -- turning the device, sending it to the background, ending its
 -- process -- as a script hears them. And printing, which on a phone reaches a
--- person only through the log.
+-- person only through the log. And the ports Android gives a script: its
+-- files, its environment, pictures, the clipboard, the network and TLS, and
+-- what it may not have (decision 77).
 --
 -- Excludes:
---   - The ports behind files, sockets, TLS, pictures, the clipboard and the
---     machine. They are goal 2c's and get their rules here then; until then
---     the app's files are the memory filesystem its APK fills, and a port a
---     page cannot have refuses as a page's does (embed.allium).
+--   - Files the user chooses through Android's picker. They are goal 2c2's.
 --   - Gestures with more than one finger. A second finger is ignored here;
 --     goal 2d may give them a meaning, in the GUI's REBOL.
 --   - What a window looks like. The paint list is screen.allium's and the
@@ -361,4 +360,163 @@ rule AReleaseBuildIgnoresARestart {
     requires: not is_a_debug_build()
 
     ensures: the_app_keeps_running_what_it_runs()
+}
+
+------------------------------------------------------------
+-- The ports (goal 2c, decision 77)
+------------------------------------------------------------
+
+-- The app's store is a folder in its own private storage, which no other app
+-- reads and which outlives the process: a file a script writes is there when
+-- Android has ended the app and it is launched again.
+rule TheStoreIsPrivateAndOutlivesTheProcess {
+    when: the_script_writes(path, contents)
+
+    ensures: the_store_holds(path, contents)
+    ensures: the_store_is_in(app_private_storage)
+    ensures: after_the_process_ends_and_the_app_relaunches(the_store_holds(path, contents))
+}
+
+-- The store's root is the script's root, and home is that root, by decision
+-- 69's rule: system/options/home is %/ and get-env "HOME" agrees with it.
+rule HomeIsTheRoot {
+    when: the_app_starts()
+
+    ensures: system_options_home = "/"
+    ensures: environment_value("HOME") = "/"
+}
+
+-- The APK's carried files read beneath the store: a read finds the store's
+-- file first and the carried one after it; a write lands in the store, so a
+-- script's own file shadows a carried one of the same name; a directory lists
+-- both, each name once; and deleting or renaming a carried file is refused,
+-- since the APK cannot be changed. Nothing is copied out of the APK.
+rule TheStoreReadsBeforeTheCarriedFiles {
+    when: the_script_reads(path)
+
+    ensures: answer = store_file_or_else_carried_file(path)
+}
+
+rule AWriteLandsInTheStore {
+    when: the_script_writes(path, contents)
+
+    ensures: the_store_holds(path, contents)
+    ensures: the_carried_file_is_unchanged(path)
+}
+
+rule ADirectoryListsBoth {
+    when: the_script_lists(directory)
+
+    ensures: answer = names_in_either_once(store_names(directory), carried_names(directory))
+}
+
+rule ACarriedFileCannotBeDeleted {
+    when: the_script_deletes(path)
+    requires: carried_has(path) and not store_has(path)
+
+    ensures: refused_as(access, "read-only")
+}
+
+-- The environment is a standard desktop's, wrapped to the app's own places,
+-- and none of the device's own variables ever reach a script.
+-- HOME and PWD are the root; TMPDIR is /tmp, a folder in the store that the
+-- app empties as it starts; LANG is the device's locale as en_GB.UTF-8; USER
+-- and LOGNAME are the app's identifier; SHELL and PATH are absent, since
+-- nothing can be started. A set-env is the script's own and lasts as long as
+-- the process.
+rule TheEnvironmentIsTheAppsOwn {
+    when: the_app_starts()
+
+    ensures: environment_names = {"HOME", "PWD", "TMPDIR", "LANG", "USER", "LOGNAME"}
+    ensures: environment_value("USER") = application_id
+    ensures: environment_value("LOGNAME") = application_id
+    ensures: environment_value("TMPDIR") = "/tmp"
+    ensures: environment_value("LANG") = device_locale_as_posix() + ".UTF-8"
+}
+
+-- A picture decodes from PNG, JPEG, GIF, BMP, WebP and HEIF, and encodes to
+-- PNG, JPEG, WebP, BMP and GIF. Any other format is one the codec has not got,
+-- and is refused as the desktop refuses one. GIF, both ways, is the core's own
+-- codec, so a frame is the same picture on every platform: the frames before
+-- it composed by their disposal methods (GIF89a), and a picture of more than
+-- 256 colours quantised by median cut with Floyd-Steinberg dithering.
+rule APictureDecodesInTheFormatsAndroidReads {
+    when: the_script_loads_a_picture(bytes, format)
+    requires: format in {png, jpeg, gif, bmp, webp, heif}
+
+    ensures: answer = image_of(bytes)
+}
+
+rule APictureEncodesInTheFormatsAndroidWrites {
+    when: the_script_saves_a_picture(image, format)
+    requires: format in {png, jpeg, webp, bmp, gif}
+
+    ensures: decoding(answer) = image_within_the_loss_of(format)
+}
+
+rule AnotherPictureFormatIsRefused {
+    when: the_script_saves_a_picture(image, format)
+    requires: format not in {png, jpeg, webp, bmp, gif}
+
+    ensures: refused_as_a_format_the_codec_has_not_got(format)
+}
+
+-- Android gives the clipboard only to the app in front. Read from the
+-- background, it answers none, as an empty clipboard does; a write from the
+-- background changes nothing.
+rule TheClipboardInTheBackgroundIsNone {
+    when: the_script_reads_the_clipboard()
+    requires: not the_app_is_in_front()
+
+    ensures: answer = none
+}
+
+-- Nothing can be started: CALL and RUN refuse by the name a page's do, and
+-- system/options/boot is none (embed.allium, RefusedServiceRaises).
+rule CallRefusesAsAPagesDoes {
+    when: the_script_calls_a_program(command)
+
+    ensures: refused_as_unavailable(processes, "an Android app")
+    ensures: system_options_boot = none
+}
+
+-- A tcp:// and a tls:// connection reach a server as on the desktop. A host
+-- name in Unicode is turned to ASCII by Android's own IDNA, UTS #46 without
+-- transitional processing.
+rule ASocketReachesAServer {
+    when: the_script_opens(scheme, host, port)
+    requires: scheme in {tcp, tls}
+
+    ensures: a_connection_to(ascii_host_name(host), port)
+}
+
+-- Plain http is refused where Android's network security policy refuses it,
+-- before anything is sent: since API 28 that is every host, unless the
+-- app's configuration names it. The debug build names 10.0.2.2 and localhost;
+-- a release build names none. An https:// is not asked, and nor is a tcp://
+-- a script opens itself, since Android restricts HTTP, not sockets.
+rule PlainHttpIsRefusedWhereAndroidsPolicyRefusesIt {
+    when: the_script_opens(http, host, port)
+    requires: not cleartext_permitted(host)
+
+    ensures: refused_as(access, "no-connect", host, "Android's network security policy refuses cleartext traffic")
+}
+
+-- The certificates trusted are the system's; a debug build adds those the
+-- user installed, so a developer can watch the app's HTTPS through a proxy.
+rule TheTrustIsTheSystems {
+    when: the_script_opens(tls, host, port)
+
+    ensures: the_chain_is_checked_against(the_roots_this_build_trusts())
+}
+
+-- An app's heap is far smaller than a desktop's, and a process that runs out
+-- of it is ended by Android. So the app's bounds hold a ceiling below the
+-- heap, from the device's memory class, and a script that grows past it gets
+-- REBOL's own no-memory error while the app lives on.
+rule AScriptPastTheCeilingGetsNoMemory {
+    when: the_script_holds_more_than(memory_ceiling)
+
+    ensures: raised(internal, "no-memory")
+    ensures: the_app_is_still_running()
 }
