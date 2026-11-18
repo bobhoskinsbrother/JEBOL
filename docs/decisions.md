@@ -3940,3 +3940,44 @@ jar that keeps 21 users running with the three answering not-present, which
 needs both JDKs in the build again; stills only; recording; a JEBOL app of
 its own for each desktop; a Windows virtual machine or a CI runner, which
 would add to the build.
+
+## 79. Touch, and layout for every screen
+
+Owner's decisions, 2026-11-18, for goal 2d.
+
+**Layout follows the mobile world's answer, and it is the same on every
+platform.** An app written for the screen lays itself out responsively: it
+reflows to the width it has, within its faces' minimum and maximum sizes,
+and scrolls down when it is taller. Fixed content written for another
+screen gets a compatibility mode, as Android 12L letterboxes such an app and
+a phone browser scales a desktop page. So r3-gui's windows reflow to their
+space, and scroll by drag when they are taller than it. Only a window that
+cannot be made to fit, or a plain gob window bigger than its space, is
+scaled down by one factor until it fits, keeping its proportions, with the
+script still seeing its own size and the pointer mapped back. A window's
+space is the screen on a one-surface screen, and its frame on the desktop.
+So a desktop window narrowed by its user reflows exactly as a phone's width
+does, and a window bigger than the monitor is scaled the same way.
+
+**Size classes, as Android names them:** `compact` under 600 dp wide,
+`medium` to under 840, `expanded` from 840, measured on the window's space
+rather than the whole display, as Android's window size classes are. A
+script asks `size-class?`, which needs no r3-gui.
+
+**The examples lay themselves out.** `examples/r3-gui`, `draw`, `blend2d`
+and `cursor` read their size class and arrange themselves for it, since an
+example is there to show how a script is written for every screen. The
+fallback is for scripts that do not.
+
+**A finger is told from a mouse by a `touch` flag** in `event/flags`, after
+R3's `double`, `control` and `shift`. It is JEBOL's own addition, since R3's
+events carry nothing about the pointer. r3-gui reads it: a touch drag
+scrolls where a mouse drag would select.
+
+**Commits:** the plan, then one commit after `allTests`, `androidTests` and
+the owner's phone all pass, as in 2c.
+
+**Rejected:** scaling every window that does not fit, which makes text too
+small where a reflow would have kept it; panning the screen as a desktop
+larger than the phone; telling touch apart by a screen-wide metric, which
+would make a mouse on a tablet scroll as a finger does.

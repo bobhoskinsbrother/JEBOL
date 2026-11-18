@@ -73,34 +73,188 @@ a path.
 and walks a folder chosen with it. An end-to-end test drives the picker
 with UI Automator on the emulator.
 
-#### 2d. Touch in the 2010 GUI
+#### 2d. Touch, and layout for every screen
 
-A tap is a click; a drag scrolls; focusing a field brings up the keyboard;
-layouts scale with the screen's size. Done once, in the GUI's REBOL --
-`src/main/resources/org/jebol/modules/r3-gui.reb`, each edit listed in
-ORDER.txt -- and iOS and the web on a phone use it too, so it is driven
-in Chrome with touch emulation as well as on the emulator. The examples fit
-a phone's screen, portrait and landscape, where 2b proved them on a tablet.
-And Chrome on the emulator (an image that carries it; which one is this
-stage's to find) opens the shipped site served from the host, and a swipe
-from the screen's edge moves its history -- the web on a phone, moved here
-from 2b, which is the app's.
+Owner's decisions, 2026-11-18 (decision 79): layout follows the mobile
+world's answer, the same on every platform, and touch is told apart from a
+mouse by a flag on the event.
 
-Seen on a real phone, 2026-11-17: on a Galaxy S24 Ultra (SM-S928B, Android
-16, 1080 by 2340 at density 450, so 384 dp wide upright) the sliders' window
-fits, but the survey's window opens to its right, with its field at
-905 dp across, off the screen. `TheExamplesInTheAppEndToEndTest`'s "letters
-typed reach the survey's field" taps there and fails on that phone for that
-reason alone; it passes on the 1280 dp tablet. Laying the windows out for
-the screen is what makes it pass. Until then it skips itself on any screen
-narrower than the survey's right edge (`isNarrowerThanTheSurvey`, 1085 dp).
+**What is true today.**
+- **Android.** `JebolView.onTouchEvent` reports a finger's down, move and up,
+  in dp, as the mouse's are reported. A tap already clicks, and a drag
+  already moves a slider or a scroller: `TheExamplesInTheAppEndToEndTest`
+  drives both. Nothing says the pointer was a finger.
+- **The keyboard.** `JebolView` claims to be a text editor
+  (`onCheckIsTextEditor` answers true), and every touch focuses it, so the
+  soft keyboard can rise on a tap anywhere. r3-gui's `focus` and `unfocus`
+  tell nobody. `takeTyping` has one caller, `ScreenForm`, the console's
+  form. The activity is `adjustNothing`, so a raised keyboard covers
+  whatever is under it.
+- **The page.** `jebol-input.js` listens for `mousedown`, `mouseup` and
+  `mousemove`. On a phone a touch drag sends no `mousemove`, since the browser
+  scrolls the page instead, and a tap's mouse events come only after the
+  touch ends. A focused hidden input (`holdTyping`) is how the page raises a
+  phone's keyboard, and only the console's form uses it.
+- **The screen.** `OneSurfaceScreen`, shared by Android and the page, places
+  each window at its own offset and size. It can maximise a window to the
+  viewport, which sends `resize`, and it refits on rotation. A window wider
+  than the screen runs off it.
+- **r3-gui** reflows a panel on `resize` within each face's `min-size` and
+  `max-size` (`resize-panel`), has a scroll frame (`scroll-panel`, scrolled
+  by `scroll-line` and `scroll-page`), and opens a window at its layout's
+  natural size, at the offset VIEW was given or centred.
+- **The examples.** `examples/r3-gui` opens the sliders at 20x20 and the
+  survey at 620x20, so the survey's field is at 905 dp across. `cursor` opens
+  a 640 by 360 gob, and `draw` and `blend2d` lay out fixed grids. On the
+  owner's phone (384 dp wide upright) the survey's field is off the screen,
+  and "letters typed reach the survey's field" skips itself there
+  (`isNarrowerThanTheSurvey`).
+- **Chrome is on the emulator's image.** API 35's `google_apis` x86_64 image
+  carries `com.android.chrome`, and it opens an https link (checked
+  2026-11-18), so no second image is needed for the web on a phone.
+- **R3's events** answer `double`, `control` and `shift` in `event/flags`
+  (`t-event.c`, `Get_Event_Var`). JEBOL mirrors them in `EventValue.Flag`.
+  Nothing in R3 says what kind of pointer an event came from.
 
-**Done when** every example works by touch alone, on a phone-sized emulator
-and in Chrome's phone emulation, and the edge swipe moves the site's history.
-And the special case is gone: `isNarrowerThanTheSurvey` and its `@DisabledIf`
-are deleted from `TheExamplesInTheAppEndToEndTest`, and "letters typed reach
-the survey's field" runs and passes on every screen, the owner's phone
-included.
+**The design.**
+1. **Touch arrives as touch.** A pointer event from a finger carries a
+   `touch` flag in `event/flags`, after R3's three. This is JEBOL's own
+   addition, listed in `docs/standing.md` among the differences. Android
+   takes it from `MotionEvent.getToolType` (a finger or a stylus), and the
+   page from `PointerEvent.pointerType`. The page moves to pointer events,
+   with `touch-action: none` on its canvas, so the browser neither scrolls
+   nor zooms it. A mouse on a tablet is still a mouse.
+2. **A tap clicks, and a drag scrolls.** A touch whose finger moves less than
+   the slop (8 dp, Android's `ViewConfiguration` default) between down and up
+   is a tap, and r3-gui treats it as a click. Past the slop it is a drag. A
+   drag that starts on a face that takes drags (a slider, a scroller, a
+   scroll bar) drags it, as today. Any other drag scrolls the nearest
+   scrollable thing under it: a text area's text, a scroll frame, or the
+   window itself when it is taller than its space (point 4). The up that ends
+   a scrolling drag clicks nothing. A mouse drag in text still selects, as
+   R3's does. Selecting by long press is left for later.
+3. **The keyboard rises for a field and nothing else.** When r3-gui's
+   `focus` gives the focus to a face that takes typing, it asks the screen to
+   take typing, with the field's rectangle on the screen. `unfocus` releases
+   it. The REBOL that does this is JEBOL's own, and step 2's spec names it.
+   `JebolView` is a text editor only while typing is taken. When the raised
+   keyboard covers the field, the screen moves the picture up just enough to
+   show the field above the keyboard, and back when the keyboard goes.
+   Android reports the keyboard's height through its IME window insets, and
+   the page through `visualViewport`. The script's coordinates do not change:
+   the move is the screen's, as a pan is.
+4. **Layout is responsive, the same on every platform.** A window's space is
+   the screen, on a one-surface screen (Android, the page, later iOS), or the
+   frame the desktop gave it. When VIEW opens an r3-gui window:
+   - at its natural size, if that fits its space;
+   - otherwise as wide as its space, with r3-gui's own `resize-panel`
+     reflowing it there within its faces' minimum sizes, and as tall as its
+     layout then is;
+   - if it is then taller than its space, it is as tall as its space, and
+     what it holds scrolls down by drag (point 2) and by the wheel.
+
+   A rotation, a desktop window resized by its user, and the keyboard's
+   arrival when it shrinks the space all run it again. A script that gave
+   VIEW an offset keeps it wherever the window still fits there.
+5. **Size classes, as Android names them.** A window is `compact` when its
+   space is under 600 dp wide (a phone upright), `medium` from 600 to under
+   840 dp, and `expanded` from 840 dp (a tablet, a desktop). A script asks
+   with `size-class?`, a JEBOL function in `view-funcs.reb` that needs no
+   r3-gui, so a plain gob script can lay itself out too. It hears a change as
+   the `resize` it already receives.
+6. **Scaling is only the fallback,** the compatibility mode the mobile world
+   gives content written for another screen: Android 12L's letterboxing, a
+   phone browser's viewport, iPhone apps on an iPad. A window that cannot be
+   made to fit its space -- an r3-gui window whose smallest layout is still
+   too wide, or a plain gob window bigger than its space -- is drawn smaller by
+   one factor in both directions until it fits, at the space's top left,
+   keeping its own proportions. The script still sees the window's own size
+   and offset. A pointer's position is mapped back into the window before
+   the window hears it. On the desktop, the same holds for a window bigger
+   than the monitor's working area.
+7. **The examples lay themselves out by size class.**
+   - `examples/r3-gui`: `expanded` keeps two windows side by side. `compact`
+     and `medium` give one window, holding the sliders and then the survey
+     in one column that scrolls, as a phone's screen of settings does.
+   - `draw` and `blend2d`: a grid of one, two or three columns for the three
+     classes, scrolling down.
+   - `cursor`: its window is its space.
+   - `choose-colour`: the chooser is checked on a phone, and fixed if it does
+     not fit.
+
+   Portrait and landscape both, on a phone and a tablet.
+8. **The web on a phone.** Chrome on the phone-sized emulator opens the
+   shipped site, served from the host as the end-to-end suite's servers are
+   (`HostServers`, reached at 10.0.2.2). A swipe from the screen's edge,
+   Android's back gesture, moves the site's history, as `go` back does.
+   Chrome's first-run screens are passed by its command-line file
+   (`/data/local/tmp/chrome-command-line`, `--disable-fre`); the plan
+   checks that this works on the `google_apis` image before relying on it.
+
+**The emulators.** `androidTests` boots two: the Pixel Tablet as now, and a
+phone (the AVD manager's Pixel 7 profile, 412 by 915 dp). The unit and
+functional suites shard across both as today, and the end-to-end suite runs
+on both, so every example is driven at both sizes. `-Pemulators=1` keeps the
+tablet alone.
+
+**Steps.**
+0. This plan commit, with decision 79.
+1. Spec: `spec/screen.allium` gains the `touch` flag, the slop, the
+   responsive window, the size classes and the fallback. `spec/android.allium`
+   gains the keyboard and its insets, and the page's rules gain pointer
+   events and `visualViewport`. The REBOL for taking typing is named here.
+2. Failing tests, by source set:
+   - **unit:** the size classes at 599, 600, 839 and 840 dp; the fallback's
+     factor and the mapping of a pointer back into a window; the slop at
+     7 and 9 dp; `touch` in `event/flags`, made and read.
+   - **functional:** an r3-gui window opened in a space narrower than it
+     reflows to that width; one taller than its space scrolls by a touch
+     drag; a mouse drag in a text area still selects; a touch tap still
+     clicks a button; focusing a field asks for typing, and unfocusing
+     releases it; a gob window too big is scaled and its click lands where it
+     was drawn. On the JVM against a one-surface screen, and on ART in
+     `androidFunctionalTests`.
+   - **the desktop:** an r3-gui window resized narrower by its frame reflows,
+     in `desktopWindowTests`.
+   - **the page:** Chrome's phone emulation (touch on, 390 by 844):
+     `TheExamplesInTheAppEndToEndTest`'s three, by touch.
+   - **Android end to end:** on the phone emulator, portrait and landscape,
+     every example by touch; the keyboard rises for the survey's field and not
+     for a slider; the field is above the keyboard; Chrome's edge swipe moves
+     the site's history.
+3. The core: the `touch` flag, the slop, `size-class?`, the fallback scaling
+   and its pointer mapping, and the keyboard's pan, in `OneSurfaceScreen`.
+4. r3-gui: the responsive VIEW, drag-to-scroll, and focus asking for typing.
+   Each edit is listed in ORDER.txt, and `TheGuiTheBuildCarriesFromTheSourceTest`
+   pins each.
+5. Android: the tool type, a text editor only while typing is taken, and the
+   IME insets.
+6. The page: pointer events, `touch-action`, the typing input raised for a
+   field, and `visualViewport`.
+7. The desktop: the fallback for a window bigger than the monitor; the
+   reflow on a frame's resize, if it is not already there.
+8. The examples, by size class.
+9. The phone emulator in `android/emulator.sh` and `DeviceShards`, and the
+   end-to-end tests on it. Delete `isNarrowerThanTheSurvey` and its
+   `@DisabledIf`.
+10. Docs: `docs/android-port.md`, `docs/web-port.md`, `using-jebol.md` (laying
+    an app out for every screen, and `size-class?`), and `docs/standing.md`'s
+    differences (`touch`).
+11. `allTests`, then `androidTests`, then `scripts/android-on-my-phone.sh
+    --with-tests` on the owner's phone, with the owner trying every example by
+    touch. One commit after all three pass.
+
+**Done when** every example works by touch alone, on the phone emulator and
+the tablet, upright and on its side, and in Chrome's phone emulation; an
+r3-gui window reflows the same way on the desktop when its frame is narrowed;
+the keyboard rises for a field alone and never covers it; the edge swipe in
+Chrome on the emulator moves the site's history; `isNarrowerThanTheSurvey`
+and its `@DisabledIf` are gone, and "letters typed reach the survey's field"
+passes everywhere, the owner's phone included; and `allTests`,
+`androidTests` and the owner's phone run pass.
+
+**Left for later:** selecting text by long press; pinch to zoom; more than
+one finger.
 
 #### 2e. An app of one's own, on every platform: the packager
 
