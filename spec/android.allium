@@ -11,8 +11,10 @@
 -- files, its environment, pictures, the clipboard, the network and TLS, and
 -- what it may not have (decision 77).
 --
+-- And the user's own files, chosen through Android's picker and reached in
+-- place, and the five dialogs a script asks for (goal 2c2, decision 80).
+--
 -- Excludes:
---   - Files the user chooses through Android's picker. They are goal 2c2's.
 --   - Gestures with more than one finger. A second finger is ignored here;
 --     goal 2d may give them a meaning, in the GUI's REBOL.
 --   - What a window looks like. The paint list is screen.allium's and the
@@ -585,4 +587,189 @@ rule AScriptPastTheCeilingGetsNoMemory {
 
     ensures: raised(internal, "no-memory")
     ensures: the_app_is_still_running()
+}
+
+------------------------------------------------------------
+-- The user's own files and the dialogs (goal 2c2, decision 80)
+------------------------------------------------------------
+
+-- One document or folder the user chose through Android's picker. The app
+-- keeps the reference, not a copy, and keeps it across restarts.
+entity Pick {
+    number: Integer                  -- N in %/picked/N/, one past the highest in use
+    name: String                     -- the document's DISPLAY_NAME when it was picked
+    reference: String                -- the content:// address the picker answered
+    is_folder: Boolean               -- picked with ACTION_OPEN_DOCUMENT_TREE
+}
+
+-- No two picks share a number.
+invariant APickNumberIsOneDocument {
+    for a in Pick:
+        for b in Pick:
+            a.number = b.number implies a = b
+}
+
+-- request-file opens Android's own picker: ACTION_OPEN_DOCUMENT, with
+-- EXTRA_ALLOW_MULTIPLE for /multi, and ACTION_CREATE_DOCUMENT for /save.
+-- request-dir opens ACTION_OPEN_DOCUMENT_TREE. The interpreter waits for the
+-- answer, as a desktop's dialog makes it wait.
+rule RequestFileOpensThePicker {
+    when: the_script_requests_a_file(saving, many)
+
+    ensures: the_picker_opens(
+        if saving: create_document
+        else: open_document,
+        allowing_many: many)
+}
+
+rule RequestDirOpensTheFolderPicker {
+    when: the_script_requests_a_folder()
+
+    ensures: the_picker_opens(open_document_tree)
+}
+
+-- Each document chosen becomes a Pick, its grant is made persistable, and
+-- the script is answered the path the page answers: %/picked/N/name for a
+-- file, %/picked/N/name/ for a folder.
+rule APickIsMountedAtTheNextNumber {
+    when: the_user_picks(reference, name, is_folder)
+
+    ensures: Pick.created(
+        number: highest_pick_number() + 1,
+        name: name,
+        reference: reference,
+        is_folder: is_folder)
+    ensures: the_grant_is_kept(reference)
+    ensures: answer = "/picked/" + (highest_pick_number() + 1) + "/" + name
+        + (if is_folder: "/" else: "")
+}
+
+-- A picker the user backs out of answers none, as the port's contract says.
+rule ACancelledPickerIsNone {
+    when: the_user_cancels_the_picker()
+
+    ensures: answer = none
+}
+
+-- /filter's patterns become MIME types through Android's own table. A pattern
+-- with none, or * or *.*, opens everything.
+rule AFilterIsMimeTypes {
+    when: the_script_requests_a_file_with_filter(patterns)
+
+    ensures: the_picker_shows(
+        if any_pattern_has_no_mime_type(patterns): all_types
+        else: mime_types_of(patterns))
+}
+
+-- /file names the document a save suggests. A /file or /dir naming a folder
+-- picked before starts the picker there; anything else is ignored, since
+-- Android's picker cannot start at a path. /title is ignored: the picker
+-- has no heading of the app's.
+rule ASaveSuggestsItsName {
+    when: the_script_requests_a_file_to_save(suggested)
+
+    ensures: the_picker_suggests(last_name_of(suggested))
+}
+
+rule APickedFolderIsWhereThePickerStarts {
+    when: the_script_requests_starting_at(path)
+    requires: path_is_in_a_picked_folder(path)
+
+    ensures: the_picker_starts_at(reference_of(path))
+}
+
+-- Every path under %/picked/ reaches the user's document itself through
+-- ContentResolver, never a copy: a READ reads it, a WRITE replaces it, a
+-- write at a position or an append changes it where it is.
+rule APickedFileIsReadAndWrittenInPlace {
+    when: the_script_writes(path, contents)
+    requires: path_is_under("/picked/")
+
+    ensures: the_users_document_holds(reference_of(path), contents)
+    ensures: no_copy_is_kept_in_the_store()
+}
+
+-- A picked folder lists and walks its children through DocumentsContract, a
+-- child folder with a slash after its name as on any disk. Listing
+-- %/picked/ answers N/ for each pick, and %/ lists picked/ once there is one.
+rule APickedFolderLists {
+    when: the_script_lists(path)
+    requires: path_is_a_picked_folder(path)
+
+    ensures: answer = children_names_of(reference_of(path))
+}
+
+-- QUERY answers the document's size and modification time from its columns.
+-- A column the provider leaves empty answers none for that field alone.
+rule QueryReadsTheColumns {
+    when: the_script_queries(path)
+    requires: path_is_under("/picked/")
+
+    ensures: answer = query_answer(size: column(SIZE), modified: column(LAST_MODIFIED))
+}
+
+-- Inside a picked folder a new file, MAKE-DIR, DELETE and RENAME go through
+-- DocumentsContract when the provider's flags allow them. Where a provider
+-- refuses, the error is the access error a desktop gives for the same thing.
+rule AProviderRefusalIsTheDesktopsError {
+    when: the_provider_refuses(operation, path)
+
+    ensures: raised(access,
+        if operation = delete: "no-delete"
+        else if operation = make_dir: "no-create"
+        else: "cannot-open",
+        path)
+}
+
+-- A pick outlives the process. The table from N to reference is kept beside
+-- the store, where no script reaches it, and the grant is persistable, so a
+-- path a script saved names the same document the next day.
+rule APickSurvivesARestart {
+    when: the_app_relaunches()
+
+    ensures: for p in Pick: path_names("/picked/" + p.number + "/" + p.name, p.reference)
+}
+
+-- A grant the user takes back in Settings, or a document deleted elsewhere,
+-- leaves its path naming nothing: READ raises cannot-open.
+rule ARevokedPickNamesNothing {
+    when: the_script_reads(path)
+    requires: not grant_held(reference_of(path))
+
+    ensures: raised(access, "cannot-open", path)
+}
+
+-- browse opens its target with ACTION_VIEW, as an Android app opens a link
+-- or a document. A picked file is offered by its reference; any other file
+-- the script can read is copied into the app's cache and offered read-only
+-- through the app's own provider.
+rule BrowseIsActionView {
+    when: the_script_browses(target)
+
+    ensures: an_activity_is_started(view,
+        if target_is_a_url(target): target
+        else if path_is_under("/picked/"): reference_of(target)
+        else: the_apps_own_offer_of(copy_in_cache(target)))
+}
+
+-- request-password is a platform AlertDialog with a password field, so the
+-- keyboard suggests nothing and learns nothing. OK answers what was typed;
+-- Cancel, Back or a tap outside answers none.
+rule RequestPasswordIsAPasswordField {
+    when: the_script_requests_a_password()
+
+    ensures: a_dialog_shows(password_field)
+    ensures: answer = if the_user_confirms(): typed else: none
+}
+
+-- request-color is a dialog of JEBOL's own from platform widgets, since
+-- Android has none: hue, saturation and value sliders, a swatch and a hex
+-- field, starting at /default's colour or white. OK answers the colour the
+-- swatch shows; Cancel, Back or a tap outside answers none.
+rule RequestColorIsJebolsOwnDialog {
+    when: the_script_requests_a_colour(start)
+
+    ensures: a_dialog_shows(hue_saturation_value_sliders, swatch, hex_field)
+    ensures: the_swatch_starts_at(start ?? white)
+    ensures: answer = if the_user_confirms(): the_swatch_colour() else: none
 }

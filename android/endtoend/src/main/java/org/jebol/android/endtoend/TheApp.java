@@ -14,9 +14,14 @@ import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
+import android.os.ParcelFileDescriptor;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +45,10 @@ final class TheApp {
     private final UiDevice device = UiDevice.getInstance(instrumentation);
     private final Context context = instrumentation.getContext();
     private final float density = context.getResources().getDisplayMetrics().density;
+
+    static TheApp notLaunched() {
+        return new TheApp();
+    }
 
     static TheApp runningScript(String script) {
         TheApp app = new TheApp();
@@ -403,6 +412,18 @@ final class TheApp {
     String shell(String command) {
         try {
             return device.executeShellCommand(command);
+        } catch (IOException failed) {
+            throw new UncheckedIOException(failed);
+        }
+    }
+
+    String runInShell(String script) {
+        ParcelFileDescriptor[] ends = instrumentation.getUiAutomation().executeShellCommandRw("sh");
+        try (InputStream printed = new ParcelFileDescriptor.AutoCloseInputStream(ends[0])) {
+            try (OutputStream typed = new ParcelFileDescriptor.AutoCloseOutputStream(ends[1])) {
+                typed.write(script.getBytes(StandardCharsets.UTF_8));
+            }
+            return new String(printed.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException failed) {
             throw new UncheckedIOException(failed);
         }

@@ -55,7 +55,7 @@ public class RequestPasswordNative extends WindowNative {
     }
 
     private Optional<String> askThroughScreenOrPort(Evaluator evaluator) {
-        if (evaluator.ports().screen().hasDisplay()) {
+        if (evaluator.ports().screen().hasDisplay() && !evaluator.ports().windows().hasOwnPasswordDialog()) {
             return new ScreenForm(evaluator).askForPassword();
         }
         return evaluator.ports().windows().askForPassword();

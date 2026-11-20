@@ -72,6 +72,21 @@ class TheScreenFormFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("REQUEST-PASSWORD on a screen whose platform has a password dialog of its own asks the port, and no form is shown")
+    void aPlatformsOwnPasswordDialogIsAsked() {
+        AWindowPortThatCounts platformsOwn = new AWindowPortThatCounts(true);
+        Interpreter interpreter = Interpreter.createOn(
+                AnInterpreter.standardPorts().withScreen(operator).withWindows(platformsOwn)
+                        .withConsole(new AConsoleTypedOnTheScreen()),
+                OutputPort.discard(),
+                Bounds.standard().withoutTimeLimit().grant(HostService.WINDOWS).grant(HostService.CONSOLE));
+
+        assertThat(answer(interpreter, "request-password")).isEqualTo("from the port");
+        assertThat(platformsOwn.passwordsAsked()).isEqualTo(1);
+        assertThat(answer(interpreter, "length? system/view/screen-gob/pane")).isEqualTo("0");
+    }
+
+    @Test
     @DisplayName("the form never shows what is typed into it, only one dot for each character")
     void theFormMasksWhatIsTyped() {
         operator.types("s3cret").presses(ENTER);
@@ -388,7 +403,21 @@ class TheScreenFormFromTheSourceTest {
 
     private static final class AWindowPortThatCounts implements WindowPort {
 
+        private final boolean hasPasswordDialog;
         private int passwords;
+
+        AWindowPortThatCounts() {
+            this(false);
+        }
+
+        AWindowPortThatCounts(boolean hasPasswordDialog) {
+            this.hasPasswordDialog = hasPasswordDialog;
+        }
+
+        @Override
+        public boolean hasOwnPasswordDialog() {
+            return hasPasswordDialog;
+        }
 
         int passwordsAsked() {
             return passwords;

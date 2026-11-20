@@ -268,12 +268,13 @@ Every port in `HostPorts` has Android's answer, put together by
 
 | Port | Android's | Where it differs from the desktop, and why |
 | --- | --- | --- |
-| files | `LayeredFiles`: a `FileSystemPort` rooted at `files/jebol` in the app's private storage, laid over `ListedFiles`, the APK's `jebol-app/` files read in place | The script's whole world is the app's storage, as Android's scoped storage allows; the user's own files are goal 2c2's. A carried file cannot be deleted or renamed (`read-only`); deleting the store's own file of a carried name shows the carried one again |
+| files | `MountedFiles`: `%/picked/` mounted on `DocumentFiles` (goal 2c2, below), over `LayeredFiles`: a `FileSystemPort` rooted at `files/jebol` in the app's private storage, laid over `ListedFiles`, the APK's `jebol-app/` files read in place | Past the app's storage, the script reaches only what the user picked. A carried file cannot be deleted or renamed (`read-only`); deleting the store's own file of a carried name shows the carried one again |
 | carried files, digests, machine | `ClasspathFiles`, `JvmDigests`, `AndroidMachine`, as before | |
 | environment | `AndroidEnvironment`: `HOME` and `PWD` `/`, `TMPDIR` `/tmp`, `LANG` the device's locale as `en_GB.UTF-8`, `USER` and `LOGNAME` the app's identifier | Nothing of the device's process environment (`PATH`, `ANDROID_DATA`, `BOOTCLASSPATH`) is told. `TMPDIR` is in the store, not the cache, because the cache is outside what a script can reach; the app empties it as it starts |
 | images | `AndroidImage`: `BitmapFactory` decodes PNG, JPEG, BMP, WebP and HEIF in each picture's own colour space, and the stored bytes are copied out with `copyPixelsToBuffer`; `Bitmap.compress` writes PNG, JPEG (quality 75) and lossless WebP; the core's `BitmapWriter` and GIF codec do BMP and GIF both ways | No TIFF, which Android cannot read; WebP and HEIF, which the desktop cannot, reached through `image/load/as` and `image/save/as`, since Rebol's library registers no codec for WebP and HEIF's on macOS alone. Only GIF has frames past the first |
 | console | none: printing is logcat (decision 77) | |
-| windows, screen | 2b's `OneSurfaceScreen` | |
+| screen | 2b's `OneSurfaceScreen` | |
+| windows | `AndroidWindows` (goal 2c2, below) | |
 | pause | `WakeablePause` | |
 | processes | `ProcessPort.none()`, PROCESSES marked unavailable | CALL refuses as a page's does, and `system/options/boot` is none |
 | network | `JavaSocket` with `AndroidHostNames` (`android.icu.text.IDNA`), asking `NetworkSecurityPolicy` before plain http | Plain `http://` is refused where Android's policy refuses it: everywhere in a release build, everywhere but `10.0.2.2` and `localhost` in a debug one. `tcp://` and `https://` are never asked |
@@ -300,6 +301,73 @@ that grows too large gets REBOL's own error and the app lives on rather than
 being ended by an `OutOfMemoryError` on some other thread. A collection's
 answer is trusted for a quarter of a second, so a script making garbage just
 under the ceiling does not collect on every check.
+
+## The user's own files, and the dialogs (goal 2c2)
+
+Decision 80 has the owner's choices, and `spec/android.allium`, "The user's
+own files and the dialogs", the rules.
+
+**The pieces.**
+- `AndroidWindows` is the app's `WindowPort`. It asks the activity through
+  `ActivityRequests`, which starts a picker for its result, or shows a
+  dialog, on the main thread, and holds the interpreter's thread until the
+  answer comes. A restart in place, or the activity ending, answers every
+  open request with none, so no interpreter is left waiting on a picker.
+- `PickedDocuments` is the table from N to reference, one tab-separated line
+  a pick, in `files/picked-documents.txt`. That is beside the store, not in
+  it, so no script reads it. It is read again on every question, so a task,
+  or the next interpreter after a restart, sees each pick at once.
+- `DocumentFiles` is the `FilePort` over the references. It walks a path
+  under a picked folder a name at a time through `DocumentsContract`'s child
+  queries, and reads and writes through `ContentResolver.openFileDescriptor`:
+  `wt` for WRITE, truncated again where the descriptor is a file, `rw` for a
+  write at a position, and `wa` for an append.
+- `MountedFiles`, in the core, sends `%/picked/` to it and the rest to the
+  store. It keeps a working directory of its own while one is inside the
+  mount.
+- `BrowsedFiles` is the host library's read-only `ContentProvider`, at
+  `<application id>.browsed`. `browse` of a file that is not picked copies
+  it into the cache's `browsed/N/` and offers it there; the copies go when
+  the next session opens.
+
+**A grant Android lets go.** Android keeps 512 persisted grants for an app,
+and past that drops the oldest (AOSP's `UriGrantsManagerService`, read, not
+tried: it takes 513 picks through the picker to try). A pick whose grant is
+gone, whether dropped, taken back by clearing the app's storage, or deleted
+from its provider, names nothing, and READ raises `cannot-open`.
+`PickedDocumentsThroughRebolTest` covers that path with a document deleted
+under its pick.
+
+**Every refusal is the desktop's.** A provider throws whatever it likes:
+`SecurityException`, `UnsupportedOperationException`, `FileNotFoundException`
+or `IllegalStateException`. `DocumentFiles` turns each into the id a desktop
+gives for the same thing. That is `cannot-open` for a read or a write,
+`no-delete` for a delete, and `cannot-open` for a rename. MAKE-DIR's
+`cannot-open` is turned into `no-create` by Rebol's own MAKE-DIR, as on the
+desktop. A folder is never deleted while it holds anything, since
+`deleteDocument` would delete it whole.
+
+**`request-password` was answered already.** The plan said all five dialogs
+refused. `request-password` did not: wherever the screen has a display, the
+core asks through the screen form it draws itself (decision 49), so on a
+phone it was a form in the app's own picture. Its field was not a password
+field to the keyboard. `WindowPort.hasOwnPasswordDialog` lets a platform say
+its own dialog comes first. Android says so; every other platform keeps the
+form.
+
+**The tests.** `PickedDocumentsTest`, `PickerFilterTest` and `HexColourTest`
+are unit tests. `PickedDocumentsThroughRebolTest` runs REBOL against
+`TestDocuments`, a `DocumentsProvider` in the debug build, over the cache's
+`test-documents/` folder. A name containing `read-only` refuses every change,
+and one starting `unsized` leaves its size and date empty. The provider is
+the debug build's because one must be protected by `MANAGE_DOCUMENTS`, which
+only the system holds. So only the app's own identity can call it without a
+grant from the picker. It also shows in the picker of a debug build, as
+"JEBOL test documents". `ThePickerEndToEndTest`,
+`TheDialogsEndToEndTest` and `BrowseEndToEndTest` drive the real
+DocumentsUI and the dialogs with UI Automator, on files under
+`Download/jebol-e2e/`. That folder holds nothing else, because a phone's own
+Download folder is too long to find a file in by scrolling.
 
 ### The GIF codec
 

@@ -13,6 +13,7 @@ import android.util.Log;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
+import org.jebol.adapter.android.ActivityRequests;
 import org.jebol.adapter.android.LogcatOutput;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
@@ -40,6 +41,7 @@ public final class JebolActivity extends Activity {
     private static final Duration TO_CANCEL_AGAIN = Duration.ofMillis(100);
 
     private final OnBackInvokedCallback back = this::goBack;
+    private final ActivityRequests requests = new ActivityRequests(this);
     private JebolView view;
     private volatile AppSession session;
     private volatile boolean inFront;
@@ -80,6 +82,7 @@ public final class JebolActivity extends Activity {
             askingToLeave = null;
         }
         view.releaseTyping();
+        requests.cancelAll();
         Thread ending = interpreting;
         int restart = ++restarts;
         interpreting = startInterpreting(() -> {
@@ -162,7 +165,8 @@ public final class JebolActivity extends Activity {
     private void run(String source, Optional<String> resumeAt) {
         LogcatOutput output = LogcatOutput.toLogcat();
         AppSession opened = AppSession.open(view, CarriedApp.read().asFiles(), output,
-                wanted -> runOnUiThread(() -> takeBack(wanted)), () -> inFront, rootsGivenBy(getIntent()));
+                wanted -> runOnUiThread(() -> takeBack(wanted)), () -> inFront, rootsGivenBy(getIntent()),
+                Optional.of(requests));
         session = opened;
         resumeAt.ifPresent(opened::resumeAt);
         Interpreter interpreter = opened.interpreter();
@@ -246,7 +250,14 @@ public final class JebolActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        requests.deliver(requestCode, resultCode, data);
+    }
+
+    @Override
     protected void onDestroy() {
+        requests.cancelAll();
         AppSession running = session;
         if (isFinishing() && running != null) {
             running.close();

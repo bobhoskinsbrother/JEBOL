@@ -4084,5 +4084,43 @@ window port, so all five dialogs refused as if there were no screen.
   Android has no system colour picker. Drawing it with r3-gui, or taking a
   library for it, was rejected.
 
+**`browse` of a file opens it in the user's viewer**, whichever file the
+script can read (owner, 2026-11-20). A picked file is offered by its own
+reference. A file in the store or carried in the APK is copied into the
+app's cache and offered through a small `ContentProvider` of the app's own,
+read-only and granted per intent, as the page sends the file's bytes. Offering
+only picked files and URLs was rejected. So was AndroidX's `FileProvider`,
+since the app takes no library.
+
+**A save the script never writes leaves an empty file** (owner, 2026-11-20).
+`ACTION_CREATE_DOCUMENT` makes the document when the user taps Save, as it
+does for every Android app. Deleting it again if nothing was written was
+rejected.
+
+**`%/picked/` is a mount, not a layer of `LayeredFiles`.** A core
+`MountedFiles` sends every path under one folder to another `FilePort` and
+everything else to the one beneath. It keeps the working directory itself,
+so `change-dir` into a picked folder works. Putting the routing inside
+`LayeredFiles` would have mixed a third concern into a class about carried
+files.
+
+**The provider the functional tests read is the debug build's.** A
+`DocumentsProvider` must be protected by `MANAGE_DOCUMENTS`, which only the
+system holds, so the test APK's process could never call one of its own. A
+provider in the app's debug source set shares the app's identity, and the
+app may always reach its own provider. A release build carries none.
+
+**The table of picks is outside the store.** It is kept beside the store
+folder rather than in it, so a script can neither read the references nor
+break the table by deleting a file.
+
+**The platform's own password dialog comes before the screen form.** The
+plan said all five dialogs refused on a phone. `request-password` did not:
+wherever the screen has a display, the core asks through the form it draws
+itself, and the keyboard was not told that field held a password.
+`WindowPort.hasOwnPasswordDialog`, false unless a platform says otherwise,
+lets Android's dialog answer instead. The desktop and the page keep the
+form.
+
 **Commits:** the plan, then one commit after `allTests`, `androidTests` and
 the owner's phone all pass.

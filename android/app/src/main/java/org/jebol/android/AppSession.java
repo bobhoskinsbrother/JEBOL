@@ -2,8 +2,10 @@ package org.jebol.android;
 
 import android.content.Context;
 
+import org.jebol.adapter.android.ActivityRequests;
 import org.jebol.adapter.android.AndroidHistory;
 import org.jebol.adapter.android.AndroidHost;
+import org.jebol.adapter.android.BrowsedFiles;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
@@ -35,17 +37,19 @@ public final class AppSession implements AutoCloseable {
     public static AppSession open(JebolView view, FilePort carriedApp, OutputPort output,
             Consumer<Boolean> backWanted, BooleanSupplier inFront) {
 
-        return open(view, carriedApp, output, backWanted, inFront, Optional.empty());
+        return open(view, carriedApp, output, backWanted, inFront, Optional.empty(), Optional.empty());
     }
 
     public static AppSession open(JebolView view, FilePort carriedApp, OutputPort output,
-            Consumer<Boolean> backWanted, BooleanSupplier inFront, Optional<Path> rootsForThisLaunch) {
+            Consumer<Boolean> backWanted, BooleanSupplier inFront, Optional<Path> rootsForThisLaunch,
+            Optional<ActivityRequests> requests) {
 
         Context context = view.getContext().getApplicationContext();
         AndroidHost.emptyTemporaryFolder(context);
+        BrowsedFiles.forgetAll(context);
         AndroidHistory history = new AndroidHistory(backWanted);
         Bounds bounds = appBounds();
-        HostPorts given = AndroidHost.appPorts(context, carriedApp, inFront, bounds);
+        HostPorts given = AndroidHost.appPorts(context, carriedApp, inFront, bounds, requests);
         HostPorts ports = rootsForThisLaunch
                 .map(roots -> given.withCertificateAuthority(JavaCertificateAuthority.trustingMachineAnd(roots)))
                 .orElse(given);

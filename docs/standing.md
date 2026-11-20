@@ -23,7 +23,7 @@ a baseline from the same machine rather than against the row.
 | the core jar                  | 2,934 KB, what every platform carries and Android's APK takes, with the GIF codec in it and the UTS #46 tables out of it (decision 77); the nine extensions' jars beside it are 583 KB together, and the six optional compressors' 459 KB, Brotli's 373 KB of it                     |
 | the Android APK               | 5,740 KB for the app (debug), which carries the core, `examples/r3-gui` and none of the optional compressors; its test APK 37,549 KB, the end-to-end APK 10,848 KB                                           |
 | the app on a phone            | Galaxy S24 Ultra, Android 16 (2026-11-20, `scripts/android-on-my-phone.sh`, goal 2d): `am start` 213 ms, first picture 3,102 ms after launch, tap to repaint 77 ms, a frame while dragging 49 ms (medians); taps split between 2 to 26 ms and 66 to 94 ms, and the 10 ms median of 2026-11-19 stayed at 70 to 78 ms with each of that day's changes undone in turn, so the split is the phone's rather than the app's; on 2026-11-18, before 2d, first picture was 2,938 ms; the owner, 2026-11-17: "pretty quick" |
-| the suites on ART             | 25,848 cases, none failing, 42 skipped with why: the JVM's functional cases less the corpus, the programs and JDK-only classes `docs/android-port.md` lists, with Android's own 76; the 21 end-to-end tests on each of the tablet and the phone; 77 minutes on the two emulators, the unit and end-to-end suites included |
+| the suites on ART             | 25,996 cases on 2026-11-20 (goal 2c2), none failing, 43 skipped with why: the JVM's functional cases less the corpus, the programs and JDK-only classes `docs/android-port.md` lists, with Android's own 172; the 39 end-to-end tests on each of the tablet and the phone, the site in Chrome skipped on the tablet, whose Chrome predates exnref; 76 minutes on the two emulators, the unit and end-to-end suites included; the end-to-end tests also pass on the owner's S24 Ultra, the two that reach the host through 10.0.2.2 skipped there |
 | the web build                 | 16.9 MB of WebAssembly (5.1 MB gzipped) beside a 38 KB loader, a 9.6 KB worker and a 556 KB font; the whole site 17.6 MB, 5.4 MB gzipped                                                                          |
 | a warm `Interpreter.create()` | 44 to 57ms median across runs (45.5ms on 2026-10-22, with the GUI carried and not loaded), 66 to 73ms p95, the first call 424 to 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed       | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser                                                                                                              |
@@ -73,6 +73,17 @@ a baseline from the same machine rather than against the row.
   none; `read http://` to a host the app's network security config does not
   name is `access no-connect` naming the policy. Decision 77 and
   `docs/android-port.md`, "Ports".
+- **An Android app's script reaches the user's files only through Android's
+  picker, at `%/picked/N/name`, on purpose.** R3 has no Android build. The
+  path is the page's, so a script that picks and reads runs unchanged on
+  both. What it reaches is the user's own document, not a copy. What a
+  provider allows limits it: a write at a position is refused where the
+  provider hands back a pipe rather than a file, as cloud drives may. A
+  rename moves a file between folders only inside one picked folder, and
+  only where the provider can move. A save the script never writes leaves
+  the empty file Android made when the user tapped Save. `request-color` is
+  a dialog of JEBOL's own, since Android has none. Decision 80 and
+  `docs/android-port.md`, "The user's own files".
 - **A finger's pointer event says `touch` in `event/flags`, and the 2010 GUI
   reflows, scrolls by finger and raises a soft keyboard, on purpose.** `touch`
   comes after R3's `double`, `control` and `shift`, and MAKE EVENT! sets it no

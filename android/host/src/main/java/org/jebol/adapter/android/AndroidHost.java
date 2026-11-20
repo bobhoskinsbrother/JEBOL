@@ -12,10 +12,12 @@ import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.application.Bounds;
 import org.jebol.application.LayeredFiles;
+import org.jebol.application.MountedFiles;
 import org.jebol.application.ThreadPause;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.JvmDigests;
+import org.jebol.domain.host.WindowPort;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +26,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public final class AndroidHost {
@@ -32,6 +36,8 @@ public final class AndroidHost {
     private static final String STORE_FOLDER = "jebol";
 
     private static final String TEMPORARY_FOLDER = "tmp";
+
+    private static final String PICK_TABLE = "picked-documents.txt";
 
     private static final long CEILING_PARTS_OF_HEAP = 3;
 
@@ -46,16 +52,35 @@ public final class AndroidHost {
     }
 
     public static HostPorts appPorts(Context context, FilePort carriedApp, BooleanSupplier inFront, Bounds bounds) {
-        FileSystemPort store = FileSystemPort.rootFileSystem(storeFolder(context));
-        AndroidEnvironment environment = new AndroidEnvironment(context.getPackageName(), Locale.getDefault());
-        return appPortsOn(store, carriedApp, environment, context, inFront, bounds);
+        return appPorts(context, carriedApp, inFront, bounds, Optional.empty());
     }
 
-    private static HostPorts appPortsOn(FileSystemPort store, FilePort carriedApp, AndroidEnvironment environment,
+    public static HostPorts appPorts(Context context, FilePort carriedApp, BooleanSupplier inFront, Bounds bounds,
+            Optional<ActivityRequests> requests) {
+
+        FileSystemPort store = FileSystemPort.rootFileSystem(storeFolder(context));
+        PickedDocuments picks = PickedDocuments.keptIn(pickTable(context));
+        DocumentFiles documents = new DocumentFiles(context.getContentResolver(), picks);
+        MountedFiles files = new MountedFiles(new LayeredFiles(store, carriedApp), PickedDocuments.MOUNT_FOLDER,
+                documents);
+        AndroidEnvironment environment = new AndroidEnvironment(context.getPackageName(), Locale.getDefault());
+        Function<MountedFiles, WindowPort> windows = filesOfThisInterpreter -> requests
+                .<WindowPort>map(asked -> new AndroidWindows(asked, filesOfThisInterpreter, documents, picks))
+                .orElseGet(WindowPort::none);
+        return appPortsOn(store, files, windows, carriedApp, environment, context, inFront, bounds);
+    }
+
+    public static Path pickTable(Context context) {
+        return new File(context.getFilesDir(), PICK_TABLE).toPath();
+    }
+
+    private static HostPorts appPortsOn(FileSystemPort store, MountedFiles files,
+            Function<MountedFiles, WindowPort> windows, FilePort carriedApp, AndroidEnvironment environment,
             Context context, BooleanSupplier inFront, Bounds bounds) {
 
         return new AndroidHost().ports()
-                .withFiles(new LayeredFiles(store, carriedApp))
+                .withFiles(files)
+                .withWindows(windows.apply(files))
                 .withEnvironment(environment)
                 .withImages(new AndroidImage())
                 .withClipboard(new AndroidClipboard(context, inFront))
@@ -64,8 +89,11 @@ public final class AndroidHost {
                 .withSecureTransport(new JavaSecureTransport())
                 .withCertificateAuthority(new JavaCertificateAuthority())
                 .withPause(new WakeablePause())
-                .withTasks(new ThreadTasks(bounds, () -> appPortsOn(store.copyInWorkingDirectory(), carriedApp,
-                        environment.copy(), context, inFront, bounds)));
+                .withTasks(new ThreadTasks(bounds, () -> {
+                    FileSystemPort storeOfTask = store.copyInWorkingDirectory();
+                    return appPortsOn(storeOfTask, files.copyOver(new LayeredFiles(storeOfTask, carriedApp)), windows,
+                            carriedApp, environment.copy(), context, inFront, bounds);
+                }));
     }
 
     public static long memoryCeiling() {

@@ -66,6 +66,10 @@ public interface WindowPort {
      */
     Optional<String> askForPassword();
 
+    default boolean hasOwnPasswordDialog() {
+        return false;
+    }
+
     /** Why a port refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
 

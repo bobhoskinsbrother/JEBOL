@@ -24,10 +24,11 @@ project's level is Java 21; Android draws the one way every platform draws
 has unit, functional and end-to-end suites as the other platforms do, run
 by an `androidTests` gate.
 
-The stages left, in this order, from 2c2; 2b, the app, is done (decision 75,
+The stages left, in this order, from 2e; 2b, the app, is done (decision 75,
 `docs/android-port.md`), and so are the end-to-end suite's restart in place
-that came after it, 2c, Android's adapters (decision 77), and 2d, touch and
-layout for every screen (decision 79). Touch left for later: selecting text
+that came after it, 2c, Android's adapters (decision 77), 2c2, the user's own
+files through Android's picker and the dialogs (decision 80), and 2d, touch
+and layout for every screen (decision 79). Touch left for later: selecting text
 by long press, pinch to zoom, and more than one finger. Each is
 planned in full -- what is true today, spec, failing tests, code, docs -- in its own plan commit before work on it
 starts, as 1l was; what follows is each stage's reach, its done-when and the
@@ -45,135 +46,6 @@ and stops (decision 73), and archives into `test-history/` as `allTests`
 does. It is not part of `allTests`: it needs the Android SDK, which not every
 machine has. Run it at the close of every Android stage and after any change
 to the core.
-
-#### 2c2. The user's own files, through Android's picker, and the other dialogs
-
-The owner, 2026-11-17. After 2c a script sees its own storage alone, as
-Android's scoped storage allows. To reach a file the user chooses -- in
-Downloads, Documents, a cloud drive -- an app asks Android's own picker:
-- `ACTION_OPEN_DOCUMENT` and `ACTION_CREATE_DOCUMENT` for a file;
-- `ACTION_OPEN_DOCUMENT_TREE` for a folder.
-
-The picker is Android's UI, so nothing of the GUI is ported. What comes back
-is a `content://` reference, read and written through `ContentResolver`, not
-a path.
-
-**What is true today.**
-- **The window port.** Android grants `WINDOWS` but `AndroidHost.appPorts`
-  gives no `WindowPort`, so the interpreter has `WindowPort.none()`.
-  `request-file`, `request-dir`, `browse`, `request-color` and
-  `request-password` all refuse with `no-service`, "this interpreter was
-  given no screen to put a window on". That is wrong on a phone that has a
-  screen, and this stage gives all five an answer.
-- **The file port.** `LayeredFiles` lays the app's store
-  (`Context.getFilesDir()`) over the APK's carried files (decision 77).
-  Nothing reaches outside the app's own storage.
-- **The activity** keeps running across a rotation (`configChanges` in the
-  manifest), so a picker can be open while the screen turns. Nothing in the
-  app starts another activity for a result yet.
-- **The page** is the closest shape JEBOL has. `PageWindows` asks the page
-  for a pick, and `PickedFiles`, wrapping the file port, copies each pick
-  into a fresh `%/picked/N/` folder and sends a save's bytes out when the
-  file is finished (`FilePort.finishWriting`). The page copies because a
-  browser lends bytes, never a live file.
-- **The C.** `request-file` answers a `file!`, the full path, or a block of
-  them with `/multi`, and none when the operator declines (`n-io.c`). It
-  works only on Windows and raises `feature-na` elsewhere. On a Mac,
-  `mezz-osx-dialogs.reb` answers through AppleScript. Rebol's suite asserts
-  nothing about either function.
-
-**The design.** The owner's decisions, 2026-11-20 (decision 80).
-1. **`AndroidWindows`, the app's `WindowPort`.** `chooseFiles` starts
-   `ACTION_OPEN_DOCUMENT` (with `EXTRA_ALLOW_MULTIPLE` for `/multi`) or
-   `ACTION_CREATE_DOCUMENT` for `/save`. `chooseDirectory` starts
-   `ACTION_OPEN_DOCUMENT_TREE`. The interpreter's thread waits for the
-   activity's result, as every other platform's dialog makes it wait. A
-   cancelled picker is none, as the port's contract says.
-   - `/filter`'s patterns become MIME types through `MimeTypeMap`, in
-     `EXTRA_MIME_TYPES`. A pattern with no MIME type, or `*` or `*.*`,
-     opens everything (`*/*`).
-   - `/file` with a name suggests it to `ACTION_CREATE_DOCUMENT`
-     (`EXTRA_TITLE`, which is the suggested name). A `/file` or `/dir` naming
-     a folder picked before starts the picker there (`EXTRA_INITIAL_URI`).
-     Anything else is ignored, since Android cannot start at a path.
-   - `/title` is ignored: Android's picker has no heading of the app's.
-   - `browse` opens its target with `ACTION_VIEW`, which is how an Android
-     app opens a link or a document.
-   - `request-password` shows an `AlertDialog` with a password field
-     (`TYPE_TEXT_VARIATION_PASSWORD`), so the keyboard offers no
-     suggestions and learns nothing, as on any Android app. OK answers the
-     text, and Cancel, Back or a tap outside answers none.
-   - `request-color` shows an `AlertDialog` of JEBOL's own built from
-     platform widgets: hue, saturation and value sliders, a swatch, and a
-     hex field, as the page's colour input has a hex field beside it.
-     Android has no system colour picker, so this is the nearest to a
-     native one; it uses no library. `/default`'s colour is where it
-     starts.
-2. **Picked references are live, not copied.** A pick is mounted at a path,
-   and the file port reads and writes the reference itself through
-   `ContentResolver`, so an edit reaches the user's file and a folder from
-   a cloud drive is never copied whole. This differs from the page, which
-   copies only because it must.
-3. **The path is the page's: `%/picked/N/name`.** N is one past the
-   highest already used, as on the page, and the name is the document's
-   `DISPLAY_NAME`. A picked folder is `%/picked/N/<its name>/`, and walking
-   it lists its children through `DocumentsContract`. So a script that picks
-   and reads a file runs unchanged on the page and on a phone.
-4. **`DocumentFiles`, a `FilePort` over the references.** `LayeredFiles`
-   sends any path under `%/picked/` to it.
-   - READ and WRITE (whole, at a position, appending) go through
-     `ContentResolver.openFileDescriptor`, with mode `r`, `wt`, `rw` or
-     `wa`. A cloud provider may hand back a pipe rather than a seekable
-     file, so a write at a position can be refused there; the tests find
-     out which providers do.
-   - QUERY answers size and modification time from the document's
-     columns. A column the provider leaves empty answers none.
-   - Inside a picked folder, MAKE-DIR, a new file, DELETE and RENAME go
-     through `DocumentsContract`, when the provider's flags allow them.
-   - Where the provider refuses, the error is the access error a desktop
-     gives for the same refusal.
-5. **A pick survives a restart.** Each grant is taken with
-   `takePersistableUriPermission`, and the table from N to reference is
-   kept in the app's store. So `%/picked/3/notes.txt` still names the same
-   file the next day, as it does on the page. Android keeps 512 such grants
-   for an app from Android 11; what it does past that is checked on the
-   emulator before the code relies on it. A grant the user revokes
-   in Settings makes its path name nothing, and READ raises `cannot-open`.
-
-**Steps.**
-0. This plan, agreed, then a plan commit with decision 80.
-1. Spec: `spec/android.allium` gains the picker's rules, the paths, the
-   live references, the persistence, the refusals, and what `browse`,
-   `request-password` and `request-color` answer.
-2. Failing tests:
-   - `androidUnitTests`: filters to MIME types; the next N; the table of
-     references read back after a restart.
-   - `androidFunctionalTests`: `DocumentFiles` against a `DocumentsProvider`
-     the test APK declares, so READ, WRITE, QUERY, a folder's walk, MAKE-DIR,
-     DELETE, RENAME and every refusal are proved on ART without the picker's
-     UI.
-   - `androidEndToEndTests` for the dialogs: UI Automator types into the
-     password dialog and the script prints what it was given; Cancel and
-     Back answer none. In the colour dialog it sets the hex field, and the
-     script prints the colour; moving a slider changes the swatch and the
-     answer; `/default` starts it at the colour given.
-   - `androidEndToEndTests`: UI Automator drives the real picker (Android's
-     DocumentsUI) on the emulator. A script picks a file pushed into
-     Downloads and reads it, saves a new one and the file is there, picks
-     a folder and walks it, and after a restart reads its earlier pick
-     again. A cancelled picker answers none.
-3. Code: `AndroidWindows` with its two dialogs, `DocumentFiles`, the table,
-   and `LayeredFiles`' routing.
-4. Docs: `docs/android-port.md`, `docs/standing.md` for anything a provider
-   limits, and `docs/using-jebol.md`.
-
-**Done when** a script opens, reads, writes and saves through the picker,
-walks a folder chosen with it, and reads its earlier pick again after a
-restart; and `browse`, `request-password` and `request-color` each answer on
-a phone. UI Automator drives the picker and both dialogs on both emulators,
-and the functional tests prove the file port on a provider of their own.
-`allTests` and `androidTests` pass, and the owner's phone runs the
-end-to-end tests.
 
 #### 2e. An app of one's own, on every platform: the packager
 
