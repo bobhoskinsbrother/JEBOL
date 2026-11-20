@@ -4049,3 +4049,40 @@ the owner's phone all pass, as in 2c.
 small where a reflow would have kept it; panning the screen as a desktop
 larger than the phone; telling touch apart by a screen-wide metric, which
 would make a mouse on a tablet scroll as a finger does.
+
+## 80. The user's own files on Android, and the dialogs a script asks for
+
+Owner's decisions, 2026-11-20, for goal 2c2.
+
+**A picked file is the user's file, not a copy.** `request-file` and
+`request-dir` open Android's own picker (`ACTION_OPEN_DOCUMENT`,
+`ACTION_CREATE_DOCUMENT`, `ACTION_OPEN_DOCUMENT_TREE`), and the `content://`
+reference it answers is read and written in place through
+`ContentResolver`. An edit reaches the user's document, and a folder on a
+cloud drive is walked rather than copied whole. The page copies each pick
+only because a browser lends bytes and never a live file.
+
+**The path is the page's.** A pick is mounted at `%/picked/N/name`, N one
+past the highest used, and the name the document's own `DISPLAY_NAME`; a
+folder at `%/picked/N/<its name>/`. A script that picks a file and reads it
+runs unchanged on the page and on a phone. Exposing the `content://`
+reference as a `url!` was rejected: honest about what it is, and unlike
+every other platform.
+
+**A pick survives a restart.** The grant is taken with
+`takePersistableUriPermission`, and the table from N to reference is kept
+in the app's store, so a path a script saved names the same file the next
+day, as on the page.
+
+**Every dialog answers on a phone.** Android granted `WINDOWS` and gave no
+window port, so all five dialogs refused as if there were no screen.
+- `browse` opens its target with `ACTION_VIEW`.
+- `request-password` is a platform `AlertDialog` with a password field, so
+  the keyboard suggests nothing and learns nothing.
+- `request-color` is an `AlertDialog` of JEBOL's own, built from platform
+  widgets: hue, saturation and value sliders, a swatch and a hex field.
+  Android has no system colour picker. Drawing it with r3-gui, or taking a
+  library for it, was rejected.
+
+**Commits:** the plan, then one commit after `allTests`, `androidTests` and
+the owner's phone all pass.
