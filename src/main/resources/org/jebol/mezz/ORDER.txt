@@ -81,6 +81,8 @@
 #                        block to it. Rebol 3.22 carries no VID, and this is
 #                        where VIEW would otherwise call a LAYOUT nothing
 #                        defines. Read decision 52 before taking a newer copy.
+#                        It also adds SIZE-CLASS?, Android's three size
+#                        classes for a window's width (decision 79).
 #
 # and one outside this directory, because there is nowhere else that records
 # a borrowed file differing from Rebol's:
@@ -113,6 +115,19 @@
 #                        as 2010 did; RESET with no name resets the panel the
 #                        button is in, which the guide's survey expects.
 #                        TheGuiTheBuildCarriesFromTheSourceTest pins each one.
+#                        For touch and every screen (goal 2d, decision 79):
+#                        LAYOUT-PANEL shrinks a panel's columns towards their
+#                        minimum widths when it is narrower than their natural
+#                        ones, where 2010's only ever grew them; the window
+#                        keeps its top panel as tall as its layout and shows
+#                        what fits; a finger's drag past an 8 dp slop that no
+#                        face takes scrolls a text area or the window
+#                        (SCROLL-BY-FINGER), and the press it began with is
+#                        undone; a finger in text scrolls where a mouse
+#                        selects; FOCUS on a face that edits text calls
+#                        SHOW-SOFT-KEYBOARD/ATTACH with its gob.
+#                        TouchAndLayoutOnEveryScreenFromTheSourceTest pins
+#                        these.
 #
 # BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
 # of known stops is empty. A file that stops defines nothing below the line

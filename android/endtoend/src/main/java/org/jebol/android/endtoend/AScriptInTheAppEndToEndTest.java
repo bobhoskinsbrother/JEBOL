@@ -18,7 +18,7 @@ class AScriptInTheAppEndToEndTest {
 
     private static final String A_FACE_THAT_HEARS_TAPS = """
             window: view/no-wait make gob! [size: 300x200 color: 200.40.40]
-            window/offset: 100x150
+            window/offset: 10x150
             show system/view/screen-gob
             handle-events [
                 name: 'taps
@@ -86,9 +86,34 @@ class AScriptInTheAppEndToEndTest {
         TheApp app = TheApp.runningScript(A_FACE_THAT_HEARS_TAPS);
         app.waitForLineStarting("ready", PATIENCE);
 
-        app.tapAt(new int[] {200, 200});
+        app.tapAt(new int[] {110, 200});
 
         assertThat(app.waitForLineStarting("up-at", PATIENCE)).isEqualTo("up-at 100x50");
+    }
+
+    @Test
+    @DisplayName("a window placed past the screen's right edge is shown against it, and a tap counts from where it is shown")
+    void aTapClicksAWindowMovedOnToTheScreen() {
+        TheApp app = TheApp.runningScript("""
+                window: view/no-wait make gob! [size: 300x200 color: 40.200.200]
+                window/offset: 5000x150
+                show system/view/screen-gob
+                handle-events [
+                    name: 'taps
+                    priority: 100
+                    handler: func [event] [
+                        if event/type = 'up [print rejoin ["up-at " event/offset]]
+                        none
+                    ]
+                ]
+                print rejoin ["ready " to integer! system/view/screen-gob/size/x]
+                do-events
+                """);
+        int screenWide = Integer.parseInt(app.waitForLineStarting("ready", PATIENCE).substring("ready ".length()));
+
+        app.tapAt(new int[] {screenWide - 50, 200});
+
+        assertThat(app.waitForLineStarting("up-at", PATIENCE)).isEqualTo("up-at 250x50");
     }
 
     @Test

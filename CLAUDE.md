@@ -308,13 +308,14 @@ log it finds.
 **Android has a gate of its own, `./gradlew -p android androidTests`**, outside
 `allTests` because it needs the Android SDK (`scripts/setup-machine.sh`
 installs it, on Ubuntu or a Mac). It runs the core's `checkCoreForAndroid`
-first, then boots two Pixel Tablet API 35 emulators (1280 by 800 dp) with
-`android/emulator.sh` and runs Android's three suites: `androidUnitTests`
-(Android's adapters alone, package `org.jebol.android.unit`) and
-`androidFunctionalTests` (an interpreter on ART, Rebol's suite included), each
-split across the emulators in shards, then `androidEndToEndTests` (the
-installed app driven by UI Automator from `android/endtoend`) on the first
-emulator alone. It shuts them down and archives the results into
+first, then boots two emulators with `android/emulator.sh`, a Pixel Tablet
+on API 35 (1280 by 800 dp) and a Pixel 7 phone on API 37 (412 by 915 dp,
+whose Chrome is new enough for the web build), and runs Android's three
+suites: `androidUnitTests` (Android's adapters alone, package
+`org.jebol.android.unit`) and `androidFunctionalTests` (an interpreter on
+ART, Rebol's suite included), each split across the emulators in shards,
+then `androidEndToEndTests` (the installed app driven by UI Automator from
+`android/endtoend`), every test on each emulator. It shuts them down and archives the results into
 `test-history/<timestamp>-android/`, one folder a suite; about an hour and a
 quarter. `-Pemulators=N` sets how many (each holds about 3.6 GB; three leave
 under 2 GB beside IntelliJ), `-Pclasses=a.B,c.D` runs only those classes, each

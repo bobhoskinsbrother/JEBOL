@@ -34,6 +34,7 @@ final class TheApp {
     private static final int COLOUR_SAMPLE_STEP = 12;
     private static final Duration TO_OPEN = Duration.ofSeconds(30);
     private static final long POLL_MILLISECONDS = 200;
+    private static final int COLOUR_ALLOWANCE = 6;
 
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final UiDevice device = UiDevice.getInstance(instrumentation);
@@ -102,8 +103,17 @@ final class TheApp {
         restartInPlace(Optional.of(script));
     }
 
+    void restartOnItsSide() {
+        turnSideways();
+        restartInPlaceTurned(Optional.empty());
+    }
+
     private void restartInPlace(Optional<String> script) {
         turnUpright();
+        restartInPlaceTurned(script);
+    }
+
+    private void restartInPlaceTurned(Optional<String> script) {
         long restartsBefore = markers().count();
         Intent restart = launchIntent();
         restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -261,7 +271,18 @@ final class TheApp {
         return true;
     }
 
-    boolean isShowingColour(int red, int green, int blue) {
+    boolean waitUntilShowingColourIs(boolean showing, int[] colour, Duration patience) {
+        long givenUpAt = System.nanoTime() + patience.toNanos();
+        while (isShowingColour(colour[0], colour[1], colour[2]) != showing) {
+            if (System.nanoTime() > givenUpAt) {
+                return false;
+            }
+            pause();
+        }
+        return true;
+    }
+
+    private boolean isShowingColour(int red, int green, int blue) {
         Rect bounds = theViewsBounds();
         File shot = new File(context.getCacheDir(), "the-view.png");
         if (!device.takeScreenshot(shot)) {
@@ -322,6 +343,53 @@ final class TheApp {
 
     private int toPixels(int dp) {
         return Math.round(dp * density + density / 2);
+    }
+
+    int readColourAt(int[] dp) {
+        Rect view = theViewsBounds();
+        return takeScreenshot().getPixel(view.left + toPixels(dp[0]), view.top + toPixels(dp[1]));
+    }
+
+    boolean isShowingAboveTheKeyboard(int[] dp, int colour) {
+        Rect view = theViewsBounds();
+        int keyboardTop = readTheKeyboardsTop().orElse(view.bottom);
+        Bitmap screen = takeScreenshot();
+        int across = view.left + toPixels(dp[0]);
+        for (int y = view.top; y < Math.min(keyboardTop, screen.getHeight()); y++) {
+            if (isCloseTo(screen.getPixel(across, y), colour)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Bitmap takeScreenshot() {
+        File shot = new File(context.getCacheDir(), "the-view.png");
+        if (!device.takeScreenshot(shot)) {
+            throw new IllegalStateException("no screenshot could be taken");
+        }
+        return BitmapFactory.decodeFile(shot.getPath());
+    }
+
+    private static boolean isCloseTo(int pixel, int colour) {
+        return Math.abs(Color.red(pixel) - Color.red(colour)) <= COLOUR_ALLOWANCE
+                && Math.abs(Color.green(pixel) - Color.green(colour)) <= COLOUR_ALLOWANCE
+                && Math.abs(Color.blue(pixel) - Color.blue(colour)) <= COLOUR_ALLOWANCE;
+    }
+
+    private Optional<Integer> readTheKeyboardsTop() {
+        String keyboard = shell("settings get secure default_input_method").trim();
+        int slash = keyboard.indexOf('/');
+        if (slash <= 0) {
+            return Optional.empty();
+        }
+        UiObject2 shown = device.findObject(By.pkg(keyboard.substring(0, slash)));
+        return shown == null ? Optional.empty() : Optional.of(shown.getVisibleBounds().top);
+    }
+
+    int[] theViewsSizeInDp() {
+        Rect view = theViewsBounds();
+        return new int[] {Math.round(view.width() / density), Math.round(view.height() / density)};
     }
 
     String shell(String command) {

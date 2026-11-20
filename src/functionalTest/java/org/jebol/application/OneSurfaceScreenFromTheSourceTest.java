@@ -12,6 +12,7 @@ import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.DrawingCommand;
 import org.jebol.domain.render.TestFont;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.render.TextRun;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
@@ -45,6 +46,11 @@ class OneSurfaceScreenFromTheSourceTest {
         @Override
         public boolean isConnected() {
             return looking;
+        }
+
+        @Override
+        public TextMeasurement textMeasurement(DefaultFont carried) {
+            return carried.measurement();
         }
 
         @Override
@@ -253,6 +259,11 @@ class OneSurfaceScreenFromTheSourceTest {
 
                 @Override
                 public void paint(List<DrawingCommand> painting) {
+                }
+
+                @Override
+                public TextMeasurement textMeasurement(DefaultFont carried) {
+                    return carried.measurement();
                 }
 
                 @Override

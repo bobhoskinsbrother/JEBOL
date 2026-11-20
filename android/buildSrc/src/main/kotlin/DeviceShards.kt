@@ -52,10 +52,40 @@ abstract class DeviceShards : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val hostServerIdentity: DirectoryProperty
 
+    @get:Input
+    @get:Optional
+    abstract val everyTestOnEachDevice: Property<Boolean>
+
+    @get:Optional
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val hostSiteApp: DirectoryProperty
+
+    @get:Optional
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val webBuild: DirectoryProperty
+
+    @get:Optional
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val runnerPage: RegularFileProperty
+
     private val hostServerArguments = mutableMapOf<String, String>()
 
     @TaskAction
     fun runEveryShard() {
+        if (!hostSiteApp.isPresent) {
+            runWithHostServers()
+            return
+        }
+        HostSite(webBuild.get().asFile, runnerPage.get().asFile, hostSiteApp.get().asFile).use { site ->
+            hostServerArguments["hostSitePort"] = site.port.toString()
+            runWithHostServers()
+        }
+    }
+
+    private fun runWithHostServers() {
         if (!hostServerIdentity.isPresent) {
             runOnDevices()
             return
@@ -75,8 +105,8 @@ abstract class DeviceShards : DefaultTask() {
         val pool = Executors.newFixedThreadPool(devices.size)
         try {
             pool.invokeAll(devices.map { serial -> Callable { install(serial) } }).forEach { it.get() }
-            val shards = pool.invokeAll(devices.mapIndexed { index, serial ->
-                Callable { runShard(serial, index, devices.size) }
+            val shards = pool.invokeAll(devices.mapIndexedNotNull { index, serial ->
+                shareFor(index, devices.size)?.let { share -> Callable { runShard(serial, index, share) } }
             }).map { it.get() }
             shards.forEach { it.writeXmlInto(folder) }
             report(shards)
@@ -96,10 +126,23 @@ abstract class DeviceShards : DefaultTask() {
         }
     }
 
-    private fun runShard(serial: String, index: Int, count: Int): Shard {
+    private fun shareFor(index: Int, deviceCount: Int): Map<String, String>? {
+        if (everyTestOnEachDevice.getOrElse(false)) {
+            return mapOf()
+        }
+        val named = runnerArguments.get()["class"]?.split(",")?.filter(String::isNotEmpty).orEmpty()
+        if (named.isEmpty()) {
+            return mapOf("numShards" to deviceCount.toString(), "shardIndex" to index.toString())
+        }
+        val own = named.filterIndexed { at, _ -> at % deviceCount == index }
+        return if (own.isEmpty()) null else mapOf("class" to own.joinToString(","))
+    }
+
+    private fun runShard(serial: String, index: Int, share: Map<String, String>): Shard {
         val command = mutableListOf(adb.get(), "-s", serial, "shell", "am", "instrument", "-w", "-r")
-        (runnerArguments.get() + hostServerArguments).forEach { (name, value) -> command += listOf("-e", name, value) }
-        command += listOf("-e", "numShards", count.toString(), "-e", "shardIndex", index.toString())
+        (runnerArguments.get() + hostServerArguments + share).forEach { (name, value) ->
+            command += listOf("-e", name, value)
+        }
         command += instrumentation.get()
         val shard = Shard(index, serial)
         val running = ProcessBuilder(command).redirectErrorStream(true).start()
@@ -108,7 +151,10 @@ abstract class DeviceShards : DefaultTask() {
                 shard.read(line)?.let { done -> logEvery500(shard, done) }
             }
         }
-        running.waitFor()
+        val exit = running.waitFor()
+        if (!shard.finished) {
+            shard.ending += " (adb exited $exit)"
+        }
         return shard
     }
 
@@ -169,6 +215,7 @@ abstract class DeviceShards : DefaultTask() {
                 }
                 line.startsWith(RESULT) -> ending = line.removePrefix(RESULT)
                 line.startsWith(CODE) -> finished = running == null && !ending.startsWith("shortMsg")
+                lastField == null && line.isNotBlank() -> ending = if (ending == "no output") line else ending + "\n" + line
                 else -> lastField?.let { fields[it] = fields[it] + "\n" + line }
             }
             return null

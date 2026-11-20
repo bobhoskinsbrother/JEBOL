@@ -28,6 +28,8 @@ import org.jebol.domain.render.PathStep;
 import org.jebol.domain.render.Placement;
 import org.jebol.domain.render.PlacedText;
 import org.jebol.domain.render.Surface;
+import org.jebol.domain.render.TextExtent;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.render.TextRun;
 import org.jebol.domain.render.Transform;
 import org.jebol.domain.value.ImageValue;
@@ -202,7 +204,7 @@ public final class AndroidSurface implements Surface {
 
         for (PlacedText.PlacedLine line : lines) {
             for (PlacedText.PlacedPiece piece : line.pieces()) {
-                Paint paint = convertToTextPaint(piece.font());
+                Paint paint = convertToTextPaint(face, piece.font());
                 paint.setColor(isEveryRunOneColour ? everyRunIn : convertToColour(piece.font().colour()));
                 onto.drawText(piece.text(), (float) piece.across() + movedAcross,
                         (float) piece.baseline() + movedDown, paint);
@@ -210,7 +212,15 @@ public final class AndroidSurface implements Surface {
         }
     }
 
-    private Paint convertToTextPaint(TextRun run) {
+    public static TextMeasurement measurement(Typeface face) {
+        return run -> {
+            Paint paint = convertToTextPaint(face, run);
+            Paint.FontMetrics metrics = paint.getFontMetrics();
+            return new TextExtent(paint.measureText(run.text()), -metrics.ascent, metrics.descent);
+        };
+    }
+
+    private static Paint convertToTextPaint(Typeface face, TextRun run) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setTypeface(face);
         paint.setTextSize((float) run.size());

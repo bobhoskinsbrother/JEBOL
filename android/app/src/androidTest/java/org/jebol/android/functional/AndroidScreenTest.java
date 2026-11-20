@@ -175,6 +175,66 @@ class AndroidScreenTest {
                 [#"h" #"é" #"^H" #"^M"]""");
     }
 
+    @Test
+    @DisplayName("a finger's press says touch, and a mouse's does not")
+    void aFingerSaysTouchAndAMouseDoesNot() {
+        openSession();
+        JebolView view = made.get();
+        view.measureViewport(1600, 1200);
+        answer("""
+                heard: copy []
+                view/no-wait make gob! [size: 400x300 color: 200.200.200]
+                system/view/screen-gob/1/offset: 0x0
+                show system/view/screen-gob
+                handle-events [
+                    name: 'touches
+                    priority: 100
+                    handler: func [event] [
+                        if event/type = 'down [append/only heard event/flags]
+                        none
+                    ]
+                ]
+                """);
+
+        press(view, MotionEvent.TOOL_TYPE_FINGER);
+        press(view, MotionEvent.TOOL_TYPE_STYLUS);
+        press(view, MotionEvent.TOOL_TYPE_MOUSE);
+
+        assertThat(answer("wait [system/ports/event 0.3] heard")).isEqualTo("[[touch] [touch] _]");
+    }
+
+    @Test
+    @DisplayName("the view takes typing only once show-soft-keyboard asks, so a tap alone raises no keyboard")
+    void theViewIsATextEditorOnlyWhenAsked() {
+        openSession();
+        JebolView view = made.get();
+        view.measureViewport(1600, 1200);
+        answer("w: view/no-wait make gob! [size: 400x300]");
+
+        assertThat(view.onCheckIsTextEditor()).isFalse();
+
+        answer("show-soft-keyboard/attach w");
+
+        assertThat(view.onCheckIsTextEditor()).isTrue();
+    }
+
+    private static void press(JebolView view, int toolType) {
+        long now = SystemClock.uptimeMillis();
+        MotionEvent.PointerProperties pointer = new MotionEvent.PointerProperties();
+        pointer.id = 0;
+        pointer.toolType = toolType;
+        MotionEvent.PointerCoords place = new MotionEvent.PointerCoords();
+        place.x = 30;
+        place.y = 30;
+        for (int action : new int[] {MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP}) {
+            MotionEvent event = MotionEvent.obtain(now, now, action, 1,
+                    new MotionEvent.PointerProperties[] {pointer}, new MotionEvent.PointerCoords[] {place},
+                    0, 0, 1, 1, 0, 0, 0, 0);
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> view.onTouchEvent(event));
+            event.recycle();
+        }
+    }
+
     private static void touch(JebolView view, int action, float across, float down) {
         long now = SystemClock.uptimeMillis();
         MotionEvent event = MotionEvent.obtain(now, now, action, across, down, 0);

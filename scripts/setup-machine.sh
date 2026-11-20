@@ -9,8 +9,8 @@
 #
 # On macOS it installs the Android SDK into ~/Library/Android/sdk, where
 # Android Studio puts it: the command-line tools for the Mac's processor, the
-# same platform, build tools and emulator as on Ubuntu, and the API 35 image
-# the processor runs -- arm64-v8a on Apple Silicon, x86_64 on Intel -- then
+# same platform, build tools and emulator as on Ubuntu, and the API 35 and 37
+# images the processor runs -- arm64-v8a on Apple Silicon, x86_64 on Intel -- then
 # adds ANDROID_HOME to ~/.zprofile. Everything else allTests needs on a Mac is
 # the README's Building section.
 #
@@ -23,7 +23,7 @@
 #   Android SDK       android/ and checkCoreForAndroid, in ~/Android/Sdk: the
 #                     command-line tools, platform 35, build tools 37 (d8) and
 #                     36 (the Android Gradle Plugin's own), the emulator and an
-#                     x86_64 API 35 image (goal 2)
+#                     x86_64 API 35 and API 37 images (goal 2)
 #
 # A Firefox snap is removed, and its profile in ~/snap/firefox with it.
 #
@@ -80,7 +80,7 @@ install_android_sdk() {
     # and with nothing on its input it waits there for good.
     { yes || true; } | "$sdkmanager" --sdk_root="$android_sdk" \
         "platforms;android-35" "build-tools;37.0.0" "build-tools;36.0.0" "platform-tools" "emulator" \
-        "$image"
+        "$image" "${image/android-35/android-37.0}"
 }
 
 check_android_sdk() {
@@ -89,6 +89,7 @@ check_android_sdk() {
     check "Android build tools 37"      test -x "$android_sdk/build-tools/37.0.0/d8"
     check "the Android emulator"        "$android_sdk/emulator/emulator" -version
     check "an API 35 image ($image_dir)" test -f "$android_sdk/system-images/android-35/google_apis/$image_dir/system.img"
+    check "an API 37 image ($image_dir)" test -f "$android_sdk/system-images/android-37.0/google_apis/$image_dir/system.img"
 }
 
 if [ "$(uname -s)" = Darwin ]; then

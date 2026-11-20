@@ -12,6 +12,9 @@ public sealed interface ScreenEventDetail {
     record At(int across, int down) implements ScreenEventDetail {
     }
 
+    record Touched(int across, int down) implements ScreenEventDetail {
+    }
+
     /** A key that typed this character. */
     record Typed(int codepoint) implements ScreenEventDetail {
     }

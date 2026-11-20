@@ -75,8 +75,10 @@ class TheBrowserAdaptersEndToEndTest {
                     .as("and its HMAC is the same keyed digest the JVM takes")
                     .contains("#{" + writeKeyedHexOf("abc") + "}");
             assertThat(operator.readOutput())
-                    .as("the worker measured with the font this build carries")
-                    .contains(measureLabelsText());
+                    .as("the worker measured the text in the browser, as the page draws it: MMMM has no "
+                            + "kerned pair, so it is as wide as the carried font says, and as high as the browser's "
+                            + "font box")
+                    .anySatisfy(line -> assertThat(line).startsWith(measureLabelsWidth() + "x"));
             assertThat(operator.readOutput())
                     .as("the page grants the clock")
                     .contains("clock true");
@@ -86,10 +88,10 @@ class TheBrowserAdaptersEndToEndTest {
         }
     }
 
-    private String measureLabelsText() {
+    private long measureLabelsWidth() {
         TextExtent extent = TheCarriedFont.measurement().textExtent(
                 new TextRun("MMMM", Colour.BLACK, 12, false, false));
-        return Math.round(extent.wide()) + "x" + Math.round(extent.high());
+        return Math.round(extent.wide());
     }
 
     private String writeHexOf(String text) {

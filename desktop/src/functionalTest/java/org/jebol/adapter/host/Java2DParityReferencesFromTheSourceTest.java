@@ -2,6 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.DefaultFont;
 import org.jebol.application.Interpreter;
 import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.TheCarriedFace;
@@ -14,6 +15,7 @@ import org.jebol.domain.render.DrawingCommand;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.ParityScenes;
 import org.jebol.domain.render.PixelAgreement;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PairValue;
@@ -118,6 +120,11 @@ class Java2DParityReferencesFromTheSourceTest {
         @Override
         public boolean isConnected() {
             return true;
+        }
+
+        @Override
+        public TextMeasurement textMeasurement(DefaultFont carried) {
+            return carried.measurement();
         }
 
         @Override

@@ -218,6 +218,7 @@ public final class Java2DSurface implements Surface {
             Graphics2D onto, List<PlacedText.PlacedLine> lines,
             int movedAcross, int movedDown, Color everyRunIn) {
 
+        onto.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         for (PlacedText.PlacedLine line : lines) {
             for (PlacedText.PlacedPiece piece : line.pieces()) {
                 onto.setFont(convertToAwtFont(piece.font()));

@@ -36,6 +36,20 @@ system/standard/para: construct [
 	valign: 'top
 ]
 
+size-class?: func [
+	"Answers compact, medium or expanded, as Android names them, for a window's width, or for the screen's given none."
+	window [gob! none!]
+	/local size wide
+][
+	size: either window [window/size] [gui-metric 'screen-size]
+	wide: size/x
+	case [
+		wide < 600 ['compact]
+		wide < 840 ['medium]
+		true ['expanded]
+	]
+]
+
 load-gui: use [gui-view] [
 	gui-view: none
 	func [

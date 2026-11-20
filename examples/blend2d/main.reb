@@ -13,8 +13,13 @@ operators: [
 tile-size: 120x72
 caption-height: 16
 gap: 10
-columns: 6
 cell: tile-size + (as-pair gap gap) + (as-pair 0 caption-height)
+screen: gui-metric 'screen-size
+unmeasured: zero? screen/x
+columns: either unmeasured [6] [
+    min select [compact 2 medium 3 expanded 6] size-class? none
+        max 1 to integer! (screen/x - gap) / cell/x
+]
 rows: to integer! ((length? operators) + columns - 1) / columns
 
 badge: b2d/draw 12x12 [
@@ -46,8 +51,11 @@ paint-tile: func [operator] [
     ]
 ]
 
+sheet: make gob! [color: 24.28.38]
+sheet/size: (as-pair columns * cell/x rows * cell/y) + (as-pair gap gap)
 window: make gob! [color: 24.28.38]
-window/size: (as-pair columns * cell/x rows * cell/y) + (as-pair gap gap)
+window/size: as-pair sheet/size/x either unmeasured [sheet/size/y] [min sheet/size/y screen/y]
+append window sheet
 
 at: 0
 foreach operator operators [
@@ -61,13 +69,32 @@ foreach operator operators [
         pen 220.220.220
         text vectorial 2x0 (as-pair tile-size/x caption-height) [(form operator)]
     ]
-    append window heading
+    append sheet heading
     tile: make gob! []
     tile/offset: corner + (as-pair 0 caption-height)
     tile/size: tile-size
     tile/image: paint-tile operator
-    append window tile
+    append sheet tile
     at: at + 1
+]
+
+held: none
+scroll-sheet: func [by] [
+    sheet/offset: as-pair 0 max window/size/y - sheet/size/y min 0 sheet/offset/y + by
+    show window
+]
+handle-events [
+    name: 'scrolling-the-tiles
+    priority: 50
+    handler: func [event] [
+        switch event/type [
+            down [held: event/offset]
+            move [if held [scroll-sheet event/offset/y - held/y  held: event/offset]]
+            up [held: none]
+            scroll-line [scroll-sheet event/offset/y]
+        ]
+        event
+    ]
 ]
 
 view/options window [title: "Blend2D's blend modes"]

@@ -7,6 +7,7 @@ import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.ShownWindow;
 import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.host.WindowsOnOneSurface;
 import org.jebol.domain.render.TextMeasurement;
@@ -15,6 +16,7 @@ import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.render.Transform;
 import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
@@ -46,9 +48,12 @@ public final class OneSurfaceScreen extends GobScreen {
     private final Set<GobStorage> minimised = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<GobStorage> minimisedByThePlatform = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Queue<SurfaceVisibility> visibilityChanges = new ConcurrentLinkedQueue<>();
+    private final Queue<Integer> keyboardMeasurements = new ConcurrentLinkedQueue<>();
     private PairValue viewport = PairValue.of(0, 0);
     private boolean isPictureRequired;
     private Optional<String> titleShown = Optional.empty();
+    private Optional<GobValue> keptAboveTheKeyboard = Optional.empty();
+    private int keyboardHigh;
 
     private OneSurfaceScreen(Viewer viewer, NavigationPort navigation, DefaultFont font, LongSupplier millisecondsNow) {
         super(millisecondsNow, navigation);
@@ -87,6 +92,10 @@ public final class OneSurfaceScreen extends GobScreen {
         measurements.add(new ScreenMeasurement(width, height));
     }
 
+    public void measureKeyboard(int high) {
+        keyboardMeasurements.add(Math.max(0, high));
+    }
+
     @Override
     public PairValue measure(ScreenMetric metric, int display) {
         if (!hasDisplay()) {
@@ -115,7 +124,36 @@ public final class OneSurfaceScreen extends GobScreen {
         super.show(gob);
         if (root != null) {
             isPictureRequired = true;
+            fitResizableWindows();
         }
+    }
+
+    private void fitResizableWindows() {
+        if (viewport.x() <= 0 || viewport.y() <= 0) {
+            return;
+        }
+        for (GobValue window : List.copyOf(gobValues)) {
+            GobStorage held = window.storage();
+            if (held.listRaisedFlags().contains(GobStorage.Flag.RESIZE) && !maximised.containsKey(held)) {
+                fitInsideViewport(window);
+            }
+        }
+    }
+
+    private void fitInsideViewport(GobValue window) {
+        GobStorage held = window.storage();
+        boolean tooWide = held.size().x() > viewport.x();
+        boolean tooHigh = held.size().y() > viewport.y();
+        if (!tooWide && !tooHigh) {
+            return;
+        }
+        double wide = Math.min(held.size().x(), viewport.x());
+        double high = Math.min(held.size().y(), viewport.y());
+        held.size(PairValue.of(wide, high));
+        held.setOffset(PairValue.of(tooWide ? 0 : held.offset().x(), tooHigh ? 0 : held.offset().y()));
+        queued.add(ScreenEventType.RESIZE, window,
+                new ScreenEventDetail.At((int) Math.round(wide), (int) Math.round(high)));
+        isPictureRequired = true;
     }
 
     @Override
@@ -139,7 +177,7 @@ public final class OneSurfaceScreen extends GobScreen {
 
     @Override
     public TextMeasurement textMeasurement() {
-        return hasDisplay() ? font.measurement() : ScreenPort.none().textMeasurement();
+        return hasDisplay() ? viewer.textMeasurement(font) : ScreenPort.none().textMeasurement();
     }
 
     public void report(ScreenEventType kind, ScreenEventDetail detail) {
@@ -158,8 +196,16 @@ public final class OneSurfaceScreen extends GobScreen {
     public void acceptPendingReports() {
         viewer.takePostedLines();
         acceptMeasurements();
+        acceptKeyboardMeasurements();
         acceptVisibilityChanges();
         super.acceptPendingReports();
+    }
+
+    private void acceptKeyboardMeasurements() {
+        for (Integer next = keyboardMeasurements.poll(); next != null; next = keyboardMeasurements.poll()) {
+            keyboardHigh = next;
+            isPictureRequired = true;
+        }
     }
 
     private void acceptVisibilityChanges() {
@@ -203,7 +249,7 @@ public final class OneSurfaceScreen extends GobScreen {
 
     @Override
     protected Optional<ImagePort.Pixels> paintOffscreen(PaintList painting, int wide, int high) {
-        return viewer.paintOffscreen(painting.calls(font.measurement()), wide, high);
+        return viewer.paintOffscreen(painting.calls(viewer.textMeasurement(font)), wide, high);
     }
 
     @Override
@@ -227,6 +273,9 @@ public final class OneSurfaceScreen extends GobScreen {
 
     @Override
     protected void closeWindowFor(GobValue gob) {
+        if (keptAboveTheKeyboard.map(attached -> windowHolding(attached).sharesStorageWith(gob)).orElse(false)) {
+            lowerKeyboard();
+        }
         gobValues.removeIf(gob::sharesStorageWith);
         maximised.remove(gob.storage());
         minimised.remove(gob.storage());
@@ -291,17 +340,103 @@ public final class OneSurfaceScreen extends GobScreen {
     }
 
     private List<DrawingCommand> paintPage() {
-        return PaintList.ofScreen(root, listWhatIsPaintedFromBottomToTop(),
-                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
-                drawDialect).calls(textMeasurement());
-    }
-
-    private List<GobValue> listWhatIsPaintedFromBottomToTop() {
+        List<GobValue> windows = listWindowsFromBottomToTop();
+        List<GobValue> shownElsewhere = windows.stream().filter(this::isShownElsewhere).toList();
         List<GobValue> painted = new ArrayList<>(rootPaneChildren().stream()
                 .filter(child -> !hasWindow(child))
                 .toList());
-        painted.addAll(listWindowsFromBottomToTop());
-        return painted;
+        painted.addAll(windows.stream().filter(window -> !isShownElsewhere(window)).toList());
+        List<DrawingCommand> page = new ArrayList<>(PaintList.ofScreen(root, painted,
+                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
+                drawDialect).calls(textMeasurement()));
+        int raisedBy = raisedForKeyboard();
+        if (raisedBy > 0) {
+            page.replaceAll(command -> DrawingCommand.placeUnder(command, Transform.moveBy(0, -raisedBy)));
+        }
+        for (GobValue window : shownElsewhere) {
+            Transform outer = whereShown(window).asTransform();
+            PaintList.ofWindow(window, drawDialect).calls(textMeasurement())
+                    .forEach(command -> page.add(DrawingCommand.placeUnder(command, outer)));
+        }
+        return page;
+    }
+
+    private boolean isShownElsewhere(GobValue window) {
+        ShownWindow shown = whereShown(window);
+        return shown.scale() != 1.0
+                || shown.across() != (int) Math.round(window.storage().offset().x())
+                || shown.down() + raisedForKeyboard() != (int) Math.round(window.storage().offset().y());
+    }
+
+    private ShownWindow whereShown(GobValue window) {
+        GobStorage held = window.storage();
+        if (viewport.x() <= 0 || viewport.y() <= 0) {
+            return ShownWindow.of(PairValue.of(Double.MAX_VALUE, Double.MAX_VALUE), held.size(), held.offset(), 0);
+        }
+        return ShownWindow.of(viewport, held.size(), held.offset(), raisedForKeyboard());
+    }
+
+    private int raisedForKeyboard() {
+        if (keyboardHigh <= 0 || keptAboveTheKeyboard.isEmpty()) {
+            return 0;
+        }
+        GobValue attached = keptAboveTheKeyboard.get();
+        GobValue window = windowHolding(attached);
+        if (gobValues.stream().noneMatch(window::sharesStorageWith)) {
+            return 0;
+        }
+        GobStorage held = window.storage();
+        ShownWindow shown = ShownWindow.of(viewport, held.size(), held.offset(), 0);
+        double bottomInWindow = offsetWithinWindow(attached.storage(), held) + attached.storage().size().y();
+        double bottomOnScreen = shown.down() + bottomInWindow * shown.scale();
+        return (int) Math.max(0, Math.round(bottomOnScreen - (viewport.y() - keyboardHigh)));
+    }
+
+    private static double offsetWithinWindow(GobStorage gob, GobStorage window) {
+        double down = 0;
+        for (GobStorage at = gob; at != null && at != window; at = at.parent()) {
+            down += at.offset().y();
+        }
+        return down;
+    }
+
+    private GobValue windowHolding(GobValue gob) {
+        for (GobValue window : gobValues) {
+            for (GobStorage at = gob.storage(); at != null; at = at.parent()) {
+                if (at == window.storage()) {
+                    return window;
+                }
+            }
+        }
+        return gob;
+    }
+
+    private boolean isOnAttachedGob(ScreenEventDetail detail) {
+        int[] at = switch (detail) {
+            case ScreenEventDetail.At(int across, int down) -> new int[] {across, down};
+            case ScreenEventDetail.Touched(int across, int down) -> new int[] {across, down};
+            default -> null;
+        };
+        if (at == null || keptAboveTheKeyboard.isEmpty()) {
+            return true;
+        }
+        GobValue attached = keptAboveTheKeyboard.get();
+        GobValue window = windowHolding(attached);
+        int[] within = whereShown(window).mapBack(at[0], at[1]);
+        double left = 0;
+        double top = 0;
+        for (GobStorage step = attached.storage(); step != null && step != window.storage(); step = step.parent()) {
+            left += step.offset().x();
+            top += step.offset().y();
+        }
+        PairValue size = attached.storage().size();
+        return within[0] >= left && within[0] < left + size.x() && within[1] >= top && within[1] < top + size.y();
+    }
+
+    private void lowerKeyboard() {
+        keptAboveTheKeyboard = Optional.empty();
+        isPictureRequired = true;
+        viewer.releaseTyping();
     }
 
     private void acceptMeasurements() {
@@ -312,7 +447,12 @@ public final class OneSurfaceScreen extends GobScreen {
 
     private void addressAllEvents() {
         for (ScreenPost next = posts.poll(); next != null; next = posts.poll()) {
-            List<ScreenEvent> events = surface.address(next.type(), next.detail(), listWindowsFromBottomToTop());
+            if (next.type() == ScreenEventType.DOWN && keptAboveTheKeyboard.isPresent()
+                    && !isOnAttachedGob(next.detail())) {
+                lowerKeyboard();
+            }
+            List<ScreenEvent> events = surface.address(next.type(), next.detail(), listWindowsFromBottomToTop(),
+                    this::whereShown);
             for (ScreenEvent event : events) {
                 queued.add(event.type(), event.window(), event.detail());
             }
@@ -325,6 +465,7 @@ public final class OneSurfaceScreen extends GobScreen {
             root.storage().size(viewport);
         }
         refitMaximisedWindows();
+        fitResizableWindows();
     }
 
     private void refitMaximisedWindows() {
@@ -361,6 +502,13 @@ public final class OneSurfaceScreen extends GobScreen {
     }
 
     @Override
+    public void showSoftKeyboard(Optional<GobValue> attached) {
+        keptAboveTheKeyboard = attached;
+        isPictureRequired = true;
+        viewer.takeTyping("");
+    }
+
+    @Override
     public void useCursor(ScreenCursor cursor) {
         viewer.useCursor(cursor);
     }
@@ -368,6 +516,7 @@ public final class OneSurfaceScreen extends GobScreen {
     public interface Viewer {
         boolean isConnected();
         void paint(List<DrawingCommand> painting);
+        TextMeasurement textMeasurement(DefaultFont carried);
         default void takePostedLines() {
         }
         default void takeTyping(String heading) {

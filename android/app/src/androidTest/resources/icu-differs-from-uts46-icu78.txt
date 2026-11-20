@@ -1,0 +1,6 @@
+# Where Android 37's ICU 78 answers Unicode's 16.0.0 conformance file differently from JEBOL's
+# own Uts46, one to a line, as AndroidHostNamesTest reports it. Measured on the Pixel 7
+# API 37 emulator, 2026-11-18. docs/android-port.md says why.
+line 4219: 𲤱20.音.ꡦ1. gave xn--20-9802c.xn--0w5a.xn--1-eg4e., the file says (refused)
+line 4220: xn--20-9802c.xn--0w5a.xn--1-eg4e. gave xn--20-9802c.xn--0w5a.xn--1-eg4e., the file says (refused)
+line 4405: xn--9-i0j5967eg3qz.ss gave xn--9-i0j5967eg3qz.ss, the file says (refused)

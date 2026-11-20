@@ -10,6 +10,7 @@ import java.io.File
 
 const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
 const val TESTS_THAT_OPEN_A_REAL_WINDOW = "opens-a-real-window"
+const val DISK_BACKED_TEMPORARY_ROOT = "/var/tmp"
 
 val PROJECTS_WITH_SUITES = listOf(":", ":desktop", ":web")
 val SUITE_SOURCE_SETS = listOf("unitTest", "functionalTest", "endToEndTest", "networkTest")
@@ -38,6 +39,17 @@ fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
         resultsOfThisRun.listFiles { file -> file.name.endsWith(".xml") }.orEmpty().forEach { it.delete() }
         jvmEvidence.deleteRecursively()
         jvmEvidence.mkdirs()
+    }
+}
+
+fun Test.keepsTemporaryFilesOnDisk() {
+    val folderName = path.trimStart(':').replace(':', '-')
+    val temporaryFolder = File(DISK_BACKED_TEMPORARY_ROOT, "jebol-${System.getProperty("user.name")}/$folderName")
+    systemProperty("java.io.tmpdir", temporaryFolder.path)
+    environment("TMPDIR", temporaryFolder.path)
+    doFirst {
+        temporaryFolder.deleteRecursively()
+        temporaryFolder.mkdirs()
     }
 }
 
@@ -76,6 +88,7 @@ fun Test.runsTheTestsIn(
     // the two defaults makes the gate answer the same on both.
     jvmArgs("-Xss2m")
     leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut)
+    keepsTemporaryFilesOnDisk()
     maxParallelForks = Runtime.getRuntime().availableProcessors()
     takesForksFromMemoryLeft(memoryEachForkNeeds, fewestForks)
     inputs.dir(root.layout.projectDirectory.dir("corpus"))

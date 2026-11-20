@@ -9,10 +9,12 @@ import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.host.ScreenCursor;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.ShownWindow;
 import org.jebol.domain.host.WindowArrangement;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.value.GobStorage;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
@@ -40,6 +42,7 @@ public final class DesktopScreen extends GobScreen {
 
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
     private final Map<JFrame, WindowStateReports> stateReports = new IdentityHashMap<>();
+    private final Map<GobStorage, Double> shownScales = Collections.synchronizedMap(new IdentityHashMap<>());
     private final List<GobValue> openedInOrder = new ArrayList<>();
     private final LeavingConfirmation leaving;
     private final BackForwardChords chords;
@@ -244,6 +247,7 @@ public final class DesktopScreen extends GobScreen {
     @Override
     protected void closeWindowFor(GobValue gob) {
         openedInOrder.removeIf(gob::sharesStorageWith);
+        shownScales.remove(gob.storage());
         findWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
             onToolkitThreadAndWaitedFor(() -> {
@@ -347,6 +351,12 @@ public final class DesktopScreen extends GobScreen {
     private JPanel paintSurface(
             GobValue gob, org.jebol.domain.value.ObjectValue drawDialect) {
         DesktopScreen onThisScreen = this;
+        Rectangle workArea = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        PairValue space = PairValue.of(workArea.width, workArea.height);
+        PairValue own = gob.storage().size();
+        boolean resizable = gob.storage().listRaisedFlags().contains(GobStorage.Flag.RESIZE);
+        double scale = resizable ? 1.0 : ShownWindow.of(space, own, PairValue.of(0, 0), 0).scale();
+        shownScales.put(gob.storage(), scale);
         JPanel surface = new JPanel() {
 
             private static final long serialVersionUID = 1L;
@@ -354,15 +364,23 @@ public final class DesktopScreen extends GobScreen {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
+                Graphics2D drawing = (Graphics2D) onto;
+                if (scale != 1.0) {
+                    drawing.scale(scale, scale);
+                }
                 Java2DSurface.paintContentsLeavingItsTitleToTitleBar(
-                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasurement(),
+                        drawing, gob, drawDialect, onThisScreen.textMeasurement(),
                         onThisScreen.face);
             }
         };
-        surface.setPreferredSize(new Dimension(
-                (int) Math.round(gob.storage().size().x()),
-                (int) Math.round(gob.storage().size().y())));
+        double wide = resizable ? Math.min(own.x(), space.x()) : own.x() * scale;
+        double high = resizable ? Math.min(own.y(), space.y()) : own.y() * scale;
+        surface.setPreferredSize(new Dimension((int) Math.floor(wide), (int) Math.floor(high)));
         return surface;
+    }
+
+    private int unscaled(GobValue gob, int pixel) {
+        return (int) Math.round(pixel / shownScales.getOrDefault(gob.storage(), 1.0));
     }
 
     private void postEach(List<WindowStateReports.Report> reports, GobValue gob) {
@@ -426,12 +444,12 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                pressButton(down.getButton(), down.getX(), down.getY(), gob);
+                pressButton(down.getButton(), unscaled(gob, down.getX()), unscaled(gob, down.getY()), gob);
             }
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                releaseButton(up.getButton(), up.getX(), up.getY(), gob);
+                releaseButton(up.getButton(), unscaled(gob, up.getX()), unscaled(gob, up.getY()), gob);
             }
 
             @Override
@@ -450,12 +468,12 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseMoved(MouseEvent moved) {
-                post(ScreenEventType.MOVE, gob, locatePointer(moved));
+                post(ScreenEventType.MOVE, gob, locatePointer(gob, moved));
             }
 
             @Override
             public void mouseDragged(MouseEvent dragged) {
-                post(ScreenEventType.MOVE, gob, locatePointer(dragged));
+                post(ScreenEventType.MOVE, gob, locatePointer(gob, dragged));
             }
         });
         frame.getContentPane().addMouseWheelListener(new MouseWheelListener() {
@@ -467,14 +485,14 @@ public final class DesktopScreen extends GobScreen {
                 boolean scrollsByBlock = turnedBy.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL;
                 wheel.take(turnedBy.getPreciseWheelRotation(), turnedBy.getModifiersEx(), scrollsByBlock)
                         .ifPresent(turning -> post(turning.kind(), gob,
-                                new ScreenEventDetail.Scrolled(
-                                        turnedBy.getX(), turnedBy.getY(), turning.amount())));
+                                new ScreenEventDetail.Scrolled(unscaled(gob, turnedBy.getX()),
+                                        unscaled(gob, turnedBy.getY()), turning.amount())));
             }
         });
     }
 
-    private ScreenEventDetail locatePointer(MouseEvent pointer) {
-        return new ScreenEventDetail.At(pointer.getX(), pointer.getY());
+    private ScreenEventDetail locatePointer(GobValue gob, MouseEvent pointer) {
+        return new ScreenEventDetail.At(unscaled(gob, pointer.getX()), unscaled(gob, pointer.getY()));
     }
 
     private void queueKey(int keyCode, char typed, ScreenEventType typing, ScreenEventType naming,

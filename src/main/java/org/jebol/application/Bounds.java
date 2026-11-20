@@ -97,12 +97,6 @@ public record Bounds(
                 unavailableServices, hostName, extensions, refusedExtensions, memoryCeiling);
     }
 
-    /**
-     * Holds the heap a script may fill below the given number of bytes: past
-     * it, the script gets REBOL's own no-memory error rather than the host
-     * meeting a full heap. Specified in {@code spec/android.allium} as
-     * AScriptPastTheCeilingGetsNoMemory.
-     */
     public Bounds withMemoryCeiling(long bytes) {
         return new Bounds(timeLimit, maximumNesting, checkEvery, grantedServices,
                 unavailableServices, hostName, extensions, refusedExtensions, bytes);

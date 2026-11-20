@@ -126,6 +126,7 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: Provider<String>) {
     useJUnitPlatform()
     jvmArgs("-Xss2m")
     takesForksFromMemoryLeft()
+    keepsTemporaryFilesOnDisk()
     systemProperty("java.awt.headless", "true")
     systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
     reports.junitXml.outputLocation = resultsName.flatMap { gateResults.map { results -> results.dir(it) } }

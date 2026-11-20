@@ -125,6 +125,8 @@ public final class JebolActivity extends Activity {
         frame.setOnApplyWindowInsetsListener((padded, given) -> {
             Insets bars = given.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
             padded.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            Insets keyboard = given.getInsets(WindowInsets.Type.ime());
+            content.measureKeyboard(Math.max(0, keyboard.bottom - bars.bottom));
             return WindowInsets.CONSUMED;
         });
         frame.addView(content, new FrameLayout.LayoutParams(

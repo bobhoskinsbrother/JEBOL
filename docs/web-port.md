@@ -179,6 +179,37 @@ fixed it. The general shape is worth remembering: when TeaVM says a class "was
 not found", it sometimes means the class will be stubbed rather than refused,
 and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 
+## A page on a phone (goal 2d)
+
+**The page reads pointer events,** not mouse events, so a finger reaches the
+screen: a down, its moves and an up, from the primary pointer alone, with
+the canvas `touch-action: none` so the browser neither scrolls nor zooms it.
+A finger or a pen posts `pointer: touch`, which the screen turns into
+`ScreenEventDetail.Touched`, and a script reads `touch` in `event/flags`.
+Before, a touch drag sent no `mousemove` at all and a tap's mouse events came
+only after it ended.
+
+**The page is laid out at the phone's width.** `runner.html` carries
+`<meta name="viewport" content="width=device-width, initial-scale=1,
+interactive-widget=overlays-content">`. Without it a phone's browser laid the
+page out 980 pixels wide and shrank it, and every script measured a screen
+wider than the phone.
+
+**The keyboard overlays the page.** `show-soft-keyboard` focuses the hidden
+input the console's form already used, which raises a phone's keyboard; the
+page posts `keyboard` with the height `visualViewport` says it covers, and
+the screen moves the picture up to keep the attached gob in sight, as on
+Android.
+
+`TheExamplesOnAPhoneEndToEndTest` drives the examples in Chrome emulating a
+390 by 844 phone with touch, by Selenium's touch pointer.
+
+**The site needs Chrome 137 or later.** TeaVM's WebAssembly uses exception
+handling with `exnref`, which Chrome has had since 137; an older one refuses
+the module ("invalid value type 'exn'") and the page says JEBOL could not
+start. Found on API 35's emulator image, whose Chrome is 124
+(`docs/android-port.md`); the owner's phone, kept up to date, has 157.
+
 ## What the web build refuses
 
 **A page has less outside it than a machine, and the worker says so once.**

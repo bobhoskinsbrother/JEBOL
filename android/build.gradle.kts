@@ -36,7 +36,7 @@ val emulators = providers.gradleProperty("emulators").map(String::toInt).orElse(
 // starts and stops no emulator.
 val device = providers.gradleProperty("device")
 val deviceSerials = device.map { listOf(it) }
-    .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 + 2 * it}" } })
+    .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 - 2 * it}" } })
 val isOnEmulators = !device.isPresent
 
 val startEmulators = tasks.register<Exec>("startEmulators") {
@@ -125,16 +125,21 @@ val androidFunctionalTests = tasks.register<DeviceShards>("androidFunctionalTest
 
 val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") {
     group = "verification"
-    description = "The installed app driven from outside by UI Automator, on the first device alone"
+    description = "The installed app driven from outside by UI Automator, every test on each device: a tablet and a phone"
     dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":endtoend:assembleDebug")
     onlyIf { isWanted(endToEndClasses) }
-    serials = deviceSerials.map { listOf(it.first()) }
+    serials = deviceSerials.map { it.take(2) }
+    everyTestOnEachDevice = true
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk
     testApk = layout.projectDirectory.file("endtoend/build/outputs/apk/debug/endtoend-debug.apk")
     instrumentation = "org.jebol.android.endtoend/androidx.test.runner.AndroidJUnitRunner"
     runnerArguments = argumentsFor(endToEndClasses, "package" to endToEndPackage)
     hostServerIdentity = layout.projectDirectory.dir("endtoend/host-server")
+    hostSiteApp = layout.projectDirectory.dir("endtoend/host-site")
+    webBuild = layout.projectDirectory.dir("../build/generated/teavm/wasm-gc")
+    runnerPage = layout.projectDirectory.file("../web/site/runner.html")
+    dependsOn(core.task(":web:buildWasmGC"))
     results = deviceResults.dir("androidEndToEndTests")
     mustRunAfter(androidUnitTests, androidFunctionalTests)
     finalizedBy(stopEmulators, "archiveAndroidTestResults")

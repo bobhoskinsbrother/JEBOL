@@ -200,6 +200,17 @@ function jebolLoadCarriedFont() {
   return jebolCarriedFont;
 }
 
+var jebolMeasuringBrush = null;
+
+function jebolMeasureText(text, size, bold, italic) {
+  if (jebolMeasuringBrush === null) {
+    jebolMeasuringBrush = new OffscreenCanvas(1, 1).getContext('2d');
+  }
+  jebolMeasuringBrush.font = JebolPainter.fontFor({ size: size, bold: bold, italic: italic });
+  var measured = jebolMeasuringBrush.measureText(text);
+  return { wide: measured.width, ascent: measured.fontBoundingBoxAscent, descent: measured.fontBoundingBoxDescent };
+}
+
 async function jebolPaintOffscreen(pictureJson) {
   try {
     await jebolLoadCarriedFont();

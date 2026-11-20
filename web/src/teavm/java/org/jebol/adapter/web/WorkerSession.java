@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.adapter.host.PropertiesMachine;
 import org.jebol.application.Bounds;
+import org.jebol.application.DefaultFont;
 import org.jebol.application.Interpreter;
 import org.jebol.application.MemoryFiles;
 import org.jebol.application.OneSurfaceScreen;
@@ -13,6 +14,7 @@ import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.render.TextMeasurement;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.core.JSPromise;
 import org.teavm.jso.function.JSConsumer;
@@ -31,6 +33,7 @@ final class WorkerSession implements PageViewer {
     private final OneSurfaceScreen screen;
     private final Interpreter interpreter;
     private final HistoryMessage history = new HistoryMessage();
+    private final TextMeasurement measuredAsDrawn = new BrowserTextMeasurement();
     private final WebConsole console = new WebConsole();
     private Optional<ScriptHandOver> waitingForScript = Optional.empty();
     private boolean pageHasSpoken;
@@ -87,6 +90,11 @@ final class WorkerSession implements PageViewer {
     }
 
     @Override
+    public TextMeasurement textMeasurement(DefaultFont carried) {
+        return measuredAsDrawn;
+    }
+
+    @Override
     public void paint(List<DrawingCommand> painting) {
         postToPage("{" + field("type", "paint") + ","
                 + JsonConverter.asString("picture") + ":"
@@ -137,6 +145,8 @@ final class WorkerSession implements PageViewer {
             if (said.isWholeMeasurement()) {
                 screen.measure(said.width(), said.height());
             }
+        } else if (said.isKeyboardMeasurement()) {
+            screen.measureKeyboard(said.height());
         } else if (said.isFile()) {
             said.readFileName().ifPresent(name -> said.readFileText().ifPresent(text -> storeHandedFile(name, text)));
         } else if (said.isArrival() || said.isMove()) {

@@ -423,6 +423,7 @@ guie/focal-face: none
 if face [
 do-style face 'on-focus true
 guie/focal-face: face
+if in face/facets 'text-edit [show-soft-keyboard/attach face/gob]
 ]
 ]
 unfocus: does [focus none]
@@ -941,6 +942,9 @@ grid/tot-sizes/1 + spacing
 extra: max 0x0 psize - grid/tot-sizes/1 - spacing
 most: max 1x1 grid/tot-sizes/3 - grid/tot-sizes/1
 ratio: extra * 100000 / most
+short: max 0 grid/tot-sizes/1/x + spacing/x - psize/x
+give: max 1 grid/tot-sizes/1/x - grid/tot-sizes/2/x
+squeeze: min 100000 short * 100000 / give
 y: margin/y
 max-x: 0
 x: 0
@@ -954,7 +958,7 @@ row-faces: faces
 forskip col 3 [
 unless face: first+ faces [break]
 cell-size: either fourth col [
-col/3 - col/1 * ratio / 100000 + col/1
+col/3 - col/1 * ratio / 100000 + col/1 - as-pair col/1/x - col/2/x * squeeze / 100000 0
 ] [
 psize - x - margin
 ]
@@ -1082,6 +1086,43 @@ panel/facets/area-size: size - 2x2
 ]
 if do-actor [do-style panel 'on-resize size]
 draw-face/no-show panel
+]
+natural-height?: funct [
+panel [object!]
+] [
+either grid: select panel 'grid [
+spacing: total-spacing? panel
+grid/tot-sizes/1/y + spacing/y
+] [
+panel/gob/size/y
+]
+]
+scroll-by-finger: funct [
+face [object!]
+dy [number!]
+window [gob!]
+] [
+while [face] [
+if all [
+bars: select face 'attached
+block? bars
+bar: first bars
+content: sub-gob? face
+] [
+range: content/size/y - face/gob/size/y
+if range > 0 [
+set-face bar max 0 min 1 bar/state/value - (dy / range)
+do-face bar
+exit
+]
+]
+face: parent-face? face
+]
+if all [panel: window/1 window/size/y < panel/size/y] [
+held: panel/offset
+panel/offset: as-pair held/x max window/size/y - panel/size/y min 0 held/y + dy
+show window
+]
 ]
 total-spacing?: funct [
 panel
@@ -1844,7 +1885,18 @@ handlers: none
 over-face:
 over-where:
 drag:
+finger:
 none
+touch-slop: 8
+finger-scrolls?: func [moved [pair!]] [
+any [touch-slop < abs moved/x touch-slop < abs moved/y]
+]
+unpress: func [face] [
+if all [object? select face 'state in face/state 'mode] [
+face/state/mode: 'up
+draw-face face
+]
+]
 handlers: context [
 down: up: context [
 down-face: none
@@ -1857,6 +1909,7 @@ alt-down:
 aux-down: context [
 do-event: func [event face /local where] [
 where: event/offset
+finger: either find any [event/flags []] 'touch [reduce [where none false where]] [none]
 event: map-event event
 face: event/gob/data
 until [
@@ -1865,9 +1918,15 @@ event? event: do-style face 'on-click event
 face: parent-face? face
 ]
 ]
+if finger [finger/2: face]
 if object? event [
+either all [finger in face/facets 'text-edit] [
+drag: none
+] [
 drag: event
 drag/start: where
+finger: none
+]
 ]
 face
 ]
@@ -1876,6 +1935,11 @@ up:
 alt-up:
 aux-up: context [
 do-event: func [event down-face /local face] [
+if all [finger finger/3] [
+finger: none
+return none
+]
+finger: none
 if all [drag drag/gob] [
 show drag/gob
 remove find/last event/window drag/gob
@@ -1899,6 +1963,19 @@ alt-down: alt-up: make down []
 aux-down: aux-up: make down []
 move: context [
 do-event: func [event /local face where window] [
+if all [finger not drag] [
+unless finger/3 [
+if finger-scrolls? event/offset - finger/1 [
+finger/3: true
+unpress finger/2
+]
+]
+if finger/3 [
+scroll-by-finger finger/2 event/offset/y - finger/4/y event/window
+finger/4: event/offset
+]
+exit
+]
 either drag [
 either not drag/gob [
 drag/delta: event/offset - drag/start
@@ -2410,7 +2487,11 @@ area-size: 1x2
 actors: [
 on-resize: [
 if face/gob/1 [
-resize-panel face/gob/1/data arg
+panel: face/gob/1/data
+tall: max arg/y natural-height? panel
+resize-panel panel as-pair arg/x tall
+held: face/gob/1/offset
+face/gob/1/offset: as-pair held/x max arg/y - tall min 0 held/y
 ]
 ]
 on-window: [

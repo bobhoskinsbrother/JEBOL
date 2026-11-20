@@ -8,6 +8,7 @@ import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.UnsetValue;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class ShowSoftKeyboardNative extends ScreenNative {
@@ -35,6 +36,10 @@ public class ShowSoftKeyboardNative extends ScreenNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
+            Optional<GobValue> attached = refinementArgument("attach", 0, arguments, refinements)
+                    .filter(GobValue.class::isInstance)
+                    .map(GobValue.class::cast);
+            runThroughScreen(() -> evaluator.ports().screen().showSoftKeyboard(attached));
             return UnsetValue.unset();
         };
     }

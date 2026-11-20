@@ -178,6 +178,9 @@ public interface ScreenPort {
     default void releaseTyping() {
     }
 
+    default void showSoftKeyboard(Optional<GobValue> attached) {
+    }
+
     /** Changes what the pointer looks like, and with no display does nothing. */
     default void useCursor(ScreenCursor cursor) {
     }

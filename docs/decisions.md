@@ -3974,6 +3974,63 @@ R3's `double`, `control` and `shift`. It is JEBOL's own addition, since R3's
 events carry nothing about the pointer. r3-gui reads it: a touch drag
 scrolls where a mouse drag would select.
 
+**The keyboard is R3's own `show-soft-keyboard/attach gob`,** found in
+`boot/window.reb` once the plan was committed. Neither of R3's hosts serves
+it, and JEBOL's answered unset. It now raises the keyboard and keeps the
+attached gob above it. R3 has no command to hide it, so it goes as Android's
+does: on a touch outside the gob, when the gob leaves the screen, or on the
+keyboard's Done. That needs no REBOL of JEBOL's own.
+
+**A window's `resize` flag says which way it fits,** settled while the tests
+were written. R3's own VIEW raises `resize` for every layout and image
+window, and leaves a plain gob window without it. So a window with the flag
+that does not fit its space is made to fit by the screen and hears RESIZE,
+as a desktop frame its monitor clamps does, and the 2010 GUI reflows it on
+that RESIZE as it always has. A window without the flag is the one shown
+smaller. The GUI needed no new VIEW for this, and the screen needed no way
+to tell the GUI's windows from anyone else's.
+
+**The 2010 GUI only ever grew a panel.** `layout-panel` took
+`max 0x0 psize - natural`, so a column was never narrower than its faces'
+natural widths and a window narrower than its layout ran its faces off its
+edge. It now shrinks every column but the last towards its minimum width, in
+proportion to how far each can shrink; the last already takes what is left.
+Heights do not shrink: a window shorter than its layout keeps its top panel
+at the layout's height, shows what fits, and scrolls.
+
+**The page says it is laid out for the phone's width.** `runner.html` had no
+viewport tag, so a phone's browser laid it out 980 pixels wide and scaled it
+down, and every script measured a screen wider than the phone. It now has
+`width=device-width, initial-scale=1, interactive-widget=overlays-content`:
+the page is the phone's width, and the keyboard overlays it rather than
+resizing it, which is what the picture's move above the keyboard expects.
+
+**The soft keyboard is shown what was typed.** The app's input connection
+is a full editor, `BaseInputConnection(view, true)`, holding what has been
+typed since the keyboard rose. After every call that edits it the app tells
+the script the difference since it last told it, as deletes and then
+typed characters (`KeyboardEdit`). A keyboard that can read the word before
+the cursor can replace it with a suggestion and put a space before the next
+word. Gboard, logged on the owner's phone, commits a swiped word whole and
+replaces it with Android 14's `replaceText` when a suggestion is tapped,
+which the first version did not hear; `TheSoftKeyboardsEditsTest` replays
+that sequence.
+
+**Text is measured by whatever draws it.** The core measured text with the
+carried font for every screen, so that a window and a page would agree. They
+did not agree with themselves. Android rounded each advance, kerned and drew
+emoji from the phone's font; Java2D rounded each advance; a browser kerned
+and drew its own emoji. A caret after a line sat 5 to 7 dp past the text's
+ink, and one after three emoji 20 dp short of it. `OneSurfaceScreen.Viewer`
+now supplies the measurement, handed the carried font for a viewer that
+draws with it: Android measures with the `Paint` it draws with, so its
+rounding is in both; the page's worker measures on its own canvas in the
+font the page draws with; Java2D draws with fractional metrics, which makes
+the carried font's measure its own. Lines may break differently on
+different platforms, which is the cost. A test on each platform puts the
+caret after five texts, kerned pairs and emoji among them, and finds it
+where the ink ends.
+
 **Commits:** the plan, then one commit after `allTests`, `androidTests` and
 the owner's phone all pass, as in 2c.
 

@@ -22,8 +22,8 @@ on ART in shards, and archives the results into
 | The host | `android/host`: `AndroidHost` and `AndroidMachine`, which gives the process number; the screen's adapters -- `AndroidSurface`, `AndroidPixelSurface`, `Density`, `AndroidKeys`, `AndroidHistory` -- and `LogcatOutput`; it runs no programs and has no picture codec until 2c |
 | The app | `android/app`, `org.jebol.android`: `JebolActivity`, `JebolView` (the `OneSurfaceScreen.Viewer`), `AppSession`, and `examples/r3-gui` carried as Java resources under `jebol-app/` with an `app.json` |
 | The device suites | `androidUnitTests` and `androidFunctionalTests` are the app's `androidTest`, told apart by package (`org.jebol.android.unit` against the rest); `androidEndToEndTests` is `android/endtoend`, a self-instrumenting `com.android.test` APK that drives the installed app with UI Automator. All run under Jupiter (android-junit5); `TheAndroidPlatform` is the `PlatformUnderTest` the core's tests find through `ServiceLoader` on a device |
-| The emulators | `android/emulator.sh` creates a Pixel Tablet AVD (1280 by 800 dp) from the API 35 image for the machine's processor, boots N read-only instances with no window and waits for `sys.boot_completed`; two by default |
-| The shards | `androidUnitTests` and `androidFunctionalTests` each install both APKs on every device and run `am instrument -r` with `numShards`/`shardIndex` on all at once, writing `TEST-shard-i.xml`; `androidEndToEndTests` runs on the first device alone, since UI tests share a screen |
+| The emulators | `android/emulator.sh` creates a Pixel Tablet AVD (1280 by 800 dp) from the API 35 image and a Pixel 7 phone AVD (412 by 915 dp) from the API 37 image, for the machine's processor, boots N read-only instances with no window, the phone second, and waits for `sys.boot_completed`; two by default |
+| The shards | `androidUnitTests` and `androidFunctionalTests` each install both APKs on every device and run `am instrument -r` with `numShards`/`shardIndex` on all at once, writing `TEST-shard-i.xml`; `androidEndToEndTests` runs every test on each device (`DeviceShards.everyTestOnEachDevice`). Classes named by `-Pclasses` are dealt out whole, one device's share each, with no `numShards`: given a class and a shard, the runner splits the class's tests, and a device whose share of a class is no test at all reports it as `initializationError: No test methods found` |
 | A phone | `-Pdevice=<serial>` runs the suites on a phone over USB and starts no emulator; `scripts/android-on-my-phone.sh` installs the app, measures it and writes `build/phone-timings.txt` |
 | What a device cannot run | `not-on-a-device.txt` (the core's tests, by class or method) and `not-on-a-device-in-rebols-suite.txt` (Rebol's, by file, group or test), each entry with why |
 | The API check | `scripts/AndroidApiGaps.java`, run by `./gradlew checkCoreForAndroid` with `--fail-on-gaps` over the core's jar |
@@ -57,8 +57,8 @@ and `ParityWithJava2DTest`'s thirteen; and it
 reports the one `exhausts-the-heap` case as skipped, which the JVM runs in its
 own fork.
 
-Sharding is by class, so the shard that takes `RebolSuiteTest` takes 9,859 of
-its 19,389 cases in that one class; the two shards still finish close
+Sharding is by test, not by class, so `RebolSuiteTest`'s 19,389 cases are
+split between the shards, 9,859 to one of them; the two shards finish close
 together, because Rebol's assertions are quick. Three emulators ran the same
 suite in 63 minutes on 2026-11-15, and four do not fit beside the IDE: each
 holds about 3.6 GB beyond what Android is given. On a machine running
@@ -193,7 +193,64 @@ The owner used it by hand and called it "pretty quick": snappy enough, so
 the phone part of goal 2b closed without a profile. A tap answers inside the
 100 ms that reads as instant; a drag runs at about twenty frames a second,
 which is goal 9's to raise. On that phone the sliders' window fits upright
-and the survey's opens off the screen's right edge, which is goal 2d's.
+and the survey's opened off the screen's right edge until goal 2d.
+
+## Touch, and every screen (goal 2d)
+
+Decision 79 has the choices, `spec/screen.allium` and `spec/android.allium`
+the rules, and `using-jebol.md` what a script sees.
+
+**A finger is touch.** `JebolView` reports a pointer whose tool type is
+anything but `TOOL_TYPE_MOUSE` as `ScreenEventDetail.Touched`, so a finger
+and a stylus say `touch` in `event/flags` and a mouse plugged into the
+device does not. An unknown tool type is a finger: on a touchscreen that is
+what it is.
+
+**The keyboard rises for a field alone.** `JebolView` is a text editor only
+while the keyboard is wanted, so a tap on a slider raises nothing. The 2010
+GUI's FOCUS calls `show-soft-keyboard/attach` with the field's gob, which
+takes the typing. The activity stays `adjustNothing`, so the screen keeps its
+size: the frame's insets listener hands the keyboard's height (the IME's
+bottom inset less the system bars') to the screen, and the screen moves the
+picture up just enough to show the attached gob above it, moving every
+pointer down by as much. A touch outside the gob lowers the keyboard.
+
+**Two emulators, a tablet and a phone.** `android/emulator.sh` boots the
+Pixel Tablet on API 35, the app's least, as the first, and a Pixel 7 (412 by
+915 dp) on API 37 as the second. The phone is on 37 for its Chrome: API 35's
+image carries Chrome 124, which refuses the web build's WebAssembly
+(`exnref`, which Chrome has had since 137), and API 37's carries 145. On the
+tablet the Chrome test skips itself, saying so. The
+unit and functional suites shard across both as before, and the end-to-end
+suite runs every test on each (`DeviceShards.everyTestOnEachDevice`), so the
+examples are driven at both sizes. `TheSiteInChromeEndToEndTest` opens the
+shipped site in the image's own Chrome, served from the host by `HostSite`
+at 10.0.2.2, with Chrome's first-run screens passed by its command-line file
+and gesture navigation switched on, and a swipe from the screen's left edge
+moves the site's history. The site's app moves to its second place on a tap,
+never as it loads: Chrome's back skips a history entry a page pushed without
+a gesture of the user's, so a `go` at load leaves the page on the first swipe.
+
+**The emulators keep their writes on disk, in `android/build/emulator-tmp/`.**
+A `-read-only` instance writes everything it changes to a qcow2 overlay in
+`ANDROID_TMP`, which defaults to `/tmp`, and on Ubuntu `/tmp` is a tmpfs with
+a per-user quota: memory, not disk. One booted tablet holds 880 MB there and
+grows with every byte the device writes, so two emulators through the
+functional suites ran the machine short of memory once and filled `/tmp`'s
+quota the next time, failing `startEmulators` (2026-11-19).
+`android/emulator.sh` points `ANDROID_TMP` at the folder on disk, writes the
+emulators' logs there, and empties it when it starts with no JEBOL emulator
+running, which clears the overlays of one that was killed rather than
+stopped. The test forks do the same for the same reason: `java.io.tmpdir` and
+`TMPDIR` are `/var/tmp/jebol-<user>/<task>/`, which is disk on Linux and on a
+Mac, emptied as the task starts, so the browsers Selenium starts keep their
+profiles there too. Two things fix where that folder can be. It must be
+outside the repository, because the command line's tests make a file "outside"
+a script's folder in it and expect the jar, started at the root, to refuse it.
+And it must be short: Chrome makes its `SingletonSocket` in
+`$TMPDIR/.com.google.Chrome.XXXXXX/`, and a Unix socket's path holds 107
+characters, so under `build/tmp/test-forks/extensions-sqlite-endToEndTests/`
+Chrome could not start.
 
 ## The optional core on Android
 
@@ -311,10 +368,14 @@ the desktop no longer meets it, since it no longer decodes GIF with ImageIO.
 checking Bidi and ContextJ and leaving off the checks a browser leaves off
 (hyphens, DNS lengths, empty labels), as `Uts46` does. Every host-name case
 `HostNameCases` holds answers alike on both. On Unicode's conformance file
-for version 16.0.0, 86 of its 6,389 cases differ:
-`android/app/src/androidTest/resources/icu-differs-from-uts46.txt` lists each
-with both answers, and `AndroidHostNamesTest` asserts exactly that list.
-Android 35's ICU is older than the 16.0 file. 84 cases are names ICU refuses
+for version 16.0.0, 86 of its 6,389 cases differ on Android 35's ICU 75:
+`android/app/src/androidTest/resources/icu-differs-from-uts46-icu75.txt` lists
+each with both answers, and `AndroidHostNamesTest` asserts exactly the list
+for the device's own ICU major version, failing if none has been recorded for
+it. Android 37's ICU 78 differs in three cases alone
+(`icu-differs-from-uts46-icu78.txt`): two are one name ICU accepts with a
+digit after a dot and the file refuses, and one is `xn--9-i0j5967eg3qz.ss`,
+likewise. Android 35's ICU is older than the 16.0 file. 84 cases are names ICU refuses
 and the file converts: nearly all hold a Georgian capital (Ⴀ to Ⴭ), which the
 file maps to its small letter, or ≠, ≮, ≯ or `?`, which the file lets through
 with STD3 rules off. The other two, `xn--xn--a--gua.pt` and `xn--xn---epa`,

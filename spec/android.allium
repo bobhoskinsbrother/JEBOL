@@ -36,7 +36,17 @@ entity AppView {
     density: Decimal                 -- the display's pixels per dp, 1 at 160 dpi
     finger_down: Boolean             -- whether the finger that is the pointer is on the glass
     keyboard_raised: Boolean
+    keyboard_height_in_pixels: Integer   -- the IME's inset while it is raised, else 0
+    kept_above_the_keyboard: String?     -- the gob SHOW-SOFT-KEYBOARD/ATTACH named
+    shifted_up_by: Integer           -- how far the picture is moved up, in dp
     painting: Boolean                -- false while the app is in the background
+}
+
+-- The view takes typing only while the keyboard is wanted, so a tap that
+-- wants no keyboard never brings one up.
+invariant TheViewIsATextEditorOnlyWhileTheKeyboardIsWanted {
+    for view in AppView:
+        view.is_a_text_editor = view.keyboard_raised
 }
 
 -- A view in the background paints nothing, and a keyboard is never raised
@@ -79,13 +89,21 @@ rule TheViewScalesThePaintListByTheDensity {
 ------------------------------------------------------------
 
 -- One finger is the pointer. Its touching the glass is a press, its moving a
--- move, its lifting a release, each at its position in dp.
+-- move, its lifting a release, each at its position in dp and each saying it
+-- was touch (screen.allium, AFingersEventSaysTouch). A stylus is a finger. A
+-- mouse plugged into the device is a mouse, and says nothing.
 rule OneFingerIsThePointer {
     when: a_finger_touches(view, position_in_pixels)
     requires: not view.finger_down
 
     ensures: view.finger_down = true
-    ensures: the_screen_hears(down, position_in_pixels / view.density)
+    ensures: the_screen_hears(down, position_in_pixels / view.density, by_touch: true)
+}
+
+rule AMouseOnTheDeviceIsAMouse {
+    when: a_mouse_presses(view, position_in_pixels)
+
+    ensures: the_screen_hears(down, position_in_pixels / view.density, by_touch: false)
 }
 
 rule TheFingerMovingIsAMove {
@@ -116,17 +134,61 @@ rule ASecondFingerIsIgnored {
 ------------------------------------------------------------
 
 -- A field taking the typing raises the soft keyboard, and its releasing the
--- typing lowers it.
+-- typing lowers it. The console's form takes the typing, and so does
+-- SHOW-SOFT-KEYBOARD, which the 2010 GUI calls when a field is focused
+-- (screen.allium, FocusingAFieldAsksForTheKeyboard).
 rule TakingTheTypingRaisesTheKeyboard {
     when: the_screen_takes_typing(view)
 
     ensures: view.keyboard_raised = true
 }
 
+rule ShowSoftKeyboardRaisesTheKeyboard {
+    when: script_asks_for_the_soft_keyboard(view, attached)
+
+    ensures: view.keyboard_raised = true
+    ensures: view.kept_above_the_keyboard = attached
+}
+
 rule ReleasingTheTypingLowersTheKeyboard {
     when: the_screen_releases_typing(view)
 
     ensures: view.keyboard_raised = false
+}
+
+-- A touch outside the gob the keyboard was raised for lowers it, as tapping
+-- away from a field does in any Android app. The touch still reaches the
+-- script.
+rule ATouchElsewhereLowersTheKeyboard {
+    when: a_finger_touches(view, position_in_pixels)
+    requires: view.keyboard_raised
+    requires: view.kept_above_the_keyboard != null
+    requires: not the_gob_covers(view.kept_above_the_keyboard, position_in_pixels / view.density)
+
+    ensures: view.keyboard_raised = false
+    ensures: the_screen_hears(down, position_in_pixels / view.density, by_touch: true)
+}
+
+-- The activity does not resize for the keyboard (`adjustNothing`), so the
+-- screen keeps its size and nothing reflows. When the raised keyboard would
+-- cover the gob it was raised for, the picture is moved up just far enough
+-- to show the gob's bottom edge above the keyboard, and a pointer's position
+-- is moved down by the same amount before the screen hears it. The script's
+-- coordinates never change.
+rule TheGobKeptAboveTheKeyboardIsShown {
+    when: the_keyboard_inset_changes(view, inset_in_pixels)
+    requires: view.kept_above_the_keyboard != null
+
+    ensures: view.keyboard_height_in_pixels = inset_in_pixels
+    ensures: view.shifted_up_by = max(0,
+        the_bottom_of_on_screen(view.kept_above_the_keyboard)
+            - (view.height_in_pixels - inset_in_pixels) / view.density)
+}
+
+rule TheKeyboardGoingPutsThePictureBack {
+    when: the_keyboard_inset_changes(view, 0)
+
+    ensures: view.shifted_up_by = 0
 }
 
 -- Text the keyboard commits is one key event per code point, in order. A

@@ -9,6 +9,7 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.render.TextMeasurement;
 
 import java.awt.Font;
 import java.io.IOException;
@@ -97,6 +98,11 @@ public final class WebScreenServer implements PageViewer, PageRoundTrip, AutoClo
     @Override
     public boolean isConnected() {
         return !browserConnections.isEmpty();
+    }
+
+    @Override
+    public TextMeasurement textMeasurement(DefaultFont carried) {
+        return carried.measurement();
     }
 
     @Override
@@ -261,6 +267,10 @@ public final class WebScreenServer implements PageViewer, PageRoundTrip, AutoClo
                 height = pageEvent.height();
                 screen.measure(width, height);
             }
+            return;
+        }
+        if (pageEvent.isKeyboardMeasurement()) {
+            screen.measureKeyboard(pageEvent.height());
             return;
         }
         pageEvent.asEvent().ifPresent(kind ->

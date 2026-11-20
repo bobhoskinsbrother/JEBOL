@@ -534,6 +534,55 @@ rule AFormOnAPageTypesThroughAHiddenInput {
     ensures: the_hidden_input_is_named_by_the_form_heading(run)
 }
 
+-- SHOW-SOFT-KEYBOARD on a page does what a form opening does: the hidden
+-- input takes the focus, so a phone raises its keyboard. A touch outside the
+-- attached gob gives the focus back, and the keyboard goes
+-- (screen.allium, TheKeyboardGoesAsAndroidsDoes).
+rule ShowSoftKeyboardOnAPageFocusesTheHiddenInput {
+    when: script_asks_for_the_soft_keyboard(run, attached)
+    requires: the_screen_is_a_page(run)
+
+    ensures: the_hidden_input_holds_the_focus(run)
+    ensures: the_gob_kept_above_the_keyboard() = attached
+}
+
+-- A phone's keyboard shrinks the page's visual viewport and not its layout,
+-- so the page's size does not change and nothing reflows. When the keyboard
+-- would cover the gob it was raised for, the picture is moved up just far
+-- enough to show it, as on Android (android.allium,
+-- TheGobKeptAboveTheKeyboardIsShown), and back when the keyboard goes.
+rule TheVisualViewportKeepsTheGobInSight {
+    when: the_visual_viewport_changes(run, visible_height)
+    requires: the_gob_kept_above_the_keyboard() != null
+
+    ensures: the_picture_is_moved_up_by(max(0,
+        the_bottom_of_on_screen(the_gob_kept_above_the_keyboard()) - visible_height))
+}
+
+------------------------------------------------------------
+-- Pointer
+------------------------------------------------------------
+
+-- The page reads the pointer through pointer events, so a finger, a pen and a
+-- mouse all reach the screen, each down, move and up where it happened. A
+-- finger or a pen says touch (screen.allium, AFingersEventSaysTouch); a mouse
+-- does not. The canvas is `touch-action: none`, so the browser neither
+-- scrolls nor zooms the page under a finger: the GUI scrolls what it shows.
+rule APagesPointerIsAPointerEvent {
+    when: the_page_hears_a_pointer(run, kind, pointer_type, position)
+    requires: kind = down or kind = up or kind = move
+
+    ensures: the_screen_hears(kind, position,
+        by_touch: pointer_type = "touch" or pointer_type = "pen")
+}
+
+-- Only the first finger is the pointer, as on Android.
+rule ASecondFingerOnAPageIsIgnored {
+    when: the_page_hears_another_finger(run)
+
+    ensures: the_screen_hears_nothing()
+}
+
 ------------------------------------------------------------
 -- Surface
 ------------------------------------------------------------

@@ -44,9 +44,8 @@ public record EventValue(
 
     /** The flags byte. {@code EVF_*} in reb-event.h. */
     public enum Flag {
-        COPIED, HAS_XY, DOUBLE, CONTROL, SHIFT, HAS_DATA, HAS_CODE, ALT;
+        COPIED, HAS_XY, DOUBLE, CONTROL, SHIFT, HAS_DATA, HAS_CODE, ALT, TOUCH;
 
-        /** The word {@code e/flags} answers for the three a script can read. */
         public String spelling() {
             return name().toLowerCase(Locale.ROOT).replace('_', '-');
         }
@@ -62,15 +61,8 @@ public record EventValue(
      */
     public enum Model { DEVICE, PORT, OBJECT, GUI, CALLBACK, MIDI, CONSOLE }
 
-    /**
-     * The words {@code e/flags} answers, and the only three of the eight it does.
-     *
-     * <p>{@code if (VAL_EVENT_FLAGS(value) & (1<<EVF_DOUBLE | 1<<EVF_CONTROL |
-     * 1<<EVF_SHIFT))} -- and nothing in {@code Set_Event_Var} writes any of them,
-     * so a script reads them and a window system sets them.
-     */
-    public static final Set<Flag> READABLE_FLAGS =
-            Set.of(Flag.DOUBLE, Flag.CONTROL, Flag.SHIFT);
+    public static final List<Flag> READABLE_FLAGS =
+            List.of(Flag.DOUBLE, Flag.CONTROL, Flag.SHIFT, Flag.TOUCH);
 
     /** What each half of an offset fits in: a signed short. {@code Float_Int16}. */
     public static final int WIDEST_OFFSET_HALF = 0x7FFF;
@@ -133,6 +125,13 @@ public record EventValue(
         now.remove(raised == Flag.HAS_XY ? Flag.HAS_CODE : Flag.HAS_XY);
         now.add(raised);
         return new EventValue(typeIndex, now, model, given, attached);
+    }
+
+    public EventValue withFlag(Flag raised) {
+        Set<Flag> now = EnumSet.noneOf(Flag.class);
+        now.addAll(flags);
+        now.add(raised);
+        return new EventValue(typeIndex, now, model, data, attached);
     }
 
     public EventValue withHeldData(Value held) {
@@ -229,10 +228,9 @@ public record EventValue(
         return Optional.empty();
     }
 
-    /** The three flag words a script can read, in the C's order. */
     public List<Value> listRaisedFlagWords() {
         List<Value> words = new ArrayList<>();
-        for (Flag flag : List.of(Flag.DOUBLE, Flag.CONTROL, Flag.SHIFT)) {
+        for (Flag flag : READABLE_FLAGS) {
             if (flags.contains(flag)) {
                 words.add(WordValue.of(flag.spelling()));
             }

@@ -22,6 +22,11 @@ final class PageEvent {
         return eventFields.text("type").filter("measure"::equals).isPresent();
     }
 
+    boolean isKeyboardMeasurement() {
+        return eventFields.text("type").filter("keyboard"::equals).isPresent()
+                && eventFields.readWholeNumber("high").isPresent();
+    }
+
     boolean isWholeMeasurement() {
         return eventFields.readWholeNumber("wide").isPresent() && eventFields.readWholeNumber("high").isPresent();
     }
@@ -133,8 +138,11 @@ final class PageEvent {
     private Optional<ScreenEventDetail> pointerLocation() {
         Optional<Integer> across = eventFields.readWholeNumber("across");
         Optional<Integer> down = eventFields.readWholeNumber("down");
-        return across.isPresent() && down.isPresent()
-                ? Optional.of(new ScreenEventDetail.At(across.get(), down.get()))
-                : Optional.empty();
+        if (across.isEmpty() || down.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(eventFields.text("pointer").filter("touch"::equals).isPresent()
+                ? new ScreenEventDetail.Touched(across.get(), down.get())
+                : new ScreenEventDetail.At(across.get(), down.get()));
     }
 }

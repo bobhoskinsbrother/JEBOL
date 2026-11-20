@@ -18,6 +18,16 @@ public record ClipRectangle(int across, int down, int wide, int high) {
         return new ClipRectangle(0, 0, 0, 0);
     }
 
+    public ClipRectangle mapThrough(Transform outer) {
+        double[] topLeft = outer.mapPoint(across, down);
+        double[] bottomRight = outer.mapPoint(across + wide, down + high);
+        int left = (int) Math.round(Math.min(topLeft[0], bottomRight[0]));
+        int top = (int) Math.round(Math.min(topLeft[1], bottomRight[1]));
+        int right = (int) Math.round(Math.max(topLeft[0], bottomRight[0]));
+        int bottom = (int) Math.round(Math.max(topLeft[1], bottomRight[1]));
+        return new ClipRectangle(left, top, right - left, bottom - top);
+    }
+
     public boolean isEmpty() {
         return wide <= 0 || high <= 0;
     }

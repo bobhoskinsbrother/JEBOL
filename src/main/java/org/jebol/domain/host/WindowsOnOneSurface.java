@@ -6,14 +6,24 @@ import org.jebol.domain.value.PairValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public final class WindowsOnOneSurface {
 
     private Optional<GobValue> pressedIn = Optional.empty();
     private Optional<GobValue> keyboardWith = Optional.empty();
 
+    private Function<GobValue, ShownWindow> shownAt = WindowsOnOneSurface::showWhereItIs;
+
     public List<ScreenEvent> address(ScreenEventType kind, ScreenEventDetail detail,
                                      List<GobValue> showingFromBottomToTop) {
+        return address(kind, detail, showingFromBottomToTop, WindowsOnOneSurface::showWhereItIs);
+    }
+
+    public List<ScreenEvent> address(ScreenEventType kind, ScreenEventDetail detail,
+                                     List<GobValue> showingFromBottomToTop,
+                                     Function<GobValue, ShownWindow> whereShown) {
+        shownAt = whereShown;
         forgetWindowsNoLongerShowing(showingFromBottomToTop);
         List<GobValue> heardBy = switch (kind) {
             case DOWN -> findWhoHearsPress(detail, showingFromBottomToTop);
@@ -24,6 +34,13 @@ public final class WindowsOnOneSurface {
             case RESIZE, OFFSET, BACK, FORWARD, MINIMIZE, MAXIMIZE, RESTORE -> List.of();
         };
         return makeEvents(heardBy, kind, detail);
+    }
+
+    private static ShownWindow showWhereItIs(GobValue window) {
+        PairValue offset = window.storage().offset();
+        PairValue size = window.storage().size();
+        return new ShownWindow((int) Math.round(offset.x()), (int) Math.round(offset.y()), 1.0,
+                (int) Math.round(size.x()), (int) Math.round(size.y()));
     }
 
     public void giveKeyboardTo(GobValue window) {
@@ -73,6 +90,10 @@ public final class WindowsOnOneSurface {
                 across = atAcross;
                 down = atDown;
             }
+            case ScreenEventDetail.Touched(int atAcross, int atDown) -> {
+                across = atAcross;
+                down = atDown;
+            }
             case ScreenEventDetail.Scrolled(int atAcross, int atDown, int amount) -> {
                 across = atAcross;
                 down = atDown;
@@ -90,10 +111,7 @@ public final class WindowsOnOneSurface {
     }
 
     private boolean covers(GobValue window, int across, int down) {
-        PairValue place = window.storage().offset();
-        PairValue size = window.storage().size();
-        return across >= place.x() && across < place.x() + size.x()
-                && down >= place.y() && down < place.y() + size.y();
+        return shownAt.apply(window).covers(across, down);
     }
 
     private List<ScreenEvent> makeEvents(List<GobValue> heardBy, ScreenEventType kind, ScreenEventDetail detail) {
@@ -105,11 +123,16 @@ public final class WindowsOnOneSurface {
     }
 
     private ScreenEventDetail countFromWindow(ScreenEventDetail detail, GobValue window) {
-        if (!(detail instanceof ScreenEventDetail.At(int across, int down))) {
-            return detail;
-        }
-        PairValue place = window.storage().offset();
-        return new ScreenEventDetail.At(
-                across - (int) Math.round(place.x()), down - (int) Math.round(place.y()));
+        return switch (detail) {
+            case ScreenEventDetail.At(int across, int down) -> {
+                int[] within = shownAt.apply(window).mapBack(across, down);
+                yield new ScreenEventDetail.At(within[0], within[1]);
+            }
+            case ScreenEventDetail.Touched(int across, int down) -> {
+                int[] within = shownAt.apply(window).mapBack(across, down);
+                yield new ScreenEventDetail.Touched(within[0], within[1]);
+            }
+            default -> detail;
+        };
     }
 }

@@ -2,7 +2,10 @@ Rebol []
 
 print "Move the pointer into the window. Closing the window ends this."
 
-window: view/no-wait make gob! [size: 640x360 color: 230.230.230]
+window: make gob! [size: 640x360 color: 230.230.230]
+screen: gui-metric 'screen-size
+unless zero? screen/x [window/size: min window/size screen]
+window: view/no-wait window
 
 picture: make image! 32x32
 repeat at 32 * 32 [

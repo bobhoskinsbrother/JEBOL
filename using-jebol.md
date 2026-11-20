@@ -233,6 +233,24 @@ An app on a screen has one history, and these words move through it. None of the
 
 Back and Forward, the operator's or the app's own, arrive on `system/ports/event` as events of type `back` and `forward`, with the place in `event/data`. Handle them in a handler of your own, as the 2010 GUI does not know them. On a page the address is the place: `[survey 3]` is `#survey%203`. Moves are limited to 100 in 30 seconds and an address to 2,048 characters, on every screen.
 
+### **Laying an App Out for Every Screen**
+
+The same script runs on a desktop, in a browser, on a tablet and on a phone, and it lays itself out the way the mobile world does: it reflows to the width it has and scrolls down when it is taller. The rules are the same on every platform (decision 79, `spec/screen.allium`).
+
+| What the screen does | When |
+| --- | --- |
+| Leaves a window as it was made | It fits its space: the screen on a phone, a tablet or a page; its frame on the desktop |
+| Makes it fit, and sends it `resize` | It is bigger than its space and its flags say `resize`. Every window the 2010 GUI and R3's VIEW open for a layout says so, and the GUI reflows itself on that `resize`. |
+| Shows it smaller, keeping its proportions, and maps the pointer back | It is bigger than its space and cannot take another size: a plain gob window opened without `resize` |
+
+A 2010 GUI window narrower than its layout reflows its columns down to their faces' minimum widths; one shorter than its layout keeps its layout's height and scrolls. A finger dragging on something that does not take a drag scrolls it: a text area's text, or the window. A drag that starts on a slider or a scroller still drags it.
+
+`size-class? none` answers the screen's size class, and `size-class? window` a window's, as Android names them: `compact` under 600 wide (a phone upright), `medium` to under 840, and `expanded` from 840. It needs no GUI. The examples use it: `examples/r3-gui` opens its two windows side by side when the screen is expanded and one scrolling column otherwise, and `examples/draw` lays its tiles in as many columns as the class and the width allow, scrolling the rest by finger or wheel.
+
+A pointer event from a finger or a pen says `touch` in `event/flags`, after R3's `double`, `control` and `shift`; a mouse's does not. R3 has no such word, so a script that cares tells the two apart with `find any [event/flags []] 'touch`.
+
+`show-soft-keyboard/attach gob` raises an on-screen keyboard where the screen has one, Android's or a phone's browser's, and keeps `gob` in sight above it; the 2010 GUI calls it when a field takes the focus. The keyboard goes when the operator touches outside that gob, when the gob leaves the screen, or on the keyboard's own Done. On a desktop it does nothing, as in R3.
+
 ---
 
 ## **3. Embedding JEBOL in Java Applications**

@@ -10,12 +10,16 @@
 #
 # A Pixel Tablet -- 2560 by 1600 pixels at 320 dpi, so 1280 by 800 dp, the size
 # goal 2b proves the examples on (decision 75) -- running the API 35 Google APIs
-# image for the machine's processor: x86_64 under KVM on
+# image, and as the second a Pixel 7 phone on the API 37 image, whose Chrome is
+# new enough for the web build (goal 2d), each for the machine's processor:
+# x86_64 under KVM on
 # Linux and on an Intel Mac, arm64-v8a under the Mac's own hypervisor on Apple
 # Silicon. The SDK is ANDROID_HOME, else where Android Studio puts it on each
 # system (~/Android/Sdk, ~/Library/Android/sdk). The instances take the ports
-# from 5584 up, two apart, so they never take over an emulator someone is
-# using; read-only lets one AVD run several times at once. The suites are split
+# from 5584 down, two apart, so they never take over an emulator someone is
+# using from 5554 up, and each adb port stays inside the 5555 to 5585 adb
+# watches: the phone at 5586 had its adb connection drop mid-run. Read-only
+# lets one AVD run several times at once. The suites are split
 # across them in shards (decision 73). scripts/setup-machine.sh installs the
 # image. Gradle Managed Devices would do this, but refused the image sdkmanager
 # installs and stalled fetching its own (decision 73).
@@ -31,17 +35,30 @@ case "$(uname -m)" in
 arm64 | aarch64) abi=arm64-v8a ;;
 *) abi=x86_64 ;;
 esac
-avd="jebol-api35-tablet-$abi"
-profile=pixel_tablet
+tablet="jebol-api35-tablet-$abi"
+phone="jebol-api37-phone-$abi"
 first_port=5584
 image="system-images;android-35;google_apis;$abi"
+phone_image="system-images;android-37.0;google_apis;$abi"
 adb="$sdk/platform-tools/adb"
 seconds_a_boot_may_take=420
 megabytes_each=1536
 count="${2:-1}"
+temporary_folder_on_disk="$(cd "$(dirname "$0")" && pwd)/build/emulator-tmp"
+export ANDROID_TMP="$temporary_folder_on_disk"
 
 serial_of() {
-    echo "emulator-$((first_port + 2 * $1))"
+    echo "emulator-$((first_port - 2 * $1))"
+}
+
+avd_of() {
+    if [ "$1" = 1 ]; then echo "$phone"; else echo "$tablet"; fi
+}
+
+make_avd() {
+    if ! "$sdk/cmdline-tools/latest/bin/avdmanager" list avd -c | grep -qx "$1"; then
+        echo no | "$sdk/cmdline-tools/latest/bin/avdmanager" create avd -n "$1" -k "$3" -d "$2" --force
+    fi
 }
 
 booted() {
@@ -63,21 +80,24 @@ wait_for_boot() {
 
 case "${1:-}" in
 start)
-    if ! "$sdk/cmdline-tools/latest/bin/avdmanager" list avd -c | grep -qx "$avd"; then
-        echo no | "$sdk/cmdline-tools/latest/bin/avdmanager" create avd -n "$avd" -k "$image" -d "$profile" --force
+    make_avd "$tablet" pixel_tablet "$image"
+    make_avd "$phone" pixel_7 "$phone_image"
+    if ! pgrep -f -- "-avd jebol-" >/dev/null; then
+        rm -rf "$temporary_folder_on_disk"
     fi
+    mkdir -p "$temporary_folder_on_disk"
     for ((at = 0; at < count; at++)); do
         serial=$(serial_of "$at")
         if booted "$serial"; then
             echo "$serial is already up"
             continue
         fi
-        nohup "$sdk/emulator/emulator" -avd "$avd" -port "$((first_port + 2 * at))" -read-only -no-window \
+        nohup "$sdk/emulator/emulator" -avd "$(avd_of "$at")" -port "$((first_port - 2 * at))" -read-only -no-window \
             -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory "$megabytes_each" \
-            > "${TMPDIR:-/tmp}/jebol-emulator-$at.log" 2>&1 &
+            > "$temporary_folder_on_disk/jebol-emulator-$at.log" 2>&1 &
     done
     for ((at = 0; at < count; at++)); do
-        wait_for_boot "$(serial_of "$at")" "${TMPDIR:-/tmp}/jebol-emulator-$at.log"
+        wait_for_boot "$(serial_of "$at")" "$temporary_folder_on_disk/jebol-emulator-$at.log"
     done
     ;;
 stop)

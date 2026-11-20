@@ -23,7 +23,6 @@ public interface Interruption {
         return false;
     }
 
-    /** Whether the heap holds more than the host allows a script, after one collection to be sure. */
     default boolean isPastMemoryCeiling() {
         return false;
     }

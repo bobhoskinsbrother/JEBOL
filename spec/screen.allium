@@ -14,7 +14,8 @@
 --   - How the 2010 GUI lays out and draws its faces. That is the GUI's own
 --     REBOL, carried in the build and specified by its guide at
 --     https://www.rebol.com/r3/docs/gui/gui.html; this spec covers only how
---     it is loaded and what VIEW hands it. Rebol 3.22 carries no VID: LAYOUT
+--     it is loaded, what VIEW hands it, and JEBOL's own edits for touch and
+--     for laying a window out on every screen (goal 2d). Rebol 3.22 carries no VID: LAYOUT
 --     is defined nowhere in its mezzanine or boot files, and `view-funcs.reb`
 --     calls it anyway.
 --   - The five dialogs that ask the operator a question. Those are
@@ -462,12 +463,35 @@ rule CursorChangesThePointer {
 
 -- SHOW-SOFT-KEYBOARD is declared in boot/window.reb and neither host's
 -- dispatcher has a branch for it, so RXR_NO_COMMAND reaches f-extension.c's
--- default, which answers unset. It does nothing anywhere.
-rule ShowSoftKeyboardDoesNothing {
+-- default, which answers unset. JEBOL answers unset too, and on a screen with
+-- a soft keyboard (spec/android.allium, spec/web.allium) it raises it,
+-- keeping the gob given by /ATTACH above it. On a screen with none it does
+-- nothing, as R3's hosts do.
+rule ShowSoftKeyboardAnswersUnset {
     when: script_asks_for_the_soft_keyboard(run)
     requires: windows_are_granted(run)
 
     ensures: run.answer = unset
+}
+
+rule ShowSoftKeyboardRaisesAKeyboardWhereThereIsOne {
+    when: script_asks_for_the_soft_keyboard(run, attached)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_soft_keyboard
+
+    ensures: the_soft_keyboard_is_raised()
+    ensures: the_gob_kept_above_the_keyboard() = attached
+}
+
+-- R3 has no command to hide it, so the keyboard goes as Android's does: on a
+-- touch outside the gob it was attached to, when that gob leaves the screen
+-- or its window closes, or on the keyboard's own Done.
+rule TheKeyboardGoesAsAndroidsDoes {
+    when: a_touch_outside(the_gob_kept_above_the_keyboard())
+        or the_gob_leaves_the_screen(the_gob_kept_above_the_keyboard())
+        or the_keyboard_says_done()
+
+    ensures: not the_soft_keyboard_is_raised()
 }
 
 -- A display index outside the range of displays that exist is refused.
@@ -1332,12 +1356,16 @@ rule AParaThatWrapsBreaksALineTooWideForItsRoom {
                 or the_line_is_one_overflowing_character(gob)
 }
 
--- How wide and how tall text is comes from the one font this build carries,
--- measured in the domain, so a desktop window and a page answer the same
--- thing: a caret worked out for one sits where the other draws the text, and
--- a line breaks in the same place on both. The screen still has to be there
--- -- measuring is part of drawing, and a screen with no display refuses it
--- as it refuses SHOW: not present.
+-- How wide and how tall text is comes from whatever draws it, because only
+-- the platform's own text engine knows where its ink lands: Android kerns,
+-- swaps in the phone's emoji font and rounds advances unless told not to; a
+-- browser kerns and swaps in its emoji font too; Java2D rounds advances
+-- unless told not to. So a caret worked out by the screen sits where that
+-- screen draws the text, the end of an emoji included, and a line may break
+-- in a different place on a phone than on a desktop. The carried font
+-- measures only where it is also what draws. The screen still has to be
+-- there -- measuring is part of drawing, and a screen with no display refuses
+-- it as it refuses SHOW: not present.
 rule TextIsMeasuredByTheScreen {
     when: the_script_measures_text(run, gob)
     requires: windows_are_granted(run)
@@ -1791,6 +1819,197 @@ rule TheCarriedGuiRunsOn322 {
     ensures: the_shows_the_gui_queues_are_each_painted() = true
     ensures: a_control_key_reaches_the_focused_face() = true
     ensures: reset_with_no_name_resets_the_whole_panel() = true
+}
+
+-- === Touch, and layout for every screen (goal 2d, decision 79) =========
+--
+-- The mobile world's answer, made the same on every platform. An app written
+-- for the screen lays itself out responsively: it reflows to the width it has
+-- and scrolls down when it is taller. Content written for another screen gets
+-- a compatibility mode, as Android 12L letterboxes such an app and a phone's
+-- browser scales a desktop page. These rules are JEBOL's own, and so are the
+-- edits to the 2010 GUI they need, each listed in ORDER.txt.
+
+-- A pointer event from a finger says so. `event/flags` answers `touch`
+-- after R3's own three, which R3 has no word for: its events carry nothing
+-- about what the pointer was. A mouse on a tablet is a mouse, and its events
+-- carry no `touch`.
+rule AFingersEventSaysTouch {
+    when: the_screen_reports(port, kind, window)
+    requires: kind = down or kind = up or kind = move
+    requires: the_pointer_was_a_finger()
+
+    ensures: the_events_flags_include(touch)
+}
+
+rule AMousesEventDoesNotSayTouch {
+    when: the_screen_reports(port, kind, window)
+    requires: kind = down or kind = up or kind = move
+    requires: not the_pointer_was_a_finger()
+
+    ensures: not the_events_flags_include(touch)
+}
+
+-- FLAGS lists the four in the C's order, `touch` last. MAKE EVENT! sets no
+-- flag in R3 (`Set_Event_Var` has no case for FLAGS) and sets none here, so
+-- `touch`, like `double`, comes only from a screen.
+rule TouchIsReadLastAmongTheFlags {
+    when: the_screen_reports(port, kind, window)
+    requires: the_pointer_was_a_finger()
+    requires: the_shift_key_was_held()
+
+    ensures: the_events_flags_are([shift, touch])
+}
+
+config {
+    -- How far a finger may move between touching and lifting and still be a
+    -- tap, in dp: Android's ViewConfiguration default.
+    touch_slop: Integer = 8
+}
+
+-- A finger that touches and lifts without moving past the slop is a tap, and
+-- the GUI clicks the face it touched, as a mouse's press and release would.
+rule ATapClicks {
+    when: a_finger_touches_and_lifts(face)
+    requires: the_finger_moved_at_most(config.touch_slop)
+
+    ensures: the_face_is_clicked(face)
+}
+
+-- A finger dragging from a face that takes a drag -- a slider, a scroller, a
+-- scroll bar's knob -- drags it, as a mouse does.
+rule AFingerDragsAFaceThatTakesADrag {
+    when: a_finger_drags_from(face)
+    requires: the_face_takes_a_drag(face)
+
+    ensures: the_face_is_dragged(face)
+}
+
+-- Any other drag by a finger, once past the slop, scrolls the nearest thing
+-- under it that scrolls: a text area's text, a scroll frame, or the window
+-- itself when it is taller than its space. The lifting that ends it clicks
+-- nothing, and the face it began on is left as if it had never been pressed.
+-- A mouse dragging in text still selects, as R3's does.
+rule AFingersDragScrolls {
+    when: a_finger_drags_from(face)
+    requires: not the_face_takes_a_drag(face)
+    requires: the_finger_moved_more_than(config.touch_slop)
+
+    ensures: the_nearest_scrolling_ancestor_scrolls(face)
+    ensures: nothing_is_clicked()
+}
+
+rule AMousesDragInTextSelects {
+    when: a_mouse_drags_in_text(face)
+
+    ensures: the_text_is_selected(face)
+}
+
+-- A window's space is where it is shown: the whole screen on a one-surface
+-- screen, its frame on the desktop.
+--
+-- A size class is Android's, measured on a window's own width rather than the
+-- whole display, as Android's window size classes are. Given none, it is the
+-- screen's, which is what a script asks before it opens anything.
+config {
+    medium_from: Integer = 600      -- dp wide
+    expanded_from: Integer = 840    -- dp wide
+}
+
+rule TheSizeClassIsTheWidth {
+    when: EvaluateCall(size_class, window)
+
+    ensures:
+        if the_width_of(window) < config.medium_from:
+            CallResult(value: compact)
+        else if the_width_of(window) < config.expanded_from:
+            CallResult(value: medium)
+        else:
+            CallResult(value: expanded)
+}
+
+-- SIZE-CLASS? needs no GUI, so a script that draws gobs of its own can lay
+-- itself out too. With no window it answers for the screen.
+rule TheSizeClassNeedsNoGui {
+    when: EvaluateCall(size_class, none)
+
+    ensures: CallResult(value: the_size_class_of_the_screen())
+    ensures: the_gui_is_loaded() = the_gui_was_loaded_before()
+}
+
+-- A window whose flags say `resize` -- every window the 2010 GUI opens, unless
+-- told `no-resize` -- is one that can take another size. When it does not fit
+-- its space, the screen makes it fit: as wide as its space at most, as tall
+-- as its space at most, at the top left of whatever no longer fitted, and the
+-- window hears RESIZE with its new size, as a desktop frame its monitor
+-- clamps does. The same happens when the space changes under it: a phone
+-- turned, a page resized. A window that fits is left as it was made.
+rule AResizableWindowThatDoesNotFitIsMadeToFit {
+    when: the_screen_shows(window) or the_space_changes(the_space_of(window))
+    requires: the_windows_flags_include(window, resize)
+    requires: not fits(window.size, the_space_of(window))
+
+    ensures: window.size = the_smaller_of(window.size, the_size_of(the_space_of(window)))
+    ensures: the_window_hears(resize, window.size)
+}
+
+-- The GUI reflows a window on RESIZE, within its faces' minimum sizes, by its
+-- own RESIZE-PANEL, as it always has on the desktop. When the window is then
+-- shorter than its layout's least height, what it holds scrolls (the rules
+-- for a finger's drag, and the wheel).
+rule AGuiWindowShorterThanItsLayoutScrolls {
+    when: the_window_hears(resize, size)
+    requires: the_gui_made(window)
+    requires: size.down < the_least_height_of_its_layout(window)
+
+    ensures: what_the_window_holds_scrolls(window)
+}
+
+-- The fallback. A window that cannot take another size and does not fit its
+-- space -- a plain gob window, made without `resize` -- is shown smaller, by
+-- one factor across and down, the largest that fits, at its space's top
+-- left. Its own size and offset are unchanged, so the script sees the window
+-- it made. A pointer's position is mapped back into the window before the
+-- window hears it.
+rule AWindowThatCannotFitIsShownSmaller {
+    when: the_screen_shows(window)
+    requires: not fits(window.size, the_space_of(window))
+    requires: not the_windows_flags_include(window, resize)
+
+    ensures: the_window_is_shown_scaled_by(window,
+        min(the_width_of_the_space_of(window) / window.size.across,
+            the_height_of_the_space_of(window) / window.size.down))
+    ensures: the_window_is_shown_at_the_top_left_of_its_space(window)
+    ensures: window.size = window.size
+}
+
+rule APointerOnAWindowShownSmallerIsMappedBack {
+    when: the_screen_reports(port, kind, window)
+    requires: kind = down or kind = up or kind = move
+    requires: the_window_is_shown_scaled(window)
+
+    ensures: the_event_offset_is(the_pointer_position_within(window) / the_scale_shown_at(window))
+}
+
+-- A window that fits but whose offset would put part of it beyond its space
+-- is shown moved just far enough to lie on it, and its offset is unchanged.
+rule AWindowPartlyOffItsSpaceIsShownOnIt {
+    when: the_screen_shows(window)
+    requires: fits(window.size, the_space_of(window))
+    requires: the_window_lies_partly_beyond_its_space(window)
+
+    ensures: the_window_is_shown_within_its_space(window)
+}
+
+-- The keyboard is R3's own SHOW-SOFT-KEYBOARD. When the 2010 GUI gives the
+-- focus to a face that takes typing, it calls it with /ATTACH and the face's
+-- gob, which the command's own help calls the gob that "should be visible
+-- during the input operation".
+rule FocusingAFieldAsksForTheKeyboard {
+    when: the_gui_focuses(face)
+    requires: the_face_takes_typing(face)
+
+    ensures: the_gui_called_show_soft_keyboard_attached_to(face.gob)
 }
 
 ------------------------------------------------------------

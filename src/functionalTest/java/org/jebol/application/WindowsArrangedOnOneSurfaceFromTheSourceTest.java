@@ -8,6 +8,7 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.render.TextMeasurement;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,11 @@ class WindowsArrangedOnOneSurfaceFromTheSourceTest {
         @Override
         public boolean isConnected() {
             return true;
+        }
+
+        @Override
+        public TextMeasurement textMeasurement(DefaultFont carried) {
+            return carried.measurement();
         }
 
         @Override

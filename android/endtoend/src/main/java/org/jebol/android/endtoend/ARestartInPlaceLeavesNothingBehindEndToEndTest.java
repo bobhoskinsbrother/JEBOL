@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ARestartInPlaceLeavesNothingBehindEndToEndTest {
 
     private static final Duration PATIENCE = Duration.ofSeconds(30);
+    private static final int[] FIRST_WINDOWS_RED = {200, 40, 40};
 
     @Test
     @DisplayName("a restart in place leaves no window, place, unsaved work, keyboard or held Back behind")
@@ -25,7 +26,8 @@ class ARestartInPlaceLeavesNothingBehindEndToEndTest {
                 do-events
                 """);
         assertThat(app.waitForLineStarting("at ", PATIENCE)).isEqualTo("at [second]");
-        assertThat(app.isShowingColour(200, 40, 40)).as("the first script's window is on the view").isTrue();
+        assertThat(app.waitUntilShowingColourIs(true, FIRST_WINDOWS_RED, PATIENCE))
+                .as("the first script's window is on the view").isTrue();
         app.tapAt(new int[] {200, 200});
         app.typeOnKeys("hi");
         assertThat(app.waitUntilKeyboardShownIs(true, PATIENCE)).as("typing raised the keyboard").isTrue();
@@ -41,7 +43,8 @@ class ARestartInPlaceLeavesNothingBehindEndToEndTest {
         assertThat(app.waitForLineStarting("place ", PATIENCE)).isEqualTo("place []");
         app.waitForLineStarting("ready", PATIENCE);
         assertThat(app.waitUntilKeyboardShownIs(false, PATIENCE)).as("the keyboard went down").isTrue();
-        assertThat(app.isShowingColour(200, 40, 40)).as("the last script's window is gone from the view").isFalse();
+        assertThat(app.waitUntilShowingColourIs(false, FIRST_WINDOWS_RED, PATIENCE))
+                .as("the last script's window is gone from the view").isTrue();
         assertThat(app.printed()).doesNotContain("at [second]");
 
         app.pressBack();

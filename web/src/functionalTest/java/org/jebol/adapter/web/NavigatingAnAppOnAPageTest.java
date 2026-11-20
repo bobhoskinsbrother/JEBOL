@@ -3,12 +3,14 @@ package org.jebol.adapter.web;
 import org.jebol.adapter.host.ClasspathFiles;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.DefaultFont;
 import org.jebol.application.OneSurfaceScreen;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HistoryEntry;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.DrawingCommand;
+import org.jebol.domain.render.TextMeasurement;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,11 @@ class NavigatingAnAppOnAPageTest {
         @Override
         public boolean isConnected() {
             return looking;
+        }
+
+        @Override
+        public TextMeasurement textMeasurement(DefaultFont carried) {
+            return carried.measurement();
         }
 
         @Override

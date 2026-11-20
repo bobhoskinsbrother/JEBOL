@@ -2,10 +2,28 @@ class JebolInput {
   constructor(canvas, report) {
     this.report = report;
     this.turned = 0;
+    this.keyboardHigh = 0;
     window.addEventListener('resize', () => this.reportViewportSize());
-    canvas.addEventListener('mousedown', pointer => this.reportPointer('down', pointer));
-    canvas.addEventListener('mouseup', pointer => this.reportPointer('up', pointer));
-    canvas.addEventListener('mousemove', pointer => this.reportPointer('move', pointer));
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', pointer => {
+      if (pointer.isPrimary) {
+        canvas.setPointerCapture(pointer.pointerId);
+        this.reportPointer('down', pointer);
+      }
+    });
+    canvas.addEventListener('pointerup', pointer => {
+      if (pointer.isPrimary) {
+        this.reportPointer('up', pointer);
+      }
+    });
+    canvas.addEventListener('pointermove', pointer => {
+      if (pointer.isPrimary) {
+        this.reportPointer('move', pointer);
+      }
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.reportKeyboard());
+    }
     canvas.addEventListener('wheel', wheel => this.reportWheel(wheel), { passive: false });
     window.addEventListener('keydown', pressed => this.reportKey(pressed, 'key', 'control'));
     window.addEventListener('keyup', pressed => this.reportKey(pressed, 'key-up', 'control-up'));
@@ -16,7 +34,25 @@ class JebolInput {
   }
 
   reportPointer(kind, pointer) {
-    this.report({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
+    this.report({
+      type: kind,
+      across: Math.round(pointer.offsetX),
+      down: Math.round(pointer.offsetY),
+      pointer: JebolInput.isTouch(pointer) ? 'touch' : 'mouse'
+    });
+  }
+
+  static isTouch(pointer) {
+    return pointer.pointerType === 'touch' || pointer.pointerType === 'pen';
+  }
+
+  reportKeyboard() {
+    const seen = window.visualViewport;
+    const high = Math.max(0, Math.round(window.innerHeight - seen.height - seen.offsetTop));
+    if (high !== this.keyboardHigh) {
+      this.keyboardHigh = high;
+      this.report({ type: 'keyboard', high: high });
+    }
   }
 
   static countNotches(wheel) {

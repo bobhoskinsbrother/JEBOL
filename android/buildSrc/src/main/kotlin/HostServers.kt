@@ -11,10 +11,6 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 
-// The servers on this machine that the Android end-to-end suite reaches from
-// the emulator at 10.0.2.2: one plain, one TLS with the leaf
-// scripts/make-emulator-host-certificate.sh writes. Each reads a request's
-// head and answers it as HTTP/1.0 with one line, then closes. Goal 2c step 6.
 class HostServers(certificate: File, key: File) : AutoCloseable {
 
     private val loopback = InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1))

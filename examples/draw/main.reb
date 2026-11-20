@@ -96,17 +96,25 @@ tiles: compose/deep [
     ]
 ]
 
-columns: 6
 tile-size: 150x100
 drawn-at: 0.5
 gap: 10
 caption-height: 18
 cell: tile-size + (as-pair gap gap) + (as-pair 0 caption-height)
+screen: gui-metric 'screen-size
+unmeasured: zero? screen/x
+columns: either unmeasured [6] [
+    min select [compact 2 medium 3 expanded 6] size-class? none
+        max 1 to integer! (screen/x - gap) / cell/x
+]
 count: to integer! (length? tiles) / 2
 rows: to integer! (count + columns - 1) / columns
 
+sheet: make gob! [color: 24.28.38]
+sheet/size: (as-pair columns * cell/x rows * cell/y) + (as-pair gap gap)
 window: make gob! [color: 24.28.38]
-window/size: (as-pair columns * cell/x rows * cell/y) + (as-pair gap gap)
+window/size: as-pair sheet/size/x either unmeasured [sheet/size/y] [min sheet/size/y screen/y]
+append window sheet
 
 at: 0
 foreach [caption drawing] tiles [
@@ -120,7 +128,7 @@ foreach [caption drawing] tiles [
         pen 220.220.220
         text vectorial 4x2 (as-pair (tile-size/x - 8) caption-height) [(caption)]
     ]
-    append window heading
+    append sheet heading
     tile: make gob! []
     tile/offset: corner + (as-pair 0 caption-height)
     tile/size: tile-size
@@ -129,8 +137,27 @@ foreach [caption drawing] tiles [
         scale (drawn-at) (drawn-at)
         (drawing)
     ]
-    append window tile
+    append sheet tile
     at: at + 1
+]
+
+held: none
+scroll-sheet: func [by] [
+    sheet/offset: as-pair 0 max window/size/y - sheet/size/y min 0 sheet/offset/y + by
+    show window
+]
+handle-events [
+    name: 'scrolling-the-tiles
+    priority: 50
+    handler: func [event] [
+        switch event/type [
+            down [held: event/offset]
+            move [if held [scroll-sheet event/offset/y - held/y  held: event/offset]]
+            up [held: none]
+            scroll-line [scroll-sheet event/offset/y]
+        ]
+        event
+    ]
 ]
 
 view/options window [title: "What DRAW draws"]

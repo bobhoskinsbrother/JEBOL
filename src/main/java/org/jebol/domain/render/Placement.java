@@ -26,6 +26,10 @@ public record Placement(
     }
 
     /** The same place, narrowed to the inside of a shape as well. */
+    public Placement withClip(ClipRectangle confined) {
+        return new Placement(across, down, wide, high, confined, opacity, clipShape);
+    }
+
     public Placement fitInsideShape(java.util.List<PathStep> shape) {
         return new Placement(across, down, wide, high, clip, opacity, shape);
     }

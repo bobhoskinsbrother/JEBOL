@@ -228,14 +228,18 @@ public class WaitNative extends PortWakingNative {
         EventValue made = EventPath.make(BlockValue.of(spec), UnaryOperator.identity()) instanceof EventValue built
                 ? built
                 : EventValue.fresh();
-        return reported.detail() instanceof ScreenEventDetail.Arrived(Place place)
-                ? made.withHeldData(place.asBlock())
-                : made;
+        return switch (reported.detail()) {
+            case ScreenEventDetail.Arrived(Place place) -> made.withHeldData(place.asBlock());
+            case ScreenEventDetail.Touched touched -> made.withFlag(EventValue.Flag.TOUCH);
+            default -> made;
+        };
     }
 
     private List<Value> writeDetail(ScreenEventDetail detail) {
         return switch (detail) {
             case ScreenEventDetail.At(int across, int down) ->
+                    List.of(SetWordValue.of("offset"), PairValue.of(across, down));
+            case ScreenEventDetail.Touched(int across, int down) ->
                     List.of(SetWordValue.of("offset"), PairValue.of(across, down));
             case ScreenEventDetail.Typed(int codepoint) ->
                     List.of(SetWordValue.of("key"), CharacterValue.of(codepoint));

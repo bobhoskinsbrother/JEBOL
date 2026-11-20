@@ -36,4 +36,17 @@ public sealed interface DrawingCommand {
 
     record Text(Placement where, PlacedText text, Transform transform) implements DrawingCommand {
     }
+
+    static DrawingCommand placeUnder(DrawingCommand command, Transform outer) {
+        Placement where = command.where().withClip(command.where().clip().mapThrough(outer));
+        return switch (command) {
+            case Fill fill -> new Fill(where, fill.path(), fill.rule(), fill.gradient(), fill.colour(),
+                    outer.combineWith(fill.transform()), fill.antiAliased());
+            case Stroke stroke -> new Stroke(where, stroke.path(), stroke.painted(),
+                    outer.combineWith(stroke.transform()));
+            case Picture picture -> new Picture(where, picture.image(), picture.wide(), picture.high(),
+                    outer.combineWith(picture.transform()));
+            case Text text -> new Text(where, text.text(), outer.combineWith(text.transform()));
+        };
+    }
 }
