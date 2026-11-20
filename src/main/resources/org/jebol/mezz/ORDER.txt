@@ -76,6 +76,11 @@
 #                        than become "module not found". The table is declared
 #                        in JEBOL's sysobj.reb. Read decision 51 before taking
 #                        a newer copy, or every fetched module goes unchecked.
+#                        IMPORT of a word looks in system/options/modules only
+#                        when it is set: JEBOL leaves it none where the data
+#                        folder is absent, where R3 makes that folder, and the
+#                        path to it would otherwise fail as invalid-path
+#                        rather than "module not found".
 #   view-funcs.reb       adds LOAD-GUI, which loads bundled://r3-gui.reb once
 #                        and answers the GUI's VIEW, and VIEW hands a layout
 #                        block to it. Rebol 3.22 carries no VID, and this is

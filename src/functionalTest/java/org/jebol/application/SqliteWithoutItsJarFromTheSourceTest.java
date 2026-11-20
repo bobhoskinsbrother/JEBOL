@@ -42,6 +42,16 @@ class SqliteWithoutItsJarFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("import 'sqlite fails as a module that cannot be found when there is no modules directory, as on a phone with no data folder")
+    void failsToImportWithNoModulesDirectory() {
+        assertThat(answerTo("""
+                system/options/modules: none
+                e: try [import 'sqlite]
+                reduce [e/type e/id e/arg1 e/arg2]""")).isEqualTo("""
+                [access cannot-open sqlite "module not found"]""");
+    }
+
+    @Test
     @DisplayName("and the sqlite: scheme is unknown")
     void hasNoScheme() {
         assertThat(answerTo("none? select system/schemes 'sqlite")).isEqualTo("#(true)");

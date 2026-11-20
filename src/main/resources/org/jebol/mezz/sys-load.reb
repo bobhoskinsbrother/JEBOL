@@ -1707,17 +1707,20 @@ import: function [
 
 			file: append to file! source options/default-suffix
 
-			set [name: module:] apply :load-module [
-				options/modules/:file
-				version
-				needs
-				check
-				hash
-				no-share
-				no-lib
-				/import
-				/as
-				source
+			name: module: _
+			if options/modules [
+				set [name: module:] apply :load-module [
+					options/modules/:file
+					version
+					needs
+					check
+					hash
+					no-share
+					no-lib
+					/import
+					/as
+					source
+				]
 			]
 
 			unless name [
