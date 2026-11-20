@@ -1861,6 +1861,23 @@ rule TouchIsReadLastAmongTheFlags {
     ensures: the_events_flags_are([shift, touch])
 }
 
+-- Whether a press is the second of two is the platform's to say, as how it
+-- measures text is: each knows its own double-click time and distance, and
+-- they differ. R3's Windows host takes Windows' word for it -- a
+-- WM_LBUTTONDBLCLK falls through to WM_LBUTTONDOWN with EVF_DOUBLE set
+-- (`host-event.c`) -- and Android counts a press as the second when it comes
+-- within ViewConfiguration's double-tap timeout of a tap's lifting and closer
+-- than its double-tap slop to where that tap pressed. A tap is a press that
+-- stayed within the touch slop, and the press after a second is a first
+-- again. The second press is still a `down`, and still says `touch` if a
+-- finger made it; the GUI's click-text-face then selects the word under it.
+rule ASecondPressSaysDouble {
+    when: the_screen_reports(port, down, window)
+    requires: the_platform_counts_the_press_as_the_second()
+
+    ensures: the_events_flags_include(double)
+}
+
 config {
     -- How far a finger may move between touching and lifting and still be a
     -- tap, in dp: Android's ViewConfiguration default.

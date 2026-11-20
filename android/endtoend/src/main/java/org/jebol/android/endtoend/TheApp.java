@@ -238,6 +238,14 @@ final class TheApp {
         device.click(view.left + toPixels(dp[0]), view.top + toPixels(dp[1]));
     }
 
+    void doubleTapAt(int[] dp) {
+        Rect view = theViewsBounds();
+        int across = view.left + toPixels(dp[0]);
+        int down = view.top + toPixels(dp[1]);
+        device.click(across, down);
+        device.click(across, down);
+    }
+
     void drag(int[] fromDp, int[] toDp) {
         Rect view = theViewsBounds();
         device.drag(view.left + toPixels(fromDp[0]), view.top + toPixels(fromDp[1]),

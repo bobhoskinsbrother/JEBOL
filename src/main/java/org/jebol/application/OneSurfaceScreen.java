@@ -412,6 +412,9 @@ public final class OneSurfaceScreen extends GobScreen {
     }
 
     private boolean isOnAttachedGob(ScreenEventDetail detail) {
+        if (detail instanceof ScreenEventDetail.PressedTwice(ScreenEventDetail press)) {
+            return isOnAttachedGob(press);
+        }
         int[] at = switch (detail) {
             case ScreenEventDetail.At(int across, int down) -> new int[] {across, down};
             case ScreenEventDetail.Touched(int across, int down) -> new int[] {across, down};

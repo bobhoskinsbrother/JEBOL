@@ -21,6 +21,7 @@ import org.jebol.adapter.android.AndroidKeys;
 import org.jebol.adapter.android.AndroidPixelSurface;
 import org.jebol.adapter.android.AndroidSurface;
 import org.jebol.adapter.android.Density;
+import org.jebol.adapter.android.DoubleTaps;
 import org.jebol.adapter.android.KeyboardEdit;
 import org.jebol.adapter.android.LogcatOutput;
 import org.jebol.adapter.host.ClasspathFiles;
@@ -45,6 +46,7 @@ public final class JebolView extends View implements OneSurfaceScreen.Viewer {
     private static final TextMeasurement MEASURED_AS_DRAWN = AndroidSurface.measurement(CARRIED_FACE);
 
     private final Density density;
+    private final DoubleTaps taps;
     private volatile List<DrawingCommand> newestPainting = List.of();
     private volatile OneSurfaceScreen screen;
     private volatile boolean painting = true;
@@ -55,6 +57,7 @@ public final class JebolView extends View implements OneSurfaceScreen.Viewer {
     public JebolView(Context context) {
         super(context);
         density = new Density(context.getResources().getDisplayMetrics().density);
+        taps = DoubleTaps.from(context);
         setFocusable(true);
         setFocusableInTouchMode(true);
     }
@@ -184,16 +187,19 @@ public final class JebolView extends View implements OneSurfaceScreen.Viewer {
             case MotionEvent.ACTION_DOWN -> {
                 fingerDown = true;
                 requestFocus();
+                taps.press(event.getEventTime(), event.getX(0), event.getY(0));
                 reportAt(ScreenEventType.DOWN, event);
             }
             case MotionEvent.ACTION_MOVE -> {
                 if (fingerDown) {
+                    taps.move(event.getX(0), event.getY(0));
                     reportAt(ScreenEventType.MOVE, event);
                 }
             }
             case MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (fingerDown) {
                     fingerDown = false;
+                    taps.lift(event.getEventTime());
                     reportAt(ScreenEventType.UP, event);
                 }
             }
@@ -210,9 +216,12 @@ public final class JebolView extends View implements OneSurfaceScreen.Viewer {
         }
         int across = density.toDp(event.getX(0));
         int down = density.toDp(event.getY(0));
-        report(type, event.getToolType(0) == MotionEvent.TOOL_TYPE_MOUSE
+        ScreenEventDetail press = event.getToolType(0) == MotionEvent.TOOL_TYPE_MOUSE
                 ? new ScreenEventDetail.At(across, down)
-                : new ScreenEventDetail.Touched(across, down));
+                : new ScreenEventDetail.Touched(across, down);
+        report(type, type == ScreenEventType.DOWN && taps.wasPressedTwice()
+                ? new ScreenEventDetail.PressedTwice(press)
+                : press);
     }
 
     @Override

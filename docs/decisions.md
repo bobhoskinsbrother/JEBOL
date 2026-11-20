@@ -4031,6 +4031,17 @@ different platforms, which is the cost. A test on each platform puts the
 caret after five texts, kerned pairs and emoji among them, and finds it
 where the ink ends.
 
+**A second press is the platform's to count.** No screen set `double`, so a
+double tap on a field placed the caret and selected nothing, though R3's GUI
+selects the word on a `down` that says it. The screen now reports a press it
+counts as the second as `PressedTwice`, wrapping the `At` or `Touched` it
+would have reported, and WAIT raises `double` beside whatever that press
+raises. What counts is each platform's, as measuring is: Android's
+`DoubleTaps` takes `ViewConfiguration`'s double-tap timeout, touch slop and
+double-tap slop, with the comparisons `GestureDetector` makes. The desktop
+and the page report no second press yet; there a drag selects, and a
+double click is the next step.
+
 **Commits:** the plan, then one commit after `allTests`, `androidTests` and
 the owner's phone all pass, as in 2c.
 

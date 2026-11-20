@@ -35,6 +35,55 @@ class AScriptInTheAppEndToEndTest {
             do-events
             """;
 
+    private static final String A_FIELD_THAT_SAYS_WHAT_IS_SELECTED = """
+            w: view/no-wait [words: field 300x24 "hello world"]
+            walk: func [gob] [
+                foreach sub any [gob/pane []] [
+                    if all [object? sub/data 'words = select sub/data 'name] [words: sub/data]
+                    walk sub
+                ]
+            ]
+            walk w
+            shown: first words/gob/pane
+            world-at: second map-gob-offset/reverse shown
+                1x8 + caret-to-offset shown back tail shown/text at words/facets/text-edit 9
+            selected: does [
+                any [all [words/state/mark-head copy/part words/state/mark-head words/state/mark-tail] "nothing"]
+            ]
+            caret: does [either words/state/cursor [index? words/state/cursor] [0]]
+            loop 4 [wait [gui-event-port 0]]
+            print rejoin ["world-at " world-at]
+            was: none
+            forever [
+                wait [gui-event-port 0:00:00.1]
+                now-selected: rejoin [selected " at " caret]
+                if now-selected <> was [was: now-selected  print rejoin ["selected " now-selected]]
+            ]
+            """;
+
+    @Test
+    @DisplayName("a double tap on a field's word selects the word, as Android's own text fields do")
+    void aDoubleTapSelectsAWord() {
+        TheApp app = TheApp.runningScript(A_FIELD_THAT_SAYS_WHAT_IS_SELECTED);
+        int[] world = app.readPairAfter(app.waitForLineStarting("world-at ", PATIENCE), "world-at ");
+
+        app.doubleTapAt(world);
+
+        assertThat(app.waitForLineStarting("selected world", PATIENCE)).startsWith("selected world at ");
+    }
+
+    @Test
+    @DisplayName("a single tap on a field's word places the caret there and selects nothing")
+    void aSingleTapPlacesTheCaret() {
+        TheApp app = TheApp.runningScript(A_FIELD_THAT_SAYS_WHAT_IS_SELECTED);
+        int[] world = app.readPairAfter(app.waitForLineStarting("world-at ", PATIENCE), "world-at ");
+
+        app.tapAt(world);
+
+        assertThat(app.waitForLineStarting("selected nothing at 9", PATIENCE)).isEqualTo("selected nothing at 9");
+        assertThat(app.printed()).noneMatch(line -> line.startsWith("selected world"));
+    }
+
     @Test
     @DisplayName("what a script prints is a line in logcat under the tag jebol")
     void printsToLogcat() {

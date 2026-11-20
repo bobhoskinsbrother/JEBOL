@@ -98,6 +98,9 @@ public final class WindowsOnOneSurface {
                 across = atAcross;
                 down = atDown;
             }
+            case ScreenEventDetail.PressedTwice(ScreenEventDetail press) -> {
+                return findTopmostWindowUnder(press, showing);
+            }
             default -> {
                 return Optional.empty();
             }
@@ -132,6 +135,8 @@ public final class WindowsOnOneSurface {
                 int[] within = shownAt.apply(window).mapBack(across, down);
                 yield new ScreenEventDetail.Touched(within[0], within[1]);
             }
+            case ScreenEventDetail.PressedTwice(ScreenEventDetail press) ->
+                    new ScreenEventDetail.PressedTwice(countFromWindow(press, window));
             default -> detail;
         };
     }

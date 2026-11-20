@@ -3,6 +3,7 @@ package org.jebol.android.functional;
 import android.content.Context;
 import android.os.SystemClock;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 
@@ -196,11 +197,39 @@ class AndroidScreenTest {
                 ]
                 """);
 
-        press(view, MotionEvent.TOOL_TYPE_FINGER);
-        press(view, MotionEvent.TOOL_TYPE_STYLUS);
-        press(view, MotionEvent.TOOL_TYPE_MOUSE);
+        int apart = ViewConfiguration.get(view.getContext()).getScaledDoubleTapSlop() + 1;
+        press(view, MotionEvent.TOOL_TYPE_FINGER, 30);
+        press(view, MotionEvent.TOOL_TYPE_STYLUS, 30 + apart);
+        press(view, MotionEvent.TOOL_TYPE_MOUSE, 30 + 2 * apart);
 
         assertThat(answer("wait [system/ports/event 0.3] heard")).isEqualTo("[[touch] [touch] _]");
+    }
+
+    @Test
+    @DisplayName("a finger's second tap in place reaches the script as a down saying double")
+    void aSecondTapSaysDouble() {
+        openSession();
+        JebolView view = made.get();
+        view.measureViewport(1600, 1200);
+        answer("""
+                heard: copy []
+                view/no-wait make gob! [size: 400x300 color: 200.200.200]
+                system/view/screen-gob/1/offset: 0x0
+                show system/view/screen-gob
+                handle-events [
+                    name: 'touches
+                    priority: 100
+                    handler: func [event] [
+                        if event/type = 'down [append/only heard event/flags]
+                        none
+                    ]
+                ]
+                """);
+
+        press(view, MotionEvent.TOOL_TYPE_FINGER, 30);
+        press(view, MotionEvent.TOOL_TYPE_FINGER, 30);
+
+        assertThat(answer("wait [system/ports/event 0.3] heard")).isEqualTo("[[touch] [double touch]]");
     }
 
     @Test
@@ -218,13 +247,13 @@ class AndroidScreenTest {
         assertThat(view.onCheckIsTextEditor()).isTrue();
     }
 
-    private static void press(JebolView view, int toolType) {
+    private static void press(JebolView view, int toolType, float acrossPixels) {
         long now = SystemClock.uptimeMillis();
         MotionEvent.PointerProperties pointer = new MotionEvent.PointerProperties();
         pointer.id = 0;
         pointer.toolType = toolType;
         MotionEvent.PointerCoords place = new MotionEvent.PointerCoords();
-        place.x = 30;
+        place.x = acrossPixels;
         place.y = 30;
         for (int action : new int[] {MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP}) {
             MotionEvent event = MotionEvent.obtain(now, now, action, 1,

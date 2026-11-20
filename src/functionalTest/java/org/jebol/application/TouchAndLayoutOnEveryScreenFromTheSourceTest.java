@@ -234,6 +234,97 @@ class TouchAndLayoutOnEveryScreenFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("a press the screen counts as the second")
+    class PressedTwice {
+
+        private Interpreter withAField(Interpreter interpreter) {
+            answerTo(interpreter, """
+                    w: view/no-wait [words: field 300x24 "hello world"]
+                    words: face-named w 'words
+                    shown: sub-gob? words
+                    world-at: second map-gob-offset/reverse shown
+                        1x8 + caret-to-offset shown back tail shown/text at words/facets/text-edit 9
+                    selected: does [
+                        all [words/state/mark-head copy/part words/state/mark-head words/state/mark-tail]
+                    ]""");
+            return interpreter;
+        }
+
+        private void touchTwice(Interpreter interpreter, int[] at) {
+            tap(interpreter, at);
+            screen.report(ScreenEventType.DOWN,
+                    new ScreenEventDetail.PressedTwice(new ScreenEventDetail.Touched(at[0], at[1])));
+            touch(ScreenEventType.UP, at[0], at[1]);
+            deliver(interpreter);
+        }
+
+        private void clickTwice(Interpreter interpreter, int[] at) {
+            point(ScreenEventType.DOWN, at[0], at[1]);
+            point(ScreenEventType.UP, at[0], at[1]);
+            screen.report(ScreenEventType.DOWN,
+                    new ScreenEventDetail.PressedTwice(new ScreenEventDetail.At(at[0], at[1])));
+            point(ScreenEventType.UP, at[0], at[1]);
+            deliver(interpreter);
+        }
+
+        @Test
+        @DisplayName("a finger's second tap on a field selects the word under it, as R3's double click does")
+        void aDoubleTapSelectsTheWord() {
+            Interpreter interpreter = withAField(onAScreenOf(1280, 800));
+
+            touchTwice(interpreter, readPlace(interpreter, "world-at"));
+
+            assertThat(answerTo(interpreter, "to tag! any [selected {}]")).isEqualTo("<world>");
+        }
+
+        @Test
+        @DisplayName("a mouse's second click on a field selects the word under it")
+        void aDoubleClickSelectsTheWord() {
+            Interpreter interpreter = withAField(onAScreenOf(1280, 800));
+
+            clickTwice(interpreter, readPlace(interpreter, "world-at"));
+
+            assertThat(answerTo(interpreter, "to tag! any [selected {}]")).isEqualTo("<world>");
+        }
+
+        @Test
+        @DisplayName("a single tap on a field places the caret and selects nothing")
+        void aSingleTapSelectsNothing() {
+            Interpreter interpreter = withAField(onAScreenOf(1280, 800));
+
+            tap(interpreter, readPlace(interpreter, "world-at"));
+
+            assertThat(answerTo(interpreter, "reduce [selected index? words/state/cursor]")).isEqualTo("[_ 9]");
+        }
+
+        @Test
+        @DisplayName("the second press reaches the script as a down saying double, and touch when a finger made it")
+        void theSecondPressSaysDouble() {
+            Interpreter interpreter = onAScreenOf(1280, 800);
+            answerTo(interpreter, """
+                    seen: copy []
+                    w: view/no-wait make gob! [size: 300x300 color: 10.20.30]
+                    handle-events [
+                        name: 'watching
+                        priority: 90
+                        handler: func [event] [
+                            if event/type = 'down [append/only seen reduce [event/offset event/flags]]
+                            event
+                        ]
+                    ]""");
+            int[] corner = readPlace(interpreter, "w/offset");
+
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.PressedTwice(
+                    new ScreenEventDetail.Touched(corner[0] + 10, corner[1] + 20)));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.PressedTwice(
+                    new ScreenEventDetail.At(corner[0] + 30, corner[1] + 40)));
+
+            assertThat(answerTo(interpreter, "wait [system/ports/event 0]  seen"))
+                    .isEqualTo("[[10x20 [double touch]] [30x40 [double]]]");
+        }
+    }
+
+    @Nested
     @DisplayName("size-class?")
     class SizeClasses {
 

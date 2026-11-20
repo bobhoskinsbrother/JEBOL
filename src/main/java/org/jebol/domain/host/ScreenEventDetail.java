@@ -15,6 +15,15 @@ public sealed interface ScreenEventDetail {
     record Touched(int across, int down) implements ScreenEventDetail {
     }
 
+    record PressedTwice(ScreenEventDetail press) implements ScreenEventDetail {
+
+        public PressedTwice {
+            if (!(press instanceof At || press instanceof Touched)) {
+                throw new IllegalArgumentException("only a mouse's press or a finger's is pressed twice, not " + press);
+            }
+        }
+    }
+
     /** A key that typed this character. */
     record Typed(int codepoint) implements ScreenEventDetail {
     }
