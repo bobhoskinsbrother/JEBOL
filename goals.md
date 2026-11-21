@@ -971,7 +971,18 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    a nightly failure is the first thing fixed the next morning, and a
    flake there is still a fail. CLAUDE.md's section on running the suite
    and the memory on earning a check-in change to say so.
+6. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
+   builds for the processor it runs on, and the owner's Mac is Intel
+   (2026-11-21), so 2e's script proves only the Intel `.app`. A hosted
+   macOS runner, which is Apple Silicon, runs the example app's
+   `packageMac` and the checks `scripts/app-on-my-mac.sh` makes that need
+   no one at the screen: the bundle built for arm64, its signature
+   verified, its `Info.plist` and `.icns` read back, and the app started
+   far enough to make its store. Nightly, since the minutes are charged
+   for a private repository; the report is archived with the night's
+   results.
 
 **Done when** a push runs the per-change set on the CI machine, the nightly
 run has run unattended and archived its results, the stand-in runs of
-step 2 exist, and CLAUDE.md describes the new split.
+step 2 exist, the Apple Silicon app is built and checked each night, and
+CLAUDE.md describes the new split.
