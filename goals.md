@@ -73,17 +73,15 @@ packager works, and ships no app of its own.
   test APK carries `androidFunctionalTests`. Nothing on Android loads an
   extension: descriptors name `jvm` and `web` setups only.
 - **The desktop** is the shipped jar, `build/libs/jebol-3.22.5.jar`
-  (4,330 KB), run with `java -jar` on any Java from 21, a script given on
+  (4,330 KB), run with `java -jar` on any Java from 25, a script given on
   the command line, which runs in its own folder and writes beside itself.
   Nothing carries an app's files read-only with a store beside them, as
   Android does.
-- **Java levels.** 21 everywhere: `buildSrc`'s `jebol-java`,
-  `jebol-extension` and `jebol-optional` conventions, the root build, both
-  daemon pins (`gradle/` and `android/gradle/gradle-daemon-jvm.properties`),
-  Android's `JavaVersion.VERSION_21`, and `setup-machine.sh`'s
-  `openjdk-21-jdk`. The launcher source set compiles at 8 on purpose. The
-  desktop's end-to-end tests are given Java 17 as too old and 21 and 25 as
-  supported; `jebol-extension` runs extension tests on a 21 launcher.
+- **Java levels** (step 1, done). `desktop/` and the shipped jar are 25,
+  and the jar refuses 21 and older; every JVM suite runs on 25, its runtime
+  classpath asking for 25 (`buildSrc`'s `JavaLevels.kt`). The core, `web/`,
+  the extensions, the optional parts and Android compile at 21, and both
+  daemon pins stay 21. The launcher source set compiles at 8 on purpose.
 - **What a trimmed runtime needs.** `jdeps` on the shipped jar answers
   `java.base`, `java.desktop` (with `java.datatransfer`) and
   `jdk.httpserver`; SQLite's jar and sqlite4j add `java.sql`. jdeps does not
@@ -213,15 +211,7 @@ A packaged desktop app carries its own runtime, so its user needs no Java.
 
 **Steps.**
 0. This plan, agreed, then a plan commit with decision 78's additions.
-1. **Java 25 for the desktop**, with `allTests` passing before anything else
-   changes. `desktop/` and the shipped jar compile at `release 25` through a
-   toolchain of 25; the core, `web/`, the extensions' main code and Android
-   stay at 21. The desktop's and the extensions' end-to-end tests run the
-   jar on 25; `LaunchingOnAJavaTooOldEndToEndTest` and `spec/repl.allium`
-   move the line from 21 to 25, with 21 given as too old.
-   `setup-machine.sh` installs `openjdk-25-jdk` and `fakeroot`; the daemon
-   pins stay at 21. `README.md`, `using-jebol.md` and `docs/standing.md` say
-   25 where they say what the jar needs.
+1. Java 25 for the desktop: done, in its own commit.
 2. **Spec:** `spec/packaging.allium` -- `app.reb`'s fields, types and
    faults; generating once; the shared values read at build time; the
    overlay; each platform's package and identity; `uses` in Android's

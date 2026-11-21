@@ -62,10 +62,8 @@ fun Test.runsTheTestsIn(
 ) {
     val root = project.rootProject
     group = "verification"
-    // The suites run on the oldest Java JEBOL supports, the level every source
-    // set is compiled at, so what passes here is what a Java 21 answers.
     javaLauncher.set(project.extensions.getByType<JavaToolchainService>()
-        .launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+        .launcherFor { languageVersion.set(JavaLanguageVersion.of(DESKTOP_JAVA)) })
     testClassesDirs = suite.output.classesDirs
     classpath = suite.runtimeClasspath
     // Every suite reads the repository from its root, wherever its project is.

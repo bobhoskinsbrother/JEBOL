@@ -21,10 +21,8 @@ group = "org.jebol"
 version = "3.22.5"
 
 java {
-    // Every JVM the build uses is 21: the toolchain, the tests' launcher and
-    // the daemon (gradle/gradle-daemon-jvm.properties). Android's ART and
-    // TeaVM both stop at 21, so nothing newer creeps in on any platform.
-    // Decision 76.
+    // The core is 21, since Android's ART and TeaVM both stop there; the
+    // desktop and the tests' launcher are 25. Decisions 76 and 78.
     //
     // A reader raising this should know ArchUnit 1.4.1 carries an ASM that
     // stops at class file 69, so a 26 compiles a test tree that

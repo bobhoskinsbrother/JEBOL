@@ -56,6 +56,16 @@ tasks.jar {
     archiveBaseName = "jebol-desktop"
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(DESKTOP_JAVA)
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(DESKTOP_JAVA)
+}
+
 // The first class a launch loads, built so that every Java from 8 on can load
 // it: it tells a Java too old for the rest of JEBOL so, in words, rather than
 // leaving the JVM to report a class file version. spec/repl.allium.
@@ -168,10 +178,10 @@ tasks.named<Test>("endToEndTests") {
     dependsOn(":web:buildWasmGC", ":web:assembleSite", "installDist", shippedJar)
     systemProperty(
         "jebol.olderJavaHome",
-        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+        javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(CORE_JAVA) }
             .get().metadata.installationPath.asFile.path,
     )
-    for (supported in listOf(21, 25)) {
+    for (supported in listOf(DESKTOP_JAVA)) {
         systemProperty(
             "jebol.java${supported}Home",
             javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(supported) }
@@ -189,6 +199,9 @@ tasks.register<Test>("desktopWindowTests") {
     runsTheTestsIn(sourceSets["endToEndTest"], "desktopWindowTests")
     useJUnitPlatform { includeTags(TESTS_THAT_OPEN_A_REAL_WINDOW) }
     systemProperty("java.awt.headless", "false")
+    listOf("DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY").forEach { name ->
+        providers.environmentVariable(name).orNull?.let { environment(name, it) }
+    }
     maxParallelForks = 1
     outputs.upToDateWhen { false }
     mustRunAfter("endToEndTests")

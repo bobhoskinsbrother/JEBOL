@@ -265,6 +265,10 @@ demonstrates it rather than a comment that warns about it.
 
 ## 10. Java 25, not 21
 
+**Back for the desktop, 2026-11-21 (decision 78): `desktop/` and the shipped
+jar are 25, for the Foreign Function and Memory API, and every suite runs on
+25; the core, the web, the extensions and Android stay at 21.**
+
 **Reversed entirely, 2026-11-17 (decision 76): every JVM the build uses is
 21.**
 

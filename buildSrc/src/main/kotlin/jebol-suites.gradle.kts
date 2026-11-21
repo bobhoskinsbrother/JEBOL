@@ -37,6 +37,7 @@ dependencies {
 testSuites.forEach { suite ->
     suite.compileClasspath += sourceSets.main.get().output
     suite.runtimeClasspath += sourceSets.main.get().output
+    resolvesForDesktopJava(suite)
 }
 
 val unitTests = tasks.register<Test>("unitTests") {

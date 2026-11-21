@@ -103,6 +103,7 @@ val testFixturesOutput = sourceSets["testFixtures"].output
 listOf(unitTest, functionalTest, endToEndTest).forEach { suite ->
     suite.compileClasspath += sourceSets.main.get().output + testFixturesOutput
     suite.runtimeClasspath += sourceSets.main.get().output + testFixturesOutput
+    resolvesForDesktopJava(suite)
     dependencies {
         add(suite.implementationConfigurationName, core)
         add(suite.implementationConfigurationName, testFixtures(core))
@@ -120,7 +121,7 @@ val gateResults = core.layout.buildDirectory.dir("test-results")
 
 fun Test.runsTheTestsIn(suite: SourceSet, resultsName: Provider<String>) {
     group = "verification"
-    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(DESKTOP_JAVA) }
     testClassesDirs = suite.output.classesDirs
     classpath = suite.runtimeClasspath
     useJUnitPlatform()

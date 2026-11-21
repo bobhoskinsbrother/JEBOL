@@ -45,7 +45,7 @@ does with a block and a function.
 ## What is JEBOL?
 
 A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
-Java: an ordinary jar with no dependencies, running on any Java from 21.
+Java: an ordinary jar with no dependencies, running on any Java from 25.
 
 ```commandline
 ./gradlew jar
@@ -392,14 +392,16 @@ editor does, so a bad regex cannot land quietly.
 ## Building
 
 **What you need for the jar: a JDK to run Gradle, and nothing else.** The build
-asks for Java 21 for everything it runs -- Gradle's own daemon
-(`gradle/gradle-daemon-jvm.properties`), the compiler and the tests -- and
-downloads one itself (the toolchain resolver in `settings.gradle.kts`), so the
-JDK on your PATH does not have to be 21 and you do not have to find one. 21 is
-where Android's ART and TeaVM stop, so nothing newer creeps in on any platform
-(decision 76). There are no runtime dependencies; the jar carries everything
-it needs. Running JEBOL needs Java 21 or later, and a launch on an older one
-says so and stops.
+asks for two Javas and downloads each itself (the toolchain resolver in
+`settings.gradle.kts`), so the JDK on your PATH does not matter and you do not
+have to find one. 21 is Gradle's own daemon
+(`gradle/gradle-daemon-jvm.properties`) and the core, the web build, the
+extensions and Android, since 21 is where Android's ART and TeaVM stop
+(decision 76). 25 is the desktop and the shipped jar, which reach each
+system's own services through the Foreign Function and Memory API, and every
+suite runs on it (decision 78). There are no runtime dependencies; the jar
+carries everything it needs. Running JEBOL needs Java 25 or later, and a
+launch on an older one says so and stops.
 
 **The gate asks for two more, and each names itself when it is missing.**
 

@@ -56,6 +56,7 @@ val testFixturesOutput = sourceSets["testFixtures"].output
 listOf(unitTest, functionalTest, endToEndTest).forEach { suite ->
     suite.compileClasspath += sourceSets.main.get().output + testFixturesOutput
     suite.runtimeClasspath += sourceSets.main.get().output + testFixturesOutput
+    resolvesForDesktopJava(suite)
     dependencies {
         add(suite.implementationConfigurationName, core)
         add(suite.implementationConfigurationName, testFixtures(core))

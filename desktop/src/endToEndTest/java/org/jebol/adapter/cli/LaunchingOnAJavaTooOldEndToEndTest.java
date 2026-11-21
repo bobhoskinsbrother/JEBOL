@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Timeout(120)
 class LaunchingOnAJavaTooOldEndToEndTest {
 
-    private static final String REFUSAL = "JEBOL needs Java 21 or later; this is Java 17.";
+    private static final String REFUSAL = "JEBOL needs Java 25 or later; this is Java 21.";
 
     private final Path installedLauncher = Path.of(System.getProperty("jebol.installedLauncher"));
     private final Path shippedJar = Path.of(System.getProperty("jebol.shippedJar"));
@@ -47,8 +47,8 @@ class LaunchingOnAJavaTooOldEndToEndTest {
     }
 
     @Test
-    @DisplayName("the installed jebol on Java 17 says it needs 21 and stops with 1")
-    void theInstalledLauncherTellsJavaSeventeen() throws Exception {
+    @DisplayName("the installed jebol on Java 21 says it needs 25 and stops with 1")
+    void theInstalledLauncherTellsJavaTwentyOne() throws Exception {
         Finished finished = launch(List.of(installedLauncher.toString(), "--do", "print 1 + 2"), olderJava);
 
         assertThat(finished.exitCode()).isEqualTo(1);
@@ -57,8 +57,8 @@ class LaunchingOnAJavaTooOldEndToEndTest {
     }
 
     @Test
-    @DisplayName("java -jar on Java 17 says the same and stops with 1")
-    void theJarTellsJavaSeventeen() throws Exception {
+    @DisplayName("java -jar on Java 21 says the same and stops with 1")
+    void theJarTellsJavaTwentyOne() throws Exception {
         Finished finished = launch(List.of(javaIn(olderJava), "-jar", shippedJar.toString(), "--do", "print 1 + 2"),
                 olderJava);
 
@@ -67,7 +67,7 @@ class LaunchingOnAJavaTooOldEndToEndTest {
     }
 
     @ParameterizedTest(name = "Java {0}")
-    @ValueSource(strings = {"21", "25"})
+    @ValueSource(strings = {"25"})
     @DisplayName("the installed jebol runs what it was given")
     void theInstalledLauncherRuns(String version) throws Exception {
         Finished finished = launch(List.of(installedLauncher.toString(), "--do", "print 1 + 2"), supportedJava(version));
@@ -78,7 +78,7 @@ class LaunchingOnAJavaTooOldEndToEndTest {
     }
 
     @ParameterizedTest(name = "Java {0}")
-    @ValueSource(strings = {"21", "25"})
+    @ValueSource(strings = {"25"})
     @DisplayName("java -jar runs what it was given, and passes its exit code through")
     void theJarRuns(String version) throws Exception {
         Path javaHome = supportedJava(version);

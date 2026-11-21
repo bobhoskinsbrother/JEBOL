@@ -14,7 +14,9 @@
 # adds ANDROID_HOME to ~/.zprofile. Everything else allTests needs on a Mac is
 # the README's Building section.
 #
-#   Java 21           openjdk-21-jdk, for Gradle and the toolchain the build asks for
+#   Java 21           openjdk-21-jdk, for Gradle and the core's toolchain
+#   Java 25           openjdk-25-jdk, the desktop's toolchain, the tests' and jpackage
+#   fakeroot          jpackage's .deb (goal 2e)
 #   allium            cargo install allium-cli, for checkSpec (needs rustup and a C linker)
 #   python3           scripts/allium_report.py and the parity scripts
 #   Chrome            endToEndTests, from Google's apt repository
@@ -139,7 +141,7 @@ fi
 step "apt packages"
 sudo apt-get update
 sudo apt-get install -y \
-    openjdk-21-jdk \
+    openjdk-21-jdk openjdk-25-jdk fakeroot \
     build-essential pkg-config libssl-dev \
     python3 git curl wget gnupg ca-certificates file unzip \
     zsh openssl \
