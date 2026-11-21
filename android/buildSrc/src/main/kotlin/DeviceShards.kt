@@ -1,5 +1,6 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -8,6 +9,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
@@ -37,6 +39,10 @@ abstract class DeviceShards : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val testApk: RegularFileProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val otherApks: ConfigurableFileCollection
 
     @get:Input
     abstract val instrumentation: Property<String>
@@ -116,12 +122,12 @@ abstract class DeviceShards : DefaultTask() {
     }
 
     private fun install(serial: String) {
-        listOf(appApk, testApk).forEach { apk ->
-            val installing = ProcessBuilder(adb.get(), "-s", serial, "install", "-r", "-t", apk.get().asFile.path)
+        (listOf(appApk.get().asFile, testApk.get().asFile) + otherApks.files).forEach { apk ->
+            val installing = ProcessBuilder(adb.get(), "-s", serial, "install", "-r", "-t", apk.path)
                 .redirectErrorStream(true).start()
             val said = installing.inputStream.bufferedReader().readText()
             if (installing.waitFor() != 0 || !said.contains("Success")) {
-                throw GradleException("installing ${apk.get().asFile.name} on $serial failed: $said")
+                throw GradleException("installing ${apk.name} on $serial failed: $said")
             }
         }
     }

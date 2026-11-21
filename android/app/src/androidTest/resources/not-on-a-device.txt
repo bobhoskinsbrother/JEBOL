@@ -28,3 +28,4 @@ org.jebol.suite.PortingBacklogTest it writes its report into the repository's bu
 org.jebol.suite.SuiteHostTest#aprocessCanBeStarted it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)
 org.jebol.corpus.CorpusCoverageReportTest it reads corpus/, which only the repository has
 org.jebol.corpus.EvaluationCorpusTest it reads corpus/, which only the repository has
+org.jebol.extension.sqlite.TheReadmeExamplesFromTheSourceTest it reads extensions/sqlite/README.md, which only the repository has

@@ -32,7 +32,7 @@ if (androidSdk != null) {
     includeBuild("android")
 }
 
-include("desktop", "web")
+include("desktop", "web", "devtools")
 
 include("extensions:sqlite")
 

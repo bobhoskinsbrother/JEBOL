@@ -21,6 +21,9 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
 
+group = "org.jebol"
+version = "3.22.5"
+
 val jvmLibraries: Configuration by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -43,6 +46,7 @@ val writeExtensionDescriptor = tasks.register<WriteExtensionDescriptor>("writeEx
     extensionVersion = declaration.version
     jvmProvider = declaration.jvmProvider
     webProvider = declaration.webProvider
+    androidProvider = declaration.androidProvider
     jvmLibraries.from(configurations.named("jvmLibraries"))
     webAssets.from(declaration.webAssets)
     val resourcesDirectory = layout.projectDirectory.dir("src/main/resources")

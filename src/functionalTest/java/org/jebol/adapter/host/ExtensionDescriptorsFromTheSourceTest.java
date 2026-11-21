@@ -15,6 +15,8 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,8 +53,27 @@ class ExtensionDescriptorsFromTheSourceTest {
         for (int at = 0; at < jars.size(); at++) {
             roots[at] = jars.get(at).toUri().toURL();
         }
-        ClassLoader loader = new URLClassLoader(roots, getClass().getClassLoader());
+        ClassLoader loader = new URLClassLoader(roots, new ClassesWithoutDescriptors(getClass().getClassLoader()));
         return new ExtensionDescriptors(loader).addJvmSetupsTo(Bounds.standard());
+    }
+
+    private static final class ClassesWithoutDescriptors extends ClassLoader {
+
+        private static final String DESCRIPTORS = "META-INF/jebol/";
+
+        ClassesWithoutDescriptors(ClassLoader classes) {
+            super(classes);
+        }
+
+        @Override
+        public URL getResource(String name) {
+            return name.startsWith(DESCRIPTORS) ? null : super.getResource(name);
+        }
+
+        @Override
+        public Enumeration<URL> getResources(String name) throws IOException {
+            return name.startsWith(DESCRIPTORS) ? Collections.emptyEnumeration() : super.getResources(name);
+        }
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

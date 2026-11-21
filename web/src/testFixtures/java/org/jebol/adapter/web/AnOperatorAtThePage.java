@@ -174,7 +174,7 @@ public final class AnOperatorAtThePage implements AutoCloseable {
         watchingForLeavePrompts = Optional.of(inspector);
     }
 
-    WebDriver browser() {
+    public WebDriver browser() {
         return browser;
     }
 

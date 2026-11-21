@@ -12,7 +12,7 @@ const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
 const val TESTS_THAT_OPEN_A_REAL_WINDOW = "opens-a-real-window"
 const val DISK_BACKED_TEMPORARY_ROOT = "/var/tmp"
 
-val PROJECTS_WITH_SUITES = listOf(":", ":desktop", ":web")
+val PROJECTS_WITH_SUITES = listOf(":", ":desktop", ":web", ":devtools")
 val SUITE_SOURCE_SETS = listOf("unitTest", "functionalTest", "endToEndTest", "networkTest")
 
 // The core's suites keep the names they always had; a subproject's carry its

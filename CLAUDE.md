@@ -264,10 +264,11 @@ becomes a test, and that test is what stays.
 
 ## Running the suite
 
-**`./gradlew allTests` is the gate.** Three projects hold code and each keeps
+**`./gradlew allTests` is the gate.** Four projects hold code and each keeps
 the tests of its own (goal 2a step 4): the root is the core every platform
 carries, `desktop/` the command line, the window and the JVM's own machine,
-`web/` the page and the browser's program. Each has the same four source sets,
+`web/` the page and the browser's program, and `devtools/` `jebol-devtools`, the
+Gradle plugin that packages an app of one's own (goal 2e). Each has the same four source sets,
 `src/unitTest`, `src/functionalTest`, `src/endToEndTest` and `src/networkTest`,
 built by the `jebol-suites` convention in `buildSrc`. The gate runs the spec
 check, then every project's unit suite, then every functional suite, then every
@@ -279,7 +280,7 @@ end-to-end suite, then the desktop's window, one stage at a time:
 | `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
 | `heapExhaustionTests` | `src/functionalTest` | The core's functional tests tagged `exhausts-the-heap`, which run the JVM out of memory on purpose, in one fork of their own |
 | `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
-| `:desktop:desktopWindowTests` | `desktop/src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72) |
+| `:desktop:desktopWindowTests`, `:devtools:windowTests` | `desktop/src/endToEndTest`, `devtools/src/endToEndTest` | The end-to-end tests tagged `opens-a-real-window`, in one fork that is not headless; they need a display and fail without one (decision 72). The devtools one unpacks the example app's `.deb` and opens it |
 | `:extensions:<name>:unitTests`, `:functionalTests`, `:endToEndTests` | `extensions/<name>/src/...` | Each extension jar's own tests, archived as `<name>UnitTests`, `<name>FunctionalTests` and `<name>EndToEndTests`; `docs/writing-an-extension.md` section 11. Ten extensions: SQLite, and the nine of R3's the shipped jar and the site carry (decision 58) |
 | `:optional:<name>:unitTests`, `:functionalTests` | `optional/<name>/src/...` | R3's six Bulk compressors, which the core leaves out as R3's Core product does (decision 74): each part's codec tests, and the assertions of Rebol's suite that need it, with the method present. Archived as `optional<Name>UnitTests` and `optional<Name>FunctionalTests` |
 

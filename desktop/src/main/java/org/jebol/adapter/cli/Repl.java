@@ -18,6 +18,8 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
+import org.jebol.application.LayeredFiles;
+import org.jebol.domain.host.FilePort;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostPorts;
@@ -41,6 +43,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -141,10 +144,13 @@ public final class Repl {
 
         new ChosenScreen(arguments).chooseHeadlessMode();
 
-        Path root = readRoot(arguments);
+        Optional<PackagedApp> packaged = PackagedApp.readFrom(arguments);
+        Path root = packaged.map(PackagedApp::store).orElseGet(() -> readRoot(arguments));
         RebolArguments asked = new RebolArguments(List.of(
                 argumentsWithoutJebolOnlySwitches(new ChosenScreen(arguments).withoutSwitch())));
-        asked.script().ifPresent(script -> asked.nameScript(findAppsEntry(script)));
+        asked.script().ifPresent(script -> asked.nameScript(packaged.isPresent()
+                ? "/" + script.replaceFirst("^/+", "")
+                : findAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = buildInterpreter(arguments, out, output, console, anythingWasAsked, root);
         console.whenEscaped(interpreter::escape);
@@ -177,7 +183,7 @@ public final class Repl {
         List<String> reply = new ArrayList<>();
         for (int at = 0; at < arguments.length; at++) {
             if (arguments[at].equals(ROOT_SWITCH) || arguments[at].equals(DATA_SWITCH)
-                    || arguments[at].equals(CAFILE_SWITCH)) {
+                    || arguments[at].equals(CAFILE_SWITCH) || PackagedApp.isOwnSwitch(arguments[at])) {
                 at++;
                 continue;
             }
@@ -221,18 +227,50 @@ public final class Repl {
 
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
         TerminalLending lending = console instanceof TerminalLending lends ? lends : TerminalLending.none();
-        HostPorts ports = hostServicesFor(bounds, FileSystemPort.rootFileSystem(root), environment,
+        FileSystemPort store = FileSystemPort.rootFileSystem(root);
+        AppFiles files = PackagedApp.readFrom(arguments)
+                .<AppFiles>map(packaged -> new PackagedFiles(packaged, store))
+                .orElseGet(() -> new PlainFiles(store));
+        HostPorts ports = hostServicesFor(bounds, files, environment,
                 isWholeMachine(root), new WakeablePause(), cafile, lending)
                 .withConsole(console);
         ChosenScreen chosen = new ChosenScreen(arguments);
         return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
-    private static HostPorts hostServicesFor(Bounds bounds, FileSystemPort files, ProcessEnvironment environment,
+    private sealed interface AppFiles permits PlainFiles, PackagedFiles {
+
+        FilePort files();
+
+        AppFiles copyInWorkingDirectory();
+    }
+
+    private record PlainFiles(FileSystemPort files) implements AppFiles {
+
+        @Override
+        public AppFiles copyInWorkingDirectory() {
+            return new PlainFiles(files.copyInWorkingDirectory());
+        }
+    }
+
+    private record PackagedFiles(PackagedApp packaged, FileSystemPort store, LayeredFiles files) implements AppFiles {
+
+        PackagedFiles(PackagedApp packaged, FileSystemPort store) {
+            this(packaged, store, packaged.filesOver(store));
+        }
+
+        @Override
+        public AppFiles copyInWorkingDirectory() {
+            return new PackagedFiles(packaged, store.copyInWorkingDirectory());
+        }
+    }
+
+    private static HostPorts hostServicesFor(Bounds bounds, AppFiles appFiles, ProcessEnvironment environment,
                                              boolean wholeMachine, PausePort pause, String cafile,
                                              TerminalLending lending) {
+        FilePort files = appFiles.files();
         return attachJavaImagesCodec(new JavaHost().ports()
-                .withTasks(new ThreadTasks(bounds, () -> hostServicesFor(bounds, files.copyInWorkingDirectory(),
+                .withTasks(new ThreadTasks(bounds, () -> hostServicesFor(bounds, appFiles.copyInWorkingDirectory(),
                         environment.copy(), wholeMachine, pause, cafile, lending)))
                 .withFiles(files)
                 .withEnvironment(wholeMachine ? environment : ConfinedEnvironment.confine(environment, files))

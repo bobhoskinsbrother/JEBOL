@@ -77,16 +77,19 @@ androidComponents {
 // runner finds them (goal 2a step 7).
 val core = gradle.includedBuilds.single { it.name != "android" }
 val coreFunctionalTests = files(core.projectDir.resolve("build/libs/jebol-core-3.22.5-functional-tests.jar"))
+val sqliteFunctionalTests = files(core.projectDir.resolve("extensions/sqlite/build/libs/jebol-sqlite-functional-tests.jar"))
 
 tasks.configureEach {
     if (name == "preDebugAndroidTestBuild") {
-        dependsOn(core.task(":functionalTestJar"))
+        dependsOn(core.task(":functionalTestJar"), core.task(":extensions:sqlite:functionalTestJar"))
     }
 }
 
 dependencies {
-    implementation(project(":host"))
+    implementation(project(":runtime"))
+    androidTestImplementation(project(":sqlite"))
     androidTestImplementation(coreFunctionalTests)
+    androidTestImplementation(sqliteFunctionalTests)
     androidTestCompileOnly("net.jqwik:jqwik-api:1.9.2")
     androidTestImplementation(testFixtures("org.jebol:jebol:3.22.5"))
     androidTestImplementation(platform("org.junit:junit-bom:5.11.4"))

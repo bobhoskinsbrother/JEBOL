@@ -3,6 +3,7 @@
 
     <queries>
         <package android:name="org.jebol.android" />
+        <package android:name="org.jebol.example.notes" />
     </queries>
 
 </manifest>

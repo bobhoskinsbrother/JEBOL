@@ -3,6 +3,7 @@ package org.jebol.extension.sqlite;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Bounds;
+import org.jebol.application.ExtensionProvider;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 
@@ -16,6 +17,8 @@ import java.util.List;
 
 final class ASqliteInterpreter {
 
+    private static final String ANDROIDS_PROVIDER = "org.jebol.extension.sqlite.SqliteOnAndroid";
+
     private final Path directory;
 
     private final StringBuilder printed = new StringBuilder();
@@ -24,7 +27,7 @@ final class ASqliteInterpreter {
 
     ASqliteInterpreter(Path directory) {
         this.directory = directory;
-        Bounds bounds = Bounds.standard().withoutTimeLimit().add(new SqliteOnTheJvm().provide());
+        Bounds bounds = Bounds.standard().withoutTimeLimit().add(engineUnderTest().provide());
         for (HostService service : HostService.values()) {
             if (service != HostService.ENVIRONMENT) {
                 bounds = bounds.grant(service);
@@ -49,7 +52,7 @@ final class ASqliteInterpreter {
 
     List<String> runReference(String script, String... arguments) {
         try {
-            Files.writeString(directory.resolve(script), readReference(script));
+            Files.write(directory.resolve(script), readReference(script).getBytes(StandardCharsets.UTF_8));
         } catch (IOException unwritten) {
             throw new UncheckedIOException(unwritten);
         }
@@ -62,6 +65,16 @@ final class ASqliteInterpreter {
 
     Path directory() {
         return directory;
+    }
+
+    static ExtensionProvider engineUnderTest() {
+        try {
+            return (ExtensionProvider) Class.forName(ANDROIDS_PROVIDER).getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException onTheJvm) {
+            return new SqliteOnTheJvm();
+        } catch (ReflectiveOperationException unmade) {
+            throw new IllegalStateException(unmade);
+        }
     }
 
     static String readReference(String name) {

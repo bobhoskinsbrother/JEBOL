@@ -18,8 +18,18 @@ jebolExtension {
     jvmProvider = "org.jebol.extension.sqlite.SqliteOnTheJvm"
     webProvider = "org.jebol.extension.sqlite.SqliteInTheBrowser"
     webAssets.from(fetchSqliteWasm, "src/web/jebol-sqlite.js")
+    androidProvider = "org.jebol.extension.sqlite.SqliteOnAndroid"
 }
 
 dependencies {
     jvmLibraries("io.roastedroot:sqlite4j:3.54.1.0")
+}
+
+tasks.register<Jar>("functionalTestJar") {
+    group = "build"
+    description = "SQLite's functional tests as a jar, for android/ to run on ART over Android's own SQLite"
+    archiveBaseName = "jebol-sqlite"
+    archiveClassifier = "functional-tests"
+    from(sourceSets["functionalTest"].output)
+    exclude("org/jebol/extension/sqlite/TheAndroidEnginesSqlTextAgreesWithSqliteTest*")
 }

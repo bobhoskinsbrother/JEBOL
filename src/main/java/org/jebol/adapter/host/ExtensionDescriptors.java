@@ -27,7 +27,9 @@ public final class ExtensionDescriptors {
 
     private static final String CARRIED_DESCRIPTORS = "META-INF/jebol/carried/";
 
-    private static final String JVM_SETUP = "jvm";
+    public static final String JVM_SETUP = "jvm";
+
+    public static final String ANDROID_SETUP = "android";
 
     private static final String UNNAMED = "extension";
 
@@ -35,11 +37,22 @@ public final class ExtensionDescriptors {
 
     private final ClassLoader loader;
 
+    private final String setup;
+
     public ExtensionDescriptors(ClassLoader loader) {
+        this(loader, JVM_SETUP);
+    }
+
+    public ExtensionDescriptors(ClassLoader loader, String setup) {
         this.loader = loader;
+        this.setup = setup;
     }
 
     public Bounds addJvmSetupsTo(Bounds bounds) {
+        return addSetupsTo(bounds);
+    }
+
+    public Bounds addSetupsTo(Bounds bounds) {
         Bounds added = bounds;
         for (URL listing : listResources(CARRIED_LISTING)) {
             for (String name : readText(listing).lines().map(String::strip).filter(line -> !line.isEmpty()).toList()) {
@@ -47,7 +60,7 @@ public final class ExtensionDescriptors {
             }
         }
         for (URL descriptor : listResources(DESCRIPTOR)) {
-            added = addJvmSetup(added, readText(descriptor));
+            added = addSetup(added, readText(descriptor));
         }
         return added;
     }
@@ -57,7 +70,7 @@ public final class ExtensionDescriptors {
         if (descriptor == null) {
             return bounds.refuse(new ExtensionReport(name, Optional.of(BAD_EXTENSION)));
         }
-        return addJvmSetup(bounds, readText(descriptor));
+        return addSetup(bounds, readText(descriptor));
     }
 
     private List<URL> listResources(String path) {
@@ -76,12 +89,12 @@ public final class ExtensionDescriptors {
         }
     }
 
-    private Bounds addJvmSetup(Bounds bounds, String descriptor) {
+    private Bounds addSetup(Bounds bounds, String descriptor) {
         Optional<List<Value>> fields = Transcoder.transcode(descriptor).values().map(AnyBlockValue::remaining);
         String name = fields.flatMap(read -> findWord(read, "name")).orElse(UNNAMED);
         Optional<Extension> extension = fields
                 .flatMap(read -> findBlock(read, "setups"))
-                .flatMap(setups -> findSetup(setups, JVM_SETUP))
+                .flatMap(setups -> findSetup(setups, setup))
                 .flatMap(setup -> findWord(setup, "provider"))
                 .flatMap(this::provide);
         return extension.map(bounds::add)

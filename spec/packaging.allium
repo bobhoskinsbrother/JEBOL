@@ -1,0 +1,466 @@
+-- allium: 3
+--
+-- JEBOL: an app of one's own, packaged for every platform from one directory
+-- by jebol-devtools (goal 2e, decision 78).
+--
+-- Scope: app.reb, the one REBOL block an app declares itself in; what a wrong
+-- one raises; the project generated once for each platform; the values every
+-- platform shares, read from app.reb at each build; the overlay of a
+-- platform's own files on the app's shared scripts; each platform's package
+-- and the identity it carries; the extensions an app requires; the store a
+-- packaged desktop app writes into; and Android's signing.
+--
+-- Excludes:
+--   - Granting what `uses` declares. 2e writes it into Android's manifest and
+--     macOS's Info.plist; 2f, 2g and 2h each turn their own entry into a
+--     HostService grant.
+--   - iOS, which goal 3 joins to the same app.reb.
+--   - Extensions that are not JEBOL's own, signing with a Developer ID or for
+--     Windows, and publishing the plugin for the world: later goals.
+--
+-- Dependencies: the file port's LayeredFiles, which a packaged desktop app's
+-- store and carried files are, as Android's are (android.allium).
+--
+-- Rebol has nothing here: R3 runs a script, and packages nothing. Every rule
+-- in this file is JEBOL's own.
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- The platforms a package is made for. jpackage makes a desktop package only
+-- on the system it is for, so a Linux machine builds web, android and linux,
+-- a Mac web, android and macos, and Windows web, android and windows.
+enum Platform {
+    web
+    | android
+    | linux
+    | macos
+    | windows
+}
+
+-- The one word an app's category is, mapped to each platform's own words.
+enum Category {
+    utility
+    | productivity
+    | game
+    | education
+    | graphics
+    | audio
+    | video
+    | developer
+    | network
+}
+
+-- What an app may declare it uses. Each comes with the sentence the system
+-- shows the user when it asks.
+enum Service {
+    notifications
+    | location
+    | camera
+}
+
+-- How a build is signed on Android.
+enum Signing {
+    debug_key        -- the machine's own debug key
+    | own_key        -- the developer's, from the signing file or the environment
+}
+
+-- Why a field of app.reb was refused.
+enum Fault {
+    missing          -- a required field is absent
+    | wrong_type     -- the value is not the field's datatype
+    | malformed      -- the right type, but not a value the field takes
+    | unknown_field  -- a field app.reb has no use for
+    | unknown_word   -- a category, service or extension not in its list
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- The smallest icon accepted, square, so every platform's largest size is
+    -- scaled down and never up.
+    smallest_icon: Integer = 1024
+    -- The fewest dotted parts an identity has: com.example is two.
+    fewest_identity_parts: Integer = 2
+    default_entry: String = "main.reb"
+    default_category: Category = utility
+    default_colour: String = "255.255.255"
+    -- Where a platform's own scripts are, inside its generated project.
+    overlay_folder: String = "files"
+}
+
+------------------------------------------------------------
+-- Values and entities
+------------------------------------------------------------
+
+-- app.reb, loaded and never evaluated. Each value's REBOL datatype is part of
+-- its meaning, so a string where a tuple belongs is a wrong type before it is
+-- anything else.
+value AppDeclaration {
+    title: String                    -- string!
+    identity: String                 -- word! of dotted parts: com.example.notes
+    version: String                  -- tuple!: 1.2.3
+    build: Integer                   -- integer!, only ever raised
+    icon: String                     -- file!, a square PNG
+    summary: String                  -- string!
+    publisher: String                -- string!
+    contact: String                  -- email!
+    website: String?                 -- url!
+    category: Category               -- word!
+    colour: String                   -- tuple! of three
+    uses: Set<Service>               -- each with a non-empty sentence
+    requires: Set<String>            -- word!s naming JEBOL's own extensions
+    entry: String                    -- file!, inside the app's directory
+    icon_foreground: String?         -- file!, a square PNG for Android
+}
+
+-- One fault in app.reb: the field and what was expected of it.
+entity FieldFault {
+    field: String
+    fault: Fault
+    expected: String                 -- e.g. "a word of two or more dotted parts"
+}
+
+-- A project generated for one platform in the app's directory. The
+-- developer's from the moment it is written.
+entity GeneratedProject {
+    platform: Platform
+    folder: String                   -- android/, linux/, macos/, windows/ or web/
+}
+
+-- What one build of one platform made, and the declaration it was made from.
+entity Package {
+    platform: Platform
+    declaration: AppDeclaration
+    carried_scripts: Set<String>
+    carried_extensions: Set<String>
+    signing: Signing?
+}
+
+-- Only one project for each platform.
+invariant OneProjectAPlatform {
+    for a in GeneratedProject:
+        for b in GeneratedProject:
+            a.platform = b.platform implies a = b
+}
+
+------------------------------------------------------------
+-- app.reb
+------------------------------------------------------------
+
+-- app.reb is read with JEBOL's own load and never evaluated: a word is a
+-- word, a set-word is a field's name, and nothing in it runs.
+rule AppRebIsLoadedNotEvaluated {
+    when: a_task_reads(app_reb)
+
+    ensures: none_of_it_is_evaluated(app_reb)
+}
+
+-- A wrong app.reb is reported whole: every fault at once, each naming its
+-- field and what was expected, and the task makes nothing.
+rule EveryFaultIsReportedAtOnce {
+    when: a_task_reads(app_reb)
+    requires: has_faults(app_reb)
+
+    ensures: the_task_fails_listing(faults_in(app_reb))
+    ensures: no_project_is_generated()
+    ensures: no_package_is_made()
+}
+
+-- The required fields: each because some platform refuses without it. A
+-- .deb needs a Description and a Maintainer, built from publisher and
+-- contact; Android and macOS need a number that only goes up.
+rule ARequiredFieldMustBeThere {
+    when: a_task_reads(app_reb)
+    requires: is_required(field)
+    requires: not has_field(app_reb, field)
+
+    ensures: FieldFault.created(field: field, fault: missing, expected: datatype_of(field))
+}
+
+-- A value of another datatype is a wrong type, whatever it says.
+rule AValueMustBeItsFieldsType {
+    when: a_task_reads(app_reb)
+    requires: has_field(app_reb, field)
+    requires: datatype(value_of(app_reb, field)) != datatype_of(field)
+
+    ensures: FieldFault.created(field: field, fault: wrong_type, expected: datatype_of(field))
+}
+
+-- The identity is a word of at least two dotted parts, each starting with a
+-- letter. It becomes the Android application id, the macOS bundle
+-- identifier, the Windows AppUserModelID and the Linux desktop ID.
+rule TheIdentityIsReverseDomain {
+    when: a_task_reads(app_reb)
+    requires: dotted_parts(identity_of(app_reb)) < config.fewest_identity_parts
+        or not every_part_starts_with_a_letter(identity_of(app_reb))
+
+    ensures: FieldFault.created(field: "id", fault: malformed,
+        expected: "a word of two or more dotted parts, like com.example.notes")
+}
+
+-- The icon is a PNG, square, of at least the smallest size; so is
+-- icon-foreground when given. SVG is not read.
+rule TheIconIsALargeSquarePng {
+    when: a_task_reads(app_reb)
+    requires: not is_a_square_png_of_at_least(icon_of(app_reb), config.smallest_icon)
+
+    ensures: FieldFault.created(field: "icon", fault: malformed,
+        expected: "a square PNG of at least 1024 pixels")
+}
+
+-- The entry is a script inside the app's directory, and is there.
+rule TheEntryIsAScriptInTheApp {
+    when: a_task_reads(app_reb)
+    requires: leaves_the_app_directory(entry_of(app_reb)) or not is_there(entry_of(app_reb))
+
+    ensures: FieldFault.created(field: "entry", fault: malformed,
+        expected: "a script inside the app's directory")
+}
+
+-- Each service in uses carries the sentence the system shows.
+rule AServiceCarriesItsSentence {
+    when: a_task_reads(app_reb)
+    requires: service in uses_of(app_reb)
+    requires: has_no_sentence(app_reb, service)
+
+    ensures: FieldFault.created(field: "uses", fault: malformed,
+        expected: "a sentence for each service")
+}
+
+-- A category, service or extension outside its list, and a field app.reb
+-- has no use for, are faults too: a misspelt field is never ignored.
+rule AnUnknownWordIsAFault {
+    when: a_task_reads(app_reb)
+    requires: has_unknown_word(app_reb, field)
+
+    ensures: FieldFault.created(field: field, fault: unknown_word, expected: words_allowed_for(field))
+}
+
+rule AnUnknownFieldIsAFault {
+    when: a_task_reads(app_reb)
+    requires: field in fields_of(app_reb)
+    requires: not is_a_field_app_reb_has(field)
+
+    ensures: FieldFault.created(field: field, fault: unknown_field, expected: "one of app.reb's fields")
+}
+
+-- What is optional takes its default when absent.
+rule AnAbsentOptionalFieldTakesItsDefault {
+    when: a_task_declares(app_reb, declaration)
+
+    ensures: declaration.entry = if has_field(app_reb, "entry"):
+            entry_of(app_reb)
+        else:
+            config.default_entry
+    ensures: declaration.category = if has_field(app_reb, "category"):
+            category_of(app_reb)
+        else:
+            config.default_category
+    ensures: declaration.colour = if has_field(app_reb, "colour"):
+            colour_of(app_reb)
+        else:
+            config.default_colour
+}
+
+------------------------------------------------------------
+-- The generated projects
+------------------------------------------------------------
+
+-- A project is generated only where its folder is absent, by the generating
+-- task or by a package task that finds it missing. One that is there is the
+-- developer's and is never overwritten, edited or not.
+rule AProjectIsGeneratedOnce {
+    when: a_task_generates(platform)
+    requires: not exists GeneratedProject{platform: platform}
+
+    ensures: GeneratedProject.created(platform: platform, folder: folder_for(platform))
+}
+
+rule AnExistingProjectIsLeftAlone {
+    when: a_task_generates(platform)
+    requires: exists GeneratedProject{platform: platform}
+
+    ensures: the_project_is_unchanged(platform)
+}
+
+-- What every platform shares is never copied into a project: each build
+-- reads it from app.reb, so an edit to app.reb reaches every package with
+-- nothing regenerated.
+rule TheSharedValuesComeFromAppReb {
+    when: a_task_packages(platform, declaration)
+    requires: can_build_here(platform)
+
+    ensures: Package.created(
+        platform: platform,
+        declaration: declaration,
+        carried_scripts: overlaid_scripts(platform),
+        carried_extensions: declaration.requires,
+        signing: android_signing_for(platform))
+}
+
+-- The app's scripts are shared from the top of its directory. A file in the
+-- platform's files/ folder wins over the shared file of the same name.
+-- app.reb, the generated projects and the build's own files are not carried.
+rule APlatformsFileWinsOverTheShared {
+    when: a_task_packages(platform, declaration)
+    requires: is_shared(name) and is_in_overlay(platform, name)
+
+    ensures: carried_from_overlay(platform, name)
+}
+
+rule WhatIsNotTheAppIsNotCarried {
+    when: a_task_packages(platform, declaration)
+
+    ensures: not_carried(platform, "app.reb")
+    ensures: no_project_folder_is_carried(platform)
+}
+
+------------------------------------------------------------
+-- Packages
+------------------------------------------------------------
+
+-- A system builds what it can; asked for another system's package, the task
+-- refuses and names the system that builds it.
+rule ASystemBuildsWhatItCan {
+    when: a_task_packages(platform, declaration)
+    requires: not can_build_here(platform)
+
+    ensures: the_task_fails_naming(system_that_builds(platform))
+}
+
+-- packageAll runs every platform this system can build.
+rule PackageAllBuildsEveryOneItCan {
+    when: package_all(declaration)
+
+    ensures:
+        for platform in buildable_here():
+            a_task_packages(platform, declaration)
+}
+
+-- What each platform's package carries of the declaration.
+rule TheWebPackage {
+    when: made: Package.created
+    requires: made.platform = web
+
+    ensures: the_site_names_its_entry(made.declaration.entry)
+    ensures: the_manifest_has(made.declaration.title, made.declaration.identity,
+        made.declaration.colour)
+}
+
+rule TheAndroidPackage {
+    when: made: Package.created
+    requires: made.platform = android
+
+    ensures: the_apk_has(made.declaration.identity, made.declaration.version,
+        made.declaration.build, made.declaration.title,
+        permissions_for(made.declaration.uses))
+    ensures: a_bundle_is_made_beside_it()
+}
+
+rule TheLinuxPackage {
+    when: made: Package.created
+    requires: made.platform = linux
+
+    ensures: the_deb_has(made.declaration.identity, made.declaration.version,
+        made.declaration.publisher, made.declaration.contact,
+        made.declaration.summary)
+    ensures: a_desktop_file_is_named(made.declaration.identity)
+    ensures: a_trimmed_java_25_is_carried()
+}
+
+rule TheMacPackage {
+    when: made: Package.created
+    requires: made.platform = macos
+
+    ensures: the_app_bundle_has(made.declaration.identity, made.declaration.version,
+        made.declaration.build, sentences_for(made.declaration.uses))
+    ensures: signed_ad_hoc()
+}
+
+rule TheWindowsPackage {
+    when: made: Package.created
+    requires: made.platform = windows
+
+    ensures: the_shortcut_carries(made.declaration.identity)
+}
+
+-- Each extension an app requires is JEBOL's own jar at the same version,
+-- carried in the way its platform takes it: beside the jar on a desktop,
+-- through its android setup in an APK. A site's runtime has every JEBOL
+-- extension compiled in, since that costs a few hundred kilobytes of an
+-- eighteen megabyte program, and takes an extension's page files only when
+-- the app requires it.
+rule ARequiredExtensionIsCarried {
+    when: made: Package.created
+    requires: extension in made.carried_extensions
+
+    ensures: carries_jebols_own(made.platform, extension)
+}
+
+rule ASiteCarriesOnlyTheFilesItRequires {
+    when: made: Package.created
+    requires: made.platform = web
+    requires: extension not in made.carried_extensions
+
+    ensures: carries_none_of_its_page_files(extension)
+}
+
+------------------------------------------------------------
+-- A packaged desktop app's files
+------------------------------------------------------------
+
+-- A packaged desktop app's files are carried read-only, with a store of its
+-- own over them in the user's data folder, named by its identity. So an app
+-- installed where it cannot write still writes, and its carried files are
+-- never changed. java -jar with a script is unchanged.
+rule APackagedDesktopAppWritesIntoItsStore {
+    when: a_packaged_desktop_app_writes(identity, path)
+
+    ensures: written_into(store_for(identity), path)
+    ensures: carried_files_are_unchanged()
+}
+
+rule APackagedDesktopAppReadsItsStoreFirst {
+    when: a_packaged_desktop_app_reads(identity, path)
+
+    ensures: answer = if is_in(store_for(identity), path):
+            read_from(store_for(identity), path)
+        else:
+            read_from(carried_files(), path)
+}
+
+------------------------------------------------------------
+-- Android's signing
+------------------------------------------------------------
+
+-- A key comes from android-signing.properties in the app's directory, each
+-- field overridden by its JEBOL_ANDROID_ variable. With neither, a dev build
+-- is signed with the debug key and says so, and a release build refuses,
+-- giving the keytool command.
+rule ADevBuildWithNoKeyUsesTheDebugKey {
+    when: android_is_packaged(release)
+    requires: not release
+    requires: not has_signing_key()
+
+    ensures: signed_with(debug_key)
+    ensures: the_task_says("signed with the debug key")
+}
+
+rule AReleaseWithNoKeyRefuses {
+    when: android_is_packaged(release)
+    requires: release
+    requires: not has_signing_key()
+
+    ensures: the_task_fails_giving(keytool_command())
+}
+
+rule ATrackedKeyIsWarnedOf {
+    when: android_is_packaged(release)
+    requires: is_tracked_by_git(signing_file()) or is_tracked_by_git(keystore())
+
+    ensures: the_task_warns("the signing file or keystore is tracked by git")
+}

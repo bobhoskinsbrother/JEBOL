@@ -21,6 +21,14 @@
 /optional/*/build/
 /desktop/build/
 /web/build/
+/devtools/build/
+/examples/*/build/
+/examples/*/.gradle/
+/examples/*/.kotlin/
+/examples/*/android/build/
+/examples/*/android/.gradle/
+/examples/*/android/.kotlin/
+/examples/*/android/local.properties
 /android/.gradle/
 /android/.kotlin/
 /android/build/

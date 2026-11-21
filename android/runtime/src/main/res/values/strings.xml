@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="leave_with_unsaved_work">Leave without saving your work?</string>
+    <string name="leave">Leave</string>
+</resources>

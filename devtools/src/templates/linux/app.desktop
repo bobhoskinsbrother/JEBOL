@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=${jebol.title}
+Comment=${jebol.summary}
+Exec=/opt/${jebol.package}/bin/${jebol.launcher}
+Icon=/opt/${jebol.package}/lib/${jebol.launcher}.png
+Terminal=false
+Categories=${jebol.linuxCategory};

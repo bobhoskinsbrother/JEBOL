@@ -4090,6 +4090,80 @@ the proof that it works.
   cannot, since macOS runs only on Apple's hardware. Until then the Mac and
   Windows packages are checked by the owner's scripts, as above.
 
+**What building 2e settled** (2026-11-21).
+- **`jebol-devtools.jar` carries the runtime an app is made from**, rather
+  than each piece being published beside it: the shipped jar, the web
+  runtime, SQLite's jars and page files, and Android's runtime (its two AARs
+  and the core jar), listed in the jar's `carried.txt`. Its versions match
+  the plugin's by construction, and an app's build needs no repository but
+  the plugin's. `publishDevtools` publishes the plugin and the core it reads
+  `app.reb` with, and nothing else; this replaces the bullet above that
+  publishes every piece. The jar is about 15.8 MB.
+- **One web runtime.** The build with every JEBOL extension is 215 KB bigger
+  than the plain one in eighteen megabytes, so every site takes it, and an
+  extension's page files only when `app.reb` requires it.
+- **Android's runtime is carried only by a build that includes `android/`,**
+  which the root build does when it finds an SDK. An included build cannot
+  depend on the root build's tasks, so `android/`'s own Android tests run the
+  core build as a separate invocation to publish the plugin and to run its
+  Android packaging tests, after building every Android module themselves.
+- **Android's runtime is the library `android/runtime`,** namespace
+  `org.jebol.android.runtime`, since an app and a library may not share one;
+  a generated manifest names `org.jebol.android.JebolActivity`.
+- **A packaged desktop app is started `--packaged <id> --carried
+  $APPDIR/jebol-app <entry>`.** Its store is the script's root, as `--root`
+  makes a folder one, with the carried files beneath it through
+  `LayeredFiles`; R3's data folder, `.rebol/`, lands in the store. jpackage
+  expands `$APPDIR` in the launcher's arguments.
+- **A `.deb` installs its desktop entry as `<identity>.desktop`,** with
+  install scripts of its own calling `xdg-desktop-menu --novendor`, since
+  jpackage's would name it `<package>-<launcher>.desktop` and the desktop ID
+  must be the identity.
+- **The trimmed runtime** is `java.base`, `java.desktop`,
+  `java.datatransfer`, `jdk.httpserver`, `jdk.charsets` and `jdk.crypto.ec`,
+  with `java.sql` when SQLite is required: `jdeps` on the shipped jar and on
+  sqlite4j, and the example's `.deb` running on it.
+- **SQLite on Android runs over `android.database.sqlite`** (step 3a),
+  emulating SQLite's statement interface: typed parameters bound on the
+  `SQLiteQuery` through a cursor factory; a statement with no columns run as
+  a compiled statement, which raises SQLite's errors; a finished statement
+  starting again when stepped, as `sqlite3_step` does; the database held in a
+  file in the app's temporary folder, so serializing is reading it. It is
+  opened with `NO_LOCALIZED_COLLATORS`, so Android adds no `android_metadata`
+  table, and a new one with `auto_vacuum = NONE`, since Android builds SQLite
+  with automatic vacuum on and Rebol-SQLite's SQLite has it off. Its
+  statement splitter, parameter count, expanded SQL, read-only test and
+  result-code messages (`SqlText`, `ResultCodes`) are checked against real
+  SQLite through sqlite4j. The version is the phone's, 3.44 on API 35, and
+  none of SQLite's 131 tests that run on a device needs newer, so requery's
+  bundled SQLite is not taken. `memoryUsed` answers 0, as Android tells
+  nothing of SQLite's allocator. A descriptor names an `android` setup, and
+  an Android app reads those.
+- **Android's signing, as Flutter's.** A dev build is signed with the
+  machine's debug key and says so. A release build (`-Pjebol.release=true`)
+  is signed with the developer's key, named in `android-signing.properties`
+  beside `app.reb` with Gradle's four field names -- `storeFile`,
+  `storePassword`, `keyAlias`, `keyPassword` -- each overridden by
+  `JEBOL_ANDROID_STORE_FILE`, `JEBOL_ANDROID_STORE_PASSWORD`,
+  `JEBOL_ANDROID_KEY_ALIAS` or `JEBOL_ANDROID_KEY_PASSWORD`, so a CI machine
+  writes no password to disk; with neither, it refuses, giving the `keytool`
+  command. It warns when the signing file or the keystore is tracked by git.
+  A bundle (`.aab`) is made beside the APK, since the Play Store takes
+  bundles. A PKCS12 keystore, `keytool`'s default, keeps one password for
+  the store and its key.
+- **Driving the `.deb`'s window.** On this machine's GNOME Wayland session
+  Xwayland lets no client inject input or read the screen: `java.awt.Robot`
+  can click and capture nothing, even in its own JVM. So the `.deb`'s
+  end-to-end test proves its window from outside -- mapped with its title,
+  the app saying it is open, its store made -- and the example's button is
+  clicked in Chrome and on the emulators.
+- **Windows' shortcut AppUserModelID is not written yet.** jpackage makes the
+  Start-menu shortcut in a WiX fragment it generates, which `--resource-dir`
+  does not replace, so the route above needs a template of JEBOL's own for
+  that fragment. The owner's Windows script reads back what the shortcut
+  carries and answers whether `HKEY_CURRENT_USER` serves a portable app's
+  registration; both routes are written from those answers.
+
 ## 79. Touch, and layout for every screen
 
 Owner's decisions, 2026-11-18, for goal 2d.

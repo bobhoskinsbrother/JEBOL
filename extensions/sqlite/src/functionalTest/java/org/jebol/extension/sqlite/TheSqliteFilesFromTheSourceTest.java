@@ -170,7 +170,7 @@ class TheSqliteFilesFromTheSourceTest {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
-                Bounds.standard().add(new SqliteOnTheJvm().provide()));
+                Bounds.standard().add(ASqliteInterpreter.engineUnderTest().provide()));
         String source = PRELUDE + "reduce [fail-of [s/open %a.db] equal? fail-of [s/open %a.db] fail-of [read %a.db]]";
         interpreter.defineNewWordsIn(source);
 

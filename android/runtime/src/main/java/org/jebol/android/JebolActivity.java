@@ -15,6 +15,7 @@ import android.window.OnBackInvokedDispatcher;
 
 import org.jebol.adapter.android.ActivityRequests;
 import org.jebol.adapter.android.LogcatOutput;
+import org.jebol.android.runtime.R;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 

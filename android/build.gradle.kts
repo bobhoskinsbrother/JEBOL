@@ -123,6 +123,20 @@ val androidFunctionalTests = tasks.register<DeviceShards>("androidFunctionalTest
     finalizedBy(stopEmulators, "archiveAndroidTestResults")
 }
 
+val examplesApk = layout.projectDirectory.file(
+    "../examples/an-app-of-ones-own/build/jebol/android/package/org.jebol.example.notes-1.0.0-debug.apk")
+
+val packageTheExampleApp = tasks.register<PackageTheExampleApp>("packageTheExampleApp") {
+    group = "build"
+    description = "Package examples/an-app-of-ones-own for Android with jebol-devtools, as its own build would"
+    dependsOn(":runtime:assembleRelease", ":host:assembleRelease", ":app:assembleDebug", ":endtoend:assembleDebug")
+    gradleExecutable = gradle.gradleHomeDir!!.resolve("bin/gradle").path
+    coreBuild = layout.projectDirectory.dir("..")
+    exampleApp = layout.projectDirectory.dir("../examples/an-app-of-ones-own")
+    apk = examplesApk
+    outputs.upToDateWhen { false }
+}
+
 val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") {
     group = "verification"
     description = "The installed app driven from outside by UI Automator, every test on each device: a tablet and a phone"
@@ -132,6 +146,7 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     everyTestOnEachDevice = true
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk
+    otherApks.from(packageTheExampleApp)
     testApk = layout.projectDirectory.file("endtoend/build/outputs/apk/debug/endtoend-debug.apk")
     instrumentation = "org.jebol.android.endtoend/androidx.test.runner.AndroidJUnitRunner"
     runnerArguments = argumentsFor(endToEndClasses, "package" to endToEndPackage)
@@ -154,12 +169,29 @@ val archiveAndroidTestResults = tasks.register<Copy>("archiveAndroidTestResults"
     from(deviceResults) {
         include("*/*.xml")
     }
+    from(layout.projectDirectory.dir("../build/test-results/devtoolsAndroidPackagingTests")) {
+        include("*.xml")
+        into("devtoolsAndroidPackagingTests")
+    }
     into(layout.projectDirectory.dir("../test-history/$stamp-android"))
-    mustRunAfter(androidUnitTests, androidFunctionalTests, androidEndToEndTests)
+    mustRunAfter(androidUnitTests, androidFunctionalTests, androidEndToEndTests, "androidPackagingTests")
+}
+
+val androidPackagingTests = tasks.register<RunInTheCoreBuild>("androidPackagingTests") {
+    group = "verification"
+    description = "jebol-devtools' packageAndroid over a test app, run by the core build, which carries the Android runtime"
+    dependsOn(":runtime:assembleRelease", ":host:assembleRelease", ":sqlite:assembleRelease")
+    gradleExecutable = gradle.gradleHomeDir!!.resolve("bin/gradle").path
+    coreBuild = layout.projectDirectory.dir("..")
+    tasksToRun = listOf(":devtools:androidPackagingTests")
+    onlyIf("no classes were named with -Pclasses") { !namedClasses.isPresent }
+    mustRunAfter(androidEndToEndTests)
+    finalizedBy("archiveAndroidTestResults")
 }
 
 tasks.register("androidTests") {
     group = "verification"
-    description = "The core's check against Android 35, then the unit, functional and end-to-end device suites, then the archive"
-    dependsOn(coreForAndroid, androidUnitTests, androidFunctionalTests, androidEndToEndTests)
+    description = "The core's check against Android 35, then the unit, functional and end-to-end device suites, " +
+        "then jebol-devtools' Android packaging, then the archive"
+    dependsOn(coreForAndroid, androidUnitTests, androidFunctionalTests, androidEndToEndTests, androidPackagingTests)
 }

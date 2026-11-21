@@ -251,6 +251,87 @@ A pointer event from a finger or a pen says `touch` in `event/flags`, after R3's
 
 `show-soft-keyboard/attach gob` raises an on-screen keyboard where the screen has one, Android's or a phone's browser's, and keeps `gob` in sight above it; the 2010 GUI calls it when a field takes the focus. The keyboard goes when the operator touches outside that gob, when the gob leaves the screen, or on the keyboard's own Done. On a desktop it does nothing, as in R3.
 
+### **An App of Your Own, on Every Platform**
+
+JEBOL gives no app of its own to put your script in. `jebol-devtools` is a Gradle plugin that turns a directory of REBOL into an app of yours for the web, Android, Linux, macOS and Windows, each with your app's name, identity and icon (goal 2e, decision 78, `spec/packaging.allium`). `examples/an-app-of-ones-own` is an app made this way.
+
+**Say what the app is, once, in `app.reb`** at the top of its directory. It is a REBOL block that is loaded and never run, and each value's type is part of what it means:
+
+```rebol
+title:     "Notes"
+id:        com.example.notes
+version:   1.2.3
+build:     7
+icon:      %icon.png
+summary:   "Quick notes that sync nowhere"
+publisher: "Example Ltd"
+contact:   dev@example.com
+website:   https://example.com/notes
+category:  productivity
+colour:    0.120.215
+uses: [
+    notifications "Notes reminds you of a note at the time you set"
+    camera        "Notes attaches a photo to a note"
+]
+requires: [sqlite]
+entry:     %main.reb
+```
+
+`title`, `id`, `version`, `build`, `icon`, `summary`, `publisher` and `contact` are required. `id` is the app's identity on every system, a word of two or more dotted parts. `build` is a whole number that only ever goes up; the store and the phone compare it, not the version. `icon` is a square PNG of at least 1024 pixels, and every size and format each platform wants is made from it; `icon-foreground` may give Android's adaptive icon a foreground of its own. `category` is one of utility, productivity, game, education, graphics, audio, video, developer and network. `uses` names what the app needs the system's permission for, with the sentence the system shows the user. `requires` names the JEBOL extensions the app imports. `entry` is the script to start from when it is not `main.reb`. A wrong `app.reb` is reported whole, every fault at once, and nothing is made.
+
+**Apply the plugin** in the directory's own build:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        maven(url = uri("path/to/JEBOL/build/devtools-repo"))
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+// build.gradle.kts
+plugins {
+    id("org.jebol.devtools") version "3.22.5"
+}
+```
+
+`./gradlew :devtools:publishDevtools` in JEBOL's own directory puts the plugin in `build/devtools-repo`. Building the Android package needs JEBOL's devtools built on a machine with the Android SDK, and the SDK on the machine that packages.
+
+**The tasks:**
+
+| Task | What it makes, under `build/jebol/` | Where it builds |
+| --- | --- | --- |
+| `generateProjects` | `android/`, `linux/`, `macos/`, `windows/` and `web/` in the app's directory, each only if it is not there | anywhere |
+| `packageWeb` | `web/site/`: the app, the page, the runtime, a web app manifest and its icons, ready for any static host | anywhere |
+| `packageAndroid` | `android/package/`: an APK and a bundle (`.aab`) for the Play Store | anywhere with the Android SDK |
+| `packageDeb` | `linux/package/`: a `.deb` that carries its own Java | Linux |
+| `packageMac` | `macos/package/`: a `.app`, signed ad hoc | macOS |
+| `packageWindows` | `windows/package/`: an installer, and the app as a folder that runs from anywhere | Windows |
+| `packageAll` | every one this machine can build; `-Pjebol.skip=android` leaves one out | anywhere |
+
+**The generated projects are yours.** Each is written once and never again, so edit them freely and commit them: the page's `index.html`, Android's manifest and build, the `.desktop` entry, the `Info.plist`, and so on. What every platform shares -- the title, the identity, the version, the uses -- is never copied into them; each build reads it from `app.reb`, so changing `app.reb` reaches every platform. A script that one platform needs a version of its own of goes in that platform's `files/` folder, where it wins over the shared script of the same name.
+
+**A packaged desktop app keeps a store of its own.** Its files are carried read-only, and what it writes goes to a folder named by its identity -- `~/.local/share/<id>` on Linux, `~/Library/Application Support/<id>` on a Mac, `%APPDATA%\<id>` on Windows -- with the carried files showing through beneath, as on Android. The app sees that store as `%/`.
+
+**Signing for Android.** A dev build is signed with the machine's debug key. A release build (`-Pjebol.release=true`) is signed with a key of your own, and refuses without one, saying how to make it:
+
+```
+keytool -genkeypair -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Name it in `android-signing.properties` beside `app.reb` -- `storeFile`, `storePassword`, `keyAlias`, `keyPassword` -- or in `JEBOL_ANDROID_STORE_FILE`, `JEBOL_ANDROID_STORE_PASSWORD`, `JEBOL_ANDROID_KEY_ALIAS` and `JEBOL_ANDROID_KEY_PASSWORD`, which win over the file, so a CI machine needs no password on disk. A keystore `keytool` makes today is PKCS12, which keeps one password for the store and its key, so the two are the same. Keep the keystore and its passwords out of git -- the build warns when either is tracked -- and back them up: an app signed with a lost key cannot be updated. Registering with the Play Store, and Play App Signing, are yours to do there.
+
+**An app that runs on a server is set up from the command line, not packaged.** Every package above is an app a person opens: the site runs JEBOL in the visitor's browser, and a desktop package opens a native window. JEBOL also runs as a backend, from the shipped jar and the app's file or folder:
+
+```
+java -jar jebol.jar --screen=web my-app/     # the script runs on this machine; a browser is its screen
+java -jar jebol.jar server.reb               # a script that listens itself, e.g. on tcp://:8080, with no screen
+```
+
+`--screen=web` serves the page and prints the address to open; the script runs in the JVM and the page shows its windows. A script that opens a listening port serves whatever it likes through the JVM's own sockets. How such a process is started and kept running -- a systemd unit, a container, a supervisor -- is the machine's own setup; the packager makes nothing for it.
+
 ---
 
 ## **3. Embedding JEBOL in Java Applications**

@@ -8,6 +8,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 plugins {
     java
     jacoco
+    `maven-publish`
     id("jebol-suites")
 }
 
@@ -39,6 +40,25 @@ repositories {
 
 tasks.jar {
     archiveBaseName = "jebol-core"
+}
+
+(components["java"] as AdhocComponentWithVariants).apply {
+    withVariantsFromConfiguration(configurations["testFixturesApiElements"]) { skip() }
+    withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) { skip() }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("core") {
+            from(components["java"])
+        }
+    }
+    repositories {
+        maven {
+            name = "devtools"
+            url = uri(layout.buildDirectory.dir("devtools-repo"))
+        }
+    }
 }
 
 val extensionProjects = EVERY_EXTENSION
@@ -218,22 +238,24 @@ abstract class ArchiveTestResults : DefaultTask() {
 // functional suite, then every end-to-end suite, then the window that needs a
 // display. The machine's cores are spent one stage at a time, because the
 // functional tests' five-second bounds do not survive sharing them.
-val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests") +
+val unitStage = listOf(":unitTests", ":desktop:unitTests", ":web:unitTests", ":devtools:unitTests") +
     extensionsWithSuite("unitTest").map { ":extensions:$it:unitTests" } +
     optionalPartsWithSuite("unitTest").map { ":optional:$it:unitTests" }
 val functionalStage = listOf(":functionalTests", ":heapExhaustionTests", ":desktop:functionalTests",
-    ":web:functionalTests") + extensionsWithSuite("functionalTest").map { ":extensions:$it:functionalTests" } +
+    ":web:functionalTests", ":devtools:functionalTests") + extensionsWithSuite("functionalTest").map { ":extensions:$it:functionalTests" } +
     optionalPartsWithSuite("functionalTest").map { ":optional:$it:functionalTests" }
-val endToEndStage = listOf(":endToEndTests", ":desktop:endToEndTests", ":web:endToEndTests") +
+val endToEndStage = listOf(":endToEndTests", ":desktop:endToEndTests", ":web:endToEndTests",
+    ":devtools:endToEndTests") +
     extensionsWithSuite("endToEndTest").map { ":extensions:$it:endToEndTests" } +
     optionalPartsWithSuite("endToEndTest").map { ":optional:$it:endToEndTests" }
-val windowStage = listOf(":desktop:desktopWindowTests")
+val windowStage = listOf(":desktop:desktopWindowTests", ":devtools:windowTests")
 val gateStages = listOf(unitStage, functionalStage, endToEndStage, windowStage)
 val gateTasks = gateStages.flatten()
 
 val gateSuites = listOf("unitTests", "desktopUnitTests", "webUnitTests",
     "functionalTests", "heapExhaustionTests", "desktopFunctionalTests", "webFunctionalTests",
-    "endToEndTests", "desktopEndToEndTests", "webEndToEndTests", "desktopWindowTests") +
+    "endToEndTests", "desktopEndToEndTests", "webEndToEndTests", "desktopWindowTests",
+    "devtoolsUnitTests", "devtoolsFunctionalTests", "devtoolsEndToEndTests", "devtoolsWindowTests") +
     extensionsWithSuite("unitTest").map { "${it}UnitTests" } +
     extensionsWithSuite("functionalTest").map { "${it}FunctionalTests" } +
     extensionsWithSuite("endToEndTest").map { "${it}EndToEndTests" } +

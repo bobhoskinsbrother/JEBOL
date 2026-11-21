@@ -6,6 +6,7 @@ import org.jebol.adapter.android.ActivityRequests;
 import org.jebol.adapter.android.AndroidHistory;
 import org.jebol.adapter.android.AndroidHost;
 import org.jebol.adapter.android.BrowsedFiles;
+import org.jebol.adapter.host.ExtensionDescriptors;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
@@ -60,7 +61,9 @@ public final class AppSession implements AutoCloseable {
     }
 
     public static Bounds appBounds() {
-        return Bounds.standard()
+        Bounds withExtensions = new ExtensionDescriptors(AppSession.class.getClassLoader(), ExtensionDescriptors.ANDROID_SETUP)
+                .addSetupsTo(Bounds.standard());
+        return withExtensions
                 .withoutTimeLimit()
                 .withMemoryCeiling(AndroidHost.memoryCeiling())
                 .grant(HostService.FILES)

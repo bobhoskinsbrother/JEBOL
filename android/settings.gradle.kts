@@ -23,6 +23,11 @@ dependencyResolutionManagement {
 
 rootProject.name = "jebol-android"
 
-includeBuild("..")
+includeBuild("..") {
+    dependencySubstitution {
+        substitute(module("org.jebol:jebol")).using(project(":"))
+        substitute(module("org.jebol:sqlite")).using(project(":extensions:sqlite"))
+    }
+}
 
-include("host", "app", "endtoend")
+include("host", "runtime", "sqlite", "app", "endtoend")

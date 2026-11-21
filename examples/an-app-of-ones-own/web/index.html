@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=overlays-content">
+<title>${jebol.title}</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="${jebol.colour}">
+<style>
+  html, body { margin: 0; height: 100%; background: #101216; }
+  canvas { display: block; }
+  #loading { position: fixed; inset: 0; display: flex; flex-direction: column;
+             align-items: center; justify-content: center; gap: 18px;
+             color: #d8dee9; font: 14px sans-serif; pointer-events: none; }
+  .jebol-loading-spinner { width: 44px; height: 44px; border-radius: 50%;
+                           border: 4px solid rgba(216, 222, 233, 0.18); border-top-color: #3a8cd0;
+                           animation: jebol-turn 0.9s linear infinite; }
+  .jebol-loading-failed .jebol-loading-spinner { display: none; }
+  .jebol-loading-failed { color: #e85d4a; }
+  @keyframes jebol-turn { to { transform: rotate(360deg); } }
+  @font-face { font-family: 'Jebol Carried'; src: url('NotoSans-Regular.ttf'); }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="loading" role="status" aria-live="polite">
+  <div class="jebol-loading-spinner"></div>
+  <p class="jebol-loading-says">Loading JEBOL</p>
+</div>
+<script src="jebol-asks.js"></script>
+<script src="jebol-navigation.js"></script>
+<script src="jebol-paint.js"></script>
+<script src="jebol-screen.js"></script>
+<script src="jebol-input.js"></script>
+<script src="jebol-loading.js"></script>
+<script src="jebol-runner.js"></script>
+</body>
+</html>

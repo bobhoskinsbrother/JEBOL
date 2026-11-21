@@ -12,4 +12,6 @@ abstract class JebolExtensionDeclaration {
     abstract val webProvider: Property<String>
 
     abstract val webAssets: ConfigurableFileCollection
+
+    abstract val androidProvider: Property<String>
 }

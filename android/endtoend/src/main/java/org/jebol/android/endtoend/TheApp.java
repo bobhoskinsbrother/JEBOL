@@ -45,9 +45,24 @@ final class TheApp {
     private final UiDevice device = UiDevice.getInstance(instrumentation);
     private final Context context = instrumentation.getContext();
     private final float density = context.getResources().getDisplayMetrics().density;
+    private final String packageName;
+
+    private TheApp() {
+        this(PACKAGE);
+    }
+
+    private TheApp(String packageName) {
+        this.packageName = packageName;
+    }
 
     static TheApp notLaunched() {
         return new TheApp();
+    }
+
+    static TheApp launchedAfreshFromPackage(String packageName) {
+        TheApp app = new TheApp(packageName);
+        app.startAfresh(Optional.empty());
+        return app;
     }
 
     static TheApp runningScript(String script) {
@@ -81,7 +96,7 @@ final class TheApp {
     }
 
     void endProcess() {
-        shell("am force-stop " + PACKAGE);
+        shell("am force-stop " + packageName);
     }
 
     private void restartOrStart(Optional<String> script) {
@@ -97,7 +112,7 @@ final class TheApp {
     }
 
     private void startAfresh(Optional<String> script, Optional<String> roots) {
-        shell("am force-stop " + PACKAGE);
+        shell("am force-stop " + packageName);
         shell("logcat -c");
         turnUpright();
         Intent launch = launchIntent();
@@ -132,7 +147,7 @@ final class TheApp {
         long givenUpAt = System.nanoTime() + TO_OPEN.toNanos();
         while (markers().count() == restartsBefore) {
             if (System.nanoTime() > givenUpAt) {
-                throw new AssertionError(PACKAGE + " did not restart in place in " + TO_OPEN + "; printed: "
+                throw new AssertionError(packageName + " did not restart in place in " + TO_OPEN + "; printed: "
                         + printedSinceLaunch());
             }
             pause();
@@ -152,21 +167,21 @@ final class TheApp {
     }
 
     private Intent launchIntent() {
-        Intent launch = context.getPackageManager().getLaunchIntentForPackage(PACKAGE);
+        Intent launch = context.getPackageManager().getLaunchIntentForPackage(packageName);
         if (launch == null) {
-            throw new IllegalStateException(PACKAGE + " is not installed with a launcher activity");
+            throw new IllegalStateException(packageName + " is not installed with a launcher activity");
         }
         return launch;
     }
 
     void waitUntilInFront() {
-        if (!device.wait(Until.hasObject(By.pkg(PACKAGE).depth(0)), TO_OPEN.toMillis())) {
-            throw new AssertionError(PACKAGE + " did not come to the front in " + TO_OPEN);
+        if (!device.wait(Until.hasObject(By.pkg(packageName).depth(0)), TO_OPEN.toMillis())) {
+            throw new AssertionError(packageName + " did not come to the front in " + TO_OPEN);
         }
     }
 
     boolean isInFront() {
-        return PACKAGE.equals(device.getCurrentPackageName());
+        return packageName.equals(device.getCurrentPackageName());
     }
 
     List<String> printed() {
@@ -262,7 +277,7 @@ final class TheApp {
     }
 
     Rect theViewsBounds() {
-        UiObject2 view = device.wait(Until.findObject(By.pkg(PACKAGE).clazz("android.view.View")), TO_OPEN.toMillis());
+        UiObject2 view = device.wait(Until.findObject(By.pkg(packageName).clazz("android.view.View")), TO_OPEN.toMillis());
         if (view == null) {
             throw new AssertionError("the app shows no view to touch");
         }
@@ -347,11 +362,11 @@ final class TheApp {
     }
 
     void endTheProcess() {
-        shell("am kill " + PACKAGE);
+        shell("am kill " + packageName);
     }
 
     boolean isProcessAlive() {
-        return !shell("pidof " + PACKAGE).isBlank();
+        return !shell("pidof " + packageName).isBlank();
     }
 
     UiDevice device() {

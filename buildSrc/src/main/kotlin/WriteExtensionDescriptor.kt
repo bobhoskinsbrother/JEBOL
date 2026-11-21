@@ -25,6 +25,10 @@ abstract class WriteExtensionDescriptor : DefaultTask() {
     @get:Optional
     abstract val webProvider: Property<String>
 
+    @get:Input
+    @get:Optional
+    abstract val androidProvider: Property<String>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.NAME_ONLY)
     abstract val jvmLibraries: ConfigurableFileCollection
@@ -61,6 +65,13 @@ abstract class WriteExtensionDescriptor : DefaultTask() {
                 "    web [",
                 "        provider: ${webProvider.get()}",
                 "        assets: [${filesAsRebol(webAssets)}]",
+                "    ]",
+            )
+        }
+        if (androidProvider.isPresent) {
+            lines += listOf(
+                "    android [",
+                "        provider: ${androidProvider.get()}",
                 "    ]",
             )
         }

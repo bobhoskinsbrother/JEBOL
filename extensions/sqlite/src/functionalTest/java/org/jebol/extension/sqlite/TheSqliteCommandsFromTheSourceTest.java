@@ -57,14 +57,15 @@ class TheSqliteCommandsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("info names the Rebol it needs, the one running and the engine's SQLite")
+        @DisplayName("info names the Rebol it needs, the one running and the engine's SQLite, as that SQLite answers its version")
         void reportsTheLibrary() {
             assertThat(answerTo("""
                     i: s/info
+                    v: form s/eval db {select sqlite_version()}
                     reduce [
                         true? find i {^/Rebol-needed:   3.10.2^/}
                         true? find i {^/Rebol-current:  3.22.5^/}
-                        true? find i {^/SQLite-version: 3.54.1^/}
+                        true? find i rejoin [{^/SQLite-version: } v {^/}]
                         true? find i {^/SQLite-memory:  }
                         true? find i {^/SQLite-mem-top: }
                     ]""")).isEqualTo("[#(true) #(true) #(true) #(true) #(true)]");
