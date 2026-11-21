@@ -3941,6 +3941,151 @@ needs both JDKs in the build again; stills only; recording; a JEBOL app of
 its own for each desktop; a Windows virtual machine or a CI runner, which
 would add to the build.
 
+**The app declares itself in `app.reb`, at the top of its directory** (owner,
+2026-11-21). Most of what one platform needs, every platform needs, so it is
+said once, in REBOL: the point of the language is that data, its types and
+its structure are not split. The file is a block the packager loads and never
+evaluates, read by JEBOL's own `load` through the core the build includes, so
+there is no second parser. A value's type is part of its meaning:
+
+```rebol
+title:     "Notes"
+id:        com.example.notes
+version:   1.2.3
+build:     7
+icon:      %icon.png
+summary:   "Quick notes that sync nowhere"
+publisher: "Example Ltd"
+contact:   dev@example.com
+website:   https://example.com/notes
+category:  productivity
+colour:    0.120.215
+uses: [
+    notifications "Notes reminds you of a note at the time you set"
+    camera        "Notes attaches a photo to a note"
+]
+```
+
+- `title`, `id` (a word of two or more dotted parts), `version` (a tuple),
+  `build`, `icon`, `summary`, `publisher` and `contact` are required, each
+  because some platform refuses without it: a `.deb` needs a Description
+  and a Maintainer, built from `publisher` and `contact`; Android and macOS
+  need a number that only goes up.
+- `version` and `build` are two fields, as Flutter keeps a name and a build
+  number. Flutter's `1.2.3+7` is not one value in REBOL (`invalid "tuple"`),
+  and deriving the build from the version breaks at 1.100.0.
+- `category` is one word from a fixed list -- utility, productivity, game,
+  education, graphics, audio, video, developer, network -- which the packager
+  maps to each platform's own words; free text cannot meet macOS's fixed list.
+  Absent, it is utility.
+- `colour` is the web manifest's theme and the adaptive icon's background;
+  absent, white. `website` is optional.
+- `requires` names the extensions the app uses, `requires: [sqlite]`, and
+  the packager carries each (below). The owner chose the word over
+  `needs`, which says it less exactly. Absent, the app uses none.
+- `entry` chooses another script to start from, for an app that does not
+  follow the `main.reb` convention: a `file!` relative to the app's
+  directory, inside it, naming a script that is there. Absent, it is
+  `%main.reb`. Every platform starts the app from it.
+- `icon` is a square PNG of at least 1024 pixels. An optional
+  `icon-foreground`, a PNG of the same kind, gives Android's adaptive icon
+  its foreground; without one the icon is shrunk into the safe zone over
+  `colour`. SVG was asked for and dropped (owner, 2026-11-21): nothing in
+  JEBOL reads it, and drawing it would need a library or a renderer of
+  JEBOL's own.
+- `uses` names `notifications`, `location` and `camera`, each with the
+  sentence the system shows. In 2e it is read, checked, and written into
+  Android's manifest and macOS's `Info.plist`; each of 2f, 2g and 2h turns
+  its own entry into the `HostService` grant the app's interpreter is given.
+- A wrong file is reported whole: every fault at once, each naming the field
+  and what was expected, and nothing is made until the file is clean.
+- Signing stays out of it. `app.reb` is committed; keys and passwords are in
+  `android-signing.properties` or the environment, as above.
+- No block of any one platform's own settings: they are made in that
+  platform's generated project (below).
+
+**The packager is Gradle, and so is the app's Android build** (owner,
+2026-11-21). An Android app is built with Gradle and the Android Gradle
+plugin, which is what Android developers do, so the packager builds the
+APK and the bundle that way rather than repacking a prebuilt APK, and needs
+the Android SDK on the machine that builds for Android. The other platforms
+are kept as simple: jpackage for the desktops and `assembleSite`'s work for
+the web, each run from a Gradle task over the same `app.reb`. Dependencies
+are kept to the least: Gradle and the platforms' own tools, nothing more.
+How iOS joins, since Xcode builds it, is asked when goal 3 is planned.
+
+**The packager is `jebol-devtools.jar`, a Gradle plugin a developer applies
+to their own app's build, as Flutter's tool is** (owner, 2026-11-21). It is
+a project of its own in this repository, outside the core, so the core
+carries none of it; it is released at the core's version, and the two are
+kept in step. 2e builds it and publishes it locally; the example app under
+`examples/` applies it exactly as a developer outside JEBOL would, which is
+the proof that it works.
+
+- **It generates a project a platform, once.** A task writes `android/`,
+  `linux/`, `macos/`, `windows/` and `web/` into the app's directory, each
+  only if it is not there already, and never overwrites one. They are the
+  developer's from then on: committed, and edited where an app needs
+  something of its own. Android's is a whole Gradle project; each desktop's
+  is the files jpackage takes to change what it makes (the `Info.plist`
+  template, the WiX files, the `.desktop` file, the icons) with the build
+  that runs jpackage over them; the web's is the page and its manifest.
+- **`app.reb` still rules after generation.** What every platform shares --
+  the title, the identity, the version and build, the uses -- is read from
+  `app.reb` at build time, never copied into a generated project, so an edit
+  to `app.reb` reaches every platform. Only what a developer may change for
+  one platform is written into its project.
+- **The REBOL source is shared, and a platform overlays it.** The app's
+  scripts stay at the top of its directory and no project copies them. Each
+  generated project has an optional folder of its own files, and at build
+  time a file there wins over the shared file of the same name, as JEBOL's
+  own `LayeredFiles` lays the store over the carried app. So one platform
+  gets code of its own by adding a file, with no link. Symlinks were
+  proposed and set aside: on Windows making one needs Developer Mode or an
+  administrator, and git checks them out as text files unless
+  `core.symlinks` is set.
+- **A dev release is built from the generated projects:** Android signed
+  with the debug key, macOS signed ad hoc. A release build signs with the
+  developer's own key, as above.
+- **One task a platform, and `packageAll`,** which runs every one this
+  machine can build: on Linux the web, Android and the `.deb`; on a Mac the
+  web, Android and the `.app`; on Windows the web, Android and the
+  installer.
+- **Each platform's own settings belong in its generated project,** so the
+  per-platform blocks once proposed for `app.reb` are not needed.
+- Java 25 for the desktop is 2e's first step, not 2f's, and is committed on
+  its own once `allTests` passes.
+
+**What the packaging takes from JEBOL** (owner, 2026-11-21).
+- **JEBOL's Android runtime becomes a library.** The activity, the view and
+  the session move out of `android/app` into `android/runtime`, an Android
+  library with the adapters, published as `org.jebol:jebol-android`; a
+  generated `android/` depends on it as any app would. `android/app` stays
+  as JEBOL's own app over it and keeps the Android suites' test APK. No
+  other way lets an app of someone else's use them.
+- **A packaged desktop app keeps its files as Android does.** The app's
+  files are carried read-only in the package, with a store of its own over
+  them in the user's data folder, named by the identity
+  (`~/.local/share/<id>`, `~/Library/Application Support/<id>`,
+  `%APPDATA%\<id>`), so an app installed under `/opt` or Program Files can
+  still write. `java -jar` with a script is unchanged.
+- **`requires` resolves to JEBOL's own extension jars at the same version.**
+  The desktop package carries each beside the jar and the APK through its
+  `android` setup. A site's extension has to be compiled into
+  `jebol-web.wasm` by TeaVM, so the web runtime is published prebuilt twice,
+  plain and with every JEBOL extension, and a site takes the second only
+  when `requires` is not empty; the plugin carries no TeaVM. An extension
+  that is not JEBOL's own is a later goal's.
+- **`publishDevtools` publishes into a Maven repository in
+  `build/devtools-repo`**: the plugin, the core, the shipped jar, the web
+  runtimes, `jebol-android` and the extensions. The example app takes them
+  from there, as a developer would from a published repository. Publishing
+  for the world is a later goal's.
+- **Build machines.** The owner means to add two more machines later. A
+  Windows build could then run in a virtual machine on Linux; a Mac one
+  cannot, since macOS runs only on Apple's hardware. Until then the Mac and
+  Windows packages are checked by the owner's scripts, as above.
+
 ## 79. Touch, and layout for every screen
 
 Owner's decisions, 2026-11-18, for goal 2d.

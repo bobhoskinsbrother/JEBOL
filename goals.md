@@ -55,15 +55,42 @@ each platform: its own name, identity and icons, with the services it uses
 declared. JEBOL builds an example app with the packager, to prove the
 packager works, and ships no app of its own.
 
-**What is true today.**
-- `./gradlew assembleSite -PsiteDir=my-app` writes a static site. It
-  generates `app.json`, which names the app's files and its entry. Nothing
-  the author writes names the app, its icon or what it uses.
-- The Android app is JEBOL's own, `org.jebol.android`, built from
-  `android/app` with the debug key. It runs a script given by intent, or
-  `examples/r3-gui`.
-- The desktop is the shipped jar, run with `java -jar` on whatever Java the
-  machine has, from 21 up.
+**What is true today** (read 2026-11-21).
+- **The web.** `./gradlew assembleSite -PsiteDir=my-app` (`web/build.gradle.kts`)
+  copies the app, the WasmGC build and the page's scripts into `build/site`,
+  copies `web/site/runner.html` as `index.html` unless the app has one, and
+  writes `app.json` with the app's files and `"entry":"main.reb"`, fixed. An
+  extension reaches a site only by recompiling `jebol-web.wasm` with its jar
+  (`-Pextensions`, TeaVM); `buildWasmGCWithExtensions` builds one carrying
+  every extension in `extensions/`, for their tests.
+- **Android.** `android/app` is JEBOL's own app, `org.jebol.android`,
+  version code 1, debug-signed. Its `BundleTheApp` task copies
+  `examples/r3-gui` into Java resources under `jebol-app/` with an
+  `app.json` whose entry is `main.reb`, fixed, and `CarriedApp` reads them.
+  The activity, the view and the session (`JebolActivity`, `JebolView`,
+  `AppSession`, `CarriedApp`) are in the app module, so nothing outside it
+  can use them; `android/host` is a library of the adapters. The same app's
+  test APK carries `androidFunctionalTests`. Nothing on Android loads an
+  extension: descriptors name `jvm` and `web` setups only.
+- **The desktop** is the shipped jar, `build/libs/jebol-3.22.5.jar`
+  (4,330 KB), run with `java -jar` on any Java from 21, a script given on
+  the command line, which runs in its own folder and writes beside itself.
+  Nothing carries an app's files read-only with a store beside them, as
+  Android does.
+- **Java levels.** 21 everywhere: `buildSrc`'s `jebol-java`,
+  `jebol-extension` and `jebol-optional` conventions, the root build, both
+  daemon pins (`gradle/` and `android/gradle/gradle-daemon-jvm.properties`),
+  Android's `JavaVersion.VERSION_21`, and `setup-machine.sh`'s
+  `openjdk-21-jdk`. The launcher source set compiles at 8 on purpose. The
+  desktop's end-to-end tests are given Java 17 as too old and 21 and 25 as
+  supported; `jebol-extension` runs extension tests on a 21 launcher.
+- **What a trimmed runtime needs.** `jdeps` on the shipped jar answers
+  `java.base`, `java.desktop` (with `java.datatransfer`) and
+  `jdk.httpserver`; SQLite's jar and sqlite4j add `java.sql`. jdeps does not
+  see services found at run time, so the package's own end-to-end test is
+  what proves the list.
+- **Tools on this machine.** JDK 25.0.5.1 at `/usr/lib/jvm/java-25-openjdk-amd64`
+  with jpackage; `dpkg-deb` 1.23.7 and `fakeroot` 1.37.2.
 - No platform has an identity a script's app can claim. That matters from
   2f on: an operating system gives notifications, location and the camera
   only to an app it can name (below).
@@ -85,23 +112,20 @@ sources in `docs/platform-services-research.md`:
   built on the Mac and the Windows one on Windows, each by a script the
   owner runs there. The build gains nothing for either (owner, 2026-11-18).
 
-**The app declares itself.** The plan settles where: proposed, the header
-of the app's entry script, since a REBOL script already carries one. It
-declares:
-- a title;
-- an identity in reverse-DNS form (`com.example.notes`), which becomes the
-  Android application id, the macOS bundle identifier, the Windows
-  AppUserModelID and the Linux desktop ID;
-- a version;
-- one square PNG icon of at least 1024 pixels, from which the packager
-  makes every size and format each platform wants (`.icns`, `.ico`,
-  Android's adaptive icon, the web manifest's sizes), with its own writers
-  for the two container formats;
-- what it uses, with the sentence each platform shows when it asks the user:
-  `notifications`, `location`, `camera`. That one list becomes Android's
-  manifest permissions, macOS's usage strings, and the `HostService` grants
-  the app's interpreter is given. An app cannot reach a service it did not
-  declare, so a host's grants and the app's declaration are one fact.
+**The app declares itself in `app.reb`, at the top of its directory**
+(owner, 2026-11-21; decision 78 has the fields, their types and the
+example). One REBOL block, loaded and never evaluated: title, identity
+(`com.example.notes`, which becomes the Android application id, the macOS
+bundle identifier, the Windows AppUserModelID and the Linux desktop ID),
+version and build, icon, summary, publisher and contact, and optionally
+website, category, colour, `uses`, and `entry`, the script to start from
+when it is not `main.reb`. Every fault is reported at once. The icon, a
+square PNG of at least 1024 pixels, becomes every size and format each platform
+wants (`.icns`, `.ico`, Android's adaptive icon, the web manifest's sizes),
+with the packager's own writers for the two container formats. `uses` is
+read, checked and written into Android's manifest and macOS's `Info.plist`
+in 2e; 2f, 2g and 2h each turn their entry into a `HostService` grant, so
+that an app cannot reach a service it did not declare.
 
 **What it makes.**
 
@@ -115,60 +139,165 @@ declares:
 
 A packaged desktop app carries its own runtime, so its user needs no Java.
 
+**The design** (owner, 2026-11-21; decision 78).
+1. **`devtools/`, a project of its own, builds `jebol-devtools.jar`**, a
+   Gradle plugin (`org.jebol.devtools`) at the core's version. It depends on
+   the core jar, whose `load` reads `app.reb`, and on nothing else but
+   Gradle's API; the core gains nothing from it. Its tasks:
+   - `generateProjects` writes `android/`, `linux/`, `macos/`, `windows/`
+     and `web/` into the app's directory from templates the jar carries,
+     each only if it is absent. It never overwrites.
+   - `packageWeb`, `packageAndroid`, `packageDeb`, `packageMac` and
+     `packageWindows` each build that platform's dev release from its
+     generated project, generating it first if absent; one refuses on a
+     system that cannot build it, naming the system it needs.
+   - `packageAll` runs every one this machine can build.
+   - Each task reads `app.reb` first and stops with every fault listed.
+2. **What a generated project holds, and what it reads.** Shared values
+   (title, identity, version, build, uses, entry) are never written into a
+   project: the plugin hands them to each build when it runs. A project
+   holds what a developer may change for that platform, and a `files/`
+   folder that overlays the app's shared scripts.
+   - `android/`: a Gradle project with the Android Gradle plugin, the
+     manifest (permissions from `uses`), the adaptive icon, and a
+     dependency on JEBOL's Android runtime. The plugin passes the
+     application id, version name and code and the label in.
+   - `linux/`: the `.desktop` file and the icons jpackage takes through
+     `--resource-dir`.
+   - `macos/`: the `Info.plist` template with the usage strings, and the
+     `.icns`.
+   - `windows/`: the WiX template that sets the shortcut's
+     `System.AppUserModel.ID`, and the `.ico`.
+   - `web/`: `index.html`, the manifest's template and its icons.
+3. **The overlay.** At build time the app's top-level files are laid
+   under the platform's `files/`, a file there winning over the shared one of
+   the same name; `app.reb`, the generated projects and the build's own
+   files are not carried. `app.json`'s entry comes from `app.reb`.
+4. **Icons.** From the one PNG, scaled with Java's own imaging: the web
+   manifest's 192 and 512, Android's launcher sizes and the adaptive icon's
+   foreground (the `icon-foreground`, or the icon in its safe zone) over
+   `colour`, the hicolor sizes for Linux, and the `.icns` and `.ico`, by the
+   plugin's own writers: an `.icns` of PNG entries, and an `.ico` of PNG
+   entries at 16 to 256.
+5. **JEBOL's Android runtime becomes a library.** `JebolActivity`,
+   `JebolView`, `AppSession` and `CarriedApp` move from `android/app` into
+   `android/runtime`, an Android library with the adapters of
+   `android/host`, published as `org.jebol:jebol-android`. `android/app`
+   stays, as JEBOL's own app over that library, and keeps its test APK; a
+   generated `android/` depends on the library, as any app would.
+6. **A packaged desktop app keeps its files as Android does.** The app's
+   files are carried read-only in the package, and a store of its own sits
+   over them in the user's data folder, named by the identity
+   (`~/.local/share/<id>`, `~/Library/Application Support/<id>`,
+   `%APPDATA%\<id>`), so the app runs from `/opt` or Program Files and still
+   writes. The launcher starts it from the entry, with `LayeredFiles` as on
+   Android. `java -jar` with a script is unchanged.
+7. **Extensions.** An app names those it uses with `requires: [sqlite]` in
+   `app.reb` (the owner, 2026-11-21: `requires`, not `needs`, which says it
+   more exactly). The plugin resolves each
+   to JEBOL's own jar at the same version and carries it: in the desktop
+   package beside the jar, in the APK through its `android` setup, and on
+   the web through the setup that build already has. The web's runtime is
+   published prebuilt twice -- plain, and with every JEBOL extension, as
+   `buildWasmGCWithExtensions` makes it -- and a site takes the second only
+   when `requires` is not empty, so the plugin needs no TeaVM. An extension
+   that is not JEBOL's own is a later goal's.
+8. **Publishing.** `publishDevtools` puts the plugin, the core, the shipped
+   jar, the web runtimes, `jebol-android` and the extension jars into a
+   Maven repository in `build/devtools-repo`. The example app's build
+   takes them from there, as a developer's would from a published one.
+   Where they are published for the world is a later goal's.
+9. **Gradle's own JVM is 21 or newer**, since the plugin runs the core's
+   reader; jpackage is taken from a Java 25 toolchain, so the daemon need
+   not be 25.
+
 **Steps.**
-0. Plan commit: the header's fields, each platform's task and its output,
-   the icon writers, the signing on each platform, and the example app.
-1. Move `desktop/` and the shipped jar to Java 25 (decision 78), with the core
-   and Android staying on 21, and `allTests` passing before anything else
-   changes. Every desktop test runs on 25. `LaunchingOnAJavaTooOldEndToEndTest`
-   moves its line from 21 to 25. The plan lists what else names a Java
-   version: the toolchains, the daemon pins, `scripts/setup-machine.sh`, the
-   IDE's SDK.
-2. Spec: the header, the declared uses becoming grants, and each platform's
-   package.
-3. Failing tests, then the packager:
-   - the header read and refused when wrong;
-   - the icon in every size, and the `.icns` and `.ico` writers checked
-     against the formats;
-   - each package's contents.
-3a. SQLite's Android setup (owner, 2026-11-20). An APK carries the
-   extensions its app names, and SQLite has a setup for the JVM and the
-   page but none for Android. `SqliteOnAndroid` is ported over the
-   platform's own `android.database.sqlite`, and the extension's tests run
-   on the emulators. API 35 ships SQLite 3.44, and the version follows the
-   phone's OS. If a test needs newer, the plan chooses between bundling
-   requery's `sqlite-android` (Apache 2.0, a native library for each
-   architecture) and writing the gap in `docs/standing.md`.
-4. The example app, under `examples/`, packaged for all five platforms. Its
-   first version just opens a window; 2f to 2h add one use each.
-5. End to end:
-   - this machine builds the `.deb`, unpacks it into a scratch root, starts
-     the launcher, and drives its window, as the gate drives the site;
-   - the APK is installed on the emulator and driven.
-6. The owner's scripts: one for the Mac (`.app`, signed ad hoc, launched from
-   Finder, a screenshot and a log back) and one for Windows (PowerShell, with
-   a JDK 25 and jpackage's WiX installed by the script). Each pastes back
-   what it measured, as `scripts/android-on-my-phone.sh` does.
-7. Docs: `using-jebol.md` says how to make an app for each platform;
-   decision 78 gains whatever the plan settled.
+0. This plan, agreed, then a plan commit with decision 78's additions.
+1. **Java 25 for the desktop**, with `allTests` passing before anything else
+   changes. `desktop/` and the shipped jar compile at `release 25` through a
+   toolchain of 25; the core, `web/`, the extensions' main code and Android
+   stay at 21. The desktop's and the extensions' end-to-end tests run the
+   jar on 25; `LaunchingOnAJavaTooOldEndToEndTest` and `spec/repl.allium`
+   move the line from 21 to 25, with 21 given as too old.
+   `setup-machine.sh` installs `openjdk-25-jdk` and `fakeroot`; the daemon
+   pins stay at 21. `README.md`, `using-jebol.md` and `docs/standing.md` say
+   25 where they say what the jar needs.
+2. **Spec:** `spec/packaging.allium` -- `app.reb`'s fields, types and
+   faults; generating once; the shared values read at build time; the
+   overlay; each platform's package and identity; `uses` in Android's
+   manifest and macOS's `Info.plist`; `requires`; the desktop's store over its
+   carried files. `spec/repl.allium` for the Java line.
+3. **Failing tests**, in `devtools/`'s own suites, built by `jebol-suites`
+   and run by `allTests`:
+   - unit: `app.reb` read, every field's type and each fault, several at
+     once; the icon's sizes; the `.ico` and `.icns` read back entry by entry
+     and each entry decoded as a PNG of its size; `requires` resolved;
+   - functional, with Gradle TestKit over a fixture app: generating
+     writes each project once and leaves an edited one alone; an edit to
+     `app.reb` reaches every package without regenerating; a file in
+     `files/` wins over the shared one; `packageWeb`'s site holds the app,
+     the manifest and the icons, and `app.json` names the declared entry;
+     `packageDeb`'s package carries the identity, the version, the
+     `.desktop` file, the icons and a runtime (`dpkg-deb -I` and `-c`);
+     a task for another system refuses and names it;
+   - Android, in `androidTests` since it needs the SDK: `packageAndroid`
+     over the fixture makes an APK whose `aapt2 dump badging` gives the
+     identity, version name and code, label and permissions, and a bundle;
+     a release build with no key refuses with the `keytool` command;
+   - the desktop's store: a packaged app writes into its own store and
+     reads its carried files, and none of them is changed.
+3a. **SQLite's Android setup** (owner, 2026-11-20). `SqliteOnAndroid` is
+   ported over the platform's own `android.database.sqlite`, behind the
+   same `SqliteEngine`, through the host's `FilePort` as decision 63 says;
+   the descriptor gains an `android` setup; the extension's functional
+   tests run on the emulators. API 35 ships SQLite 3.44 and the version
+   follows the phone's OS. If a test needs newer, the owner chooses between
+   bundling requery's `sqlite-android` (Apache 2.0, a native library for
+   each architecture) and writing the gap in `docs/standing.md`.
+4. **Code:** the plugin, its templates and icon writers; `android/runtime`
+   and `jebol-android`; the desktop launcher's packaged mode; `requires`;
+   `publishDevtools`.
+5. **The example app**, `examples/an-app-of-ones-own`, with `app.reb`, an
+   icon drawn by a REBOL script checked in beside it, and a build that
+   applies the plugin from `build/devtools-repo`. Its first version opens a
+   window; 2f to 2h add one use each.
+6. **End to end:**
+   - this machine builds the example's `.deb`, unpacks it into a scratch
+     root with `dpkg-deb -x`, starts the launcher with no Java on its path,
+     and drives its window (`opens-a-real-window`);
+   - its site is served and driven in Chrome, as the shipped site is;
+   - its APK is installed on the emulators and driven by UI Automator, in
+     `androidEndToEndTests`, and on the owner's phone.
+7. **The owner's scripts:** `scripts/app-on-my-mac.sh` (the `.app`, signed
+   ad hoc, opened from Finder, a screenshot and a log back) and
+   `scripts/app-on-my-windows.ps1` (a JDK 25 and WiX installed by the
+   script, the installer and the portable app image, the shortcut's ID read
+   back, a screenshot and a log). The Windows script first checks whether
+   `HKEY_CURRENT_USER` serves a portable app's registration, before that
+   route is written. Each pastes back what it measured, as
+   `scripts/android-on-my-phone.sh` does.
+8. **Docs:** `using-jebol.md` says how to make an app for each platform,
+   sign it, and back up the key; `docs/standing.md` the package sizes;
+   decision 78 gains what the work settles.
 
 **Done when** the example app is packaged for the web, Android, Linux, macOS
-and Windows from one directory and one header, and each package installs and
-opens its window; `allTests` and `androidTests` pass; and the owner's Mac and
-Windows scripts report the app running.
+and Windows from one directory and one `app.reb`, and each package installs and
+opens its window; `allTests` and `androidTests` pass; the example runs on the
+owner's phone; and the owner's Mac and Windows scripts report the app
+running. Commits: the plan, the Java 25 move once `allTests` passes, then
+one commit when all of it passes.
 
 **Its plan settles:**
-- the header's exact fields, and what a missing or wrong one raises;
 - which part of the registry a per-user portable app registers its ID
   under (below). Microsoft's page shows `HKEY_LOCAL_MACHINE`, and whether
-  `HKEY_CURRENT_USER` serves was not confirmed. The plan checks it on the
-  owner's Windows machine before writing the route.
+  `HKEY_CURRENT_USER` serves was not confirmed. The owner's Windows script
+  checks it before the route is written.
 
 **The developer's part and the framework's** (owner, 2026-11-18). JEBOL is
 the framework other developers build their apps with, and the example app
 shows how. Each platform follows the convention other frameworks use, with
 the sources in `docs/platform-services-research.md`:
-- **Windows.** The developer declares the app's ID once, in the header, and
+- **Windows.** The developer declares the app's ID once, in `app.reb`, and
   does nothing more, as with Electron and its installers. The packager's
   installer puts that ID on the Start-menu shortcut as its
   `System.AppUserModel.ID`, through jpackage's WiX template, overridden by
@@ -282,7 +411,11 @@ macOS and Windows -- and iOS answers the same three when goal 3 arrives.
   `camera://`. Each is a `HostPorts` port, which each platform answers with
   an adapter of its own and `none()` refuses, behind a `HostService` grant of
   its own (`NOTIFICATIONS`, `LOCATION`, `CAMERA`). A packaged app is given
-  the grants its header declares (2e).
+  the grants its `app.reb` declares under `uses`. 2e only reads and checks
+  that list and writes it into Android's manifest and macOS's `Info.plist`;
+  each of 2f, 2g and 2h wires its own entry into its grant, and its plan
+  and done-when include an app that did not declare the use being refused
+  with `access no-service`.
 - **Events from a device thread.** Each platform's callback arrives on a
   thread of its own and is queued for the interpreter, as the screen's events
   are (decision 27). The interpreter's thread is never held by a device, and
@@ -520,6 +653,11 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    within the memory iOS allows them, is measured here.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
+7. **The packager makes an iOS app from the same `app.reb`** (goal 2e). 2e's
+   packager is Gradle, as Android's own build is, and iOS is built by Xcode.
+   The owner, 2026-11-21: how the one packager reaches Xcode -- a Gradle
+   task driving `xcodebuild`, Gluon's tools, or something else -- is asked
+   when this goal is planned, not before.
 
 ### 4. A real MIDI device through `javax.sound.midi`
 
