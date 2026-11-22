@@ -14,9 +14,10 @@
 # adds ANDROID_HOME to ~/.zprofile. Everything else allTests needs on a Mac is
 # the README's Building section.
 #
-#   Java 21           openjdk-21-jdk, the core's toolchain
-#   Java 25           openjdk-25-jdk, the java on the PATH that runs Gradle, and the
-#                     desktop's toolchain, the tests' and jpackage
+#   Java 21           openjdk-21-jdk, the core's and Android's toolchain, and Gradle's
+#                     daemon (gradle-daemon-jvm.properties; decision 76)
+#   Java 25           openjdk-25-jdk, the desktop's toolchain for FFM, the tests' and
+#                     jpackage, and the java on the PATH (decision 78)
 #   fakeroot          jpackage's .deb (goal 2e)
 #   allium            cargo install allium-cli, pinned, for checkSpec (needs rustup and a C linker);
 #                     a newer one checks spec/ by rules the spec was not written to
