@@ -76,13 +76,11 @@ androidComponents {
 // root build as on the JVM and dexed into this test APK, where the Jupiter
 // runner finds them (goal 2a step 7).
 val core = gradle.includedBuilds.single { it.name != "android" }
-val coreFunctionalTests = files(core.projectDir.resolve("build/libs/jebol-core-3.22.5-functional-tests.jar"))
-val sqliteFunctionalTests = files(core.projectDir.resolve("extensions/sqlite/build/libs/jebol-sqlite-functional-tests.jar"))
-
-tasks.configureEach {
-    if (name == "preDebugAndroidTestBuild") {
-        dependsOn(core.task(":functionalTestJar"), core.task(":extensions:sqlite:functionalTestJar"))
-    }
+val coreFunctionalTests = files(core.projectDir.resolve("build/libs/jebol-core-3.22.5-functional-tests.jar")) {
+    builtBy(core.task(":functionalTestJar"))
+}
+val sqliteFunctionalTests = files(core.projectDir.resolve("extensions/sqlite/build/libs/jebol-sqlite-3.22.5-functional-tests.jar")) {
+    builtBy(core.task(":extensions:sqlite:functionalTestJar"))
 }
 
 dependencies {
