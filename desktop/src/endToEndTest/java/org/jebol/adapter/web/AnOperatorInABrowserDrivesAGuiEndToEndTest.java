@@ -415,7 +415,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
                 "the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed")
                 .perform();
         waitUntilTheGuiHasHeard("""
-                not empty? get-face the-face 'area 1""");
+                {the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed} = get-face the-face 'area 1""");
         assertThat(answerTo("""
                 get-face the-face 'area 1"""))
                 .isEqualTo("{the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed}");
