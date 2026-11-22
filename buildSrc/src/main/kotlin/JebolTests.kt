@@ -12,6 +12,9 @@ const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
 const val TESTS_THAT_OPEN_A_REAL_WINDOW = "opens-a-real-window"
 const val DISK_BACKED_TEMPORARY_ROOT = "/var/tmp"
 
+val diskBackedTemporaryRoot: File =
+    if (File.separatorChar == '/') File(DISK_BACKED_TEMPORARY_ROOT) else File(System.getProperty("java.io.tmpdir"))
+
 val PROJECTS_WITH_SUITES = listOf(":", ":desktop", ":web", ":devtools")
 val SUITE_SOURCE_SETS = listOf("unitTest", "functionalTest", "endToEndTest", "networkTest")
 
@@ -44,7 +47,7 @@ fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
 
 fun Test.keepsTemporaryFilesOnDisk() {
     val folderName = path.trimStart(':').replace(':', '-')
-    val temporaryFolder = File(DISK_BACKED_TEMPORARY_ROOT, "jebol-${System.getProperty("user.name")}/$folderName")
+    val temporaryFolder = File(diskBackedTemporaryRoot, "jebol-${System.getProperty("user.name")}/$folderName")
     systemProperty("java.io.tmpdir", temporaryFolder.path)
     environment("TMPDIR", temporaryFolder.path)
     doFirst {
