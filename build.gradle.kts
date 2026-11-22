@@ -133,6 +133,14 @@ val heapExhaustionTests = tasks.register<Test>("heapExhaustionTests") {
     mustRunAfter(unitTests)
 }
 
+tasks.register<Test>("functionalTestsOnAPhonesHeap") {
+    description = "The core's functional tests on the heap a phone gives an app, so waste shows in minutes rather than on a device"
+    runsTheTestsIn(functionalTest, "functionalTestsOnAPhonesHeap")
+    useJUnitPlatform { excludeTags(TESTS_THAT_EXHAUST_THE_HEAP) }
+    maxHeapSize = "256m"
+    mustRunAfter(heapExhaustionTests)
+}
+
 val checkSpec = tasks.register<Exec>("checkSpec") {
     group = "verification"
     description = "Validate the Allium specifications in spec/"

@@ -8,29 +8,41 @@
 # installer placed raise a toast? It asks you whether a toast appeared.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\app-on-my-windows.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts\app-on-my-windows.ps1 -Unattended
 #
 # It installs what it needs with winget: a JDK 25 (Temurin) and the .NET SDK,
-# then the WiX toolset jpackage uses, as a .NET tool.
+# then the WiX toolset jpackage uses, as a .NET tool. -Unattended is the CI's:
+# the tools are already installed, Windows' notification history answers the
+# toast question, the installer runs quietly, and any FAIL exits with 1.
+
+param([switch]$Unattended)
 
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 New-Item -ItemType Directory -Force build | Out-Null
 $report = "build\windows-app-report.txt"
 Set-Content $report ""
+$script:failures = 0
 function Say($text) { $text | Tee-Object -FilePath $report -Append }
+function Fail($text) { $script:failures++; Say "FAIL  $text" }
 function Check($what, [scriptblock]$test) {
     try {
         $answer = & $test
-        if ($answer) { Say "ok    $what  ($answer)" } else { Say "FAIL  $what" }
+        if ($answer) { Say "ok    $what  ($answer)" } else { Fail $what }
     } catch {
-        Say "FAIL  $what  ($($_.Exception.Message))"
+        Fail "$what  ($($_.Exception.Message))"
     }
+}
+function CommitBeingChecked {
+    if ($env:JEBOL_COMMIT) { return $env:JEBOL_COMMIT }
+    if (Get-Command git -ErrorAction SilentlyContinue) { return (git rev-parse --short HEAD) }
+    "unknown"
 }
 
 $identity = "org.jebol.example.notes"
 $example = "examples\an-app-of-ones-own"
 Say "Windows $([Environment]::OSVersion.Version), $(Get-Date)"
-Say "commit $(git rev-parse --short HEAD)"
+Say "commit $(CommitBeingChecked)"
 
 Say "--- a toast from an app registered under HKEY_CURRENT_USER alone"
 $probe = "org.jebol.probe.toast"
@@ -43,15 +55,27 @@ $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
 $xml.LoadXml("<toast><visual><binding template='ToastGeneric'><text>JEBOL probe</text><text>Registered under HKEY_CURRENT_USER only</text></binding></visual></toast>")
 try {
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($probe).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
-    $seen = Read-Host "Did a toast titled 'JEBOL probe' appear? (y/n)"
-    Say "toast shown: $seen"
+    if ($Unattended) {
+        Start-Sleep 3
+        $history = [Windows.UI.Notifications.ToastNotificationManager]::History.GetHistory($probe)
+        Say "toast shown: $(if ($history.Count -gt 0) { 'y, in the notification history' } else { 'n, not in the notification history' })"
+        [Windows.UI.Notifications.ToastNotificationManager]::History.Clear($probe)
+    } else {
+        $seen = Read-Host "Did a toast titled 'JEBOL probe' appear? (y/n)"
+        Say "toast shown: $seen"
+    }
 } catch {
-    Say "FAIL  showing the toast: $($_.Exception.Message)"
+    Fail "showing the toast: $($_.Exception.Message)"
 }
 Remove-Item -Path $key -Recurse -Force
 
 Say "--- the tools"
-if (-not (Get-Command java -ErrorAction SilentlyContinue) -or -not ((java -version 2>&1) -match '"2[5-9]')) {
+if ($Unattended) {
+    $extensions = wix extension list -g 2>&1
+    if (-not ($extensions -match 'WixToolset.Util.wixext') -or -not ($extensions -match 'WixToolset.UI.wixext')) {
+        wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.UI.wixext/5.0.2
+    }
+} elseif (-not (Get-Command java -ErrorAction SilentlyContinue) -or -not ((java -version 2>&1) -match '"2[5-9]')) {
     winget install --id EclipseAdoptium.Temurin.25.JDK -e --accept-source-agreements --accept-package-agreements
 }
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
@@ -79,8 +103,13 @@ Check ".NET reads the .ico jebol-devtools wrote" {
     "$($icon.Width)x$($icon.Height)"
 }
 
-Say "--- installing; click through the installer if it asks"
-Start-Process -Wait $installer.FullName
+if ($Unattended) {
+    Say "--- installing quietly"
+    Start-Process -Wait $installer.FullName -ArgumentList "/quiet"
+} else {
+    Say "--- installing; click through the installer if it asks"
+    Start-Process -Wait $installer.FullName
+}
 $shortcut = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter "Notes.lnk" | Select-Object -First 1
 Check "a Start-menu shortcut was made" { $shortcut.FullName }
 Check "the shortcut carries the AppUserModelID" {
@@ -112,3 +141,4 @@ Check "the portable app runs from its folder" { -not $portable.HasExited }
 Stop-Process -Id $portable.Id -Force -ErrorAction SilentlyContinue
 
 Say "--- done; paste build\windows-app-report.txt back, and attach build\windows-app.png"
+if ($Unattended -and $script:failures -gt 0) { exit 1 }
