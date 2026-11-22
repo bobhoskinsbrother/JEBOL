@@ -62,9 +62,13 @@ record PackagedApp(String identity, Path carried) {
             return Path.of(home, "Library", "Application Support", identity);
         }
         return Optional.ofNullable(environment.get("XDG_DATA_HOME"))
-                .filter(value -> Path.of(value).isAbsolute())
+                .filter(PackagedApp::isAbsoluteXdgPath)
                 .map(value -> Path.of(value, identity))
                 .orElseGet(() -> Path.of(home, ".local", "share", identity));
+    }
+
+    private static boolean isAbsoluteXdgPath(String value) {
+        return value.startsWith("/");
     }
 
     LayeredFiles filesOver(FileSystemPort store) {

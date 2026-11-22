@@ -36,6 +36,13 @@ class APackagedAppsStoreIsWhereItsSystemKeepsAppDataTest {
     }
 
     @Test
+    @DisplayName("an XDG_DATA_HOME is absolute by the XDG specification's rule, whatever system asks, so a drive path is ignored")
+    void anXdgDataHomeIsAbsoluteByItsOwnRule() {
+        assertThat(PackagedApp.storeFolder(IDENTITY, "Linux", Map.of("XDG_DATA_HOME", "C:\\data", "HOME", "/home/u"), "/x"))
+                .isEqualTo(Path.of("/home/u/.local/share", IDENTITY));
+    }
+
+    @Test
     @DisplayName("on macOS the store is in ~/Library/Application Support")
     void macUsesApplicationSupport() {
         assertThat(PackagedApp.storeFolder(IDENTITY, "Mac OS X", Map.of("HOME", "/Users/u"), "/x"))

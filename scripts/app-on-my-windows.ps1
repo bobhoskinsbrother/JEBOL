@@ -21,9 +21,12 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 New-Item -ItemType Directory -Force build | Out-Null
 $report = "build\windows-app-report.txt"
-Set-Content $report ""
+Set-Content $report "" -Encoding UTF8
 $script:failures = 0
-function Say($text) { $text | Tee-Object -FilePath $report -Append }
+function Say($text) {
+    Write-Output $text
+    Add-Content -Path $report -Value $text -Encoding UTF8
+}
 function Fail($text) { $script:failures++; Say "FAIL  $text" }
 function Check($what, [scriptblock]$test) {
     try {
@@ -32,6 +35,10 @@ function Check($what, [scriptblock]$test) {
     } catch {
         Fail "$what  ($($_.Exception.Message))"
     }
+}
+function OutputOf([scriptblock]$command) {
+    $ErrorActionPreference = "Continue"
+    & $command 2>&1 | ForEach-Object { "$_" }
 }
 function CommitBeingChecked {
     if ($env:JEBOL_COMMIT) { return $env:JEBOL_COMMIT }
@@ -71,11 +78,11 @@ Remove-Item -Path $key -Recurse -Force
 
 Say "--- the tools"
 if ($Unattended) {
-    $extensions = wix extension list -g 2>&1
+    $extensions = OutputOf { wix extension list -g }
     if (-not ($extensions -match 'WixToolset.Util.wixext') -or -not ($extensions -match 'WixToolset.UI.wixext')) {
         wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.UI.wixext/5.0.2
     }
-} elseif (-not (Get-Command java -ErrorAction SilentlyContinue) -or -not ((java -version 2>&1) -match '"2[5-9]')) {
+} elseif (-not (Get-Command java -ErrorAction SilentlyContinue) -or -not ((OutputOf { java -version }) -match '"2[5-9]')) {
     winget install --id EclipseAdoptium.Temurin.25.JDK -e --accept-source-agreements --accept-package-agreements
 }
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
@@ -85,13 +92,13 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     dotnet tool install --global wix --version 5.0.2
     wix extension add -g WixToolset.Util.wixext/5.0.2 WixToolset.UI.wixext/5.0.2
 }
-Say (java -version 2>&1 | Select-Object -First 1)
+Say (OutputOf { java -version } | Select-Object -First 1)
 Say "wix $(wix --version)"
 
 Say "--- packaging"
 .\gradlew.bat :devtools:publishDevtools --console=plain -q
 Push-Location $example
-..\..\gradlew.bat packageWindows --console=plain | Tee-Object -FilePath "..\..\$report" -Append
+OutputOf { ..\..\gradlew.bat packageWindows --console=plain } | ForEach-Object { Write-Output $_; Add-Content -Path "..\..\$report" -Value $_ -Encoding UTF8 }
 Pop-Location
 $packages = "$example\build\jebol\windows\package"
 $installer = Get-ChildItem $packages -Filter *.exe | Select-Object -First 1
