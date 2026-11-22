@@ -14,8 +14,9 @@
 # adds ANDROID_HOME to ~/.zprofile. Everything else allTests needs on a Mac is
 # the README's Building section.
 #
-#   Java 21           openjdk-21-jdk, for Gradle and the core's toolchain
-#   Java 25           openjdk-25-jdk, the desktop's toolchain, the tests' and jpackage
+#   Java 21           openjdk-21-jdk, the core's toolchain
+#   Java 25           openjdk-25-jdk, the java on the PATH that runs Gradle, and the
+#                     desktop's toolchain, the tests' and jpackage
 #   fakeroot          jpackage's .deb (goal 2e)
 #   allium            cargo install allium-cli, pinned, for checkSpec (needs rustup and a C linker);
 #                     a newer one checks spec/ by rules the spec was not written to
@@ -222,7 +223,7 @@ if ! grep -qs 'ANDROID_HOME' "$HOME/.bashrc" "$HOME/.profile"; then
 fi
 
 step "Checking"
-check "java 21 on the PATH"         sh -c 'java -version 2>&1 | grep -q "version \"21"'
+check "java 25 on the PATH"         sh -c 'java -version 2>&1 | grep -q "version \"25"'
 check "allium"                      allium --version
 check "python3"                     python3 --version
 check "google-chrome"               google-chrome --version
