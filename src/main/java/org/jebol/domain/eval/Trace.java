@@ -63,7 +63,7 @@ public final class Trace {
         int at = 0;
         for (String line : keptLines) {
             if (at++ >= skip) {
-                output.write(line + System.lineSeparator());
+                output.writeLine(line);
             }
         }
     }
@@ -160,7 +160,7 @@ public final class Trace {
             return;
         }
         if (output != null) {
-            output.write(line + System.lineSeparator());
+            output.writeLine(line);
         }
     }
 }

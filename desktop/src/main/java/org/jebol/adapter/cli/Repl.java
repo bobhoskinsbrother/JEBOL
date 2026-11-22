@@ -109,7 +109,7 @@ public final class Repl {
     }
 
     public static void main(String[] arguments) {
-        StreamOutput output = new StreamOutput(System.out, System.err);
+        StreamOutput output = StreamOutput.withSystemLineEndings(System.out, System.err);
         CommandLineConsole console = CommandLineConsole.forThisProcess(
                 new FileInputStream(FileDescriptor.in), output, System.out);
         Runtime.getRuntime().addShutdownHook(new Thread(console::close));

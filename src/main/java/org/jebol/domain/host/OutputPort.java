@@ -5,7 +5,7 @@ public interface OutputPort {
     void write(String text);
     default void writeLine(String text) {
         write(text);
-        write(System.lineSeparator());
+        write("\n");
     }
 
     default void writeError(String text) {
