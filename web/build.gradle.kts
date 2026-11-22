@@ -54,6 +54,10 @@ tasks.named<org.teavm.gradle.tasks.GenerateWasmGCTask>("generateWasmGC") {
     outputDir.set(webBuild.map { it.asFile })
 }
 
+tasks.named<org.teavm.gradle.tasks.CopyWasmGCRuntimeTask>("copyWasmGCRuntime") {
+    outputFile.set(webBuild.map { it.file("jebol-web-runtime.js") })
+}
+
 val copyWorkerScript = tasks.register<Copy>("copyWorkerScript") {
     group = "build"
     description = "Put the worker's shell script beside the WebAssembly module"
