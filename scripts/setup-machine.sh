@@ -17,7 +17,8 @@
 #   Java 21           openjdk-21-jdk, for Gradle and the core's toolchain
 #   Java 25           openjdk-25-jdk, the desktop's toolchain, the tests' and jpackage
 #   fakeroot          jpackage's .deb (goal 2e)
-#   allium            cargo install allium-cli, for checkSpec (needs rustup and a C linker)
+#   allium            cargo install allium-cli, pinned, for checkSpec (needs rustup and a C linker);
+#                     a newer one checks spec/ by rules the spec was not written to
 #   python3           scripts/allium_report.py and the parity scripts
 #   Chrome            endToEndTests, from Google's apt repository
 #   Firefox           endToEndTests, from Mozilla's apt repository, never the snap
@@ -156,10 +157,11 @@ fi
 
 step "allium"
 export PATH="$HOME/.cargo/bin:$PATH"
-if have allium; then
-    echo "allium is already installed: $(allium --version 2>&1 | head -1)"
+allium_version=3.6.1
+if have allium && allium --version 2>&1 | grep -q "^allium $allium_version "; then
+    echo "allium $allium_version is already installed"
 else
-    cargo install allium-cli
+    cargo install allium-cli --version "$allium_version" --locked --force
 fi
 
 step "Google Chrome"
