@@ -12,15 +12,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class JavaProcess implements ProcessPort {
 
     private static final Pattern WHOLE_NUMBER_ID_PRINTS = Pattern.compile("\\d+");
-
-    private static final Pattern SYSTEM_EXCEPTION_MATCHER =
-            Pattern.compile("(?:\\(([^()]*)\\)|error=\\d+, (.+?))\\s*$");
 
     private static final int TERMINATE = 15;
 
@@ -72,12 +68,8 @@ public final class JavaProcess implements ProcessPort {
     }
 
     private String parseException(IOException exception) {
-        String exceptionString = Optional.ofNullable(exception.getMessage()).orElse("");
-        Matcher matcher = SYSTEM_EXCEPTION_MATCHER.matcher(exceptionString);
-        if (!matcher.find()) {
-            return exceptionString;
-        }
-        return Optional.ofNullable(matcher.group(1)).orElseGet(() -> matcher.group(2));
+        return ProgramFailures.reasonIn(Optional.ofNullable(exception.getMessage()).orElse(""),
+                File.separatorChar == '\\');
     }
 
     private ProgramResult waitFor(Program program, Process child, Thread feeding) {

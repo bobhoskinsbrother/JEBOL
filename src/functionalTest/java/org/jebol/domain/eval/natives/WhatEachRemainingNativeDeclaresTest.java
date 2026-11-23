@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.File;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -319,7 +320,8 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("ending a process the operator may not signal is permission-denied, naming nothing")
         void permissionDeniedNamesNothing() {
-            assertThat(errorArgumentsWithProcesses("access-os/set 'pid 1"))
+            assertThat(errorArgumentsWithProcesses("access-os/set 'pid "
+                    + (File.separatorChar == '\\' ? 4 : 1)))
                     .isEqualTo("[permission-denied _ _ _]");
         }
     }

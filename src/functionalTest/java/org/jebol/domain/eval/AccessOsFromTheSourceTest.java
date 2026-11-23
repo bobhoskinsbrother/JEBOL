@@ -10,6 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AccessOsFromTheSourceTest {
@@ -117,9 +119,10 @@ class AccessOsFromTheSourceTest {
         @DisplayName("and a process nobody may signal answers permission-denied")
         void deniesSignallingWhatCannotBeSignalled() {
             assertThat(answerAllowingProcesses(
-                    "either error? e: try [access-os/set 'pid 1] [e/id] ['accepted]"))
-                    .as("process 1 belongs to the system on every platform this runs "
-                            + "on, and a real Rebol says the same word here")
+                    "either error? e: try [access-os/set 'pid PID] [e/id] ['accepted]"
+                            .replace("PID", Long.toString(File.separatorChar == '\\' ? 4 : 1))))
+                    .as("process 1 elsewhere and process 4 on Windows belong to the system, "
+                            + "and a real Rebol says the same word for each")
                     .isEqualTo("permission-denied");
         }
     }

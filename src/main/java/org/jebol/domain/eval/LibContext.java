@@ -200,7 +200,7 @@ public final class LibContext {
         registerNative(new DecloakNative(encodings));
         registerNative(new EncloakNative(encodings));
         registerNative(new DelineNative());
-        registerNative(new EnlineNative());
+        registerNative(new EnlineNative(localFileConvention));
         registerNative(new DetabNative());
         registerNative(new EntabNative());
         registerNative(new DifferenceNative());

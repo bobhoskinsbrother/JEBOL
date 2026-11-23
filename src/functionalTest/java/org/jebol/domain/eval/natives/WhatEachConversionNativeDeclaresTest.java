@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.eval.actions.ToAction;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Molder;
@@ -41,7 +42,7 @@ class WhatEachConversionNativeDeclaresTest {
                 Arguments.of(new EntabNative(), "entab", Set.of("size")),
                 Arguments.of(new DetabNative(), "detab", Set.of("size")),
                 Arguments.of(new DelineNative(), "deline", Set.of("lines")),
-                Arguments.of(new EnlineNative(), "enline", Set.of()),
+                Arguments.of(new EnlineNative(LocalFileConvention.POSIX), "enline", Set.of()),
                 Arguments.of(new AsNative(), "as", Set.of()));
     }
 

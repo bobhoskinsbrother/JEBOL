@@ -11,6 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -397,7 +400,57 @@ class AFetchedModuleIsCheckedAgainstItsDigestFromTheSourceTest {
     }
 
     @Nested
-    @DisplayName("a compiled extension, which is served gzipped")
+    @EnabledOnOs(OS.WINDOWS)
+    @DisplayName("on Windows a compiled extension, which R3's library asks for without .gz")
+    class PlainOnWindows {
+
+        private String extensionAddress(LocalTlsServer server) {
+            return "https://localhost:" + server.port() + "/ext/";
+        }
+
+        private String readAddress(Interpreter interpreter, LocalTlsServer server) {
+            return answerTo(interpreter, """
+                    as url! ajoin [%s 'fake-ext #"-" system/platform #"-" system/build/arch %%.rebx]"""
+                    .formatted(extensionAddress(server)));
+        }
+
+        private Interpreter listedIn(Path root, LocalTlsServer server) {
+            Interpreter interpreter = networkedInterpreterIn(root);
+            ran(interpreter, "extend system/modules 'fake-ext " + extensionAddress(server));
+            return interpreter;
+        }
+
+        @Test
+        @DisplayName("is checked against its digest, so a mismatch is invalid-check")
+        void isChecked(@TempDir Path root) throws Exception {
+            try (LocalTlsServer server = serve(GREETING)) {
+                Interpreter interpreter = listedIn(root, server);
+                String readAddress = readAddress(interpreter, server);
+                recordDigest(interpreter, readAddress, rebolSha256("some other bytes"));
+
+                assertThat(importFailure(interpreter, "fake-ext"))
+                        .isEqualTo("[access invalid-check " + readAddress + " _]");
+            }
+        }
+
+        @Test
+        @DisplayName("needs a digest for the file it reads, not for the directory the table names")
+        void needsADigestForTheFileItReads(@TempDir Path root) throws Exception {
+            try (LocalTlsServer server = serve(GREETING)) {
+                Interpreter interpreter = listedIn(root, server);
+                String readAddress = readAddress(interpreter, server);
+                recordDigest(interpreter, extensionAddress(server), rebolSha256(NOT_GZIP));
+
+                assertThat(importFailure(interpreter, "fake-ext"))
+                        .isEqualTo("[access cannot-open " + readAddress + " " + NO_DIGEST_REASON + "]");
+                assertThat(server.connectionsAccepted()).isZero();
+            }
+        }
+    }
+
+    @Nested
+    @DisabledOnOs(OS.WINDOWS)
+    @DisplayName("everywhere but Windows a compiled extension, which is served gzipped")
     class Gzipped {
 
         private String extensionAddress(LocalTlsServer server) {

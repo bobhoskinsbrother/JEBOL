@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.domain.eval.LocalFileConvention;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,10 +11,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,9 +43,22 @@ class SymbolicLinksStayInsideTheRootTest {
         interpreter = over(root);
     }
 
+    private static FilePort wholeMachineHolding(Path somewhere) {
+        Path drive = somewhere.toAbsolutePath().getRoot();
+        if (File.separatorChar != '\\') {
+            return FileSystemPort.rootFileSystem(drive);
+        }
+        String letter = drive.toString().substring(0, 1).toUpperCase(Locale.ROOT);
+        return new DriveLetterFiles(Map.of(letter, FileSystemPort.rootFileSystem(drive)), "/");
+    }
+
     private static Interpreter over(Path root) {
+        return overFiles(FileSystemPort.rootFileSystem(root));
+    }
+
+    private static Interpreter overFiles(FilePort files) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(files),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
@@ -268,8 +286,9 @@ class SymbolicLinksStayInsideTheRootTest {
     @DisplayName("a script on the whole machine follows any link, as there is no outside to reach")
     void followsAnyLinkOnTheWholeMachine() throws IOException {
         link("door.txt", outside.resolve("secret.txt"));
-        interpreter = over(Path.of("/"));
-        String door = root.resolve("door.txt").toAbsolutePath().toString();
+        interpreter = overFiles(wholeMachineHolding(root));
+        String door = LocalFileConvention.forSeparator(File.separatorChar)
+                .readLocalPath(root.resolve("door.txt").toAbsolutePath().toString()).orElseThrow();
 
         assertThat(answerTo("to string! read %" + door)).isEqualTo("\"secret\"");
     }

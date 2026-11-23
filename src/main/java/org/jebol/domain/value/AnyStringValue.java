@@ -217,6 +217,24 @@ public abstract sealed class AnyStringValue implements RebolSeries, CopiesItsCel
         return rewriteFromHere(this::standardiseLineEndings);
     }
 
+    public AnyStringValue withCarriageReturnBeforeEachLineFeed() {
+        return rewriteFromHere(this::addMissingCarriageReturns);
+    }
+
+    private String addMissingCarriageReturns(String text) {
+        StringBuilder ended = new StringBuilder(text.length());
+        char before = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char here = text.charAt(at);
+            if (here == '\n' && before != '\r') {
+                ended.append('\r');
+            }
+            ended.append(here);
+            before = here;
+        }
+        return ended.toString();
+    }
+
     private String standardiseLineEndings(String text) {
         StringBuilder standardised = new StringBuilder(text.length());
         int at = 0;

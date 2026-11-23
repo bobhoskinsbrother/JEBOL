@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -173,7 +174,10 @@ class WhatEachPortNativeDeclaresTest {
     void refusesAProgramThatIsNotThere(@TempDir Path directory) throws IOException {
         assertThat(answerBesideAFileAndADirectory(directory, """
                 e: try [call/wait {surely-no-such-program-here}] reduce [e/id e/arg1 e/arg2]"""))
-                .isEqualTo("[call-fail \"No such file or directory\" _]");
+                .isEqualTo("""
+                        [call-fail "REASON" _]""".replace("REASON", File.separatorChar == '\\'
+                        ? "The system cannot find the file specified."
+                        : "No such file or directory"));
     }
 
     @ParameterizedTest(name = "change-dir {0} is cannot-open with {1}")
