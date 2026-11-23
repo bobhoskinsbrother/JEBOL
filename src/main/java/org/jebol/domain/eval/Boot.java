@@ -21,14 +21,14 @@ public final class Boot {
     private final DigestPort digests;
     private final Encodings encodings;
     private final Ports ports;
-    private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
+    private final LocalFileConvention localFileConvention;
 
     private Boot(MachinePort machine, DigestPort digests, BootSources sources) {
         this.machine = machine;
         this.digests = digests;
         this.encodings = new Encodings(digests);
         this.ports = new Ports(grantedServices, digests);
-        localFileSeparator.use(machine.fileSeparator());
+        this.localFileConvention = LocalFileConvention.forSeparator(machine.fileSeparator());
         bootDeclarations.useErrorCatalogue(sources.errorCatalogue());
         bootDeclarations.useDatatypeSpecs(sources.datatypeSpecs());
         bootDeclarations.useOperatorTable(sources.operatorTable());
@@ -61,7 +61,7 @@ public final class Boot {
 
     public SystemObject start() {
         LibContext lib = new LibContext(
-                bootDeclarations, grantedServices, ports, encodings, digests, localFileSeparator);
+                bootDeclarations, grantedServices, ports, encodings, digests, localFileConvention);
         return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, machine);
     }
 

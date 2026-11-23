@@ -222,12 +222,12 @@ class HostMachineTest {
         }
 
         @Test
-        @DisplayName("to-local-file writes the machine's separator, a backslash on a machine that uses one")
+        @DisplayName("to-local-file writes Windows' form on a machine that uses a backslash, the first segment its drive")
         void writesBackslash() {
             Object written = interpreterOn(new DescribedMachine().separatedBy('\\')).run("""
                     to-local-file %/a/b""").asHostValue();
 
-            assertThat(written).isEqualTo("\\a\\b");
+            assertThat(written).isEqualTo("a:\\b");
         }
 
         @Test

@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.LocalFileSeparator;
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.FileValue;
@@ -18,11 +18,11 @@ public class ToLocalFileNative extends HostNative {
 
     private static final char DOT = '.';
 
-    private final LocalFileSeparator localSeparator;
+    private final LocalFileConvention convention;
 
-    public ToLocalFileNative(GrantedServices granted, LocalFileSeparator localSeparator) {
+    public ToLocalFileNative(GrantedServices granted, LocalFileConvention convention) {
         super(granted);
-        this.localSeparator = localSeparator;
+        this.convention = convention;
     }
 
     @Override
@@ -51,13 +51,15 @@ public class ToLocalFileNative extends HostNative {
                 from = ((AnyStringValue) runThroughFileSystem(() ->
                         StringValue.of(evaluator.ports().files().workingDirectory()))).text();
             }
-            return StringValue.of(localPath(from + path, resolvingDots, localSeparator.separator()));
+            return StringValue.of(localPath(from + path, resolvingDots));
         };
     }
 
-    private String localPath(String path, boolean resolvingDots, char separator) {
-        StringBuilder built = new StringBuilder();
-        int at = 0;
+    private String localPath(String path, boolean resolvingDots) {
+        char separator = convention.separator();
+        LocalFileConvention.LocalPathStart start = convention.startLocalPath(path);
+        StringBuilder built = new StringBuilder(start.written());
+        int at = start.readFrom();
         while (at < path.length()) {
             if (resolvingDots) {
                 at = skipAnyDots(path, at, built, separator);

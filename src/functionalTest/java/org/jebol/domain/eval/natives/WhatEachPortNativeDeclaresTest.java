@@ -9,7 +9,7 @@ import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.JvmDigests;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.LocalFileSeparator;
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.actions.*;
 import org.jebol.domain.host.HostService;
@@ -64,7 +64,7 @@ class WhatEachPortNativeDeclaresTest {
 
     private String answerIn(Path directory, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts()
+                AnInterpreter.portsWritingLocalFilesWith(AnInterpreter.POSIX_SEPARATOR)
                         .withFiles(FileSystemPort.rootFileSystem(directory))
                         .withEnvironment(new AnEnvironmentOfItsOwn())
                         .withProcesses(PlatformUnderTest.current().processes()),
@@ -93,8 +93,8 @@ class WhatEachPortNativeDeclaresTest {
                         Set.of("part", "seek", "string", "binary", "lines", "all")),
                 Arguments.of(new WriteAction(granted, ports), "write",
                         Set.of("part", "seek", "append", "allow", "lines", "binary", "all")),
-                Arguments.of(new ToLocalFileNative(granted, new LocalFileSeparator()), "to-local-file", Set.of("full")),
-                Arguments.of(new ToRebolFileNative(), "to-rebol-file", Set.of()),
+                Arguments.of(new ToLocalFileNative(granted, LocalFileConvention.POSIX), "to-local-file", Set.of("full")),
+                Arguments.of(new ToRebolFileNative(LocalFileConvention.POSIX), "to-rebol-file", Set.of()),
                 Arguments.of(new CallNative(granted), "call",
                         Set.of("wait", "console", "shell", "info", "input", "output", "error")),
                 Arguments.of(new GetEnvNative(granted), "get-env", Set.of()),

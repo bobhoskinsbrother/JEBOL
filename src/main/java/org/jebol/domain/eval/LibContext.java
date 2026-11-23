@@ -21,16 +21,16 @@ public final class LibContext {
     private final Ports ports;
     private final Encodings encodings;
     private final DigestPort digests;
-    private final LocalFileSeparator localFileSeparator;
+    private final LocalFileConvention localFileConvention;
 
     public LibContext(BootDeclarations declarations, GrantedServices grantedServices, Ports ports,
-            Encodings encodings, DigestPort digests, LocalFileSeparator localFileSeparator) {
+            Encodings encodings, DigestPort digests, LocalFileConvention localFileConvention) {
         this.declarations = declarations;
         this.grantedServices = grantedServices;
         this.ports = ports;
         this.encodings = encodings;
         this.digests = digests;
-        this.localFileSeparator = localFileSeparator;
+        this.localFileConvention = localFileConvention;
         registerConstants();
         registerDatatypesAndTypesets();
         registerWordsFunctionKindsAreMadeBy();
@@ -230,8 +230,8 @@ public final class LibContext {
         registerNative(new FormNative());
         registerNative(new NewLineNative());
         registerNative(new IsNewLineNative());
-        registerNative(new ToLocalFileNative(grantedServices, localFileSeparator));
-        registerNative(new ToRebolFileNative());
+        registerNative(new ToLocalFileNative(grantedServices, localFileConvention));
+        registerNative(new ToRebolFileNative(localFileConvention));
         registerNative(new TranscodeNative());
         registerNative(new EchoNative(grantedServices));
         registerNative(new NowNative(grantedServices));

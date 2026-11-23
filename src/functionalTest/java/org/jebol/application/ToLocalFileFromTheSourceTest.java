@@ -20,7 +20,7 @@ class ToLocalFileFromTheSourceTest {
             bounds = bounds.grant(service);
         }
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.portsWritingLocalFilesWith(AnInterpreter.POSIX_SEPARATOR).withFiles(FileSystemPort.rootFileSystem(directory)),
                 OutputPort.discard(),
                 bounds);
     }
@@ -36,7 +36,7 @@ class ToLocalFileFromTheSourceTest {
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = AnInterpreter.create();
+        Interpreter interpreter = AnInterpreter.writingLocalFilesForPosix();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

@@ -78,6 +78,9 @@ class EveryBuiltInNativeIsRegisteredTest {
     }
 
     private Object collaboratorFor(Class<?> wanted) throws ReflectiveOperationException {
+        if (wanted.isEnum()) {
+            return wanted.getEnumConstants()[0];
+        }
         return wanted == DigestPort.class
                 ? new JvmDigests()
                 : builtFromItsSmallestConstructor(wanted);

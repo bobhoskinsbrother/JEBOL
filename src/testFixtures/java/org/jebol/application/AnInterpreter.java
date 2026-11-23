@@ -11,6 +11,8 @@ import java.time.Duration;
 public final class AnInterpreter {
 
     private static final Duration WITHIN_ANY_STRETCH = Duration.ofDays(1);
+    public static final char WINDOWS_SEPARATOR = '\\';
+    public static final char POSIX_SEPARATOR = '/';
 
     private AnInterpreter() {
     }
@@ -29,6 +31,24 @@ public final class AnInterpreter {
 
     public static Interpreter createWithOutput(OutputPort output, Bounds bounds) {
         return Interpreter.createOn(PlatformUnderTest.current().ports(), output, stretchForThePlatform(bounds));
+    }
+
+    public static Interpreter writingLocalFilesForWindows() {
+        return writingLocalFilesWith(WINDOWS_SEPARATOR);
+    }
+
+    public static Interpreter writingLocalFilesForPosix() {
+        return writingLocalFilesWith(POSIX_SEPARATOR);
+    }
+
+    public static HostPorts portsWritingLocalFilesWith(char separator) {
+        HostPorts ports = standardPorts();
+        return ports.withMachine(new AMachineWithItsOwnSeparator(ports.machine(), separator));
+    }
+
+    private static Interpreter writingLocalFilesWith(char separator) {
+        return Interpreter.createOn(portsWritingLocalFilesWith(separator), OutputPort.discard(),
+                stretchForThePlatform(Bounds.standard()));
     }
 
     public static Bounds stretchForThePlatform(Bounds bounds) {

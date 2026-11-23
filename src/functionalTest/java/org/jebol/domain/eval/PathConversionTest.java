@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PathConversionTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = AnInterpreter.create();
+        Interpreter interpreter = AnInterpreter.writingLocalFilesForPosix();
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -118,7 +118,7 @@ class PathConversionTest {
     }
 
     @Test
-    @DisplayName("the other direction writes this machine's separator and undoes it")
+    @DisplayName("the other direction writes POSIX's separator and undoes it")
     void thelocalDirectionRoundTrips() {
         assertThat(answerTo("to-local-file %a/b")).isEqualTo("\"a/b\"");
         assertThat(answerTo("to-local-file %/a/b")).isEqualTo("\"/a/b\"");
