@@ -480,23 +480,6 @@ parse-test.r3 / Other parse issues / parse with uni-replacement-char #380
 parse-test.r3 / Other parse issues / parse with uni-replacement-char #381
 parse-test.r3 / Other parse issues / parse with uni-replacement-char #382
 
-# file-test.r3's issue-1115 test has a Windows arm and a Unix arm, and only one
-# of them runs. The two here are the Windows arm, and the machine this port is
-# measured on is a Mac, so a real 3.22.5 does not run them either -- it takes
-# the other arm, whose two assertions pass on both.
-#
-# Machine-dependent rather than build-dependent, which is worth saying plainly:
-# on Windows these would run on both, and the ratchet on this file would catch
-# it if they ever started passing here.
-#
-#   >> system/platform
-#   == macOS           ; r3-head 3.22.5
-#   >> either system/platform = 'Windows [print "windows arm"]["unix arm"]
-#   == "unix arm"      ; r3-head 3.22.5
-#
-file-test.r3 / to-local-file / issue-1115 #16
-file-test.r3 / to-local-file / issue-1115 #17
-
 # port-test.r3's write/part asks for a CRC-24 of 10873462 over a file that is
 # a hundred thousand zero bytes with five bytes text over the front of it.
 # A real 3.22.5 answers 2851051 on exactly that sequence, and so does JEBOL:
@@ -515,57 +498,31 @@ file-test.r3 / to-local-file / issue-1115 #17
 #
 port-test.r3 / file port / write/part #135
 
-# Six of port-test.r3's assertions sit inside a platform guard that is false on
-# the machine this is measured on, so they never run on a real 3.22.5 here
-# either. Three are Windows-only and three are Linux-only.
+# Four of port-test.r3's assertions sit inside a platform guard that is false
+# on the machine this is measured on, so they never run on a real 3.22.5 here
+# either: the four inside
+# `if all [system/platform != 'Windows exists? %/proc/cpuinfo]`, which reads
+# Linux's virtual files. There is no /proc on macOS. The suite's other
+# platform arms, Windows' and the one Windows does not take, are in
+# the-windows-arm.txt and the-other-arm.txt.
 #
 #   >> system/platform
 #   == macOS           ; r3-head 3.22.5
 #
-# #51, #57 and #63 are each inside an `if system/platform = 'Windows [...]`:
-# a directory that cannot be deleted while a file in it is open, the drive
-# listing `read %/` gives on Windows, and the `none? info/modified` arm of an
-# either whose other arm (#64) is the one that runs here.
-#
-# #163 to #166 are the four inside
-# `if all [system/platform != 'Windows exists? %/proc/cpuinfo]`, which reads
-# Linux's virtual files. There is no /proc on macOS.
-#
-port-test.r3 / directory port / DELETE-DIR #51
-port-test.r3 / directory port / read %/ #57
-port-test.r3 / directory port / exists? %/ #63
 port-test.r3 / file port / Reading from /proc files on Linux #163
 port-test.r3 / file port / Reading from /proc files on Linux #164
 port-test.r3 / file port / Reading from /proc files on Linux #165
 port-test.r3 / file port / Reading from /proc files on Linux #166
 
-# And two more of the same shape in the DELETE file test: #155 is the Windows
-# arm of an either whose other arm (#156) is the one that runs here, and #157
-# is inside an `if system/platform = 'Windows`. Both are about a file staying
-# locked while a port is open on it, which Posix does not do -- the file's own
-# comment says so: "on Posix it can be deleted".
-#
-port-test.r3 / file port / DELETE file #155
-port-test.r3 / file port / DELETE file #157
-
 # ---------------------------------------------------------------------------
 #
-# Four assertions sit in the arm of a guard that is false on this machine, so
+# Three assertions sit in the arm of a guard that is false in this version, so
 # they never run -- here or on ./r3-head, which answers the guard the same way.
 # They are not wrong and they are not work; they are the arm not taken.
 #
-#   >> system/platform
-#   == macOS           ; r3-head 3.22.5
 #   >> system/version < 3.19.1
 #   == false           ; r3-head 3.22.5
 #
-# series-test.r3 writes its ENLINE test as
-# `either 'Windows = system/platform [...][...]`, one assertion in each arm.
-# Exactly one of the two can run, on any machine and in any Rebol, and the
-# reader counts both because both are text.
-#
-series-test.r3 / DELINE / ENLINE / ENLINE #1229
-
 # struct-test.r3 guards three assertions on `system/version < 3.19.1` with the
 # comment "this syntax is no longer supported" beside them. 3.22.5 is not below
 # 3.19.1, so the other arm is the one that runs and these three are about a

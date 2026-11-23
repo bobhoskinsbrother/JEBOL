@@ -1,0 +1,24 @@
+# Assertions in Rebol's own suite that run everywhere but Windows: the other
+# arm of each `either system/platform = 'Windows` the-windows-arm.txt names,
+# and the bodies of `if find [Linux macOS] system/platform`. A real 3.22.5 on
+# Windows never reaches them, and neither does JEBOL. On Windows they are
+# graded as fails-on-rebol-too.txt's entries are; elsewhere they are graded
+# like any other assertion. Same format as fails-on-rebol-too.txt.
+
+# file-test.r3's issue-1115 writes a share as /rodan/shareddocs away from Windows.
+file-test.r3 / to-local-file / issue-1115 #18
+file-test.r3 / to-local-file / issue-1115 #19
+
+# file-test.r3's issue-2538 is inside `if find [Linux macOS] system/platform`:
+# it makes a file named a:0:0, which Windows refuses.
+file-test.r3 / to-local-file / issue-2538 #22
+file-test.r3 / to-local-file / issue-2538 #23
+file-test.r3 / to-local-file / issue-2538 #24
+
+# port-test.r3: the `info/modified` arm of #63's either, and the arm of the
+# DELETE file test where Posix deletes a file a port holds open.
+port-test.r3 / directory port / exists? %/ #64
+port-test.r3 / file port / DELETE file #156
+
+# series-test.r3's ENLINE: the arm #1229 is not.
+series-test.r3 / DELINE / ENLINE / ENLINE #1230

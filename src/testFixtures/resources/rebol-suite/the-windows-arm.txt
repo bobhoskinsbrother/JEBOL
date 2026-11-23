@@ -1,0 +1,32 @@
+# Assertions in Rebol's own suite that run only on Windows: each sits in the
+# Windows arm of an `either system/platform = 'Windows`, or inside an
+# `if system/platform = 'Windows`. A real 3.22.5 away from Windows takes the
+# other arm and never reaches them, and neither does JEBOL. Away from Windows
+# they are graded as fails-on-rebol-too.txt's entries are; on Windows they
+# are graded like any other assertion, and must pass. the-other-arm.txt holds
+# the arms Windows does not take. Same format as fails-on-rebol-too.txt.
+#
+#   >> either system/platform = 'Windows ["windows arm"] ["unix arm"]
+#   == "unix arm"      ; r3-head 3.22.5 on macOS and on Linux
+
+# file-test.r3's issue-1115 writes a share as \\rodan\shareddocs on Windows.
+file-test.r3 / to-local-file / issue-1115 #16
+file-test.r3 / to-local-file / issue-1115 #17
+
+# port-test.r3: a directory that cannot be deleted while a file in it is
+# open, the drive listing `read %/` gives on Windows, and the
+# `none? info/modified` arm of an either whose other arm is #64.
+port-test.r3 / directory port / DELETE-DIR #51
+port-test.r3 / directory port / read %/ #57
+port-test.r3 / directory port / exists? %/ #63
+
+# port-test.r3's DELETE file test: #155 is the Windows arm of an either whose
+# other arm is #156, and #157 is inside an `if system/platform = 'Windows`.
+# Both are about a file staying locked while a port is open on it; the file's
+# own comment says "on Posix it can be deleted".
+port-test.r3 / file port / DELETE file #155
+port-test.r3 / file port / DELETE file #157
+
+# series-test.r3 writes ENLINE as `either 'Windows = system/platform [...][...]`,
+# one assertion in each arm.
+series-test.r3 / DELINE / ENLINE / ENLINE #1229

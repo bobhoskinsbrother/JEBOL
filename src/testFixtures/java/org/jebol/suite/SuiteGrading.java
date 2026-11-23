@@ -44,6 +44,9 @@ final class SuiteGrading {
     private static final Path SUITE = CarriedFixtures.directory("rebol-suite");
 
     private static final Path FAILS_ON_REBOL_TOO = SUITE.resolve("fails-on-rebol-too.txt");
+    private static final Path THE_WINDOWS_ARM = SUITE.resolve("the-windows-arm.txt");
+    private static final Path THE_OTHER_ARM = SUITE.resolve("the-other-arm.txt");
+    private static final String WINDOWS = "Windows";
 
     private static final Path NEEDS_THE_NETWORK = SUITE.resolve("needs-the-network.txt");
 
@@ -69,7 +72,13 @@ final class SuiteGrading {
     }
 
     static List<String> failingOnRebolToo() {
-        return linesOf(FAILS_ON_REBOL_TOO);
+        List<String> failing = new ArrayList<>(linesOf(FAILS_ON_REBOL_TOO));
+        failing.addAll(linesOf(isOnWindows() ? THE_OTHER_ARM : THE_WINDOWS_ARM));
+        return List.copyOf(failing);
+    }
+
+    private static boolean isOnWindows() {
+        return WINDOWS.equals(PlatformUnderTest.current().machine().operatingSystem());
     }
 
     static Stream<SuiteFile.Assertion> listTheAssertionsExpectedToPass() {
