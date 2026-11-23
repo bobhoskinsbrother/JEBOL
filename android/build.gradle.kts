@@ -32,10 +32,11 @@ val androidSdk = providers.environmentVariable("ANDROID_HOME")
 // machine out of memory the day before (decision 75).
 val emulators = providers.gradleProperty("emulators").map(String::toInt).orElse(2)
 
-// -Pdevice=<serial> runs the suites on that device, a phone over USB, and
-// starts and stops no emulator.
+// -Pdevice=<serial>[,<serial>...] runs the suites on those devices, phones over
+// USB or emulators already running, sharded across them as across emulators,
+// and starts and stops no emulator.
 val device = providers.gradleProperty("device")
-val deviceSerials = device.map { listOf(it) }
+val deviceSerials = device.map { it.split(",").map(String::trim).filter(String::isNotEmpty) }
     .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 - 2 * it}" } })
 val isOnEmulators = !device.isPresent
 
@@ -143,7 +144,7 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     description = "The installed app driven from outside by UI Automator, every test on each device: a tablet and a phone"
     dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":endtoend:assembleDebug")
     onlyIf { isWanted(endToEndClasses) }
-    serials = deviceSerials.map { it.take(2) }
+    serials = deviceSerials.map { if (isOnEmulators) it.take(2) else it }
     everyTestOnEachDevice = true
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk

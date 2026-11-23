@@ -321,8 +321,9 @@ then `androidEndToEndTests` (the installed app driven by UI Automator from
 quarter. `-Pemulators=N` sets how many (each holds about 3.6 GB; three leave
 under 2 GB beside IntelliJ), `-Pclasses=a.B,c.D` runs only those classes, each
 in the suite whose package it is in, which is how to try a fix on the device
-in a couple of minutes, and `-Pdevice=<serial>` runs on a phone plugged in
-over USB instead of starting emulators. Run it at the close of every Android
+in a couple of minutes, and `-Pdevice=<serial>,<serial>` runs on the phones
+plugged in over USB instead of starting emulators, sharded across them, with
+every end-to-end test on each. Run it at the close of every Android
 stage and after any change to the core. `android/` is a build of its own that
 takes the core through `includeBuild("..")`, and the root build takes
 `android/` in -- so the IDE sees its modules -- when it finds an SDK in
