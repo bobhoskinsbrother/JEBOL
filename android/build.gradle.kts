@@ -66,6 +66,7 @@ val forgetLastDeviceResults = tasks.register<Delete>("forgetLastDeviceResults") 
 val runnerBuilder = "runnerBuilder" to "de.mannodermaus.junit5.AndroidJUnit5Builder"
 val unitPackage = "org.jebol.android.unit"
 val endToEndPackage = "org.jebol.android.endtoend"
+val fixturesPackage = "org.jebol.android.fixtures"
 
 // -Pclasses=a.B,c.D runs only those classes. AndroidJUnitRunner drops its
 // package filter once it is given classes, so each run is handed the named
@@ -117,7 +118,7 @@ val androidFunctionalTests = tasks.register<DeviceShards>("androidFunctionalTest
     appApk = theAppsApk
     testApk = appTestApk
     instrumentation = "org.jebol.android.test/androidx.test.runner.AndroidJUnitRunner"
-    runnerArguments = argumentsFor(functionalClasses, "notPackage" to unitPackage)
+    runnerArguments = argumentsFor(functionalClasses, "notPackage" to "$unitPackage,$fixturesPackage")
     results = deviceResults.dir("androidFunctionalTests")
     mustRunAfter(androidUnitTests)
     finalizedBy(stopEmulators, "archiveAndroidTestResults")

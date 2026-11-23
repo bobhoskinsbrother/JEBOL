@@ -296,6 +296,18 @@ failed on the device. Decoded in the picture's own colour space and copied
 out as stored, it reads as on the desktop; `AndroidImageTest` holds the PNG
 to the same flower's BMP, byte for byte.
 
+**The HEIF the test decodes is checked in, made once on an emulator.**
+`AndroidImageTest` used to make its HEIF on the device with the first HEVC
+encoder Android offered. An emulator offers its software encoder, which takes
+a 64 by 64 frame; a real phone may offer its own hardware one, and one
+refused to start, so the test failed before it decoded anything. Now it decodes
+`resources/heif/android-made-64x64.heic` (522 bytes, its length and MD5
+asserted), the same bytes on every device. `TheHeifFixtureIsMadeOnAnEmulatorTest`
+is what made it, in a package the functional suite leaves out: run it by
+name on an emulator (`-Pclasses=org.jebol.android.fixtures.TheHeifFixtureIsMadeOnAnEmulatorTest`)
+and read the file back with `adb exec-out run-as org.jebol.android cat
+files/android-made-64x64.heic`.
+
 **Memory.** The app's bounds hold a ceiling of three quarters of the heap
 Android gives it (`Runtime.maxMemory()`, which follows `largeHeap`). Every
 thousand steps the evaluator compares the heap in use with it, collects once

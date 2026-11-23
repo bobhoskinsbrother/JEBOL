@@ -1,13 +1,5 @@
 package org.jebol.android.unit;
 
-import android.media.Image;
-import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
-import android.media.MediaFormat;
-import android.media.MediaMuxer;
-
-import androidx.test.platform.app.InstrumentationRegistry;
-
 import org.jebol.adapter.android.AndroidImage;
 import org.jebol.domain.host.ImagePort.Pixels;
 import org.jebol.domain.image.QuantisedGif;
@@ -16,12 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -31,6 +20,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AndroidImageTest {
 
     private static final String REBOLS_OWN = "/rebol-suite/units/files/";
+
+    private static final String ANDROID_MADE_HEIF = "/heif/android-made-64x64.heic";
+
+    private static final int ANDROID_MADE_HEIF_LENGTH = 522;
+
+    private static final String ANDROID_MADE_HEIF_MD5 = "2CAC4154B89B6E26DBC51EF8D4BD9E61";
 
     private final AndroidImage images = new AndroidImage();
 
@@ -183,7 +178,13 @@ class AndroidImageTest {
     @Test
     @DisplayName("a HEIF Android made decodes at its size and close to its colour")
     void heifDecodes() throws Exception {
-        byte[] heif = heifFilledWith(64, 64, 200, 60, 40);
+        byte[] heif;
+        try (InputStream carried = AndroidImageTest.class.getResourceAsStream(ANDROID_MADE_HEIF)) {
+            assertThat(carried).as(ANDROID_MADE_HEIF + " in the test APK").isNotNull();
+            heif = carried.readAllBytes();
+        }
+        assertThat(heif).hasSize(ANDROID_MADE_HEIF_LENGTH);
+        assertThat(md5(heif)).isEqualTo(ANDROID_MADE_HEIF_MD5);
         assertThat(new String(heif, 4, 4, StandardCharsets.US_ASCII)).isEqualTo("ftyp");
         assertThat(new String(heif, 8, 4, StandardCharsets.US_ASCII)).isIn("heic", "mif1", "heix");
 
@@ -215,63 +216,5 @@ class AndroidImageTest {
     @DisplayName("a format Android cannot write is written as nothing")
     void unwritableFormats(String format) {
         assertThat(images.encode(gradient(2, 2, false), format)).isNull();
-    }
-
-    private static byte[] heifFilledWith(int wide, int high, int red, int green, int blue) throws Exception {
-        MediaFormat asked = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, wide, high);
-        asked.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
-        asked.setInteger(MediaFormat.KEY_BIT_RATE, 1_000_000);
-        asked.setInteger(MediaFormat.KEY_FRAME_RATE, 1);
-        asked.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 0);
-        MediaCodec encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC);
-        File written = File.createTempFile("android-made", ".heic",
-                InstrumentationRegistry.getInstrumentation().getTargetContext().getCacheDir());
-        try {
-            encoder.configure(asked, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            encoder.start();
-            int input = encoder.dequeueInputBuffer(5_000_000);
-            Image frame = encoder.getInputImage(input);
-            fillPlane(frame.getPlanes()[0], wide, high, (int) (0.257 * red + 0.504 * green + 0.098 * blue + 16));
-            fillPlane(frame.getPlanes()[1], wide / 2, high / 2, (int) (-0.148 * red - 0.291 * green + 0.439 * blue + 128));
-            fillPlane(frame.getPlanes()[2], wide / 2, high / 2, (int) (0.439 * red - 0.368 * green - 0.071 * blue + 128));
-            encoder.queueInputBuffer(input, 0, wide * high * 3 / 2, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-            MediaMuxer muxer = new MediaMuxer(written.getPath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_HEIF);
-            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-            int track = -1;
-            boolean finished = false;
-            while (!finished) {
-                int output = encoder.dequeueOutputBuffer(info, 5_000_000);
-                if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                    MediaFormat produced = encoder.getOutputFormat();
-                    produced.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_IMAGE_ANDROID_HEIC);
-                    track = muxer.addTrack(produced);
-                    muxer.start();
-                } else if (output >= 0) {
-                    ByteBuffer data = encoder.getOutputBuffer(output);
-                    if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0 && info.size > 0) {
-                        muxer.writeSampleData(track, data, info);
-                    }
-                    finished = (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-                    encoder.releaseOutputBuffer(output, false);
-                } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                    throw new IllegalStateException("the HEVC encoder gave nothing for five seconds");
-                }
-            }
-            muxer.stop();
-            muxer.release();
-            return Files.readAllBytes(written.toPath());
-        } finally {
-            encoder.release();
-            written.delete();
-        }
-    }
-
-    private static void fillPlane(Image.Plane plane, int wide, int high, int value) {
-        ByteBuffer buffer = plane.getBuffer();
-        for (int down = 0; down < high; down++) {
-            for (int across = 0; across < wide; across++) {
-                buffer.put(down * plane.getRowStride() + across * plane.getPixelStride(), (byte) value);
-            }
-        }
     }
 }
