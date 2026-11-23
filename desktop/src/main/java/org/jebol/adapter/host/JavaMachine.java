@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.NoneValue;
@@ -18,6 +19,7 @@ public final class JavaMachine implements MachinePort {
     private static final String DATA_SWITCH = "--data";
     private static final String ROOT_SWITCH = "--root";
     private static final String CONSOLE = "org.jebol.adapter.cli.Repl";
+    private static final char WINDOWS_SEPARATOR = '\\';
 
     private final PropertiesMachine reported;
 
@@ -56,14 +58,20 @@ public final class JavaMachine implements MachinePort {
 
     @Override
     public Value launcherFor(String root, String dataDirectory) {
+        boolean onWindows = fileSeparator() == WINDOWS_SEPARATOR;
         try {
-            Path launcher = Files.createTempFile(Path.of(property("java.io.tmpdir")), "jebol-boot", ".sh");
-            Files.writeString(launcher, writeLauncherScript(root, dataDirectory));
+            Path launcher = Files.createTempFile(Path.of(property("java.io.tmpdir")), "jebol-boot",
+                    onWindows ? ".cmd" : ".sh");
+            Files.writeString(launcher, onWindows
+                    ? writeCommandScript(root, dataDirectory)
+                    : writeLauncherScript(root, dataDirectory));
             if (!ExecutableFile.markRunnable(launcher.toFile())) {
                 return NoneValue.none();
             }
             launcher.toFile().deleteOnExit();
-            return FileValue.of(launcher.toString().replace('\\', '/'));
+            return FileValue.of(LocalFileConvention.forSeparator(fileSeparator())
+                    .readLocalPath(launcher.toString())
+                    .orElse(launcher.toString().replace('\\', '/')));
         } catch (IOException unwritable) {
             return NoneValue.none();
         }
@@ -75,6 +83,14 @@ public final class JavaMachine implements MachinePort {
                 + "\" " + CONSOLE + " " + ROOT_SWITCH + " \"" + root + "\""
                 + writeDataSwitch(dataDirectory)
                 + " \"$@\"\n";
+    }
+
+    private String writeCommandScript(String root, String dataDirectory) {
+        String startingJava = "@\"" + findJvm()
+                + "\" -Djava.awt.headless=true -cp \"" + makeClasspathAbsolute()
+                + "\" " + CONSOLE + " " + ROOT_SWITCH + " \"" + root + "\""
+                + writeDataSwitch(dataDirectory);
+        return startingJava.replace("%", "%%") + " %*\r\n@exit /b %errorlevel%\r\n";
     }
 
     private String findJvm() {

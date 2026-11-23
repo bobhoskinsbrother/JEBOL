@@ -85,6 +85,36 @@ class JavaMachineTest {
     }
 
     @Test
+    @DisplayName("on Windows a launcher is a command script that passes every argument on and leaves with java's status")
+    void writesACommandScriptOnWindows(@TempDir Path directory) throws IOException {
+        JavaMachine machine = machineWith("java.io.tmpdir", directory.toString(), "java.class.path", "lib.jar",
+                "file.separator", "\\");
+
+        Path launcher = launcherPath(machine.launcherFor("/srv/root", "/srv/root/.jebol/"));
+
+        assertThat(launcher.getFileName().toString()).endsWith(".cmd");
+        assertThat(Files.readString(launcher).lines().toList())
+                .first().asString()
+                .startsWith("@\"")
+                .contains("org.jebol.adapter.cli.Repl --root \"/srv/root\" --data \"/srv/root/.jebol/\" %*");
+        assertThat(Files.readString(launcher).lines().toList())
+                .last().asString().isEqualTo("@exit /b %errorlevel%");
+    }
+
+    @Test
+    @DisplayName("and a percent sign in what it names is doubled, so cmd reads it as itself")
+    void doublesAPercentSignOnWindows(@TempDir Path directory) throws IOException {
+        JavaMachine machine = machineWith("java.io.tmpdir", directory.toString(), "java.class.path", "lib%1.jar",
+                "file.separator", "\\");
+
+        Path launcher = launcherPath(machine.launcherFor("/srv/100%/", ""));
+
+        assertThat(Files.readString(launcher))
+                .contains("lib%%1.jar")
+                .contains("--root \"/srv/100%%/\"");
+    }
+
+    @Test
     @DisplayName("a launcher that cannot be written is none")
     void answersNoneWhenUnwritable(@TempDir Path directory) {
         JavaMachine machine = machineWith("java.io.tmpdir", directory.resolve("missing").toString());
