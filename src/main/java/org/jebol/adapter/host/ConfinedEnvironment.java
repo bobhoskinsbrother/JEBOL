@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.FilePort;
 
@@ -38,7 +39,7 @@ public final class ConfinedEnvironment implements EnvironmentPort {
     }
 
     private static String asLocalPath(String scriptPath) {
-        return scriptPath.replace('/', File.separatorChar);
+        return LocalFileConvention.forSeparator(File.separatorChar).writeLocalPath(scriptPath);
     }
 
     @Override

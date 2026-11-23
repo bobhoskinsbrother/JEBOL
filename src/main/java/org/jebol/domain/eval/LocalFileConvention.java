@@ -9,6 +9,7 @@ public enum LocalFileConvention {
 
     private static final char REBOLS_SEPARATOR = '/';
     private static final char DRIVE_MARK = ':';
+    private static final char DOT = '.';
 
     private final char separator;
 
@@ -41,6 +42,62 @@ public enum LocalFileConvention {
             return new LocalPathStart("" + first + DRIVE_MARK + separator, Math.min(3, rebolPath.length()));
         }
         return new LocalPathStart("" + separator + separator, 1);
+    }
+
+    public String writeLocalPath(String rebolPath) {
+        return written(rebolPath, false);
+    }
+
+    public String writeLocalPathResolvingDots(String rebolPath) {
+        return written(rebolPath, true);
+    }
+
+    private String written(String path, boolean resolvingDots) {
+        LocalPathStart start = startLocalPath(path);
+        StringBuilder built = new StringBuilder(start.written());
+        int at = start.readFrom();
+        while (at < path.length()) {
+            if (resolvingDots) {
+                at = skipAnyDots(path, at, built);
+            }
+            while (at < path.length()) {
+                char letter = path.charAt(at);
+                at++;
+                if (letter == REBOLS_SEPARATOR) {
+                    if (built.isEmpty() || built.charAt(built.length() - 1) != separator) {
+                        built.append(separator);
+                    }
+                    break;
+                }
+                built.append(letter);
+            }
+        }
+        return built.toString();
+    }
+
+    private int skipAnyDots(String path, int at, StringBuilder built) {
+        if (at >= path.length() || path.charAt(at) != DOT) {
+            return at;
+        }
+        boolean twoDots = at + 1 < path.length() && path.charAt(at + 1) == DOT;
+        int after = at + (twoDots ? 2 : 1);
+        boolean wholeSegment = after >= path.length() || path.charAt(after) == REBOLS_SEPARATOR;
+        if (!wholeSegment) {
+            return at;
+        }
+        if (twoDots) {
+            backOutOneDirectory(built);
+        }
+        return after;
+    }
+
+    private void backOutOneDirectory(StringBuilder built) {
+        int length = built.length() > 2 ? built.length() - 2 : 0;
+        while (length > 0 && built.charAt(length) != separator) {
+            length--;
+        }
+        built.setLength(length);
+        built.append(separator);
     }
 
     public Optional<String> readLocalPath(String localPath) {

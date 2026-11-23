@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -84,7 +85,7 @@ class AConfinedScriptsHomeEndToEndTest {
                 print mold reduce [system/options/home  system/options/data  get-env {HOME}]""");
 
         assertThat(ran.lines()).containsExactly("""
-                [%/ %/.rebol/ "/"]""");
+                [%/ %/.rebol/ "HOME"]""".replace("HOME", File.separatorChar == '\\' ? "" : "/"));
         assertThat(ran.exitStatus()).isZero();
     }
 

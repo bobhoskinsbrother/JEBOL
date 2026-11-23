@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -65,6 +66,10 @@ class AConfinedCommandLineTellsStartItsHomeTest {
         return interpreter;
     }
 
+    private static String hostWrites(String elsewhere, String onWindows) {
+        return File.separatorChar == '\\' ? onWindows : elsewhere;
+    }
+
     private String answer(Interpreter interpreter, String source) {
         return interpreter.run(source).display();
     }
@@ -79,7 +84,7 @@ class AConfinedCommandLineTellsStartItsHomeTest {
         assertThat(answer(interpreter, """
                 reduce [system/options/home  system/options/data  get-env {HOME}]"""))
                 .isEqualTo("""
-                        [%/ %/.rebol/ "/"]""");
+                        [%/ %/.rebol/ "HOME"]""".replace("HOME", hostWrites("/", "")));
     }
 
     @Test
@@ -93,7 +98,7 @@ class AConfinedCommandLineTellsStartItsHomeTest {
         assertThat(answer(interpreter, """
                 reduce [system/options/home  system/options/data  get-env {HOME}]"""))
                 .isEqualTo("""
-                        [%/u/me/ %/u/me/.rebol/ "/u/me"]""");
+                        [%/u/me/ %/u/me/.rebol/ "HOME"]""".replace("HOME", hostWrites("/u/me", "u:\\me")));
     }
 
     @Test
@@ -103,7 +108,7 @@ class AConfinedCommandLineTellsStartItsHomeTest {
 
         assertThat(answer(startConfined(), """
                 reduce [system/options/home  get-env {HOME}]""")).isEqualTo("""
-                [%/ "/"]""");
+                [%/ "HOME"]""".replace("HOME", hostWrites("/", "")));
     }
 
     @Test
@@ -137,7 +142,7 @@ class AConfinedCommandLineTellsStartItsHomeTest {
 
         assertThat(answer(startConfined(), """
                 reduce [get-env {USERPROFILE}]""")).isEqualTo("""
-                ["/"]""");
+                ["%s"]""".formatted(hostWrites("/", "")));
     }
 
     @Test
@@ -158,7 +163,7 @@ class AConfinedCommandLineTellsStartItsHomeTest {
 
         assertThat(answer(startConfined(), """
                 reduce [get-env {APPDATA}]""")).isEqualTo("""
-                ["/roaming"]""");
+                ["%s"]""".formatted(hostWrites("/roaming", "\\\\roaming")));
     }
 
     @Test
@@ -202,6 +207,6 @@ class AConfinedCommandLineTellsStartItsHomeTest {
 
         assertThat(answer(startConfined(), """
                 reduce [select list-env {HOME}]""")).isEqualTo("""
-                ["/"]""");
+                ["%s"]""".formatted(hostWrites("/", "")));
     }
 }

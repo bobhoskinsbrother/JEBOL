@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.value.FileValue;
@@ -393,7 +394,7 @@ public final class FileSystemPort implements FilePort {
 
         @Override
         public Path beforeLinks() {
-            return Path.of(writtenPath);
+            return Path.of(LocalFileConvention.forSeparator(File.separatorChar).writeLocalPath(writtenPath));
         }
 
         @Override
