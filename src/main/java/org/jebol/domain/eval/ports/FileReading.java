@@ -115,11 +115,15 @@ final class FileReading {
 
     static final class Wildcard {
 
+        private static final String CURRENT_DIRECTORY = "./";
+
+        private final String path;
         private final String directory;
         private final String pattern;
         private final boolean present;
 
         Wildcard(String path) {
+            this.path = path;
             int lastSeparator = path.lastIndexOf('/');
             this.directory = path.substring(0, lastSeparator + 1);
             this.pattern = path.substring(lastSeparator + 1);
@@ -135,10 +139,25 @@ final class FileReading {
         }
 
         List<String> listNamesMatchingIn(FilePort files) {
+            boolean mindingCase = !files.ignoresCaseInNames();
             return files.listFileNames(directory.isEmpty() ? "." : directory).stream()
                     .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchesWhole(
-                            withoutItsSlash(listed), pattern))
+                            withoutItsSlash(listed), pattern, mindingCase))
                     .toList();
+        }
+
+        String locateThrough(FilePort files) {
+            int firstWildcard = Math.min(indexOrEnd(path, '*'), indexOrEnd(path, '?'));
+            int lastSeparatorBefore = path.lastIndexOf('/', firstWildcard);
+            String fixedPart = path.substring(0, lastSeparatorBefore + 1);
+            String location = files.locationFor(fixedPart.isEmpty() ? CURRENT_DIRECTORY : fixedPart);
+            String asDirectory = location.endsWith("/") ? location : location + "/";
+            return asDirectory + path.substring(lastSeparatorBefore + 1);
+        }
+
+        private static int indexOrEnd(String written, char wanted) {
+            int at = written.indexOf(wanted);
+            return at < 0 ? written.length() : at;
         }
 
         private boolean holdsWildcard(String written) {

@@ -130,12 +130,17 @@ public final class Ports {
     }
 
     public void requireFilePolicy(String path, Evaluator evaluator, Set<PolicyAccess> accesses) {
-        Value subject = runThroughFileSystem(() -> FileValue.of(evaluator.ports().files().locationFor(path)));
+        Value subject = runThroughFileSystem(() -> FileValue.of(locateForPolicy(path, evaluator.ports().files())));
         for (PolicyAccess access : PolicyAccess.values()) {
             if (accesses.contains(access)) {
                 evaluator.policies().require(PolicyClass.FILE, access, Optional.of(subject));
             }
         }
+    }
+
+    private String locateForPolicy(String path, FilePort files) {
+        FileReading.Wildcard wildcard = new FileReading.Wildcard(path);
+        return wildcard.isPresent() ? wildcard.locateThrough(files) : files.locationFor(path);
     }
 
     public boolean namesDirectory(String path, Evaluator evaluator) {

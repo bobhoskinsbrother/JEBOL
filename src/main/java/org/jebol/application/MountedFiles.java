@@ -157,6 +157,11 @@ public final class MountedFiles implements FilePort {
     }
 
     @Override
+    public boolean ignoresCaseInNames() {
+        return beneath.ignoresCaseInNames();
+    }
+
+    @Override
     public boolean isDirectory(String path) {
         return isInMount(path) ? mounted.isDirectory(absolute(path)) : beneath.isDirectory(beneathPath(path));
     }

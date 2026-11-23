@@ -28,6 +28,7 @@ public final class FileSystemPort implements FilePort {
 
     private static final int NO_SUCH_ENTRY = 2;
     private static final int NOT_DIRECTORY = 20;
+    private static final char WINDOWS_SEPARATOR = '\\';
     private final Path root;
     private final boolean writable;
     private Path relativePathRoot;
@@ -189,6 +190,11 @@ public final class FileSystemPort implements FilePort {
         } catch (IOException unreadable) {
             throw new Denied("cannot-open", "cannot read the directory at " + path, path);
         }
+    }
+
+    @Override
+    public boolean ignoresCaseInNames() {
+        return File.separatorChar == WINDOWS_SEPARATOR;
     }
 
     @Override

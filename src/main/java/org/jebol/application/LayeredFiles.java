@@ -125,6 +125,11 @@ public final class LayeredFiles implements FilePort {
     }
 
     @Override
+    public boolean ignoresCaseInNames() {
+        return store.ignoresCaseInNames();
+    }
+
+    @Override
     public boolean isDirectory(String path) {
         return store.isDirectory(path) || carried.isDirectory(absolute(path));
     }

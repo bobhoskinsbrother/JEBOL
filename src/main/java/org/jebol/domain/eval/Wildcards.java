@@ -15,8 +15,8 @@ public record Wildcards(char anyRun, char oneCharacter) {
                 .orElse(this);
     }
 
-    public boolean matchesWhole(String within, String pattern) {
-        return findPatternEnd(within, 0, within.length(), pattern, true) == within.length();
+    public boolean matchesWhole(String within, String pattern, boolean mindingCase) {
+        return findPatternEnd(within, 0, within.length(), pattern, mindingCase) == within.length();
     }
 
     public int findPatternEnd(

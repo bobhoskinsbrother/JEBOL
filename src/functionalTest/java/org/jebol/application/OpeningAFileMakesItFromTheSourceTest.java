@@ -16,7 +16,8 @@ class OpeningAFileMakesItFromTheSourceTest {
 
     private static String answerTo(Path root, String source) {
         Interpreter interpreter = Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(
+                        new APortWhoseNamesCannotHoldWildcards(FileSystemPort.rootFileSystem(root))),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

@@ -112,6 +112,15 @@ public interface FilePort {
     /** The names in a directory, each on its own. */
     java.util.List<String> listFileNames(String path);
 
+    /**
+     * Whether a wildcard matches these names without regard to case, as
+     * Windows matches them for R3's READ of a pattern. False unless the port
+     * says otherwise.
+     */
+    default boolean ignoresCaseInNames() {
+        return false;
+    }
+
     /** Whether the path names a directory rather than a file. */
     boolean isDirectory(String path);
 

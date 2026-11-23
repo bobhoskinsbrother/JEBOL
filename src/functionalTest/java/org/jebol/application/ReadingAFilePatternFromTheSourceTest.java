@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -10,14 +11,23 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ReadingAFilePatternFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
+        return makeAnInterpreterOn(portOver(directory).mindingCase());
+    }
+
+    private static APortWhoseNamesCannotHoldWildcards portOver(Path directory) {
+        return new APortWhoseNamesCannotHoldWildcards(FileSystemPort.rootFileSystem(directory));
+    }
+
+    private static Interpreter makeAnInterpreterOn(FilePort files) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(files),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }
@@ -108,11 +118,29 @@ class ReadingAFilePatternFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("matching minds the case")
+    @DisplayName("matching minds the case where the port's names do, as POSIX's glob does")
     void mindsTheCase(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(makeAnInterpreterReaching(directory), "read %files/*.PNG"))
+        assertThat(answerTo(makeAnInterpreterOn(portOver(directory).mindingCase()), "read %files/*.PNG"))
                 .isEqualTo("[]");
+    }
+
+    @Test
+    @DisplayName("and ignores it where the port's names do, as Windows' FindFirstFile does")
+    void ignoresTheCaseWhereThePortDoes(@TempDir Path directory) throws IOException {
+        layOut(directory);
+        assertThat(answerTo(makeAnInterpreterOn(portOver(directory).ignoringCase()), "read %files/*.PNG"))
+                .isEqualTo("[%one.png %two.png]");
+    }
+
+    @Test
+    @DisplayName("every drive of a Windows machine ignores the case, and the pattern is read on its drive")
+    void readsAPatternOnADrive(@TempDir Path directory) throws IOException {
+        layOut(directory);
+        DriveLetterFiles drives = new DriveLetterFiles(Map.of("C", FileSystemPort.rootFileSystem(directory)), "/");
+        assertThat(answerTo(makeAnInterpreterOn(new APortWhoseNamesCannotHoldWildcards(drives)),
+                "read %/C/files/*.PNG"))
+                .isEqualTo("[%one.png %two.png]");
     }
 
     @Test

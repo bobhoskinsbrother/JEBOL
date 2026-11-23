@@ -135,6 +135,11 @@ public final class DriveLetterFiles implements FilePort {
     }
 
     @Override
+    public boolean ignoresCaseInNames() {
+        return true;
+    }
+
+    @Override
     public boolean isDirectory(String path) {
         if (isRoot(path)) {
             return true;
