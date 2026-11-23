@@ -135,8 +135,8 @@ class EnvironmentWritingFromTheSourceTest {
         assertThat(answerTo(interpreter, """
                 set-env "JB_CHILD" "inherited"
                 seen: copy ""
-                call/shell/wait/output {printf '%s' "$JB_CHILD"} seen
-                seen"""))
+                call/shell/wait/output {%s} seen
+                trim/lines seen""".formatted(TheShell.echo("JB_CHILD"))))
                 .isEqualTo("\"inherited\"");
     }
 

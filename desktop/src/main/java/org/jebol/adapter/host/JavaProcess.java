@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -173,26 +172,11 @@ public final class JavaProcess implements ProcessPort {
     }
 
     private List<String> asShellCommand(List<String> command, boolean throughShell) {
-        if (!throughShell) {
-            return command;
-        }
-        return isWindows()
-                ? wrapForCmd(command)
-                : wrapForSh(command);
+        return ShellCommands.asShellCommand(command, throughShell, isWindows());
     }
 
     private boolean isWindows() {
         return machine.operatingSystem().equals("Windows");
-    }
-
-    private List<String> wrapForCmd(List<String> command) {
-        return List.of("cmd.exe", "/c", String.join(" ", command));
-    }
-
-    private List<String> wrapForSh(List<String> command) {
-        List<String> withShell = new ArrayList<>(List.of("/bin/sh", "-c"));
-        withShell.addAll(command);
-        return withShell;
     }
 
     @Override

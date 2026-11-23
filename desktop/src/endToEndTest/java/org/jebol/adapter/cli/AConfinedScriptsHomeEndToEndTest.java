@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.application.TheShell;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -134,8 +135,8 @@ class AConfinedScriptsHomeEndToEndTest {
     void letsProgramSeeMachinesHome() throws Exception {
         Ran ran = runConfined("""
                 printed: copy {}
-                call/shell/wait/output {echo $HOME} printed
-                print trim/lines printed""", "-s");
+                call/shell/wait/output {%s} printed
+                print trim/lines printed""".formatted(TheShell.echo("HOME")), "-s");
 
         assertThat(ran.lines()).containsExactly(machineHome.toString());
     }

@@ -40,6 +40,7 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -115,6 +116,7 @@ public final class Repl {
     }
 
     public static void main(String[] arguments) {
+        writeUtf8UnlessToAWindowsConsole();
         StreamOutput output = StreamOutput.withSystemLineEndings(System.out, System.err);
         CommandLineConsole console = CommandLineConsole.forThisProcess(
                 new FileInputStream(FileDescriptor.in), output, System.out);
@@ -298,6 +300,15 @@ public final class Repl {
                 .withCertificateAuthority(cafile.isEmpty()
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingMachineAnd(Path.of(cafile))));
+    }
+
+    private static void writeUtf8UnlessToAWindowsConsole() {
+        Console console = System.console();
+        boolean toAWindowsConsole = File.separatorChar == WINDOWS_SEPARATOR && console != null && console.isTerminal();
+        if (!toAWindowsConsole) {
+            System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8));
+        }
     }
 
     private static boolean isWholeMachine(Path root) {

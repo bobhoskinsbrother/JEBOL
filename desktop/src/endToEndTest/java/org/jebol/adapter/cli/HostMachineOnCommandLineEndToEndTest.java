@@ -1,10 +1,12 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.domain.eval.LocalFileConvention;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -43,6 +45,10 @@ class HostMachineOnCommandLineEndToEndTest {
                 Files.readAllLines(output, StandardCharsets.UTF_8));
     }
 
+    private static String asRebolWritesIt(String hostPath) {
+        return LocalFileConvention.forSeparator(File.separatorChar).readLocalPath(hostPath).orElseThrow();
+    }
+
     private Process startSleeper() throws IOException {
         return new ProcessBuilder("sleep", "60").start();
     }
@@ -62,8 +68,8 @@ class HostMachineOnCommandLineEndToEndTest {
         assertThat(ran.exitStatus()).isZero();
         assertThat(ran.lines()).containsExactly(
                 Long.toString(ran.processNumber()),
-                System.getProperty("user.home") + "/",
-                directory.toRealPath() + "/",
+                asRebolWritesIt(System.getProperty("user.home")) + "/",
+                asRebolWritesIt(directory.toRealPath().toString()) + "/",
                 "true",
                 "file");
     }

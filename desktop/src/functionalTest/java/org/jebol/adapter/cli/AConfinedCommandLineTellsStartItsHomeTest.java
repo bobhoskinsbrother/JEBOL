@@ -4,6 +4,7 @@ import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.application.TheShell;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -177,8 +178,8 @@ class AConfinedCommandLineTellsStartItsHomeTest {
 
         assertThat(answer(startConfined(), """
                 printed: copy {}
-                call/shell/wait/output {echo $HOME} printed
-                (trim/lines printed) == {%s}""".formatted(outside))).isEqualTo("#(true)");
+                call/shell/wait/output {%s} printed
+                (trim/lines printed) == {%s}""".formatted(TheShell.echo("HOME"), outside))).isEqualTo("#(true)");
     }
 
     @Test
@@ -189,8 +190,8 @@ class AConfinedCommandLineTellsStartItsHomeTest {
         assertThat(answer(startConfined(), """
                 set-env {HOME} {/elsewhere}
                 printed: copy {}
-                call/shell/wait/output {echo $HOME} printed
-                reduce [get-env {HOME}  trim/lines printed]""")).isEqualTo("""
+                call/shell/wait/output {%s} printed
+                reduce [get-env {HOME}  trim/lines printed]""".formatted(TheShell.echo("HOME")))).isEqualTo("""
                 ["/elsewhere" "/elsewhere"]""");
     }
 
