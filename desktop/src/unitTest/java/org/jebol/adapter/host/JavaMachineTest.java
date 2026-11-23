@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Value;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -84,13 +86,24 @@ class JavaMachineTest {
         assertThat(Files.readString(launcher)).contains("--data \"/srv/root/.jebol/\"");
     }
 
+    private Path windowsLauncherIn(Path directory, Value launcher) throws IOException {
+        List<Path> written;
+        try (Stream<Path> files = Files.list(directory)) {
+            written = files.toList();
+        }
+        assertThat(written).hasSize(1);
+        assertThat(launcherPath(launcher).toString()).isEqualTo(
+                LocalFileConvention.WINDOWS.readLocalPath(written.getFirst().toString()).orElseThrow());
+        return written.getFirst();
+    }
+
     @Test
     @DisplayName("on Windows a launcher is a command script that passes every argument on and leaves with java's status")
     void writesACommandScriptOnWindows(@TempDir Path directory) throws IOException {
         JavaMachine machine = machineWith("java.io.tmpdir", directory.toString(), "java.class.path", "lib.jar",
                 "file.separator", "\\");
 
-        Path launcher = launcherPath(machine.launcherFor("/srv/root", "/srv/root/.jebol/"));
+        Path launcher = windowsLauncherIn(directory, machine.launcherFor("/srv/root", "/srv/root/.jebol/"));
 
         assertThat(launcher.getFileName().toString()).endsWith(".cmd");
         assertThat(Files.readString(launcher).lines().toList())
@@ -107,7 +120,7 @@ class JavaMachineTest {
         JavaMachine machine = machineWith("java.io.tmpdir", directory.toString(), "java.class.path", "lib%1.jar",
                 "file.separator", "\\");
 
-        Path launcher = launcherPath(machine.launcherFor("/srv/100%/", ""));
+        Path launcher = windowsLauncherIn(directory, machine.launcherFor("/srv/100%/", ""));
 
         assertThat(Files.readString(launcher))
                 .contains("lib%%1.jar")
