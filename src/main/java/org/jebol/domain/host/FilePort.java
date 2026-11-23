@@ -164,6 +164,8 @@ public interface FilePort {
 
         public static final String READ_ONLY = "read-only";
 
+        public static final String NAME_NO_FILE_CAN_HAVE = "outside-root";
+
         private final transient String errorId;
         private final transient String subject;
         private final transient Optional<Integer> code;
@@ -195,6 +197,10 @@ public interface FilePort {
 
         public boolean isSecurityRefusal() {
             return errorId.equals(SECURITY);
+        }
+
+        public boolean isNameNoFileCanHave() {
+            return errorId.equals(NAME_NO_FILE_CAN_HAVE);
         }
 
         /** Whether the host refused the script rather than the file, so the refusal reaches the script as it is. */

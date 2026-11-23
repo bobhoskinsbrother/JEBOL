@@ -48,6 +48,27 @@ class ReadingAFilePatternFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("a pattern queried names no file, so the answer is none, even where a name cannot hold a star")
+    void queriesPatternAsNoFile(@TempDir Path directory) throws IOException {
+        layOut(directory);
+
+        assertThat(answerTo(makeAnInterpreterReaching(directory), "query %files/issue-2186*.txt [type: date:]"))
+                .isEqualTo("_");
+    }
+
+    @Test
+    @DisplayName("a ZIP saved from a pattern packs every file it matches, as Rebol's suite asserts")
+    void zipsEveryMatchingFile(@TempDir Path directory) throws IOException {
+        layOut(directory);
+
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
+                save %temp.zip %files/issue-2186*.txt
+                data: load %temp.zip
+                [6 %issue-2186-UTF16-BE.txt %issue-2186-UTF16-LE.txt] = reduce [length? data  data/1  data/3]"""))
+                .isEqualTo("#(true)");
+    }
+
+    @Test
     @DisplayName("a star matches every name that fits around it, and answers names")
     void matchesEveryNameThatFitsAroundAStar(@TempDir Path directory)
             throws IOException {

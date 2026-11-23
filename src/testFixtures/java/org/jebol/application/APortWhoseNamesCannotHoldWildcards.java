@@ -29,9 +29,13 @@ public final class APortWhoseNamesCannotHoldWildcards implements FilePort {
         return new APortWhoseNamesCannotHoldWildcards(files, Optional.of(true));
     }
 
+    private static boolean holdsWildcard(String path) {
+        return path.indexOf('*') >= 0 || path.indexOf('?') >= 0;
+    }
+
     private String refuseWildcards(String path) {
-        if (path.indexOf('*') >= 0 || path.indexOf('?') >= 0) {
-            throw new Denied("outside-root", path + " is not a path this port can resolve");
+        if (holdsWildcard(path)) {
+            throw new Denied(Denied.NAME_NO_FILE_CAN_HAVE, path + " is not a path this port can resolve");
         }
         return path;
     }
@@ -63,7 +67,7 @@ public final class APortWhoseNamesCannotHoldWildcards implements FilePort {
 
     @Override
     public boolean exists(String path) {
-        return files.exists(refuseWildcards(path));
+        return !holdsWildcard(path) && files.exists(path);
     }
 
     @Override
@@ -118,7 +122,7 @@ public final class APortWhoseNamesCannotHoldWildcards implements FilePort {
 
     @Override
     public boolean isDirectory(String path) {
-        return files.isDirectory(refuseWildcards(path));
+        return !holdsWildcard(path) && files.isDirectory(path);
     }
 
     @Override
@@ -133,6 +137,6 @@ public final class APortWhoseNamesCannotHoldWildcards implements FilePort {
 
     @Override
     public Optional<FileInformation> describe(String path) {
-        return files.describe(refuseWildcards(path));
+        return holdsWildcard(path) ? Optional.empty() : files.describe(path);
     }
 }

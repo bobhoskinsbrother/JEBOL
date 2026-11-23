@@ -316,7 +316,7 @@ public final class FileSystemPort implements FilePort {
             boolean isThere = hasTrailingSlash(path) ? Files.isDirectory(landed) : Files.exists(landed);
             return isThere ? Optional.of(landed) : Optional.empty();
         } catch (Denied refused) {
-            if (refused.isSecurityRefusal()) {
+            if (refused.isSecurityRefusal() || refused.isNameNoFileCanHave()) {
                 return Optional.empty();
             }
             throw refused;
@@ -351,7 +351,7 @@ public final class FileSystemPort implements FilePort {
             }
             return resolved;
         } catch (InvalidPathException malformed) {
-            throw new Denied("outside-root", path + " is not a path this port can resolve");
+            throw new Denied(Denied.NAME_NO_FILE_CAN_HAVE, path + " is not a path this port can resolve");
         }
     }
 
