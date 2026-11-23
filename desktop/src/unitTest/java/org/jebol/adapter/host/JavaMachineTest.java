@@ -92,7 +92,8 @@ class JavaMachineTest {
             written = files.toList();
         }
         assertThat(written).hasSize(1);
-        assertThat(launcherPath(launcher).toString()).isEqualTo(
+        assertThat(List.of(launcher)).first().isInstanceOf(FileValue.class);
+        assertThat(((FileValue) launcher).text()).isEqualTo(
                 LocalFileConvention.WINDOWS.readLocalPath(written.getFirst().toString()).orElseThrow());
         return written.getFirst();
     }
