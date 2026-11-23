@@ -16,6 +16,8 @@ import org.jebol.adapter.host.Uts46;
 import org.jebol.adapter.host.WakeablePause;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
+import org.jebol.application.DriveLetterFiles;
+import org.jebol.domain.eval.LocalFileConvention;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.LayeredFiles;
@@ -38,11 +40,14 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.io.*;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Optional;
 import java.util.Set;
 
@@ -61,6 +66,7 @@ public final class Repl {
     private static final String CONTINUATION_AROUND_BRACKET = " ";
 
     private static final Path WHOLE_MACHINE = Path.of("/");
+    private static final char WINDOWS_SEPARATOR = '\\';
 
     static final int KEEP_PROCESS = -1;
 
@@ -230,7 +236,9 @@ public final class Repl {
         FileSystemPort store = FileSystemPort.rootFileSystem(root);
         AppFiles files = PackagedApp.readFrom(arguments)
                 .<AppFiles>map(packaged -> new PackagedFiles(packaged, store))
-                .orElseGet(() -> new PlainFiles(store));
+                .orElseGet(() -> isWindowsWholeMachine(root)
+                        ? new WindowsDrives(mountEveryDrive())
+                        : new PlainFiles(store));
         HostPorts ports = hostServicesFor(bounds, files, environment,
                 isWholeMachine(root), new WakeablePause(), cafile, lending)
                 .withConsole(console);
@@ -238,11 +246,19 @@ public final class Repl {
         return chosen.isAskedFor() ? chosen.attachTo(ports, out, anythingWasAsked) : ports;
     }
 
-    private sealed interface AppFiles permits PlainFiles, PackagedFiles {
+    private sealed interface AppFiles permits PlainFiles, PackagedFiles, WindowsDrives {
 
         FilePort files();
 
         AppFiles copyInWorkingDirectory();
+    }
+
+    private record WindowsDrives(DriveLetterFiles files) implements AppFiles {
+
+        @Override
+        public AppFiles copyInWorkingDirectory() {
+            return new WindowsDrives(files.copyInWorkingDirectory());
+        }
     }
 
     private record PlainFiles(FileSystemPort files) implements AppFiles {
@@ -286,6 +302,18 @@ public final class Repl {
 
     private static boolean isWholeMachine(Path root) {
         return root.toAbsolutePath().normalize().getParent() == null;
+    }
+
+    private static boolean isWindowsWholeMachine(Path root) {
+        return isWholeMachine(root) && File.separatorChar == WINDOWS_SEPARATOR;
+    }
+
+    private static DriveLetterFiles mountEveryDrive() {
+        Map<String, FilePort> drives = new TreeMap<>();
+        for (Path driveRoot : FileSystems.getDefault().getRootDirectories()) {
+            drives.put(driveRoot.toString().substring(0, 1), FileSystemPort.rootFileSystem(driveRoot));
+        }
+        return new DriveLetterFiles(drives, "/");
     }
 
     private static void applyDataSwitch(
@@ -408,6 +436,9 @@ public final class Repl {
 
         private String asScriptSeesIt(Path host) {
             Path absolute = realPath(host);
+            if (isWindowsWholeMachine(root)) {
+                return LocalFileConvention.WINDOWS.readLocalPath(absolute.toString()).orElse(nameRoot());
+            }
             Path realRoot = realPath(root);
             if (!absolute.startsWith(realRoot)) {
                 return nameRoot();

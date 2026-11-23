@@ -215,6 +215,15 @@ class HostMachineTest {
         }
 
         @Test
+        @DisplayName("on Windows the home and the start directory are written with the drive first, as R3 writes them")
+        void writesWindowsDirectoriesWithTheDriveFirst() {
+            assertThat(answerOn(new DescribedMachine().separatedBy('\\')
+                            .homeAt("C:\\Users\\someone").startedIn("D:\\work"), """
+                    reduce [system/options/home  system/options/data  system/options/path]"""))
+                    .isEqualTo("[%/C/Users/someone/ %/C/Users/someone/.jebol/ %/D/work/]");
+        }
+
+        @Test
         @DisplayName("system/options/data sits in the machine's home")
         void placesData() {
             assertThat(answerOn(new DescribedMachine().homeAt("/home/someone"), """
@@ -556,8 +565,15 @@ class HostMachineTest {
 
             assertThat(AnInterpreter.create().run("""
                     reduce [system/platform  system/options/home  access-os 'pid]""").display())
-                    .isEqualTo("[" + machine.operatingSystem() + " %" + machine.homeDirectory() + "/ "
-                            + machine.processNumber() + "]");
+                    .isEqualTo("[" + machine.operatingSystem() + " %" + writtenAsRebolWritesIt(machine.homeDirectory())
+                            + "/ " + machine.processNumber() + "]");
+        }
+
+        private String writtenAsRebolWritesIt(String home) {
+            boolean startsWithADrive = home.length() > 1 && home.charAt(1) == ':';
+            return startsWithADrive
+                    ? "/" + home.charAt(0) + home.substring(2).replace('\\', '/')
+                    : home;
         }
     }
 }

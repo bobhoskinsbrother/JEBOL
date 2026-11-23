@@ -106,12 +106,17 @@ public final class SystemObject {
             options.register(field, NoneValue.none());
         }
         options.register("flags", BlockValue.of(List.of(LogicValue.yes())));
-        String home = asDirectory(machine.homeDirectory());
+        LocalFileConvention convention = LocalFileConvention.forSeparator(machine.fileSeparator());
+        String home = asDirectory(asRebolPath(convention, machine.homeDirectory()));
         options.register("home", FileValue.of(home));
         options.register("boot", NoneValue.none());
-        options.register("path", FileValue.of(asDirectory(machine.currentDirectory())));
+        options.register("path", FileValue.of(asDirectory(asRebolPath(convention, machine.currentDirectory()))));
         options.register("data", FileValue.of(home + ".jebol/"));
         return new ObjectValue(options);
+    }
+
+    private String asRebolPath(LocalFileConvention convention, String hostPath) {
+        return convention.readLocalPath(hostPath).orElse(hostPath);
     }
 
     private String asDirectory(String path) {
