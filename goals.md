@@ -984,7 +984,10 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    same failure nor waits on CI, and `ci push` and `ci status` say so too.
 6. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
-   test passed. Not part of this goal's done.
+   test passed. The rules already exist, in CLAUDE.md and
+   `docs/decisions.md`; they move into a skill the stage runs over the
+   change, and a rejection is a failure like any other. Not part of this
+   goal's done.
 7. *The rules follow.* A check-in then means the commit passed the
    smaller set and was pushed to CI; a red run is the first thing fixed,
    and a flake is still a fail. CLAUDE.md's section on running the suite
