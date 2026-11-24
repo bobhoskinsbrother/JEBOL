@@ -933,12 +933,14 @@ page, a script can ask for it, and the GUI's examples follow text size and
 dark mode on all three.
 ### 18. CI on a machine of its own, and the tests split by what a change can reach
 
-The owner, 2026-11-21: the full Android run is a nightly concern, not one
-for every feature, and that needs CI, on a second machine the owner is
-setting aside for it, since the development machine has no room left beside
-the owner's own work. Until this goal
-is done the process does not change: every check-in still runs every
-suite it touched, the full `androidTests` included.
+The owner, 2026-11-21: the full Android run needs CI, on a second machine
+the owner is setting aside for it, since the development machine has no
+room left beside the owner's own work. Corrected by the owner, 2026-11-24:
+every check-in runs everything, the full `androidTests` included -- there is
+no nightly split -- and a failed run alerts the agent that pushed it, not
+only the owner. Until this goal is done the process does not change: every
+check-in still runs every suite it touched, the full `androidTests`
+included.
 
 What the 136 Android runs in `test-history/` showed, read with the owner:
 ART found almost nothing that is ART's own. `to binary!` of an image and
@@ -961,15 +963,17 @@ code: Android's adapters, its SQLite engine, the screen and the app.
 2. *The JVM stands in for what ART exposed.* A functional run with a
    tight heap, and one with platform threads where virtual threads are
    used, so waste and races show in minutes rather than on an emulator.
-3. *Per change:* `allTests`, and on a device only the platform's own
-   code -- Android's unit and end-to-end suites, the packaging tests, and
-   the functional classes that exercise Android's own adapters.
-4. *Nightly:* the full `androidTests`, the core's functional suite and
-   Rebol's suite on ART included, the runs of step 2, and
-   `networkTests`.
-5. *The rules follow.* A check-in then means the per-change set passed;
-   a nightly failure is the first thing fixed the next morning, and a
-   flake there is still a fail. CLAUDE.md's section on running the suite
+3. *Every check-in:* `allTests`, `networkTests`, the runs of step 2, the
+   full `androidTests` on every device -- the core's functional suite and
+   Rebol's suite on ART included -- and the Windows job. Its length is
+   brought down by more devices, not by running less.
+4. *A failed run reaches the agent that pushed it.* After pushing, the
+   agent leaves a listener that ends when the run for its commit ends and
+   carries the failures in brief, so a red run interrupts the agent's next
+   piece of work with its cause, as the owner's notification does.
+5. *The rules follow.* A check-in then means the commit passed the
+   smaller set and was pushed to CI; a red run is the first thing fixed,
+   and a flake is still a fail. CLAUDE.md's section on running the suite
    and the memory on earning a check-in change to say so.
 6. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
    builds for the processor it runs on, and the owner's Mac is Intel
@@ -982,7 +986,7 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    for a private repository; the report is archived with the night's
    results.
 
-**Done when** a push runs the per-change set on the CI machine, the nightly
-run has run unattended and archived its results, the stand-in runs of
-step 2 exist, the Apple Silicon app is built and checked each night, and
-CLAUDE.md describes the new split.
+**Done when** a push runs every suite on the CI machine and archives its
+results, a red run has reached the agent that pushed it with its failures,
+the stand-in runs of step 2 exist, the Apple Silicon app is built and
+checked, and CLAUDE.md describes the new way.
