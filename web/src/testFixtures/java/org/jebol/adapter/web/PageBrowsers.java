@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
@@ -28,6 +29,8 @@ public final class PageBrowsers implements ExtensionContext.Store.CloseableResou
             Map.of("default", "ignore", "beforeUnload", "ignore");
 
     private static final String BIDI = "webSocketUrl";
+
+    private static final String FIREFOX_NAMED_BY_MACHINE = "JEBOL_FIREFOX";
 
     record Configuration(String browserName, boolean everyPopupBlocked, boolean leavingWatched) {
 
@@ -146,10 +149,15 @@ public final class PageBrowsers implements ExtensionContext.Store.CloseableResou
             profile.setPreference("dom.disable_open_click_delay", 0);
         }
         FirefoxOptions asked = new FirefoxOptions();
+        firefoxNamedByMachine().ifPresent(asked::setBinary);
         asked.addArguments("-headless", "-width=1000", "-height=700");
         asked.setProfile(profile);
         speakBidi(asked, wanted);
         return new FirefoxDriver(asked);
+    }
+
+    private static Optional<String> firefoxNamedByMachine() {
+        return Optional.ofNullable(System.getenv(FIREFOX_NAMED_BY_MACHINE)).filter(path -> !path.isBlank());
     }
 
     private void speakBidi(MutableCapabilities asked, Configuration wanted) {

@@ -386,6 +386,12 @@ this twice in November 2026. `file -L $(command -v firefox)` should say ELF, not
 shell script. Removing the snap also removes its `geckodriver`, and Selenium
 fetches a matching one itself.
 
+A machine that keeps its snap -- a desktop someone else uses -- can run the
+Firefox tests on a Mozilla Firefox unpacked anywhere else, named in
+`JEBOL_FIREFOX`: `PageBrowsers` starts that binary. Putting it first on the
+PATH is not enough, because Selenium Manager looks for Firefox in fixed places
+and not on the PATH.
+
 The page's services -- navigation, the
 dialogs, the clipboard, pictures, MIDI, POST and the console's line -- are driven
 in Chrome, and in Firefox only where the two browsers really differ: leaving the
