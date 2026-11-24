@@ -978,8 +978,8 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    run while one is open is handed to it.
 5. *Every agent knows CI is red.* The state of CI -- green or red, what
    is running, which run failed and with what, and who is fixing it -- is
-   kept in one record behind a local MCP server, through which agents read
-   it and a fixer claims a red run and hands it back. A hook puts one line
+   kept in one record file on the development machine, which agents read
+   and through which a fixer claims a red run and hands it back. A hook puts one line
    in a working agent's context while CI is red, so it neither fixes the
    same failure nor waits on CI, and `ci push` and `ci status` say so too.
 6. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
