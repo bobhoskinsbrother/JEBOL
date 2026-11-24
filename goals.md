@@ -967,15 +967,29 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    full `androidTests` on every device -- the core's functional suite and
    Rebol's suite on ART included -- and the Windows job. Its length is
    brought down by more devices, not by running less.
-4. *A failed run reaches the agent that pushed it.* After pushing, the
-   agent leaves a listener that ends when the run for its commit ends and
-   carries the failures in brief, so a red run interrupts the agent's next
-   piece of work with its cause, as the owner's notification does.
-5. *The rules follow.* A check-in then means the commit passed the
+4. *A red run starts its own fix* (owner, 2026-11-24). No agent waits on
+   CI. A service on the development machine notices a run that ended red
+   and starts a Claude session for it in a tmux window of its own, named
+   for the run, working in a worktree of its own, with the run, its commit,
+   the failures in brief and where the run's logs are in its first prompt.
+   It finds the cause, writes the failing test, fixes it, and pushes
+   through `ci push` unattended once the smaller set passes; only a green
+   CI run reaches GitHub. One red run gets one session, and a later red
+   run while one is open is handed to it.
+5. *Every agent knows CI is red.* The state of CI -- green or red, what
+   is running, which run failed and with what, and who is fixing it -- is
+   kept in one record behind a local MCP server, through which agents read
+   it and a fixer claims a red run and hands it back. A hook puts one line
+   in a working agent's context while CI is red, so it neither fixes the
+   same failure nor waits on CI, and `ci push` and `ci status` say so too.
+6. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
+   stages that review a change's design and can reject a build that every
+   test passed. Not part of this goal's done.
+7. *The rules follow.* A check-in then means the commit passed the
    smaller set and was pushed to CI; a red run is the first thing fixed,
    and a flake is still a fail. CLAUDE.md's section on running the suite
    and the memory on earning a check-in change to say so.
-6. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
+8. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
    builds for the processor it runs on, and the owner's Mac is Intel
    (2026-11-21), so 2e's script proves only the Intel `.app`. A hosted
    macOS runner, which is Apple Silicon, runs the example app's
@@ -987,6 +1001,8 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    results.
 
 **Done when** a push runs every suite on the CI machine and archives its
-results, a red run has reached the agent that pushed it with its failures,
+results, a red run has started its own fixing session with its failures
+and that session's fix has gone green, a working agent has been told CI was
+red while it was being fixed,
 the stand-in runs of step 2 exist, the Apple Silicon app is built and
 checked, and CLAUDE.md describes the new way.
