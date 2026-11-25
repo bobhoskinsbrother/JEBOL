@@ -1009,3 +1009,43 @@ and that session's fix has gone green, a working agent has been told CI was
 red while it was being fixed,
 the stand-in runs of step 2 exist, the Apple Silicon app is built and
 checked, and CLAUDE.md describes the new way.
+
+### 19. Android 13 and 14: lowering the floor from API 35 to API 33
+
+The owner, 2026-11-25: a third phone joins CI, an older one whose last
+Android is 13, beside the two on Android 17. Decision 73 set API 35
+(Android 15) as the floor, knowing it left most phones out, because
+Android 15 is the first with `SequencedCollection`:
+the core calls `getFirst`, `getLast` and `reversed` about four hundred
+times. This goal takes the floor to API 33 (Android 13) and amends
+decision 73.
+
+1. *What D8 already does.* Android's compiler backports some newer
+   library methods to older API levels. Check, with the AGP the build
+   uses, which of `getFirst`, `getLast`, `removeFirst`, `removeLast`,
+   `addFirst`, `addLast` and `reversed` it backports on `List`, `Deque`
+   and the other sequenced types, by building with `minSdk = 33` and
+   reading what D8 reports, not by reading release notes.
+2. *What is left.* Every call D8 does not backport, and every other
+   API 34 or 35 call in the core, the Android adapters, the app and the
+   SQLite extension, listed from `lint`'s `NewApi` check at `minSdk = 33`.
+   Each is replaced by one the core already has, or by a small helper of
+   the core's own; the core stays at Java 21 for the desktop and TeaVM.
+3. *What Android 13 and 14 do differently.* Notifications need
+   `POST_NOTIFICATIONS` from 33 (2f already plans for it); predictive
+   back, edge-to-edge and the foreground service types 2e2 names change
+   at 34 and 35. Each difference gets a test, which the Android 13 phone
+   runs on 13 and the others on 17.
+4. *CI.* The Android 13 phone joins the CI machine through the phones
+   role and `jebol-phone`, with the same rules as the others (testing
+   settings only, never wiped), so every run covers Android 13 and 17.
+   The device suites shard across the three phones by each test's
+   measured time rather than by count: the phones differ in speed, the
+   older one most, and a shard sized by count leaves the fastest waiting
+   on the slowest. The CI machine has two USB-A ports, so the third phone
+   needs a powered hub or another port, which the owner decides.
+
+**Done when** the app, its test APKs and the SQLite extension build at
+`minSdk = 33` with no `NewApi` warning, the full `androidTests` passes in
+CI on the Android 13 phone beside the two on Android 17, and decision 73
+says Android 13.
