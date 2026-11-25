@@ -7459,3 +7459,16 @@ unrun. JEBOL's core answers each load as the Core product does, and its copy
 of `codecs-test.r3` is split so that the LZMA loads stop only their own tests
 (`rebol-suite/edited-here.txt`). `ArchivesWithoutLzmaFromTheSourceTest`,
 `ArchivesWithLzmaFromTheSourceTest`.
+
+## 254. On Windows, `print` still ends a line with LF alone
+
+`OS_CRLF` is true on Windows (`reb-config.h`), and it reads as if every
+printed line feed leaves as CR LF. It does not: the only callers that pass it
+are `Debug_Uni` and its length count (`d-print.c`), the debug output.
+`print` goes `Print_Value` → `Prin_String` and `Print_Line`, which writes a
+single `"\n"`, and the Windows stdio device (`win32/dev-stdio.c`) writes the
+bytes as they are when stdout is redirected. So a parent's
+`call/output` reads `^/`, never `^M^/`, and Rebol's own `unicode-test.r3`
+asserts exactly that (`out == "á🙂^/"`). JEBOL's command line writes what the
+interpreter prints, unchanged, on every system. `AStreamWritesLinesAsRebolPrintsThemTest`,
+`BootProcessFromTheSourceTest`.

@@ -34,7 +34,11 @@ public final class JavaProcess implements ProcessPort {
 
     @Override
     public boolean isRunning(long processNumber) {
-        return ProcessHandle.of(processNumber).isPresent();
+        return ProcessHandle.of(processNumber).isPresent() || isListedByMachine(processNumber);
+    }
+
+    private static boolean isListedByMachine(long processNumber) {
+        return ProcessHandle.allProcesses().anyMatch(listed -> listed.pid() == processNumber);
     }
 
     @Override

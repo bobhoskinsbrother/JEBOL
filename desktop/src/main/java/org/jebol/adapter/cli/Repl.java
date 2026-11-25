@@ -117,7 +117,7 @@ public final class Repl {
 
     public static void main(String[] arguments) {
         writeUtf8UnlessToAWindowsConsole();
-        StreamOutput output = StreamOutput.withSystemLineEndings(System.out, System.err);
+        StreamOutput output = new StreamOutput(System.out, System.err);
         CommandLineConsole console = CommandLineConsole.forThisProcess(
                 new FileInputStream(FileDescriptor.in), output, System.out);
         Runtime.getRuntime().addShutdownHook(new Thread(console::close));
