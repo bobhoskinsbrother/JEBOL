@@ -111,8 +111,19 @@ Check ".NET reads the .ico jebol-devtools wrote" {
 }
 
 if ($Unattended) {
+    Say "--- removing an earlier install, so the one checked is the one just made"
+    $installerApi = New-Object -ComObject WindowsInstaller.Installer
+    foreach ($product in $installerApi.ProductsEx("", "", 7)) {
+        if ($product.InstallProperty("ProductName") -eq "Notes") {
+            $code = $product.GetType().InvokeMember("ProductCode", "GetProperty", $null, $product, $null)
+            $removing = Start-Process -Wait -PassThru msiexec.exe -ArgumentList "/x $code /quiet"
+            Say "removed $code, msiexec answered $($removing.ExitCode)"
+        }
+    }
     Say "--- installing quietly"
-    Start-Process -Wait $installer.FullName -ArgumentList "/quiet"
+    $installing = Start-Process -Wait -PassThru $installer.FullName -ArgumentList "/quiet"
+    Say "the installer answered $($installing.ExitCode)"
+    Check "the installer finished" { if ($installing.ExitCode -eq 0) { "exit code 0" } else { $null } }
 } else {
     Say "--- installing; click through the installer if it asks"
     Start-Process -Wait $installer.FullName

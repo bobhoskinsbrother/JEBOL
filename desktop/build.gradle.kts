@@ -79,7 +79,7 @@ tasks.named<JavaCompile>(launcher.compileJavaTaskName) {
 application {
     mainClass = "org.jebol.adapter.cli.JebolLauncher"
     applicationName = "jebol"
-    applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true")
+    applicationDefaultJvmArgs = listOf("-Djava.awt.headless=true", "--enable-native-access=ALL-UNNAMED")
 }
 
 // The jar runs the console on its own, so `java -jar` is a whole
@@ -121,7 +121,7 @@ val shippedJar = tasks.register<Jar>("shippedJar") {
     from(layout.buildDirectory.dir("generated/carried-extensions"))
     dependsOn(listCarriedExtensions)
     manifest {
-        attributes("Main-Class" to application.mainClass.get())
+        attributes("Main-Class" to application.mainClass.get(), "Enable-Native-Access" to "ALL-UNNAMED")
     }
 }
 

@@ -46,6 +46,10 @@ class EachPlatformsProjectIsGeneratedOnceTest {
                 .contains("ProgramMenuFolder")
                 .contains("""
                         <ComponentGroup Id="FragmentOsCondition">""");
+        assertThat(build.read("windows/overrides.wxi"))
+                .contains("<?undef JpInstallerVersion?>")
+                .contains("""
+                        <?define JpInstallerVersion="500"?>""");
     }
 
     @Test

@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 public final class DriveLetterFiles implements FilePort {
 
@@ -31,26 +32,40 @@ public final class DriveLetterFiles implements FilePort {
 
     @Override
     public byte[] readBytes(String path) {
-        OnADrive on = requireDrive(path);
-        return on.drive().readBytes(on.path());
+        return answerOnDrive(path, on -> on.drive().readBytes(on.path()));
     }
 
     @Override
     public void write(String path, byte[] contents) {
-        OnADrive on = requireDrive(path);
-        on.drive().write(on.path(), contents);
+        answerOnDrive(path, on -> {
+            on.drive().write(on.path(), contents);
+            return path;
+        });
     }
 
     @Override
     public void writeAt(String path, long position, byte[] contents) {
-        OnADrive on = requireDrive(path);
-        on.drive().writeAt(on.path(), position, contents);
+        answerOnDrive(path, on -> {
+            on.drive().writeAt(on.path(), position, contents);
+            return path;
+        });
     }
 
     @Override
     public void appendTo(String path, byte[] contents) {
+        answerOnDrive(path, on -> {
+            on.drive().appendTo(on.path(), contents);
+            return path;
+        });
+    }
+
+    private <T> T answerOnDrive(String path, Function<OnADrive, T> work) {
         OnADrive on = requireDrive(path);
-        on.drive().appendTo(on.path(), contents);
+        try {
+            return work.apply(on);
+        } catch (Denied refused) {
+            throw refused.subject().equals(on.path()) ? refused.naming(path) : refused;
+        }
     }
 
     @Override
@@ -79,6 +94,9 @@ public final class DriveLetterFiles implements FilePort {
 
     @Override
     public String hostPath(String path) {
+        if (isRoot(path) && !drives.isEmpty()) {
+            return drives.values().iterator().next().hostPath(ROOT);
+        }
         OnADrive on = requireDrive(path);
         return on.drive().hostPath(on.path());
     }
@@ -111,8 +129,7 @@ public final class DriveLetterFiles implements FilePort {
 
     @Override
     public boolean delete(String path) {
-        OnADrive on = requireDrive(path);
-        return on.drive().delete(on.path());
+        return answerOnDrive(path, on -> on.drive().delete(on.path()));
     }
 
     @Override

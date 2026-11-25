@@ -1,10 +1,10 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -13,12 +13,13 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) throws IOException {
         TextFiles.write(directory.resolve("held.txt"), "carried");
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(LetsGoOfHeldFiles.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }

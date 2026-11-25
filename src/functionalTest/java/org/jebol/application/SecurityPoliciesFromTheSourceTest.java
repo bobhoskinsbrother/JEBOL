@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class SecurityPoliciesFromTheSourceTest {
 
     @TempDir
@@ -48,7 +50,7 @@ class SecurityPoliciesFromTheSourceTest {
 
     private HostPorts theHostsAdapters() {
         return AnInterpreter.standardPorts()
-                .withFiles(FileSystemPort.rootFileSystem(root))
+                .withFiles(LetsGoOfHeldFiles.rootFileSystem(root))
                 .withEnvironment(new ProcessEnvironment())
                 .withProcesses(PlatformUnderTest.current().processes())
                 .withNetwork(AnInterpreter.socket())

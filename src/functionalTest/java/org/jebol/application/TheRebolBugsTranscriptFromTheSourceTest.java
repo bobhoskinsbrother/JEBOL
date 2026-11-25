@@ -1,13 +1,14 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -22,11 +23,15 @@ import java.util.Set;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class TheRebolBugsTranscriptFromTheSourceTest {
 
     private static final String SEPARATOR = " | ";
 
     private static final Set<String> NOT_PATCHED_IN_THE_FIXED_BUILD = Set.of("clipboard open twice");
+
+    private static final Map<String, String> ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS = Map.of(
+            "file rename by name of open", "[error no-rename %named.txt]");
 
     private static final Map<String, String> DELIBERATE = Map.ofEntries(
             entry("find 128", "#{80}"),
@@ -95,7 +100,7 @@ class TheRebolBugsTranscriptFromTheSourceTest {
         StringBuilder printed = new StringBuilder();
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
-                        .withFiles(FileSystemPort.rootFileSystem(root))
+                        .withFiles(LetsGoOfHeldFiles.rootFileSystem(root))
                         .withClipboard(new AnEmptyClipboard()),
                 printed::append,
                 Bounds.standard()
@@ -141,10 +146,23 @@ class TheRebolBugsTranscriptFromTheSourceTest {
     void agreesWithRebolOutsideTheDeliberateLines() {
         List<String> disagreeing = rebol.keySet().stream()
                 .filter(label -> !DELIBERATE.containsKey(label))
-                .filter(label -> !rebol.get(label).equals(jebol.get(label)))
-                .map(label -> label + SEPARATOR + "R3 " + rebol.get(label) + SEPARATOR + "JEBOL " + jebol.get(label))
+                .filter(label -> !answerOnThisSystem(label).equals(jebol.get(label)))
+                .map(label -> label + SEPARATOR + "R3 " + answerOnThisSystem(label) + SEPARATOR + "JEBOL " + jebol.get(label))
                 .toList();
         assertThat(disagreeing).isEmpty();
+    }
+
+    private static String answerOnThisSystem(String label) {
+        boolean onWindows = File.separatorChar == '\\';
+        return onWindows && ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS.containsKey(label)
+                ? ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS.get(label)
+                : rebol.get(label);
+    }
+
+    @Test
+    @DisplayName("each probe R3 answers otherwise on Windows names a probe in the transcript, recorded on Linux")
+    void namesWindowsProbesThatExist() {
+        assertThat(rebol.keySet()).containsAll(ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS.keySet());
     }
 
     @Test

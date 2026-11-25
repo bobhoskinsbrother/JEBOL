@@ -129,6 +129,18 @@ class JavaMachineTest {
     }
 
     @Test
+    @DisplayName("and a root that ends in a backslash has it doubled before the closing quote, so the program reads C:\\ and not C: with a quote")
+    void doublesATrailingBackslashOnWindows(@TempDir Path directory) throws IOException {
+        JavaMachine machine = machineWith("java.io.tmpdir", directory.toString(), "java.class.path", "lib.jar",
+                "file.separator", "\\");
+
+        Path launcher = windowsLauncherIn(directory, machine.launcherFor("C:\\", "/C/data/"));
+
+        assertThat(Files.readString(launcher)).contains("""
+                --root "C:\\\\" --data "/C/data/" %*""");
+    }
+
+    @Test
     @DisplayName("a launcher that cannot be written is none")
     void answersNoneWhenUnwritable(@TempDir Path directory) {
         JavaMachine machine = machineWith("java.io.tmpdir", directory.resolve("missing").toString());

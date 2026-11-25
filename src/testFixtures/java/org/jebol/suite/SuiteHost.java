@@ -122,8 +122,16 @@ final class SuiteHost {
         if (!isWindows()) {
             return "/";
         }
-        String written = LocalFileConvention.WINDOWS.readLocalPath(root.toAbsolutePath().toString()).orElseThrow();
+        String written = LocalFileConvention.WINDOWS.readLocalPath(realPathOf(root).toString()).orElseThrow();
         return written.endsWith("/") ? written : written + "/";
+    }
+
+    private static Path realPathOf(Path root) {
+        try {
+            return root.toRealPath();
+        } catch (IOException notThere) {
+            throw new UncheckedIOException(notThere);
+        }
     }
 
     private static void putTheApplicationDataDirectoryThereToo(Interpreter interpreter, String dataDirectory) {

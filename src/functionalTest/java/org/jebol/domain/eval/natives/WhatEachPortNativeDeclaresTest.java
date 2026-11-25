@@ -4,6 +4,7 @@ import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.LetsGoOfHeldFiles;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.JvmDigests;
@@ -18,6 +19,7 @@ import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -37,6 +39,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(LetsGoOfHeldFiles.class)
 class WhatEachPortNativeDeclaresTest {
 
     private final class AnEnvironmentOfItsOwn implements EnvironmentPort {
@@ -66,7 +69,7 @@ class WhatEachPortNativeDeclaresTest {
     private String answerIn(Path directory, String source) {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.portsWritingLocalFilesWith(AnInterpreter.POSIX_SEPARATOR)
-                        .withFiles(FileSystemPort.rootFileSystem(directory))
+                        .withFiles(LetsGoOfHeldFiles.rootFileSystem(directory))
                         .withEnvironment(new AnEnvironmentOfItsOwn())
                         .withProcesses(PlatformUnderTest.current().processes()),
                 OutputPort.discard(),

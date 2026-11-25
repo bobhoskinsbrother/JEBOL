@@ -9,6 +9,7 @@ import org.jebol.domain.value.Value;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -23,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public final class FileSystemPort implements FilePort {
@@ -35,6 +37,8 @@ public final class FileSystemPort implements FilePort {
     private Path relativePathRoot;
 
     private final Set<String> hostFilesOutsideRoot = new HashSet<>();
+
+    private final Set<RandomAccessFile> heldFiles = ConcurrentHashMap.newKeySet();
 
     private FileSystemPort(Path root, boolean writable) {
         this.root = root.toAbsolutePath().normalize();
@@ -306,16 +310,26 @@ public final class FileSystemPort implements FilePort {
             return Held.NOTHING;
         }
         try {
-            FileChannel channel = FileChannel.open(found.get(), StandardOpenOption.READ);
-            return () -> closeHeld(channel);
+            RandomAccessFile opened = new RandomAccessFile(found.get().toFile(), "r");
+            heldFiles.add(opened);
+            return () -> {
+                heldFiles.remove(opened);
+                closeHeld(opened);
+            };
         } catch (IOException unopenable) {
             return Held.NOTHING;
         }
     }
 
-    private static void closeHeld(FileChannel channel) {
+    public void letGoOfEveryHeldFile() {
+        List<RandomAccessFile> held = List.copyOf(heldFiles);
+        heldFiles.removeAll(held);
+        held.forEach(FileSystemPort::closeHeld);
+    }
+
+    private static void closeHeld(RandomAccessFile opened) {
         try {
-            channel.close();
+            opened.close();
         } catch (IOException alreadyGone) {
             return;
         }

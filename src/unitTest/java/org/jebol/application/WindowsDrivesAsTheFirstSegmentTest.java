@@ -53,6 +53,22 @@ class WindowsDrivesAsTheFirstSegmentTest {
     }
 
     @Test
+    @DisplayName("the list of drives is reached on the host through a drive's own root, so a child started there has every drive too")
+    void hostPathOfTheRootIsADrivesRoot() {
+        assertThat(files.hostPath("/")).isEqualTo(driveC.hostPath("/"));
+    }
+
+    @Test
+    @DisplayName("a file that is not there is refused by the name the script wrote, as R3's error names %nonsense")
+    void refusesByTheNameTheScriptWrote() {
+        files.changeDirectory("/C/");
+
+        assertThatThrownBy(() -> files.readBytes("nonsense"))
+                .isInstanceOfSatisfying(FilePort.Denied.class,
+                        refused -> assertThat(refused.subject()).isEqualTo("nonsense"));
+    }
+
+    @Test
     @DisplayName("the root is a directory with no size and no dates, as R3's Query_File answers %/")
     void describesTheRootWithoutDates() {
         FileInformation described = files.describe("/").orElseThrow();

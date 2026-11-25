@@ -87,10 +87,18 @@ public final class JavaMachine implements MachinePort {
 
     private String writeCommandScript(String root, String dataDirectory) {
         String startingJava = "@\"" + findJvm()
-                + "\" -Djava.awt.headless=true -cp \"" + makeClasspathAbsolute()
-                + "\" " + CONSOLE + " " + ROOT_SWITCH + " \"" + root + "\""
-                + writeDataSwitch(dataDirectory);
+                + "\" -Djava.awt.headless=true --enable-native-access=ALL-UNNAMED -cp \"" + makeClasspathAbsolute()
+                + "\" " + CONSOLE + " " + ROOT_SWITCH + " \"" + doubleTrailingBackslashes(root) + "\""
+                + writeDataSwitch(doubleTrailingBackslashes(dataDirectory));
         return startingJava.replace("%", "%%") + " %*\r\n@exit /b %errorlevel%\r\n";
+    }
+
+    private static String doubleTrailingBackslashes(String quoted) {
+        int end = quoted.length();
+        while (end > 0 && quoted.charAt(end - 1) == WINDOWS_SEPARATOR) {
+            end--;
+        }
+        return quoted + quoted.substring(end);
     }
 
     private String findJvm() {

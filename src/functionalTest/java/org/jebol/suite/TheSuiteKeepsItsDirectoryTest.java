@@ -4,7 +4,6 @@ import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,22 +34,23 @@ class TheSuiteKeepsItsDirectoryTest {
                 e: try [files: wildcard %units/files/ %*.zip]
                 either error? e [reduce [e/id e/arg1 e/arg2]] [
                     new-line/all collect [
-                        foreach file sort files [keep reduce [first split-path file second split-path file]]
+                        foreach file sort files [
+                            keep reduce [(first split-path file) = join what-dir %units/files/ second split-path file]
+                        ]
                     ] false
                 ]"""))
-                .isEqualTo("[%/units/files/ %test-deflate.zip %/units/files/ %test-lzma.zip "
-                        + "%/units/files/ %test-stored.zip]");
+                .isEqualTo("[#(true) %test-deflate.zip #(true) %test-lzma.zip #(true) %test-stored.zip]");
     }
 
     @Test
-    @DisplayName("every step of file-test before its WILDCARD group leaves the run where it started")
+    @DisplayName("file-test is back where the run started when its WILDCARD group begins, though issue-2351 steps out to / and back")
     void fileTestComesBackBeforeItsWildcards() {
         SuiteFile fileTest = SuiteGrading.filesInSuite().stream()
                 .filter(file -> file.name().equals("file-test.r3"))
                 .findFirst()
                 .orElseThrow();
         Interpreter interpreter = aSuiteInterpreter();
-        List<String> moved = new ArrayList<>();
+        String start = answerTo(interpreter, "what-dir");
         for (SuiteFile.Step step : fileTest.steps()) {
             if (step.isAssertion() && step.assertion().group().equals("WILDCARD")) {
                 break;
@@ -61,14 +61,9 @@ class TheSuiteKeepsItsDirectoryTest {
             }
             interpreter.defineNewWordsIn(source);
             interpreter.run("try [" + source + "\n]");
-            String where = answerTo(interpreter, "what-dir");
-            if (!where.equals("%/")) {
-                moved.add(where + " after " + source.strip().lines().findFirst().orElse(""));
-                answerTo(interpreter, "change-dir %/");
-            }
         }
 
-        assertThat(moved).isEmpty();
+        assertThat(answerTo(interpreter, "what-dir")).isEqualTo(start);
     }
 
     @Test
@@ -135,8 +130,8 @@ class TheSuiteKeepsItsDirectoryTest {
                 all [not error? try [cd /] not error? try [cd ~]]
                 change-dir dir""");
 
-        assertThat(answerTo(interpreter, "reduce [what-dir " + SEES_THE_SUITES_FILES + "]"))
-                .isEqualTo("[%/ file]");
+        assertThat(answerTo(interpreter, "reduce [dir = what-dir " + SEES_THE_SUITES_FILES + "]"))
+                .isEqualTo("[#(true) file]");
     }
 
     @Test
@@ -148,7 +143,7 @@ class TheSuiteKeepsItsDirectoryTest {
                 cd %/ f: first read %/""");
         answerTo(interpreter, "cd d");
 
-        assertThat(answerTo(interpreter, "reduce [what-dir " + SEES_THE_SUITES_FILES + "]"))
-                .isEqualTo("[%/ file]");
+        assertThat(answerTo(interpreter, "reduce [d = what-dir " + SEES_THE_SUITES_FILES + "]"))
+                .isEqualTo("[#(true) file]");
     }
 }

@@ -208,6 +208,10 @@ public interface FilePort {
             return subject;
         }
 
+        public Denied naming(String written) {
+            return new Denied(errorId, getMessage(), written, code);
+        }
+
         public boolean isSecurityRefusal() {
             return errorId.equals(SECURITY);
         }

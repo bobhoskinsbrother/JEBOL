@@ -1,11 +1,11 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -14,11 +14,12 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class FilePortFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterGrantedFilesUnder(Path root) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                AnInterpreter.standardPorts().withFiles(LetsGoOfHeldFiles.rootFileSystem(root)),
                 OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)

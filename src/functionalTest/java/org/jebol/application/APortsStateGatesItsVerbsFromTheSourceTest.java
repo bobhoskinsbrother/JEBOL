@@ -1,12 +1,15 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -18,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class APortsStateGatesItsVerbsFromTheSourceTest {
 
     private static final class AnEmptyClipboard implements ClipboardPort {
@@ -36,7 +40,7 @@ class APortsStateGatesItsVerbsFromTheSourceTest {
     private static String answerTo(Path root, String source) {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()
-                        .withFiles(FileSystemPort.rootFileSystem(root))
+                        .withFiles(LetsGoOfHeldFiles.rootFileSystem(root))
                         .withClipboard(new AnEmptyClipboard()),
                 OutputPort.discard(),
                 Bounds.standard()
@@ -115,7 +119,20 @@ class APortsStateGatesItsVerbsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("renaming the file by its name, not its port, still moves it")
+        @EnabledOnOs(OS.WINDOWS)
+        @DisplayName("on Windows renaming the file by its name is no-rename and nothing moves, as R3 opens it there without delete sharing")
+        void refusesRenamingItByNameOnWindows(@TempDir Path root) throws IOException {
+            holding(root, "named.txt");
+            assertThat(answerTo(root, """
+                    p: open %named.txt
+                    e: try [rename %named.txt %moved.txt]
+                    close p
+                    reduce [e/id exists? %named.txt exists? %moved.txt]""")).isEqualTo("[no-rename file _]");
+        }
+
+        @Test
+        @DisabledOnOs(OS.WINDOWS)
+        @DisplayName("elsewhere renaming the file by its name, not its port, still moves it")
         void movesItByName(@TempDir Path root) throws IOException {
             holding(root, "named.txt");
             assertThat(answerTo(root, """

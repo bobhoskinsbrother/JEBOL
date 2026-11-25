@@ -7,17 +7,18 @@ import java.util.HexFormat;
 import java.util.Iterator;
 import java.util.List;
 
-import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(LetsGoOfHeldFiles.class)
 class EveryDecodeOfBytesToTextFromTheSourceTest {
 
     private static final String FROM_U_PARSE = "#{E1626320} #{2D61213D7021206F6B}";
@@ -55,7 +56,7 @@ class EveryDecodeOfBytesToTextFromTheSourceTest {
 
     private static Interpreter makeInterpreterReadingUnder(Path directory) {
         return Interpreter.createOn(
-                AnInterpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                AnInterpreter.standardPorts().withFiles(LetsGoOfHeldFiles.rootFileSystem(directory)),
                 OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
     }

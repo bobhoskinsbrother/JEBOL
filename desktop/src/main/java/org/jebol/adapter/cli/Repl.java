@@ -115,7 +115,8 @@ public final class Repl {
         this.output = output;
     }
 
-    public static void main(String[] arguments) {
+    public static void main(String[] decodedArguments) {
+        String[] arguments = WindowsCommandLine.asTheShellWroteThem(decodedArguments);
         writeUtf8UnlessToAWindowsConsole();
         StreamOutput output = new StreamOutput(System.out, System.err);
         CommandLineConsole console = CommandLineConsole.forThisProcess(

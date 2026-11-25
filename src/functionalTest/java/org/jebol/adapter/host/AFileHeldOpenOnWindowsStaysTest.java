@@ -31,4 +31,19 @@ class AFileHeldOpenOnWindowsStaysTest {
 
         assertThat(files.delete("/held.txt")).isTrue();
     }
+
+    @Test
+    @DisplayName("letting go of every file the port holds lets each be deleted, whatever was never closed")
+    void lettingGoOfEveryHeldFileLetsThemGo() {
+        FileSystemPort files = FileSystemPort.rootFileSystem(machine);
+        files.write("/a.txt", "a".getBytes(StandardCharsets.UTF_8));
+        files.write("/b.txt", "b".getBytes(StandardCharsets.UTF_8));
+        files.holdOpen("/a.txt");
+        files.holdOpen("/b.txt");
+
+        files.letGoOfEveryHeldFile();
+
+        assertThat(files.delete("/a.txt")).isTrue();
+        assertThat(files.delete("/b.txt")).isTrue();
+    }
 }

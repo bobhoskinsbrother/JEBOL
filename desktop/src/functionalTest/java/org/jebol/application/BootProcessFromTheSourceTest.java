@@ -57,6 +57,16 @@ class BootProcessFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("a child is handed its arguments whole, characters its system's code page cannot hold included, as R3's are")
+    void handsAChildItsArgumentsWhole() {
+        assertThat(answerTo("""
+                out: copy ""
+                call/shell/wait/output append to-local-file system/options/boot
+                    { --do "prin {á🙂}"} out
+                out == {á🙂}""")).isEqualTo("#(true)");
+    }
+
+    @Test
     @DisplayName("a child asked to quit leaves with a status of zero")
     void leavesWithZeroWhenAChildQuits() {
         assertThat(answerTo("""
