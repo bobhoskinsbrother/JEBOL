@@ -15,6 +15,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
 import android.os.ParcelFileDescriptor;
+import android.os.RemoteException;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 final class TheApp {
@@ -40,6 +42,8 @@ final class TheApp {
     private static final Duration TO_OPEN = Duration.ofSeconds(30);
     private static final long POLL_MILLISECONDS = 200;
     private static final int COLOUR_ALLOWANCE = 6;
+
+    private static final int TEXTS_TO_NAME = 12;
 
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final UiDevice device = UiDevice.getInstance(instrumentation);
@@ -176,8 +180,26 @@ final class TheApp {
 
     void waitUntilInFront() {
         if (!device.wait(Until.hasObject(By.pkg(packageName).depth(0)), TO_OPEN.toMillis())) {
-            throw new AssertionError(packageName + " did not come to the front in " + TO_OPEN);
+            throw new AssertionError(packageName + " did not come to the front in " + TO_OPEN
+                    + "; in front instead: " + device.getCurrentPackageName()
+                    + ", the screen " + (isScreenOn() ? "on" : "off")
+                    + ", showing: " + textsShowing());
         }
+    }
+
+    private boolean isScreenOn() {
+        try {
+            return device.isScreenOn();
+        } catch (RemoteException unknown) {
+            return false;
+        }
+    }
+
+    private List<String> textsShowing() {
+        return device.findObjects(By.text(Pattern.compile(".+"))).stream()
+                .map(UiObject2::getText)
+                .limit(TEXTS_TO_NAME)
+                .toList();
     }
 
     boolean isInFront() {
