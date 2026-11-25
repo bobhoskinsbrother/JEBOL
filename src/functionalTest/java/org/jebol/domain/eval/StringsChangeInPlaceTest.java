@@ -60,12 +60,19 @@ class StringsChangeInPlaceTest {
     }
 
     @Test
-    @DisplayName("DELINE and ENLINE change the string too")
-    void theLineEndingPairChangesInPlace() {
-        assertThat(answerTo("s: \"a^M^/b\" ignore: deline s s = \"a^/b\""))
+    @DisplayName("DELINE changes the string too")
+    void delineChangesInPlace() {
+        assertThat(answerTo("s: {a^M^/b} ignore: deline s s = {a^/b}"))
                 .isEqualTo("#(true)");
-        assertThat(answerTo("s: \"a^/b\" ignore: enline s s = \"a^/b\""))
-                .isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("and so does ENLINE, where it has a carriage return to add")
+    void enlineChangesInPlace() {
+        Interpreter interpreter = AnInterpreter.writingLocalFilesForWindows();
+        String source = "s: {a^/b} ignore: enline s s = {a^M^/b}";
+        interpreter.defineNewWordsIn(source);
+        assertThat(interpreter.display(interpreter.run(source))).isEqualTo("#(true)");
     }
 
     @Test

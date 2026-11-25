@@ -258,7 +258,6 @@ class WhatEachConversionNativeDeclaresTest {
                 deline/lines {}             | []
                 deline/lines {^/}           | [""]
                 deline/lines {a^M^/b^M^/}   | ["a" "b"]
-                enline {a^M^/b}             | "a^/b"
                 enline {}                   | ""
                 as string! %a               | "a"
                 as file! {a}                | %a
