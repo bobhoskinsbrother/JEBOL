@@ -933,66 +933,34 @@ page, a script can ask for it, and the GUI's examples follow text size and
 dark mode on all three.
 ### 18. CI on a machine of its own, and the tests split by what a change can reach
 
-The owner, 2026-11-21: the full Android run needs CI, on a second machine
-the owner is setting aside for it, since the development machine has no
-room left beside the owner's own work. Corrected by the owner, 2026-11-24:
-every check-in runs everything, the full `androidTests` included -- there is
-no nightly split -- and a failed run alerts the agent that pushed it, not
-only the owner. Until this goal is done the process does not change: every
-check-in still runs every suite it touched, the full `androidTests`
-included.
+CI runs on a machine of the owner's (decision 81; the machines and their
+roles are in the jebol-ci repository): every push runs everything, the full
+Android suite on the phones and the Windows job included, untouched code
+comes from Gradle's build cache, a push of documents alone runs nothing,
+and only a green run reaches GitHub. A red run starts its own Sonnet fixer
+in tmux, a fix that does not fix alerts the owner, and every agent in JEBOL
+is told while CI is red; proved on CI's self-test job on 2026-11-25. What is
+left:
 
-What the 136 Android runs in `test-history/` showed, read with the owner:
-ART found almost nothing that is ART's own. `to binary!` of an image and
-`mold/part` were waste a small heap exposed, the platform-thread race
-could have failed on any runtime, and only the test servers binding
-`::1` was genuinely Android's. What is per-platform is the platform's own
-code: Android's adapters, its SQLite engine, the screen and the app.
-
-1. *The CI machine.* `scripts/setup-machine.sh` sets it up as it does the
-   development machine, and a GitHub self-hosted runner on it is driven by
-   the repository: a run on each push, and a nightly one. It needs
-   hardware virtualisation for the emulators, memory for two of them
-   beside a build and a browser (about 32 GB; with less, one emulator and
-   a longer night), and it runs headless, so the window tests get a
-   display from Xvfb -- where, unlike Xwayland here, `Robot` and screen
-   capture may work, which is checked rather than assumed. Results are
-   archived as `test-history/` is, somewhere the owner can read them, and
-   a failure is reported where the owner will see it. Whether the phone
-   moves to it for the nightly run is the owner's choice.
-2. *The JVM stands in for what ART exposed.* A functional run with a
-   tight heap, and one with platform threads where virtual threads are
-   used, so waste and races show in minutes rather than on an emulator.
-3. *Every check-in:* `allTests`, `networkTests`, the runs of step 2, the
-   full `androidTests` on every device -- the core's functional suite and
-   Rebol's suite on ART included -- and the Windows job. Its length is
-   brought down by more devices, not by running less.
-4. *A red run starts its own fix* (owner, 2026-11-24). No agent waits on
-   CI. A service on the development machine notices a run that ended red
-   and starts a Claude session for it in a tmux window of its own, named
-   for the run, working in a worktree of its own, with the run, its commit,
-   the failures in brief and where the run's logs are in its first prompt.
-   It finds the cause, writes the failing test, fixes it, and pushes
-   through `ci push` unattended once the smaller set passes; only a green
-   CI run reaches GitHub. One red run gets one session, and a later red
-   run while one is open is handed to it.
-5. *Every agent knows CI is red.* The state of CI -- green or red, what
-   is running, which run failed and with what, and who is fixing it -- is
-   kept in one record file on the development machine, which agents read
-   and through which a fixer claims a red run and hands it back. A hook puts one line
-   in a working agent's context while CI is red, so it neither fixes the
-   same failure nor waits on CI, and `ci push` and `ci status` say so too.
-6. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
+1. *Platform threads stand in for ART's races.* A functional run with
+   platform threads where virtual threads are used, beside the tight-heap
+   run that already exists, so a race shows in minutes rather than on a
+   phone. It joins every check-in.
+2. *The rules follow.* A check-in means the commit passed the smaller set
+   and was pushed through `ci push`; nobody waits on CI; a red run is the
+   first thing fixed, by its fixer, and a flake is still a fail.
+   CLAUDE.md's section on running the suite and the memory on earning a
+   check-in change to say so.
+3. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
    test passed. The rules already exist, in CLAUDE.md and
    `docs/decisions.md`; they move into a skill the stage runs over the
    change, and a rejection is a failure like any other. Not part of this
    goal's done.
-7. *The rules follow.* A check-in then means the commit passed the
-   smaller set and was pushed to CI; a red run is the first thing fixed,
-   and a flake is still a fail. CLAUDE.md's section on running the suite
-   and the memory on earning a check-in change to say so.
-8. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
+4. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
+   push to jebol-ci's main converges the CI machine between runs, rather
+   than an agent applying the play. Not part of this goal's done.
+5. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
    builds for the processor it runs on, and the owner's Mac is Intel
    (2026-11-21), so 2e's script proves only the Intel `.app`. A hosted
    macOS runner, which is Apple Silicon, runs the example app's
@@ -1003,12 +971,8 @@ code: Android's adapters, its SQLite engine, the screen and the app.
    for a private repository; the report is archived with the night's
    results.
 
-**Done when** a push runs every suite on the CI machine and archives its
-results, a red run has started its own fixing session with its failures
-and that session's fix has gone green, a working agent has been told CI was
-red while it was being fixed,
-the stand-in runs of step 2 exist, the Apple Silicon app is built and
-checked, and CLAUDE.md describes the new way.
+**Done when** the platform-threads run is part of every check-in, the
+Apple Silicon app is built and checked, and CLAUDE.md describes the new way.
 
 ### 19. Android 13 and 14: lowering the floor from API 35 to API 33
 
