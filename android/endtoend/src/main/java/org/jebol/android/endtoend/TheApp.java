@@ -116,6 +116,7 @@ final class TheApp {
     }
 
     private void startAfresh(Optional<String> script, Optional<String> roots) {
+        wakeAndPassTheSwipeScreen();
         shell("am force-stop " + packageName);
         shell("logcat -c");
         turnUpright();
@@ -185,6 +186,15 @@ final class TheApp {
                     + ", the screen " + (isScreenOn() ? "on" : "off")
                     + ", showing: " + textsShowing());
         }
+    }
+
+    private void wakeAndPassTheSwipeScreen() {
+        try {
+            device.wakeUp();
+        } catch (RemoteException unwoken) {
+            throw new IllegalStateException("the screen could not be woken", unwoken);
+        }
+        shell("wm dismiss-keyguard");
     }
 
     private boolean isScreenOn() {
