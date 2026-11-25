@@ -117,10 +117,7 @@ public final class JebolActivity extends Activity {
     }
 
     private static Thread startInterpreting(Runnable work) {
-        Thread started = new Thread(work, "jebol-interpreter");
-        started.setDaemon(true);
-        started.start();
-        return started;
+        return InterpreterThreads.start("jebol-interpreter", work);
     }
 
     private FrameLayout keepClearOfSystemBars(JebolView content) {
