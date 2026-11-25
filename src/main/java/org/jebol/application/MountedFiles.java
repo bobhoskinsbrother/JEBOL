@@ -70,6 +70,11 @@ public final class MountedFiles implements FilePort {
     }
 
     @Override
+    public Held holdOpen(String path) {
+        return isInMount(path) ? mounted.holdOpen(absolute(path)) : beneath.holdOpen(beneathPath(path));
+    }
+
+    @Override
     public boolean exists(String path) {
         return isInMount(path) ? mounted.exists(absolute(path)) : beneath.exists(beneathPath(path));
     }

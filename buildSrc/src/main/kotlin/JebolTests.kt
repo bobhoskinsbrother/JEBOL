@@ -1,11 +1,17 @@
 import org.gradle.api.Project
+import org.gradle.api.file.FileCollection
+import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
 const val TESTS_THAT_EXHAUST_THE_HEAP = "exhausts-the-heap"
@@ -18,26 +24,48 @@ val diskBackedTemporaryRoot: File =
 val PROJECTS_WITH_SUITES = listOf(":", ":desktop", ":web", ":devtools")
 val SUITE_SOURCE_SETS = listOf("unitTest", "functionalTest", "endToEndTest", "networkTest")
 
+val REPOSITORY_FILES_TESTS_READ_BY_PATH = listOf(
+    "rebol3-source/src", "examples", "scripts", "editors", "web/site",
+)
+
 // The core's suites keep the names they always had; a subproject's carry its
 // name first, so test-history/ can tell desktopUnitTests from unitTests.
 fun Project.suiteResultsName(task: String): String =
     if (this == rootProject) task else name + task.replaceFirstChar(Char::uppercase)
 
-private fun Project.classesDirectoriesOf(sourceSet: String): String =
-    PROJECTS_WITH_SUITES.joinToString(File.pathSeparator) { path ->
-        rootProject.project(path).layout.buildDirectory.dir("classes/java/$sourceSet").get().asFile.path
+class PlacesOnThisMachine(@get:Internal val arguments: Provider<List<String>>) : CommandLineArgumentProvider {
+    override fun asArguments(): Iterable<String> = arguments.get()
+}
+
+class ClassesTheTestsRead(
+    @get:Classpath val directories: FileCollection,
+    @get:Internal val property: String,
+) : CommandLineArgumentProvider {
+    override fun asArguments(): Iterable<String> =
+        listOf("-D$property=" + directories.files.joinToString(File.pathSeparator) { it.path })
+}
+
+private fun Project.classesOf(sourceSets: List<String>): FileCollection = files(provider {
+    PROJECTS_WITH_SUITES.flatMap { path ->
+        val owner = rootProject.project(path)
+        val declared = owner.extensions.getByType<SourceSetContainer>()
+        sourceSets.mapNotNull { declared.findByName(it)?.output?.classesDirs }
     }
+})
 
 fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
     val resultsOfThisRun = reports.junitXml.outputLocation.get().asFile
     val jvmEvidence = resultsOfThisRun.resolve("jvm")
-    jvmArgs(
-        "-XX:ErrorFile=$jvmEvidence/hs_err_pid%p.log",
-        "-Xlog:gc,gc+init:file=$jvmEvidence/gc-%p.log:time,uptime",
-    )
-    if (dumpsTheHeapWhenItRunsOut) {
-        jvmArgs("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=$jvmEvidence")
-    }
+    jvmArgumentProviders.add(PlacesOnThisMachine(project.provider {
+        listOf(
+            "-XX:ErrorFile=$jvmEvidence/hs_err_pid%p.log",
+            "-Xlog:gc,gc+init:file=$jvmEvidence/gc-%p.log:time,uptime",
+        ) + if (dumpsTheHeapWhenItRunsOut) {
+            listOf("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=$jvmEvidence")
+        } else {
+            listOf()
+        }
+    }))
     doFirst {
         resultsOfThisRun.listFiles { file -> file.name.endsWith(".xml") }.orEmpty().forEach { it.delete() }
         jvmEvidence.deleteRecursively()
@@ -48,7 +76,7 @@ fun Test.leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut: Boolean) {
 fun Test.keepsTemporaryFilesOnDisk() {
     val folderName = path.trimStart(':').replace(':', '-')
     val temporaryFolder = File(diskBackedTemporaryRoot, "jebol-${System.getProperty("user.name")}/$folderName")
-    systemProperty("java.io.tmpdir", temporaryFolder.path)
+    jvmArgumentProviders.add(PlacesOnThisMachine(project.provider { listOf("-Djava.io.tmpdir=${temporaryFolder.path}") }))
     environment("TMPDIR", temporaryFolder.path)
     doFirst {
         temporaryFolder.deleteRecursively()
@@ -73,14 +101,12 @@ fun Test.runsTheTestsIn(
     workingDir = root.projectDir
     reports.junitXml.outputLocation.set(root.layout.buildDirectory.dir("test-results/$resultsName"))
     useJUnitPlatform()
-    systemProperty("jqwik.database", root.layout.buildDirectory.file("jqwik-database").get().asFile.path)
+    val jqwikDatabase = root.layout.buildDirectory.file("jqwik-database")
+    jvmArgumentProviders.add(PlacesOnThisMachine(jqwikDatabase.map { listOf("-Djqwik.database=${it.asFile.path}") }))
     systemProperty("java.awt.headless", "true")
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
-    systemProperty("jebol.mainClassesDirs", project.classesDirectoriesOf("main"))
-    systemProperty(
-        "jebol.testClassesDirs",
-        SUITE_SOURCE_SETS.joinToString(File.pathSeparator) { project.classesDirectoriesOf(it) },
-    )
+    jvmArgumentProviders.add(ClassesTheTestsRead(project.classesOf(listOf("main")), "jebol.mainClassesDirs"))
+    jvmArgumentProviders.add(ClassesTheTestsRead(project.classesOf(SUITE_SOURCE_SETS), "jebol.testClassesDirs"))
     // How deep a test can recurse is its thread's stack, and HotSpot takes
     // the default for that from the architecture: 1 MB on x86_64, 2 MB on
     // arm64. call-frames.r3 records a real 3.22.5 answering `dp 500`, which
@@ -94,6 +120,12 @@ fun Test.runsTheTestsIn(
     takesForksFromMemoryLeft(memoryEachForkNeeds, fewestForks)
     inputs.dir(root.layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(REPOSITORY_FILES_TESTS_READ_BY_PATH.map { root.fileTree(it) { exclude("**/build/**", "**/.gradle/**") } })
+        .withPropertyName("repositoryFilesTestsReadByPath")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(root.layout.projectDirectory.file("README.md"))
+        .withPropertyName("readme")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events("failed")

@@ -60,6 +60,11 @@ public final class DriveLetterFiles implements FilePort {
     }
 
     @Override
+    public Held holdOpen(String path) {
+        return findDrive(path).map(on -> on.drive().holdOpen(on.path())).orElse(Held.NOTHING);
+    }
+
+    @Override
     public boolean exists(String path) {
         if (isRoot(path)) {
             return true;

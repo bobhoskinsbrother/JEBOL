@@ -68,7 +68,8 @@ public final class Placeholders {
         if (name.endsWith(".json") || name.endsWith(".webmanifest")) {
             return Escaping.JSON;
         }
-        if (name.endsWith(".xml") || name.endsWith(".plist") || name.endsWith(".html") || name.endsWith(".wxs")) {
+        if (name.endsWith(".xml") || name.endsWith(".plist") || name.endsWith(".html") || name.endsWith(".wxs")
+                || name.endsWith(".wxf") || name.endsWith(".wxi")) {
             return Escaping.XML;
         }
         return Escaping.PLAIN;

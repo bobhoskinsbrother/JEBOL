@@ -32,8 +32,6 @@ public abstract class PackageWindows extends DesktopPackage {
         List<String> installer = joined(List.of(
                 "--type", "exe",
                 "--icon", icon,
-                "--win-menu",
-                "--win-menu-group", declaration.publisher(),
                 "--win-shortcut",
                 "--win-per-user-install",
                 "--win-upgrade-uuid", upgradeCode(declaration)), aboutUrl(declaration));

@@ -133,7 +133,11 @@ fun Test.runsTheTestsIn(suite: SourceSet, resultsName: Provider<String>) {
     takesForksFromMemoryLeft()
     keepsTemporaryFilesOnDisk()
     systemProperty("java.awt.headless", "true")
-    systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
+    val jqwikDatabase = layout.buildDirectory.file("jqwik-database")
+    jvmArgumentProviders.add(PlacesOnThisMachine(jqwikDatabase.map { listOf("-Djqwik.database=${it.asFile.path}") }))
+    inputs.file(core.layout.projectDirectory.file("README.md"))
+        .withPropertyName("readme")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     reports.junitXml.outputLocation = resultsName.flatMap { gateResults.map { results -> results.dir(it) } }
     testLogging {
         events("failed")

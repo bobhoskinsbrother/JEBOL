@@ -53,6 +53,18 @@ class WindowsDrivesAsTheFirstSegmentTest {
     }
 
     @Test
+    @DisplayName("the root is a directory with no size and no dates, as R3's Query_File answers %/")
+    void describesTheRootWithoutDates() {
+        FileInformation described = files.describe("/").orElseThrow();
+
+        assertThat(described.name()).isEqualTo("/");
+        assertThat(described.isDirectory()).isTrue();
+        assertThat(described.size()).isEmpty();
+        assertThat(described.modified()).isEmpty();
+        assertThat(described.created()).isEmpty();
+    }
+
+    @Test
     @DisplayName("a drive that is not there does not exist, and nothing can be written on it")
     void refusesADriveThatIsNotThere() {
         assertThat(files.exists("/E/")).isFalse();

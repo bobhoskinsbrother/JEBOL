@@ -30,6 +30,22 @@ class EachPlatformsProjectIsGeneratedOnceTest {
         assertThat(directory.resolve("web/manifest.webmanifest")).isRegularFile();
         assertThat(directory.resolve("linux/app.desktop")).isRegularFile();
         assertThat(directory.resolve("macos/Info.plist")).isRegularFile();
+        assertThat(directory.resolve("windows/os-condition.wxf")).isRegularFile();
+    }
+
+    @Test
+    @DisplayName("the Windows installer's Start-menu shortcut carries the app's identity as its AppUserModelID, which jpackage cannot set")
+    void theWindowsShortcutCarriesTheIdentity() {
+        AnAppBuild build = AnAppBuild.of(ATestApp.smallestIn(directory));
+
+        build.run("generateProjects");
+
+        assertThat(build.read("windows/os-condition.wxf"))
+                .contains("""
+                        <ShortcutProperty Key="System.AppUserModel.ID" Value="${jebol.identity}"/>""")
+                .contains("ProgramMenuFolder")
+                .contains("""
+                        <ComponentGroup Id="FragmentOsCondition">""");
     }
 
     @Test

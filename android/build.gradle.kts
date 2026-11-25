@@ -40,6 +40,21 @@ val deviceSerials = device.map { it.split(",").map(String::trim).filter(String::
     .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 - 2 * it}" } })
 val isOnEmulators = !device.isPresent
 
+val fingerprintsOfTheDevices = deviceSerials.map { serials ->
+    if (isOnEmulators) {
+        listOf()
+    } else {
+        serials.map { serial ->
+            val fingerprint = providers.exec {
+                commandLine("${androidSdk.get()}/platform-tools/adb", "-s", serial,
+                    "shell", "getprop", "ro.build.fingerprint")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.get().trim()
+            "$serial=$fingerprint"
+        }
+    }
+}
+
 val startEmulators = tasks.register<Exec>("startEmulators") {
     group = "verification"
     description = "Boot the API 35 tablet emulators the device suites run on, and wait until each has booted"
@@ -99,6 +114,8 @@ val androidUnitTests = tasks.register<DeviceShards>("androidUnitTests") {
     dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":app:assembleDebugAndroidTest")
     onlyIf { isWanted(unitClasses) }
     serials = deviceSerials
+    deviceFingerprints = fingerprintsOfTheDevices
+    outputs.cacheIf("it ran on phones, whose fingerprints are inputs") { !isOnEmulators }
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk
     testApk = appTestApk
@@ -115,6 +132,8 @@ val androidFunctionalTests = tasks.register<DeviceShards>("androidFunctionalTest
         ":app:assembleDebugAndroidTest")
     onlyIf { isWanted(functionalClasses) }
     serials = deviceSerials
+    deviceFingerprints = fingerprintsOfTheDevices
+    outputs.cacheIf("it ran on phones, whose fingerprints are inputs") { !isOnEmulators }
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk
     testApk = appTestApk
@@ -146,6 +165,8 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     onlyIf { isWanted(endToEndClasses) }
     serials = deviceSerials.map { if (isOnEmulators) it.take(2) else it }
     everyTestOnEachDevice = true
+    deviceFingerprints = fingerprintsOfTheDevices
+    outputs.cacheIf("it ran on phones, whose fingerprints are inputs") { !isOnEmulators }
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk
     otherApks.from(packageTheExampleApp)

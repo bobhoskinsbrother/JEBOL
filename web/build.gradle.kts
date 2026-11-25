@@ -256,3 +256,9 @@ dependencies {
 tasks.named<Test>("endToEndTests") {
     dependsOn("buildWasmGC", "assembleSite")
 }
+
+tasks.withType<Test>().configureEach {
+    systemProperties.remove("teavm.junit.target")?.let { target ->
+        jvmArgumentProviders.add(PlacesOnThisMachine(provider { listOf("-Dteavm.junit.target=$target") }))
+    }
+}

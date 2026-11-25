@@ -12,7 +12,7 @@ import java.util.Set;
 public final class FilledFiles {
 
     private static final Set<String> TEXT_ENDINGS = Set.of(".html", ".htm", ".webmanifest", ".json", ".js", ".css",
-            ".txt", ".xml", ".plist", ".desktop", ".wxs", ".wxi", ".properties", ".kts", ".gradle", "");
+            ".txt", ".xml", ".plist", ".desktop", ".wxs", ".wxi", ".wxf", ".properties", ".kts", ".gradle", "");
 
     private FilledFiles() {
     }

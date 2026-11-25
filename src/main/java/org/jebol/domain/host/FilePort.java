@@ -40,6 +40,19 @@ public interface FilePort {
     default void finishWriting(String path) {
     }
 
+    interface Held extends AutoCloseable {
+
+        Held NOTHING = () -> {
+        };
+
+        @Override
+        void close();
+    }
+
+    default Held holdOpen(String path) {
+        return Held.NOTHING;
+    }
+
     /** Whether there is anything at that path. */
     boolean exists(String path);
 

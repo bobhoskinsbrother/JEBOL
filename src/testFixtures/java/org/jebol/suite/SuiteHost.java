@@ -1,13 +1,17 @@
 package org.jebol.suite;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Queue;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
@@ -18,6 +22,9 @@ import org.jebol.adapter.host.WakeablePause;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.CarriedFixtures;
+import org.jebol.application.DriveLetterFiles;
+import org.jebol.domain.eval.LocalFileConvention;
+import org.jebol.domain.host.FilePort;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.PlatformUnderTest;
@@ -26,6 +33,8 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 
 final class SuiteHost {
+
+    private static final char WINDOWS_SEPARATOR = '\\';
 
     private static final Queue<Path> ROOTS_TO_REMOVE_AT_EXIT = new ConcurrentLinkedQueue<>();
 
@@ -76,7 +85,7 @@ final class SuiteHost {
         }
         PlatformUnderTest platform = PlatformUnderTest.current();
         HostPorts ports = platform.ports()
-                .withFiles(FileSystemPort.rootFileSystem(theRootOfThisRun))
+                .withFiles(filesStandingIn(theRootOfThisRun))
                 .withEnvironment(new ProcessEnvironment())
                 .withProcesses(platform.processes())
                 .withImages(platform.images())
@@ -85,7 +94,7 @@ final class SuiteHost {
                 .withPause(new WakeablePause())
                 .withCertificateAuthority(new JavaCertificateAuthority());
         Interpreter interpreter = Interpreter.createOn(ports, output, bounds);
-        putTheApplicationDataDirectoryThereToo(interpreter);
+        putTheApplicationDataDirectoryThereToo(interpreter, rebolPathOf(theRootOfThisRun) + "data/");
         try {
             putTheModulesTheSuiteImportsWhereImportLooks(theRootOfThisRun);
         } catch (IOException noModules) {
@@ -94,11 +103,34 @@ final class SuiteHost {
         return interpreter;
     }
 
-    private static void putTheApplicationDataDirectoryThereToo(Interpreter interpreter) {
+    private static boolean isWindows() {
+        return File.separatorChar == WINDOWS_SEPARATOR;
+    }
+
+    private static FilePort filesStandingIn(Path root) {
+        if (!isWindows()) {
+            return FileSystemPort.rootFileSystem(root);
+        }
+        Map<String, FilePort> drives = new TreeMap<>();
+        for (Path driveRoot : FileSystems.getDefault().getRootDirectories()) {
+            drives.put(driveRoot.toString().substring(0, 1), FileSystemPort.rootFileSystem(driveRoot));
+        }
+        return new DriveLetterFiles(drives, rebolPathOf(root));
+    }
+
+    private static String rebolPathOf(Path root) {
+        if (!isWindows()) {
+            return "/";
+        }
+        String written = LocalFileConvention.WINDOWS.readLocalPath(root.toAbsolutePath().toString()).orElseThrow();
+        return written.endsWith("/") ? written : written + "/";
+    }
+
+    private static void putTheApplicationDataDirectoryThereToo(Interpreter interpreter, String dataDirectory) {
         String sayingSo = """
-                system/options/data: %/data/
+                system/options/data: %%%s
                 make-dir/deep system/options/data
-                set '~ system/options/data""";
+                set '~ system/options/data""".formatted(dataDirectory);
         interpreter.defineNewWordsIn(sayingSo);
         interpreter.run(sayingSo);
         interpreter.followApplicationDataDirectory();

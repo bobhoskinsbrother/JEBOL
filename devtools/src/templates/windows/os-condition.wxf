@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <Condition Message="!(loc.OsConditionMessage)">
+      <![CDATA[Installed OR (VersionNT >= $(var.JpExecutableOSVersion))]]>
+    </Condition>
+
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="JebolMenuGroup" Name="${jebol.publisher}"/>
+      </Directory>
+    </DirectoryRef>
+
+    <ComponentGroup Id="FragmentOsCondition">
+      <Component Id="JebolStartMenuShortcut" Directory="JebolMenuGroup" Guid="*">
+        <Shortcut Id="JebolStartMenuShortcutLink"
+                  Name="${jebol.title}"
+                  Description="${jebol.summary}"
+                  Target="[INSTALLDIR]${jebol.title}.exe"
+                  WorkingDirectory="INSTALLDIR">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="${jebol.identity}"/>
+        </Shortcut>
+        <RemoveFolder Id="JebolMenuGroupRemoved" On="uninstall"/>
+        <RegistryValue Root="HKCU" Key="Software\${jebol.publisher}\${jebol.title}"
+                       Name="startMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

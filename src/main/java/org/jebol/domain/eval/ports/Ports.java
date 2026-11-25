@@ -42,8 +42,10 @@ import org.jebol.domain.eval.security.PolicyClass;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedSet;
 import java.util.Set;
@@ -76,6 +78,8 @@ public final class Ports {
     private final CryptPort cryptPort = new CryptPort();
 
     private final TcpPort tcpPort = new TcpPort();
+
+    private final Map<PortValue, FilePort.Held> heldFiles = new IdentityHashMap<>();
 
     private final FileSystemCalls fileSystem = new FileSystemCalls();
 
@@ -632,6 +636,19 @@ public final class Ports {
             makeEmptyFileOrRefuseToOpen(port, path, evaluator);
         }
         seekable.openAt(0, asked.canWrite());
+        letGoOfHeldFile(port);
+        try {
+            heldFiles.put(port, evaluator.ports().files().holdOpen(path));
+        } catch (FilePort.Denied refused) {
+            throw refused.raise();
+        }
+    }
+
+    private void letGoOfHeldFile(PortValue port) {
+        FilePort.Held held = heldFiles.remove(port);
+        if (held != null) {
+            held.close();
+        }
     }
 
     public void createDirectory(PortValue port, Evaluator evaluator) {
@@ -752,6 +769,7 @@ public final class Ports {
         }
         boolean wasWrittenThrough = isFileOpenToWrite(port);
         port.markOpen(false);
+        letGoOfHeldFile(port);
         if (wasWrittenThrough) {
             finishWriting(portPath(port), evaluator);
         }

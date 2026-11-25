@@ -299,6 +299,28 @@ public final class FileSystemPort implements FilePort {
         }
     }
 
+    @Override
+    public Held holdOpen(String path) {
+        Optional<Path> found = findExisting(path).filter(Files::isRegularFile);
+        if (found.isEmpty()) {
+            return Held.NOTHING;
+        }
+        try {
+            FileChannel channel = FileChannel.open(found.get(), StandardOpenOption.READ);
+            return () -> closeHeld(channel);
+        } catch (IOException unopenable) {
+            return Held.NOTHING;
+        }
+    }
+
+    private static void closeHeld(FileChannel channel) {
+        try {
+            channel.close();
+        } catch (IOException alreadyGone) {
+            return;
+        }
+    }
+
     private void refuseIfReadOnly() {
         if (!writable) {
             throw new Denied(Denied.READ_ONLY, "this filesystem may only be read");

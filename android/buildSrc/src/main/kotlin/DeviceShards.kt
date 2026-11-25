@@ -15,7 +15,8 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
-import org.gradle.work.DisableCachingByDefault
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Internal
 import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -23,13 +24,16 @@ import java.util.concurrent.Executors
 // Runs the test APK on several emulators at once, shard i of N on the i-th,
 // as AGP's connected task cannot: it runs every test on every device. Each
 // shard's raw instrumentation output becomes TEST-shard-i.xml. Decision 73.
-@DisableCachingByDefault(because = "it drives emulators")
+@CacheableTask
 abstract class DeviceShards : DefaultTask() {
 
     @get:Input
     abstract val serials: ListProperty<String>
 
     @get:Input
+    abstract val deviceFingerprints: ListProperty<String>
+
+    @get:Internal
     abstract val adb: Property<String>
 
     @get:InputFile

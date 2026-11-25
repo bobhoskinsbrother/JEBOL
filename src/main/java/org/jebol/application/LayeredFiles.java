@@ -56,6 +56,11 @@ public final class LayeredFiles implements FilePort {
     }
 
     @Override
+    public Held holdOpen(String path) {
+        return store.holdOpen(path);
+    }
+
+    @Override
     public boolean exists(String path) {
         return store.exists(path) || carried.exists(absolute(path));
     }
