@@ -52,10 +52,31 @@ up to three times, keeping every reason.
 as a resize, a restore and a run of resizes, with the frame back in state 0;
 a script's minimise and restore hung until the owner stopped it after eight
 minutes. The class's 120-second limit ran on the stuck thread, so it never
-fired; it runs on a thread of its own now, and the test fails instead of
-hanging. What macOS reports is to be read before any change: the owner runs
-a probe that maximises, restores, minimises and brings back a window and
-records every state and resize macOS reports.
+fired; it runs on a thread of its own now. What macOS reports is to be read
+before any change: the owner runs a probe that maximises, restores,
+minimises and brings back a window and records every state and resize macOS
+reports.
+
+## The second run
+
+The same day, at e75baa6e, everything above passed but two things.
+
+**`checkSpec`.** The Mac's `allium` was a newer one than the 3.6.1 the
+build pins. It refused `values.GobStorage` for `values/GobStorage` and
+warned about a field `Evaluation` declares. The spec now uses the slash
+form, which both read the same. `scripts/allium-version` holds the pin, and
+`checkSpec` refuses any other version, with the line that installs the
+right one.
+
+**Arranging a window, again.** The operator's restore was heard, but the
+window still had its maximised size 50 milliseconds later. macOS animates
+the un-zoom, so the test now waits for the size to come back. The script's
+minimise and restore hung for 36 minutes: the test's time limit fired, then
+its `@AfterEach` closed the window with no limit, against the same stuck
+toolkit. Opening and closing have limits of their own now. Any timeout writes
+every thread's stack into the result XML, so the next hang says where it
+stuck. The likeliest place is the hide and show that brings a minimised
+window back, which X11 needs and macOS may not.
 
 ## Still to look out for
 

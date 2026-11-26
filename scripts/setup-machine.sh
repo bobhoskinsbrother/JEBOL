@@ -159,7 +159,7 @@ fi
 
 step "allium"
 export PATH="$HOME/.cargo/bin:$PATH"
-allium_version=3.6.1
+allium_version="$(cat scripts/allium-version)"
 if have allium && allium --version 2>&1 | grep -q "^allium $allium_version "; then
     echo "allium $allium_version is already installed"
 else

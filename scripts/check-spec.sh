@@ -12,12 +12,23 @@ allium="$(command -v allium || true)"
 if [ -z "$allium" ] && [ -x "$HOME/.cargo/bin/allium" ]; then
     allium="$HOME/.cargo/bin/allium"
 fi
+pinned="$(cat scripts/allium-version)"
+install="cargo install allium-cli --version $pinned --locked --force"
 if [ -z "$allium" ]; then
     echo "allium is not on the PATH or in ~/.cargo/bin, so spec/ cannot be checked." >&2
-    echo "    cargo install allium-cli" >&2
-    echo "    brew install juxt/allium/allium   (the same tool, on a Mac)" >&2
+    echo "    $install" >&2
     exit 1
 fi
+installed="$("$allium" --version 2>&1 | head -1)"
+case "$installed" in
+    "allium $pinned "*) ;;
+    *)
+        echo "spec/ is checked with allium $pinned, and $allium is '$installed'." >&2
+        echo "Another version reads the spec differently, so its answer is not this build's." >&2
+        echo "    $install" >&2
+        exit 1
+        ;;
+esac
 
 echo "== allium check =="
 "$allium" check spec/ 2>&1 | python3 scripts/allium_report.py

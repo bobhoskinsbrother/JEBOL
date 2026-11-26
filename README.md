@@ -407,7 +407,7 @@ launch on an older one says so and stops.
 
 | What | Which task wants it | Where it comes from |
 | --- | --- | --- |
-| `allium` | `checkSpec`, which validates `spec/` | `cargo install allium-cli`, or `brew install juxt/allium/allium` |
+| `allium` | `checkSpec`, which validates `spec/` | `cargo install allium-cli --version 3.6.1 --locked`, the version `scripts/allium-version` pins; another version reads the spec differently and `checkSpec` refuses it |
 | Chrome and Firefox | `endToEndTests`, which drives both | installed as applications; Selenium fetches the two drivers itself, and on Ubuntu the Firefox cannot be the snap (see above, and `CLAUDE.md`) |
 
 ```

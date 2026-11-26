@@ -131,7 +131,7 @@ entity ScreenPort {
     -- screen still answers questions about one; see the metric rules.
     has_a_display: boolean
 
-    root_gob: values.GobStorage?     -- what INIT-TOP-WINDOW was handed
+    root_gob: values/GobStorage?     -- what INIT-TOP-WINDOW was handed
     windows: ScreenWindow with port = this
 
     -- The last thing this port was asked to paint, which is the same list
@@ -176,7 +176,7 @@ variant OneSurfaceScreen : ScreenPort {
 -- One window on the operator's screen, backing one gob.
 entity ScreenWindow {
     port: ScreenPort
-    gob: values.GobStorage
+    gob: values/GobStorage
     standing: WindowStanding
 
     transitions standing {
@@ -1091,7 +1091,7 @@ value ClipRectangle {
 -- on it without a screen of any kind, which is how the desktop renderer and
 -- the browser are held to the same picture without either of them running.
 entity PaintList {
-    for_gob: values.GobStorage
+    for_gob: values/GobStorage
     instructions: List<PaintInstruction>
 
     count: instructions.count

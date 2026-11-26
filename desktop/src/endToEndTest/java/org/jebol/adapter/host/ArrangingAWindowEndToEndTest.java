@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("opens-a-real-window")
 @Execution(ExecutionMode.SAME_THREAD)
 @Timeout(value = 120, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@ExtendWith(ThreadsShownOnTimeout.class)
 class ArrangingAWindowEndToEndTest {
 
     private static final String TITLE = "JEBOL arranging a window";
@@ -53,6 +55,7 @@ class ArrangingAWindowEndToEndTest {
     private JFrame frame;
 
     @BeforeEach
+    @Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void openTheWindow() {
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         assertThat(toolkit.isFrameStateSupported(Frame.ICONIFIED))
@@ -84,6 +87,7 @@ class ArrangingAWindowEndToEndTest {
     }
 
     @AfterEach
+    @Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void closeTheWindow() {
         if (interpreter != null) {
             String closing = run("unview win");
@@ -148,6 +152,12 @@ class ArrangingAWindowEndToEndTest {
         }
     }
 
+    private void takeEventsUntilTheWindowIsBackToItsOwnSize() {
+        takeEventsUntil(() -> run("win/size").equals("320x200"));
+        forgetWhatWasSeen();
+        assertThat(run("win/size")).isEqualTo("320x200");
+    }
+
     private void takeEventsUntilSeenEndsWith(String last) {
         takeEventsUntil(() -> run("seen").endsWith(last + "]"));
     }
@@ -196,8 +206,7 @@ class ArrangingAWindowEndToEndTest {
         run("clear seen gui-metric/set 'restore win");
         takeEventsUntil(() -> isInState(Frame.NORMAL));
         takeEventsUntilSeenEndsWith("restore");
-        forgetWhatWasSeen();
-        assertThat(run("win/size")).isEqualTo("320x200");
+        takeEventsUntilTheWindowIsBackToItsOwnSize();
 
         assertThat(run("same? win gui-metric/set 'activate win")).isEqualTo("#(true)");
         forgetWhatWasSeen();
@@ -218,8 +227,7 @@ class ArrangingAWindowEndToEndTest {
         onTheToolkit(() -> frame.setExtendedState(Frame.NORMAL));
         takeEventsUntilSeenEndsWith("restore");
         assertThat(seenWithoutRepeatedResizes()).startsWith("[resize restore");
-        forgetWhatWasSeen();
-        assertThat(run("win/size")).isEqualTo("320x200");
+        takeEventsUntilTheWindowIsBackToItsOwnSize();
 
         run("clear seen");
         onTheToolkit(() -> frame.setExtendedState(Frame.ICONIFIED));

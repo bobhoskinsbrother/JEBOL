@@ -97,8 +97,8 @@ enum LineJoin { miter | miter_bevel | round | bevel }
 -- nothing at all, which is worth knowing because `pen off fill-pen off` is a
 -- legal way to say so.
 value PaintState {
-    stroke_colour: values.Value?     -- absent means no line is drawn
-    fill_colour: values.Value?       -- absent means the inside is not filled
+    stroke_colour: values/Value?     -- absent means no line is drawn
+    fill_colour: values/Value?       -- absent means the inside is not filled
     line_width: Decimal
     line_cap: LineCap
     line_join: LineJoin

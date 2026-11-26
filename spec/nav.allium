@@ -313,7 +313,7 @@ rule AMoveArrivesAsAnEvent {
     ensures:
         history.position = index
         the_entry_at_becomes(history, index, place)
-        screen.ScreenEvent.created(
+        screen/ScreenEvent.created(
             kind: direction,
             window: null,
             delivered: false)
@@ -574,7 +574,7 @@ rule TheFirstWindowsTextIsTheAppsTitle {
 ------------------------------------------------------------
 
 surface TheNavigationWords {
-    facing script: embed.ScriptRun
+    facing script: embed/ScriptRun
 
     provides:
         -- go place: goes there, and answers the place now current.

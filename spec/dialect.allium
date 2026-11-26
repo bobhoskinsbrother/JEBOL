@@ -85,14 +85,14 @@ entity DialectCommand {
 
 value CommandSlot {
     kind: SlotKind
-    accepts: List<values.Datatype>
+    accepts: List<values/Datatype>
 }
 
 -- One call of DELECT: one command read, or the whole block when asked.
 entity DelectRun {
     dialect: Dialect
-    input: values.BlockStorage
-    output: values.BlockStorage
+    input: values/BlockStorage
+    output: values/BlockStorage
     reads_the_whole_block: boolean      -- the /all refinement
     searches_contexts: boolean          -- the /in refinement
 }
