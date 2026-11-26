@@ -45,6 +45,27 @@ function CommitBeingChecked {
     if (Get-Command git -ErrorAction SilentlyContinue) { return (git rev-parse --short HEAD) }
     "unknown"
 }
+function ProcessShowingWindowFor($launcher) {
+    $children = Get-CimInstance Win32_Process -Filter "ParentProcessId=$($launcher.Id)"
+    $ids = @($launcher.Id) + @($children | ForEach-Object { [int]$_.ProcessId })
+    Get-Process -Id $ids -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+        Select-Object -First 1
+}
+function MeanColourDistance($worn, $expected) {
+    $total = 0
+    $counted = 0
+    for ($across = 0; $across -lt $expected.Width; $across++) {
+        for ($down = 0; $down -lt $expected.Height; $down++) {
+            $b = $expected.GetPixel($across, $down)
+            if ($b.A -ne 255) { continue }
+            $a = $worn.GetPixel($across, $down)
+            $total += [Math]::Abs($a.R - $b.R) + [Math]::Abs($a.G - $b.G) + [Math]::Abs($a.B - $b.B)
+            $counted++
+        }
+    }
+    [int]($total / $counted)
+}
 
 $identity = "org.jebol.example.notes"
 $example = "examples\an-app-of-ones-own"
@@ -178,20 +199,23 @@ public static class JebolWindowCheck {
     }
 }
 "@
-$running.Refresh()
-$window = $running.MainWindowHandle
+$shown = ProcessShowingWindowFor $running
+Check "the running app shows a window" { if ($shown) { $shown.MainWindowTitle } }
 Check "the running app's window carries its AppUserModelID" {
-    $declared = [JebolWindowCheck]::AppUserModelId($window)
-    if ($declared -eq $identity) { $declared } else { $null }
+    if (-not $shown) { throw "there is no window to read" }
+    $declared = [JebolWindowCheck]::AppUserModelId($shown.MainWindowHandle)
+    if ($declared -ne $identity) { throw "the window carries '$declared'" }
+    $declared
 }
 Check "the running app's window wears the app's icon, not JEBOL's" {
-    $worn = [JebolWindowCheck]::Icon($window)
-    if ($worn -eq $null) { return $null }
-    $expected = (New-Object System.Drawing.Icon("$example\build\jebol\windows\resources\Notes.ico", $worn.Width, $worn.Height)).ToBitmap()
-    $a = $worn.GetPixel([int]($worn.Width / 2), [int]($worn.Height / 2))
-    $b = $expected.GetPixel([int]($expected.Width / 2), [int]($expected.Height / 2))
-    $distance = [Math]::Abs($a.R - $b.R) + [Math]::Abs($a.G - $b.G) + [Math]::Abs($a.B - $b.B)
-    if ($distance -lt 60) { "middle pixel $a against $b" } else { $null }
+    if (-not $shown) { throw "there is no window to read" }
+    $worn = [JebolWindowCheck]::Icon($shown.MainWindowHandle)
+    if ($worn -eq $null) { throw "the window has no icon" }
+    $source = [System.Drawing.Image]::FromFile((Resolve-Path "$example\icon.png").Path)
+    $expected = New-Object System.Drawing.Bitmap -ArgumentList $source, $worn.Width, $worn.Height
+    $distance = MeanColourDistance $worn $expected
+    if ($distance -ge 100) { throw "its colours are $distance from the app's icon.png" }
+    "$($worn.Width)x$($worn.Height), colours $distance from the app's icon.png"
 }
 Add-Type -AssemblyName System.Windows.Forms
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
