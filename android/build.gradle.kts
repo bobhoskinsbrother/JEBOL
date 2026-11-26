@@ -40,11 +40,19 @@ val deviceSerials = device.map { it.split(",").map(String::trim).filter(String::
     .orElse(emulators.map { count -> (0 until count).map { "emulator-${5584 - 2 * it}" } })
 val isOnEmulators = !device.isPresent
 
-val fingerprintsOfTheDevices = deviceSerials.map { serials ->
+// -PendToEndDevice=<serial>[,<serial>...] runs the end-to-end suite, every test
+// on each, on those devices alone, while the unit and functional suites share
+// every device -Pdevice names: CI names its phones here, and its phones and
+// emulators there (goal 20.6a).
+val endToEndSerials = providers.gradleProperty("endToEndDevice")
+    .map { it.split(",").map(String::trim).filter(String::isNotEmpty) }
+    .orElse(deviceSerials.map { if (isOnEmulators) it.take(2) else it })
+
+fun fingerprintsOf(serials: Provider<List<String>>) = serials.map { named ->
     if (isOnEmulators) {
         listOf()
     } else {
-        serials.map { serial ->
+        named.map { serial ->
             val fingerprint = providers.exec {
                 commandLine("${androidSdk.get()}/platform-tools/adb", "-s", serial,
                     "shell", "getprop", "ro.build.fingerprint")
@@ -54,6 +62,8 @@ val fingerprintsOfTheDevices = deviceSerials.map { serials ->
         }
     }
 }
+
+val fingerprintsOfTheDevices = fingerprintsOf(deviceSerials)
 
 val startEmulators = tasks.register<Exec>("startEmulators") {
     group = "verification"
@@ -163,9 +173,9 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     description = "The installed app driven from outside by UI Automator, every test on each device: a tablet and a phone"
     dependsOn(forgetLastDeviceResults, startEmulators, ":app:assembleDebug", ":endtoend:assembleDebug")
     onlyIf { isWanted(endToEndClasses) }
-    serials = deviceSerials.map { if (isOnEmulators) it.take(2) else it }
+    serials = endToEndSerials
     everyTestOnEachDevice = true
-    deviceFingerprints = fingerprintsOfTheDevices
+    deviceFingerprints = fingerprintsOf(endToEndSerials)
     outputs.cacheIf("it ran on phones, whose fingerprints are inputs") { !isOnEmulators }
     adb = androidSdk.map { "$it/platform-tools/adb" }
     appApk = theAppsApk

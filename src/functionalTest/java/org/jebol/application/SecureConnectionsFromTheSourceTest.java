@@ -7,6 +7,7 @@ import org.jebol.domain.host.SecureTransport;
 import org.jebol.domain.host.ZeroTrustAuthority;
 import org.jebol.tls.LocalTlsServer;
 import org.jebol.tls.LocalTlsServer.Identity;
+import org.jebol.tls.ReleasingAfterPage;
 import org.jebol.tls.TestCertificates;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -55,6 +56,15 @@ class SecureConnectionsFromTheSourceTest {
 
     private Interpreter makeAnInterpreterTrustingTheTestRoot() {
         return makeAnInterpreter(trustingTheTestRoot(), grantingEverythingSecure());
+    }
+
+    private Interpreter makeAnInterpreterReleasingAfterPage(LocalTlsServer server) {
+        return Interpreter.createOn(
+                AnInterpreter.standardPorts()
+                        .withNetwork(new ReleasingAfterPage(AnInterpreter.socket(), server))
+                        .withCertificateAuthority(trustingTheTestRoot()),
+                printed::append,
+                grantingEverythingSecure());
     }
 
     private Identity identityWithTheRsaKey(String... chain) {
@@ -160,14 +170,14 @@ class SecureConnectionsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("hears the close of a server that ends its session a moment after it has answered, not only one that ends it at once")
+        @DisplayName("hears the close of a server that ends its session only after the page has been read, not only one that ends it at once")
         void hearsALateClose() throws Exception {
-            LocalTlsServer.Settings answeringThenPausing =
-                    LocalTlsServer.Settings.speaking(TLS_1_3).pausingBeforeClosing(Duration.ofMillis(500));
-            try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), answeringThenPausing)) {
-                String happened = openAndSayWhatHappened(makeAnInterpreterTrustingTheTestRoot(), "localhost", server.port());
+            LocalTlsServer.Settings closingWhenReleased = LocalTlsServer.Settings.speaking(TLS_1_3).closingWhenReleased();
+            try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), closingWhenReleased)) {
+                String happened = openAndSayWhatHappened(makeAnInterpreterReleasingAfterPage(server), "localhost", server.port());
 
                 assertThat(happened).startsWith("connect wrote read ").endsWith("close | " + LocalTlsServer.PAGE_BODY);
+                assertThat(server.wasReleased()).isTrue();
             }
         }
 

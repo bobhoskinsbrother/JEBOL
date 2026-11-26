@@ -12,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -88,6 +89,35 @@ final class SuiteGrading {
                 .filter(assertion -> !needsTheNetwork(assertion))
                 .filter(assertion -> !isWithheldOnThisPlatform(assertion))
                 .filter(assertion -> !needsAnOptionalPartThisBuildLacks(assertion));
+    }
+
+    static Stream<SuiteFile.Assertion> listTheAssertionsExpectedToPassInPart(int part, int parts) {
+        Map<String, Integer> partOfFile = partOfEachFile(parts);
+        return listTheAssertionsExpectedToPass().filter(assertion -> partOfFile.get(assertion.file()) == part);
+    }
+
+    static Map<String, Integer> partOfEachFile(int parts) {
+        long[] assertionsInPart = new long[parts];
+        Map<String, Integer> partOfFile = new LinkedHashMap<>();
+        filesInSuite().stream()
+                .sorted(Comparator.comparingInt((SuiteFile file) -> file.assertions().size()).reversed()
+                        .thenComparing(SuiteFile::name))
+                .forEach(file -> {
+                    int lightest = indexOfSmallest(assertionsInPart);
+                    assertionsInPart[lightest] += file.assertions().size();
+                    partOfFile.put(file.name(), lightest + 1);
+                });
+        return partOfFile;
+    }
+
+    private static int indexOfSmallest(long[] values) {
+        int smallest = 0;
+        for (int index = 1; index < values.length; index++) {
+            if (values[index] < values[smallest]) {
+                smallest = index;
+            }
+        }
+        return smallest;
     }
 
     static Stream<SuiteFile.Assertion> listTheAssertionsNeeding(String method) {

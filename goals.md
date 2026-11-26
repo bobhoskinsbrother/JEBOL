@@ -1029,23 +1029,17 @@ of 2e:
 6a. *Emulators beside the phones* (owner, 2026-11-26). The full device
    suite took about two hours on the two phones in run 16 while the CI
    machine sat at a load of 0.1 and the Windows machine did nothing after
-   its own stage. This is what Marathon was put in CI for (jebol-ci's plan,
-   step 4), and it has never run: `jebol.run` takes it only under
-   `ANDROID_RUNNER=marathon`, which nothing sets. So: Marathon runs the
-   unit and functional device suites in place of the build's shards, over
-   one pool of every Android that is free -- the two phones, emulators the
-   CI machine boots under KVM with `android/emulator.sh` once `allTests` has
-   finished, and emulators the Windows machine boots under the Windows
-   Hypervisor Platform, its adb reached over the network. jebol-ci's roles
-   install the SDK, the system images and the AVDs on both, and how many
-   each holds is read from its free memory. Marathon balances by past
-   times and moves work off a device that drops; retries stay off, because
-   a flake is a fail. Rebol's suite, one parameterised method of about
-   10,144 cases, is split so that it can be divided at all -- as it is, no
-   runner can, and it sets the floor of the whole stage. The end-to-end
-   suite still runs every test on each phone, because a phone is what it
-   proves. The Windows job and the Android stage run at the same time
-   where the Windows machine has the room.
+   its own stage. Rebol's suite is twelve classes now and `DeviceShards`
+   deals batches from one queue to every device it is given
+   (`docs/android-port.md`); Marathon could not select a JUnit 5 test by
+   the name it lists, and is gone. What remains: the Windows machine's
+   emulators, which jebol-ci boots and tunnels, proved in a real run with
+   no test timing out on them; emulators the CI machine boots under KVM
+   with `android/emulator.sh` once `allTests` has finished, as many as its
+   free memory holds; and the Windows job running beside the Android stage
+   where the Windows machine has the room. Retries stay off, because a
+   flake is a fail, and the end-to-end suite still runs every test on each
+   phone, because a phone is what it proves.
 7. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
    test passed. The rules already exist, in CLAUDE.md and

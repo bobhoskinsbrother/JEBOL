@@ -60,9 +60,21 @@ and `ParityWithJava2DTest`'s thirteen; and it
 reports the one `exhausts-the-heap` case as skipped, which the JVM runs in its
 own fork.
 
-Sharding is by test, not by class, so `RebolSuiteTest`'s 19,389 cases are
-split between the shards, 9,859 to one of them; the two shards finish close
-together, because Rebol's assertions are quick. Three emulators ran the same
+The runner's `numShards` divides by test method, and a parameterised method is
+one: when Rebol's suite was one method, all of its cases went to one shard. On
+the two phones in CI run 16 that was about 19,500 tests on one and 6,500 on the
+other, and the device stage took 2 hours 18 minutes. The suite is twelve
+classes now, `RebolSuitePart1Test` to `RebolSuitePart12Test`, each a whole set
+of files, and `DeviceShards` no longer splits by `numShards` at all: it lists
+the classes once in log mode (about 30 seconds for the functional suite's
+1,436), deals them in a fixed hash order into about twelve batches a device,
+and each device takes the next batch from one queue as it comes free. A faster
+device takes more, a device that drops gives its batch back to the others,
+and the slowest tail is one small batch. Marathon was meant to do this and
+cannot: it lists a JUnit 5 test by its display name, which the runner cannot
+select (jebol-ci's plan, step 4). CI adds the Windows machine's emulators to
+the phones for the unit and functional suites, with `-PendToEndDevice`
+keeping the end-to-end suite on the phones. Three emulators ran the same
 suite in 63 minutes on 2026-11-15, and four do not fit beside the IDE: each
 holds about 3.6 GB beyond what Android is given. On a machine running
 IntelliJ, two leave room; `-Pemulators=N` sets how many.

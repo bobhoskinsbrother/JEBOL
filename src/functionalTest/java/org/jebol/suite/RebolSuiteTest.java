@@ -1,44 +1,60 @@
 package org.jebol.suite;
 
-import org.jebol.application.AnInterpreter;
-import org.jebol.application.Interpreter;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RebolSuiteTest {
 
-    @BeforeAll
-    static void bootOneInterpreterFirst() {
-        AnInterpreter.create();
-    }
-
-    static Stream<SuiteFile.Assertion> listTheAssertionsExpectedToPass() {
-        return SuiteGrading.listTheAssertionsExpectedToPass();
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("listTheAssertionsExpectedToPass")
-    @DisplayName("Rebol's own suite")
-    void holdsTheAssertion(SuiteFile.Assertion assertion) {
-        SuiteGrading.Verdict verdict = SuiteGrading.judge(assertion);
-        assertThat(verdict.held())
-                .as("%s%n  why: %s%n  %s",
-                        assertion, verdict.reason(), assertion.source())
-                .isTrue();
-    }
+    private static final String PART_CLASS = "org.jebol.suite.RebolSuitePart%dTest";
 
     @Test
     @DisplayName("the suite was found and read, so this test is doing something")
     void findsAssertions() {
         assertThat(SuiteGrading.listEveryAssertion().toList()).hasSizeGreaterThan(500);
+    }
+
+    @Test
+    @DisplayName("every assertion expected to pass is held by exactly one part, so splitting the suite runs each once")
+    void splitsTheSuiteIntoParts() {
+        List<String> inTheParts = IntStream.rangeClosed(1, RebolSuitePart.PARTS).boxed()
+                .flatMap(part -> SuiteGrading.listTheAssertionsExpectedToPassInPart(part, RebolSuitePart.PARTS))
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+
+        assertThat(inTheParts).containsExactlyInAnyOrderElementsOf(
+                SuiteGrading.listTheAssertionsExpectedToPass().map(SuiteFile.Assertion::toString).toList());
+    }
+
+    @Test
+    @DisplayName("each file of the suite is in one part whole, since its assertions share one interpreter in order")
+    void keepsEachFileWhole() {
+        assertThat(SuiteGrading.partOfEachFile(RebolSuitePart.PARTS))
+                .containsOnlyKeys(SuiteGrading.filesInSuite().stream().map(SuiteFile::name).toList())
+                .allSatisfy((file, part) -> assertThat(part).isBetween(1, RebolSuitePart.PARTS));
+    }
+
+    @Test
+    @DisplayName("there is a test class for each part and none past the last, so no part goes unrun")
+    void hasAClassForEachPart() {
+        assertThat(IntStream.rangeClosed(1, RebolSuitePart.PARTS + 1).mapToObj(RebolSuiteTest::partClass))
+                .map(Optional::isPresent)
+                .containsExactlyElementsOf(IntStream.rangeClosed(1, RebolSuitePart.PARTS + 1)
+                        .mapToObj(part -> part <= RebolSuitePart.PARTS)
+                        .toList());
+    }
+
+    private static Optional<Class<?>> partClass(int part) {
+        try {
+            return Optional.of(Class.forName(PART_CLASS.formatted(part)));
+        } catch (ClassNotFoundException absent) {
+            return Optional.empty();
+        }
     }
 
     @Test

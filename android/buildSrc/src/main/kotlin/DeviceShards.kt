@@ -19,11 +19,14 @@ import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Internal
 import java.io.File
 import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.Executors
 
-// Runs the test APK on several emulators at once, shard i of N on the i-th,
-// as AGP's connected task cannot: it runs every test on every device. Each
-// shard's raw instrumentation output becomes TEST-shard-i.xml. Decision 73.
+// Runs the test APK on several devices at once, as AGP's connected task
+// cannot: it runs every test on every device. The classes are dealt into small
+// batches that each device takes from one queue as it comes free, so a faster
+// device takes more. Each device's raw instrumentation output becomes
+// TEST-shard-i.xml. Decision 73, goal 20.6a.
 @CacheableTask
 abstract class DeviceShards : DefaultTask() {
 
@@ -83,6 +86,11 @@ abstract class DeviceShards : DefaultTask() {
 
     private val hostServerArguments = mutableMapOf<String, String>()
 
+    private companion object {
+        const val BATCHES_EACH_DEVICE = 12
+        const val MIXING = -0x61c88647
+    }
+
     @TaskAction
     fun runEveryShard() {
         if (!hostSiteApp.isPresent) {
@@ -115,14 +123,71 @@ abstract class DeviceShards : DefaultTask() {
         val pool = Executors.newFixedThreadPool(devices.size)
         try {
             pool.invokeAll(devices.map { serial -> Callable { install(serial) } }).forEach { it.get() }
-            val shards = pool.invokeAll(devices.mapIndexedNotNull { index, serial ->
-                shareFor(index, devices.size)?.let { share -> Callable { runShard(serial, index, share) } }
+            if (everyTestOnEachDevice.getOrElse(false)) {
+                val shards = pool.invokeAll(devices.mapIndexed { index, serial ->
+                    Callable { runEveryTest(serial, index) }
+                }).map { it.get() }
+                shards.forEach { it.writeXmlInto(folder) }
+                report(shards, 0)
+                return
+            }
+            val batches = batchesFor(classesToRun(devices.first()), devices.size)
+            val queue = ConcurrentLinkedDeque(batches)
+            val shards = pool.invokeAll(devices.mapIndexed { index, serial ->
+                Callable { takeBatches(serial, index, queue, batches.size) }
             }).map { it.get() }
             shards.forEach { it.writeXmlInto(folder) }
-            report(shards)
+            report(shards, queue.size)
         } finally {
             pool.shutdownNow()
         }
+    }
+
+    private fun classesToRun(serial: String): List<String> {
+        val named = runnerArguments.get()["class"]?.split(",")?.filter(String::isNotEmpty).orEmpty()
+        if (named.isNotEmpty()) {
+            return named
+        }
+        val listing = Shard(-1, serial)
+        runInstrumentation(serial, listing, runnerArguments.get() + ("log" to "true"))
+        if (!listing.completed()) {
+            throw GradleException("listing the tests on $serial failed: ${listing.unfinished.joinToString("; ")}")
+        }
+        return listing.cases.map { it.className }.filter(String::isNotEmpty).distinct()
+    }
+
+    private fun batchesFor(classes: List<String>, deviceCount: Int): List<List<String>> {
+        val wanted = deviceCount * BATCHES_EACH_DEVICE
+        val size = maxOf(1, (classes.size + wanted - 1) / wanted)
+        return classes.sortedWith(compareBy<String> { Integer.toUnsignedLong(it.hashCode() * MIXING) }.thenBy { it })
+            .chunked(size)
+    }
+
+    private fun takeBatches(serial: String, index: Int, queue: ConcurrentLinkedDeque<List<String>>, total: Int): Shard {
+        val shard = Shard(index, serial)
+        val asked = runnerArguments.get() - setOf("class", "package", "notPackage")
+        while (true) {
+            val batch = queue.pollFirst() ?: break
+            val before = shard.cases.size
+            val exit = runInstrumentation(serial, shard, asked + hostServerArguments + ("class" to batch.joinToString(",")))
+            if (!shard.lastRunFinished() && !isConnected(serial)) {
+                shard.forgetCasesAfter(before)
+                shard.forgetLastRun()
+                shard.lost = "$serial was lost (adb exited $exit), and its batch went back for another device"
+                logger.lifecycle(shard.lost)
+                queue.addFirst(batch)
+                break
+            }
+            logger.lifecycle("$serial: ${total - queue.size} of $total batches taken, ${shard.cases.size} tests done " +
+                "here, ${shard.failed().size} failed")
+        }
+        return shard
+    }
+
+    private fun isConnected(serial: String): Boolean {
+        val asking = ProcessBuilder(adb.get(), "-s", serial, "get-state").redirectErrorStream(true).start()
+        val said = asking.inputStream.bufferedReader().readText().trim()
+        return asking.waitFor() == 0 && said == "device"
     }
 
     private fun install(serial: String) {
@@ -136,25 +201,17 @@ abstract class DeviceShards : DefaultTask() {
         }
     }
 
-    private fun shareFor(index: Int, deviceCount: Int): Map<String, String>? {
-        if (everyTestOnEachDevice.getOrElse(false)) {
-            return mapOf()
-        }
-        val named = runnerArguments.get()["class"]?.split(",")?.filter(String::isNotEmpty).orEmpty()
-        if (named.isEmpty()) {
-            return mapOf("numShards" to deviceCount.toString(), "shardIndex" to index.toString())
-        }
-        val own = named.filterIndexed { at, _ -> at % deviceCount == index }
-        return if (own.isEmpty()) null else mapOf("class" to own.joinToString(","))
+    private fun runEveryTest(serial: String, index: Int): Shard {
+        val shard = Shard(index, serial)
+        runInstrumentation(serial, shard, runnerArguments.get() + hostServerArguments)
+        return shard
     }
 
-    private fun runShard(serial: String, index: Int, share: Map<String, String>): Shard {
+    private fun runInstrumentation(serial: String, shard: Shard, arguments: Map<String, String>): Int {
         val command = mutableListOf(adb.get(), "-s", serial, "shell", "am", "instrument", "-w", "-r")
-        (runnerArguments.get() + hostServerArguments + share).forEach { (name, value) ->
-            command += listOf("-e", name, value)
-        }
+        arguments.forEach { (name, value) -> command += listOf("-e", name, value) }
         command += instrumentation.get()
-        val shard = Shard(index, serial)
+        shard.startRun()
         val running = ProcessBuilder(command).redirectErrorStream(true).start()
         running.inputStream.bufferedReader().useLines { lines ->
             lines.forEach { line ->
@@ -162,26 +219,28 @@ abstract class DeviceShards : DefaultTask() {
             }
         }
         val exit = running.waitFor()
-        if (!shard.finished) {
-            shard.ending += " (adb exited $exit)"
-        }
-        return shard
+        shard.endRun(exit)
+        return exit
     }
 
     private fun logEvery500(shard: Shard, done: Int) {
-        if (done % 500 == 0) {
-            logger.lifecycle("shard ${shard.index} on ${shard.serial}: $done of ${shard.planned}, " +
-                "${shard.failed().size} failed")
+        if (shard.index >= 0 && done % 500 == 0) {
+            logger.lifecycle("${shard.serial}: $done tests done, ${shard.failed().size} failed")
         }
     }
 
-    private fun report(shards: List<Shard>) {
+    private fun report(shards: List<Shard>, batchesNeverRun: Int) {
         val failed = shards.flatMap { it.failed() }
-        val broken = shards.filter { !it.finished }
+        val broken = shards.filter { !it.completed() }
         shards.forEach {
-            logger.lifecycle("shard ${it.index} on ${it.serial}: ${it.cases.size} tests, " +
+            logger.lifecycle("${it.serial}: ${it.cases.size} tests, " +
                 "${it.failed().size} failed, ${it.cases.count { case -> case.skipped }} skipped" +
-                if (it.finished) "" else ", and it never finished: ${it.ending}")
+                (if (it.completed()) "" else ", and a run never finished: ${it.unfinished.joinToString("; ")}") +
+                (if (it.lost.isEmpty()) "" else "; ${it.lost}"))
+        }
+        if (batchesNeverRun > 0) {
+            throw GradleException("$batchesNeverRun batches of tests never ran, because every device was lost; " +
+                "the results are in ${results.get().asFile}")
         }
         failed.forEach { logger.lifecycle("FAILED ${it.className} > ${it.name}\n${it.stack.lines().take(6).joinToString("\n")}") }
         if (failed.isNotEmpty() || broken.isNotEmpty()) {
@@ -199,14 +258,45 @@ abstract class DeviceShards : DefaultTask() {
 
     class Shard(val index: Int, val serial: String) {
         val cases = mutableListOf<Case>()
-        var planned = 0
-        var finished = false
-        var ending = "no output"
+        val unfinished = mutableListOf<String>()
+        var lost = ""
+        private var finished = false
+        private var ending = "no output"
         private val fields = LinkedHashMap<String, String>()
         private var lastField: String? = null
         private var running: Case? = null
 
         fun failed(): List<Case> = cases.filter { it.failure.isNotEmpty() }
+
+        fun completed(): Boolean = unfinished.isEmpty()
+
+        fun lastRunFinished(): Boolean = finished
+
+        fun startRun() {
+            finished = false
+            ending = "no output"
+            running = null
+            fields.clear()
+            lastField = null
+        }
+
+        fun endRun(exit: Int) {
+            if (!finished) {
+                unfinished += "$ending (adb exited $exit)"
+            }
+        }
+
+        fun forgetLastRun() {
+            if (!finished) {
+                unfinished.removeLast()
+            }
+        }
+
+        fun forgetCasesAfter(count: Int) {
+            while (cases.size > count) {
+                cases.removeLast()
+            }
+        }
 
         fun read(line: String): Int? {
             when {
@@ -232,7 +322,6 @@ abstract class DeviceShards : DefaultTask() {
         }
 
         private fun settle(code: Int): Int? {
-            fields["numtests"]?.toIntOrNull()?.let { planned = it }
             if (code == STARTED) {
                 running = Case(fields["class"].orEmpty(), fields["test"].orEmpty(), System.nanoTime())
                 return null
@@ -255,7 +344,7 @@ abstract class DeviceShards : DefaultTask() {
             val xml = StringBuilder()
             xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
             xml.append("<testsuite name=\"shard-$index\" tests=\"${cases.size}\" failures=\"${failed().size}\" ")
-            xml.append("errors=\"${if (finished) 0 else 1}\" skipped=\"${cases.count { it.skipped }}\" ")
+            xml.append("errors=\"${unfinished.size}\" skipped=\"${cases.count { it.skipped }}\" ")
             xml.append("time=\"${"%.3f".format(cases.sumOf { it.seconds })}\" hostname=\"$serial\">\n")
             cases.forEach { case ->
                 xml.append("  <testcase name=\"${escape(case.name)}\" classname=\"${escape(case.className)}\" ")
@@ -267,8 +356,8 @@ abstract class DeviceShards : DefaultTask() {
                     else -> xml.append("/>\n")
                 }
             }
-            if (!finished) {
-                xml.append("  <system-err>${escape("the shard never finished: $ending")}</system-err>\n")
+            if (!completed()) {
+                xml.append("  <system-err>${escape("a run never finished: " + unfinished.joinToString("; "))}</system-err>\n")
             }
             xml.append("</testsuite>\n")
             folder.mkdirs()

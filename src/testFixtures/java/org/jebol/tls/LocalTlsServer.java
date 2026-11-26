@@ -25,6 +25,8 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public final class LocalTlsServer implements AutoCloseable {
@@ -37,7 +39,9 @@ public final class LocalTlsServer implements AutoCloseable {
     private final SSLServerSocket listening;
     private final Thread acceptor;
     private final Function<String, String> bodyForPath;
-    private final Duration pauseBeforeClosing;
+    private final boolean closesWhenReleased;
+    private final CountDownLatch released = new CountDownLatch(1);
+    private volatile boolean pageWritten;
     private int connectionsAccepted;
     private int connectionsClosed;
     private int requestsReceived;
@@ -51,22 +55,22 @@ public final class LocalTlsServer implements AutoCloseable {
     public enum ClientCertificate { NOT_ASKED, WANTED, NEEDED }
 
     public record Settings(List<String> protocols, List<String> cipherSuites, ClientCertificate clientCertificate,
-                           Duration pauseBeforeClosing) {
+                           boolean closesWhenReleased) {
 
         public static Settings speaking(String protocol) {
-            return new Settings(List.of(protocol), List.of(), ClientCertificate.NOT_ASKED, Duration.ZERO);
+            return new Settings(List.of(protocol), List.of(), ClientCertificate.NOT_ASKED, false);
         }
 
         public Settings offeringOnly(String... suites) {
-            return new Settings(protocols, List.of(suites), clientCertificate, pauseBeforeClosing);
+            return new Settings(protocols, List.of(suites), clientCertificate, closesWhenReleased);
         }
 
         public Settings asking(ClientCertificate asked) {
-            return new Settings(protocols, cipherSuites, asked, pauseBeforeClosing);
+            return new Settings(protocols, cipherSuites, asked, closesWhenReleased);
         }
 
-        public Settings pausingBeforeClosing(Duration pause) {
-            return new Settings(protocols, cipherSuites, clientCertificate, pause);
+        public Settings closingWhenReleased() {
+            return new Settings(protocols, cipherSuites, clientCertificate, true);
         }
     }
 
@@ -84,7 +88,7 @@ public final class LocalTlsServer implements AutoCloseable {
 
     public LocalTlsServer(Identity identity, Settings settings, Function<String, String> bodyForPath) {
         this.bodyForPath = bodyForPath;
-        this.pauseBeforeClosing = settings.pauseBeforeClosing();
+        this.closesWhenReleased = settings.closesWhenReleased();
         try {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(new KeyManager[] {new FixedKeyManager(identity)}, new TrustManager[] {new TrustingNoClient()}, null);
@@ -108,6 +112,14 @@ public final class LocalTlsServer implements AutoCloseable {
         return listening.getLocalPort();
     }
 
+    public void release() {
+        released.countDown();
+    }
+
+    public boolean hasWrittenPage() {
+        return pageWritten;
+    }
+
     public synchronized int connectionsAccepted() {
         return connectionsAccepted;
     }
@@ -122,6 +134,10 @@ public final class LocalTlsServer implements AutoCloseable {
 
     public synchronized List<String> hostsAskedFor() {
         return List.copyOf(hostsAskedFor);
+    }
+
+    public boolean wasReleased() {
+        return released.getCount() == 0;
     }
 
     public synchronized List<String> handshakeFailures() {
@@ -177,8 +193,11 @@ public final class LocalTlsServer implements AutoCloseable {
             String path = readRequest(connection.getInputStream());
             if (path != null) {
                 countRequest();
+                pageWritten = true;
                 writePage(connection.getOutputStream(), bodyForPath.apply(path));
-                pauseBeforeClosing();
+                if (closesWhenReleased) {
+                    holdOpenUntilReleased();
+                }
             }
         } catch (IOException ignored) {
         } finally {
@@ -232,9 +251,9 @@ public final class LocalTlsServer implements AutoCloseable {
                 });
     }
 
-    private void pauseBeforeClosing() {
+    private void holdOpenUntilReleased() {
         try {
-            Thread.sleep(pauseBeforeClosing);
+            released.await(READ_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
         }

@@ -134,7 +134,8 @@ fetched.
 
 All of these stay where they are. A change that moves one is wrong.
 
-- **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
+- **`RebolSuitePart1Test` to `RebolSuitePart12Test`** -- Rebol's own
+  assertions, a whole set of files to each part, about a minute alone. The
   inner loop between changes. **Every assertion its files write is
   run.** `fails-on-rebol-too.txt` holds the ones that are not run at
   all, each carrying the `r3-head` session showing a real Rebol does not run it
@@ -160,7 +161,7 @@ All of these stay where they are. A change that moves one is wrong.
   and an assertion inside a FOREACH was never run at all.
 
   ```
-  ./gradlew functionalTests --tests 'org.jebol.suite.RebolSuiteTest'
+  ./gradlew :functionalTests --tests 'org.jebol.suite.RebolSuite*'
   ```
 
 - **`ActionParityTest`** -- the datatype table times the arms table, ratchet at

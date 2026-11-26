@@ -165,13 +165,16 @@ object -- and a sentence belongs there.
 
 Two different things run here and they have different jobs.
 
-**`RebolSuiteTest` runs Rebol's own `.r3` files.** It is the authority on what a
+**`RebolSuitePart1Test` to `RebolSuitePart12Test` run Rebol's own `.r3` files**,
+each a whole set of files sized by their assertions so a device runner can
+spread them, and `RebolSuiteTest` checks that the parts hold every assertion
+exactly once. The suite is the authority on what a
 real 3.22.1 answers and the measure of how far the port has got, and while JEBOL is
 catching up its assertions are what to obey: if it says `e/arg1 = "path"`, that is
 the answer, and a disagreement means JEBOL is wrong until the C says otherwise.
 
-**It is scaffolding, though.** It is vendored somebody else's test code, it is one
-class of 10,144 assertions (10,132 on every build, 12 in `./gradlew
+**It is scaffolding, though.** It is vendored somebody else's test code, it is
+10,144 assertions (10,132 on every build, 12 in `./gradlew
 networkTests`) so a failure names a group rather than a behaviour, and it
 will be deleted when it goes green. Coverage that lives only there does not survive
 that.

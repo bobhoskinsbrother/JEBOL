@@ -104,15 +104,24 @@ heard `restore`. The test then waited for `seen` to end with `restore`, but
 macOS's un-zoom animation keeps sending resizes after it, so it never did.
 The restore steps now wait until `restore` has been heard at all.
 
+The fourth run showed the same for maximising: the zoom animation sends one more
+`resize` after `maximize` (`[… resize maximize resize]`), so a step waiting for
+the events to end with `maximize` waited forever. Each maximise step now waits
+until `maximize` has been heard and the window's size matches its maximised
+content pane, and it accepts either order of events. Its polling waits on the
+event port itself, and the `Thread.sleep` it used is gone.
+
 **A TLS conversation waited out its 30 seconds.** This was JEBOL's own bug,
 which the Mac's timing showed. The server's page and its `close_notify`
 reached the client in separate TCP reads. Once the session had closed,
 `prot-tls.reb` read no further, so the TCP close was never read and the
 script never heard `close`. On Linux the two usually arrived together. The
 session now keeps reading after it closes until the connection's own close
-comes. `LocalTlsServer` can pause before it closes, which makes this happen
-every time, and `SecureConnectionsFromTheSourceTest` has a test that uses
-it.
+comes. `LocalTlsServer` can hold its close until it is released, and
+`ReleasingAfterPage` releases it at the moment the client asks for its next
+read after the page has arrived. That makes the two reads separate every time,
+on any machine, with no timing in the test. Without the fix the test waits out
+its 30 seconds as the Mac did; with it, the test takes about a tenth of a second.
 
 ## Still to look out for
 

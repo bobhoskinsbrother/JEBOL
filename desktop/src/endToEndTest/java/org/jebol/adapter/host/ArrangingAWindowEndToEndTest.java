@@ -80,8 +80,7 @@ class ArrangingAWindowEndToEndTest {
                     .as("the window manager was still moving the new window after %s", PATIENCE)
                     .isLessThan(giveUpAt);
             run("clear seen");
-            pause();
-            run("wait [system/ports/event 0]");
+            takeEventsForAMoment();
             quietDrains = run("seen").equals("[]") ? quietDrains + 1 : 0;
         }
     }
@@ -103,9 +102,12 @@ class ArrangingAWindowEndToEndTest {
     }
 
     private void forgetWhatWasSeen() {
-        pause();
-        run("wait [system/ports/event 0]");
+        takeEventsForAMoment();
         run("clear seen");
+    }
+
+    private void takeEventsForAMoment() {
+        run("wait [system/ports/event 0.05]");
     }
 
     private static JFrame findTheFrame() {
@@ -147,9 +149,21 @@ class ArrangingAWindowEndToEndTest {
                     .as("still waiting after %s, having heard %s with the frame in state %d",
                             PATIENCE, run("seen"), stateOfTheFrame())
                     .isLessThan(giveUpAt);
-            run("wait [system/ports/event 0]");
-            pause();
+            takeEventsForAMoment();
         }
+    }
+
+    private void takeEventsUntilTheWindowFillsItsMaximisedSize() {
+        takeEventsUntilHeard("maximize");
+        takeEventsUntil(() -> isInState(Frame.MAXIMIZED_BOTH) && run("win/size").equals(drawableSizeAsPair()));
+        assertThat(seenWithoutRepeatedResizes()).isIn("[resize maximize]", "[resize maximize resize]");
+        forgetWhatWasSeen();
+        assertThat(run("win/size")).isEqualTo(drawableSizeAsPair());
+    }
+
+    private String drawableSizeAsPair() {
+        Dimension size = drawableSize();
+        return size.width + "x" + size.height;
     }
 
     private void takeEventsUntilTheWindowIsBackToItsOwnSize() {
@@ -164,15 +178,6 @@ class ArrangingAWindowEndToEndTest {
 
     private void takeEventsUntilSeenEndsWith(String last) {
         takeEventsUntil(() -> run("seen").endsWith(last + "]"));
-    }
-
-    private static void pause() {
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException stopped) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(stopped);
-        }
     }
 
     private boolean isInState(int wanted) {
@@ -200,12 +205,7 @@ class ArrangingAWindowEndToEndTest {
         assertThat(seenWithoutRepeatedResizes()).isEqualTo("[resize restore]");
 
         run("clear seen gui-metric/set 'maximize win");
-        takeEventsUntil(() -> isInState(Frame.MAXIMIZED_BOTH));
-        takeEventsUntilSeenEndsWith("maximize");
-        assertThat(seenWithoutRepeatedResizes()).startsWith("[resize maximize");
-        forgetWhatWasSeen();
-        Dimension maximised = drawableSize();
-        assertThat(run("win/size")).isEqualTo(maximised.width + "x" + maximised.height);
+        takeEventsUntilTheWindowFillsItsMaximisedSize();
 
         run("clear seen gui-metric/set 'restore win");
         takeEventsUntil(() -> isInState(Frame.NORMAL));
@@ -221,11 +221,7 @@ class ArrangingAWindowEndToEndTest {
     @DisplayName("an operator maximising, restoring and minimising the window is heard the same way")
     void theOperatorArrangesTheWindow() {
         onTheToolkit(() -> frame.setExtendedState(Frame.MAXIMIZED_BOTH));
-        takeEventsUntilSeenEndsWith("maximize");
-        assertThat(seenWithoutRepeatedResizes()).startsWith("[resize maximize");
-        forgetWhatWasSeen();
-        Dimension maximised = drawableSize();
-        assertThat(run("win/size")).isEqualTo(maximised.width + "x" + maximised.height);
+        takeEventsUntilTheWindowFillsItsMaximisedSize();
 
         run("clear seen");
         onTheToolkit(() -> frame.setExtendedState(Frame.NORMAL));
@@ -251,8 +247,6 @@ class ArrangingAWindowEndToEndTest {
         takeEventsUntilSeenEndsWith("minimize");
 
         run("clear seen gui-metric/set 'maximize win");
-        takeEventsUntil(() -> isInState(Frame.MAXIMIZED_BOTH));
-        takeEventsUntilSeenEndsWith("maximize");
-        assertThat(seenWithoutRepeatedResizes()).isEqualTo("[resize maximize]");
+        takeEventsUntilTheWindowFillsItsMaximisedSize();
     }
 }

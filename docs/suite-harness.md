@@ -1,7 +1,11 @@
 # Running Rebol's own suite
 
-`RebolSuiteTest` runs Rebol's own `.r3` files against JEBOL, one JUnit case per
-`--assert`. This note carries what the harness code cannot: why it is shaped the
+`RebolSuitePart1Test` to `RebolSuitePart12Test` run Rebol's own `.r3` files
+against JEBOL, one JUnit case per `--assert`. Each part takes whole files, since
+a file's assertions run in order in one interpreter, and the files are dealt
+out largest first to the part with fewest assertions so far, so that a device
+runner, which divides by class, can spread the suite (goal 20.6a);
+`RebolSuiteTest` checks every assertion is in exactly one part. This note carries what the harness code cannot: why it is shaped the
 way it is, and the handful of ways of building it that looked right and silently
 lost hundreds of assertions.
 
