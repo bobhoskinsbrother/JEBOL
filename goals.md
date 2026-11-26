@@ -1005,14 +1005,21 @@ of 2e:
    (`iconutil`) read back, the app opened as Finder opens it, and its store
    made. Whatever it finds wrong is fixed and the script run again. The
    owner's Mac is Intel (2026-11-21), so this proves the Intel `.app`.
-5. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
-   builds for the processor it runs on, so only a hosted macOS runner, which
-   is Apple Silicon, proves the arm64 `.app`: it runs the example app's
-   `packageMac` and the checks `scripts/app-on-my-mac.sh` makes that need no
-   one at the screen, the bundle built for arm64, its signature verified,
+5. *A Mac in CI, on every push.* No GitHub Actions (decision 81): an Apple
+   Silicon Mac of the owner's joins CI as the Windows machine did, set up by
+   jebol-ci's roles and driven by Laminar over SSH, its job a stage of every
+   run. It runs the suites, which on macOS are expected to meet what Linux
+   never shows: temporary folders behind the `/var` and `/tmp` links to
+   `/private`, a disk that ignores case though JEBOL's file port says it
+   minds it, names stored decomposed, Cmd where Linux has Ctrl, and Retina's
+   twice-sized pixels in every picture test (`docs/on-a-mac.md` says where
+   each is expected and what R3 does). The window tests run with
+   Screen Recording and Accessibility granted to it once, by hand. Then the
+   example app's `packageMac` and the checks `scripts/app-on-my-mac.sh`
+   makes, unattended: the bundle built for arm64, its signature verified,
    its `Info.plist` and `.icns` read back, and the app started far enough to
-   make its store. Nightly, since the minutes are charged for a private
-   repository; the report is archived with the night's results.
+   make its store. jpackage builds for the processor it runs on, so this is
+   the only proof of the Apple Silicon `.app`.
 6. *Shorter runs.* The device suites shard across the phones by each
    test's measured time rather than by count, so the slower phone does not
    hold a run open; the example app's Android package builds byte-identical
@@ -1032,6 +1039,6 @@ of 2e:
 
 **Done when** the platform-threads run is part of every check-in,
 CLAUDE.md describes the new way, the first real fixer's commit has been
-checked, the Mac script reports the Intel app running, the Apple Silicon
-app is built and checked, and an untouched commit's run takes its device
-suites from the cache.
+checked, the Mac script reports the Intel app running, the Mac's stage is
+green in every run with the Apple Silicon app built and checked, and an
+untouched commit's run takes its device suites from the cache.
