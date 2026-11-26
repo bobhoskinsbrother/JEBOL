@@ -49,15 +49,17 @@ public final class DesktopScreen extends GobScreen {
     private final List<GobValue> openedInOrder = new ArrayList<>();
     private final LeavingConfirmation leaving;
     private final BackForwardChords chords;
+    private final DesktopSystem system;
     private Optional<Cursor> chosenCursor = Optional.empty();
 
-    private DesktopScreen(FilePort files, boolean present, LeavingConfirmation leaving, BackForwardChords chords) {
+    private DesktopScreen(FilePort files, boolean present, LeavingConfirmation leaving, DesktopSystem system) {
         super(() -> System.nanoTime() / NANOSECONDS_IN_A_MILLISECOND, new WindowHistory());
         this.present = present;
         this.font = DefaultFont.readFrom(files);
         this.face = Java2DSurface.faceFrom(font.readFontBytes());
         this.leaving = leaving;
-        this.chords = chords;
+        this.chords = new BackForwardChords(system);
+        this.system = system;
     }
 
     public static DesktopScreen onThisMachine(FilePort files) {
@@ -67,7 +69,7 @@ public final class DesktopScreen extends GobScreen {
     }
 
     static DesktopScreen confirmingWith(FilePort files, LeavingConfirmation asking, DesktopSystem system) {
-        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless(), asking, new BackForwardChords(system));
+        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless(), asking, system);
     }
 
     void requestClose(GobValue gob) {
@@ -294,6 +296,10 @@ public final class DesktopScreen extends GobScreen {
             frame.setExtendedState(state);
             return;
         }
+        if (system.bringsMinimisedWindowBackInPlace()) {
+            bringBackFromDock(frame, window, state);
+            return;
+        }
         WindowStateReports reports = stateReports.get(frame);
         reports.beginRemap();
         frame.setVisible(false);
@@ -306,6 +312,33 @@ public final class DesktopScreen extends GobScreen {
             }
             frame.setExtendedState(state);
             afterRemapSettles(() -> endRemap(frame, window, reports));
+        });
+    }
+
+    private void bringBackFromDock(JFrame frame, GobValue window, int state) {
+        if (state == Frame.NORMAL) {
+            frame.setExtendedState(Frame.NORMAL);
+            return;
+        }
+        WindowStateReports reports = stateReports.get(frame);
+        reports.beginRemap();
+        onceStateReaches(frame, Frame.NORMAL, () -> {
+            frame.setExtendedState(state);
+            onceStateReaches(frame, state, () -> afterRemapSettles(() -> endRemap(frame, window, reports)));
+        });
+        frame.setExtendedState(Frame.NORMAL);
+    }
+
+    private static void onceStateReaches(JFrame frame, int wanted, Runnable next) {
+        frame.addWindowStateListener(new WindowStateListener() {
+
+            @Override
+            public void windowStateChanged(WindowEvent changed) {
+                if (changed.getNewState() == wanted) {
+                    frame.removeWindowStateListener(this);
+                    next.run();
+                }
+            }
         });
     }
 

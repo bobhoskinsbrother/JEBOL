@@ -22,4 +22,15 @@ class WhichDesktopSystemTest {
     void readFromTheOperatingSystemsName(String operatingSystemName, DesktopSystem expected) {
         assertThat(DesktopSystem.named(operatingSystemName)).isEqualTo(expected);
     }
+
+    @ParameterizedTest(name = "{0}: {1}")
+    @CsvSource({
+            "MACOS, true",
+            "WINDOWS, false",
+            "X11, false"
+    })
+    @DisplayName("only macOS brings a minimised window back in place, without hiding and showing it again")
+    void bringsMinimisedWindowBackInPlace(DesktopSystem system, boolean inPlace) {
+        assertThat(system.bringsMinimisedWindowBackInPlace()).isEqualTo(inPlace);
+    }
 }

@@ -75,8 +75,24 @@ minimise and restore hung for 36 minutes: the test's time limit fired, then
 its `@AfterEach` closed the window with no limit, against the same stuck
 toolkit. Opening and closing have limits of their own now. Any timeout writes
 every thread's stack into the result XML, so the next hang says where it
-stuck. The likeliest place is the hide and show that brings a minimised
-window back, which X11 needs and macOS may not.
+stuck.
+
+**What the probe showed.** The owner's probe of a plain `JFrame` on macOS
+26 answered three things:
+- Maximise and restore are animated. The restore's state change comes at the
+  start, and the resizes go on for a third of a second after it, which is the
+  operator test's late size.
+- Minimising, and coming back from the dock to normal, work as asked. There is
+  no need for the hide and show that X11 needs.
+- Asking a minimised window to maximise never returns. The toolkit thread is
+  stuck for good, and every later request sticks behind it: the JDK's own
+  deadlock, and the script test's hang.
+
+So on macOS (`DesktopSystem.bringsMinimisedWindowBackInPlace`), a script's
+restore brings the window back in place. Its maximise first restores, waits
+for the state to leave the dock, and only then maximises, while the reports
+are held as the X11 remap holds them. The script still hears
+`resize maximize`. Windows and X11 keep the remap.
 
 ## Still to look out for
 

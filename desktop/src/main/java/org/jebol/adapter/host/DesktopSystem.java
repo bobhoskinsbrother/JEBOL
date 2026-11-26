@@ -10,6 +10,10 @@ enum DesktopSystem {
     private static final String MACOS_NAME_STARTS = "mac";
     private static final String WINDOWS_NAME_STARTS = "windows";
 
+    boolean bringsMinimisedWindowBackInPlace() {
+        return this == MACOS;
+    }
+
     static DesktopSystem named(String operatingSystemName) {
         String lowered = operatingSystemName.toLowerCase(Locale.ROOT);
         if (lowered.startsWith(MACOS_NAME_STARTS)) {
