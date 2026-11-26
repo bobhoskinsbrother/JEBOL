@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs what `./gradlew allTests` needs on a fresh Ubuntu machine, and on a
-# Mac the Android SDK alone.
+# Mac the pinned allium (through rustup, into ~/.cargo) and the Android SDK.
 #
 #   scripts/setup-machine.sh
 #
@@ -88,6 +88,17 @@ install_android_sdk() {
         "$image" "${image/android-35/android-37.0}"
 }
 
+install_pinned_allium() {
+    export PATH="$HOME/.cargo/bin:$PATH"
+    local allium_version
+    allium_version="$(cat scripts/allium-version)"
+    if have allium && allium --version 2>&1 | grep -q "^allium $allium_version "; then
+        echo "allium $allium_version is already installed"
+    else
+        cargo install allium-cli --version "$allium_version" --locked --force
+    fi
+}
+
 check_android_sdk() {
     local android_sdk=$1 image_dir=$2
     check "Android platform 35"         test -f "$android_sdk/platforms/android-35/android.jar"
@@ -112,6 +123,16 @@ if [ "$(uname -s)" = Darwin ]; then
         ;;
     esac
 
+    step "Rust toolchain"
+    if [ -x "$HOME/.cargo/bin/rustup" ]; then
+        "$HOME/.cargo/bin/rustup" update stable
+    else
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    fi
+
+    step "allium"
+    install_pinned_allium
+
     step "Android SDK"
     install_android_sdk "$android_sdk" "$command_line_tools" "$command_line_tools_sha1" \
         "system-images;android-35;google_apis;$image_dir"
@@ -124,6 +145,7 @@ if [ "$(uname -s)" = Darwin ]; then
 
     step "Checking"
     check "java on the PATH"            java -version
+    check "allium $(cat scripts/allium-version)" sh -c "allium --version | grep -q '^allium $(cat scripts/allium-version) '"
     check_android_sdk "$android_sdk" "$image_dir"
     check "gradle wrapper starts"       ./gradlew --version
     if $failed; then
@@ -158,13 +180,7 @@ else
 fi
 
 step "allium"
-export PATH="$HOME/.cargo/bin:$PATH"
-allium_version="$(cat scripts/allium-version)"
-if have allium && allium --version 2>&1 | grep -q "^allium $allium_version "; then
-    echo "allium $allium_version is already installed"
-else
-    cargo install allium-cli --version "$allium_version" --locked --force
-fi
+install_pinned_allium
 
 step "Google Chrome"
 if have google-chrome; then
