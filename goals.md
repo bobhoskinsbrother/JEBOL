@@ -47,37 +47,38 @@ does. It is not part of `allTests`: it needs the Android SDK, which not every
 machine has. Run it at the close of every Android stage and after any change
 to the core.
 
-#### 2e. An app of one's own: what is left, on the owner's Mac and Windows
+#### 2e. An app of one's own: what is left on Windows
 
 The owner, 2026-11-18 (decision 78): JEBOL provides a packager, not an app.
 `jebol-devtools`, the example app `examples/an-app-of-ones-own`, the packages
 for the web, Android and Linux with their tests, SQLite on Android and the
 desktop's Java 25 are done (decision 78, "What building 2e settled";
-`using-jebol.md`, "An App of Your Own, on Every Platform"). What is left needs
-the owner's machines.
+`using-jebol.md`, "An App of Your Own, on Every Platform"). The Mac's part
+is in goal 20.
+
+`scripts/app-on-my-windows.ps1` runs unattended in every CI run, as the
+Windows job's last stage, and passes (run 8, 2026-11-25): a toast from an
+app registered under `HKEY_CURRENT_USER` alone is shown; the installer
+replaces an earlier install; its Start-menu shortcut, from JEBOL's own
+`windows/os-condition.wxf`, carries `System.AppUserModel.ID`; the installed
+app runs and keeps its store; the portable app runs from its folder.
 
 **Left.**
-1. **The owner runs `scripts/app-on-my-mac.sh`** and pastes back
-   `build/mac-app-report.txt` and its screenshot: the `.app` built, its
-   ad-hoc signature verified, its `Info.plist` and the `.icns`
-   (`iconutil`) read back, the app opened as Finder opens it, and its store
-   made. Whatever it finds wrong is fixed and the script run again.
-2. **The owner runs `scripts/app-on-my-windows.ps1`** and pastes back
-   `build\windows-app-report.txt`. It answers first whether a registration
-   under `HKEY_CURRENT_USER\Software\Classes\AppUserModelId` lets an app no
-   installer placed raise a toast, then reads back what the installer's
-   Start-menu shortcut carries.
-3. **From those answers, the Windows identity.** jpackage writes the
-   shortcut in a WiX fragment it generates, which `--resource-dir` does not
-   replace, so `windows/` gains a template of JEBOL's own that sets the
-   shortcut's `System.AppUserModel.ID`; and the portable app registers
-   itself on first start under the part of the registry the script found to
-   serve, with a COM activator, removing it when the app removes itself (the
-   developer's part, below).
+1. **The running app declares its identity and icon.** Run 8's screenshot
+   shows the Notes window and its taskbar button with JEBOL's own icon, not
+   the app's: the app does not yet call
+   `SetCurrentProcessExplicitAppUserModelID`, so its taskbar button does not
+   group with its shortcut, and its window does not carry the app's icon.
+   The script checks both.
+2. **The portable app registers itself** on first start under
+   `HKEY_CURRENT_USER\Software\Classes\AppUserModelId`, which the script
+   found to serve, with a COM activator, removing it when the app removes
+   itself (the developer's part, below). The script checks the registration
+   and a toast from the portable app.
 
-**Done when** both scripts report the example app running, with its
-identity on Windows' shortcut and the portable app registered; `allTests`
-and `androidTests` pass.
+**Done when** CI's Windows app stage reports the running app's identity and
+icon and the portable app registered and raising a toast; `allTests` and
+`androidTests` pass.
 
 **Why the desktop needs packaging.** Researched on 2026-11-18, with the
 sources in `docs/platform-services-research.md`:
@@ -93,8 +94,9 @@ sources in `docs/platform-services-research.md`:
   `geoclue.conf` or the desktop's agent, which names the app from its
   `.desktop` file.
 - jpackage builds a package only on the system it targets. The macOS app is
-  built on the Mac and the Windows one on Windows, each by a script the
-  owner runs there. The build gains nothing for either (owner, 2026-11-18).
+  built on the Mac and the Windows one on Windows, each by a script: the
+  Windows one in CI, the Mac's by the owner (goal 20). The build gains
+  nothing for either (owner, 2026-11-18).
 
 **The developer's part and the framework's** (owner, 2026-11-18). JEBOL is
 the framework other developers build their apps with, and the example app
@@ -931,49 +933,6 @@ are the first piece of that.
 **Done when** each setting is read on the desktop, on Android and in the
 page, a script can ask for it, and the GUI's examples follow text size and
 dark mode on all three.
-### 18. CI on a machine of its own, and the tests split by what a change can reach
-
-CI runs on a machine of the owner's (decision 81; the machines and their
-roles are in the jebol-ci repository): every push runs everything, the full
-Android suite on the phones and the Windows job included, untouched code
-comes from Gradle's build cache, a push of documents alone runs nothing,
-and only a green run reaches GitHub. A red run starts its own Sonnet fixer
-in tmux, a fix that does not fix alerts the owner, and every agent in JEBOL
-is told while CI is red; proved on CI's self-test job on 2026-11-25. What is
-left:
-
-1. *Platform threads stand in for ART's races.* A functional run with
-   platform threads where virtual threads are used, beside the tight-heap
-   run that already exists, so a race shows in minutes rather than on a
-   phone. It joins every check-in.
-2. *The rules follow.* A check-in means the commit passed the smaller set
-   and was pushed through `ci push`; nobody waits on CI; a red run is the
-   first thing fixed, by its fixer, and a flake is still a fail.
-   CLAUDE.md's section on running the suite and the memory on earning a
-   check-in change to say so.
-3. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
-   stages that review a change's design and can reject a build that every
-   test passed. The rules already exist, in CLAUDE.md and
-   `docs/decisions.md`; they move into a skill the stage runs over the
-   change, and a rejection is a failure like any other. Not part of this
-   goal's done.
-4. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
-   push to jebol-ci's main converges the CI machine between runs, rather
-   than an agent applying the play. Not part of this goal's done.
-5. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
-   builds for the processor it runs on, and the owner's Mac is Intel
-   (2026-11-21), so 2e's script proves only the Intel `.app`. A hosted
-   macOS runner, which is Apple Silicon, runs the example app's
-   `packageMac` and the checks `scripts/app-on-my-mac.sh` makes that need
-   no one at the screen: the bundle built for arm64, its signature
-   verified, its `Info.plist` and `.icns` read back, and the app started
-   far enough to make its store. Nightly, since the minutes are charged
-   for a private repository; the report is archived with the night's
-   results.
-
-**Done when** the platform-threads run is part of every check-in, the
-Apple Silicon app is built and checked, and CLAUDE.md describes the new way.
-
 ### 19. Android 13 and 14: lowering the floor from API 35 to API 33
 
 The owner, 2026-11-25: a third phone joins CI, an older one whose last
@@ -1013,3 +972,66 @@ decision 73.
 `minSdk = 33` with no `NewApi` warning, the full `androidTests` passes in
 CI on the Android 13 phone beside the two on Android 17, and decision 73
 says Android 13.
+
+### 20. What is left of CI, and the app on a Mac
+
+CI runs on a machine of the owner's (decision 81; the machines and their
+roles are in the jebol-ci repository): every push runs everything, the full
+Android suite on the phones and the Windows job included, untouched code
+comes from Gradle's build cache, a push of documents alone runs nothing,
+and only a green run reaches GitHub. A red run starts its own Sonnet fixer
+in tmux, with the project's memory and rules, a fix that does not fix
+alerts the owner, and every agent in JEBOL is told while CI is red (proved
+on CI's self-test job, 2026-11-25). What is left of that, and the Mac's part
+of 2e:
+
+1. *Platform threads stand in for ART's races.* A functional run with
+   platform threads where virtual threads are used, beside the tight-heap
+   run that already exists, so a race shows in minutes rather than on a
+   phone. It joins every check-in.
+2. *The rules follow.* A check-in means the commit passed the smaller set
+   and was pushed through `ci push`; nobody waits on CI; a red run is the
+   first thing fixed, by its fixer, and a flake is still a fail.
+   CLAUDE.md's section on running the suite and the memory on earning a
+   check-in change to say so.
+3. *The first real fixer is checked.* When JEBOL's CI next goes red, its
+   fixer's commit is read against the rules it was given: the failing test
+   first, R3's answer where JEBOL and R3 differ, no `Co-Authored-By`
+   trailer, no home hardware named. What it gets wrong goes into its first
+   prompt.
+4. *The app on the owner's Mac.* The owner runs `scripts/app-on-my-mac.sh`
+   and pastes back `build/mac-app-report.txt` and its screenshot: the `.app`
+   built, its ad-hoc signature verified, its `Info.plist` and the `.icns`
+   (`iconutil`) read back, the app opened as Finder opens it, and its store
+   made. Whatever it finds wrong is fixed and the script run again. The
+   owner's Mac is Intel (2026-11-21), so this proves the Intel `.app`.
+5. *The Apple Silicon app, on GitHub's hosted macOS runner.* jpackage
+   builds for the processor it runs on, so only a hosted macOS runner, which
+   is Apple Silicon, proves the arm64 `.app`: it runs the example app's
+   `packageMac` and the checks `scripts/app-on-my-mac.sh` makes that need no
+   one at the screen, the bundle built for arm64, its signature verified,
+   its `Info.plist` and `.icns` read back, and the app started far enough to
+   make its store. Nightly, since the minutes are charged for a private
+   repository; the report is archived with the night's results.
+6. *Shorter runs.* The device suites shard across the phones by each
+   test's measured time rather than by count, so the slower phone does not
+   hold a run open; the example app's Android package builds byte-identical
+   from the same commit, so the end-to-end device suite comes from the
+   cache when nothing it reads changed, which a devtools test holds; and
+   the Android progress line stops counting past its total.
+7. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
+   stages that review a change's design and can reject a build that every
+   test passed. The rules already exist, in CLAUDE.md and
+   `docs/decisions.md`; they move into a skill the stage runs over the
+   change, and a rejection is a failure like any other. Not part of this
+   goal's done.
+8. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
+   push to jebol-ci's main converges the CI machine between runs, rather
+   than an agent applying the play; the Vault password then lives on the CI
+   machine, which is decided first. Not part of this goal's done.
+
+**Done when** the platform-threads run is part of every check-in,
+CLAUDE.md describes the new way, the first real fixer's commit has been
+checked, the Mac script reports the Intel app running, the Apple Silicon
+app is built and checked, and an untouched commit's run takes its device
+suites from the cache.
