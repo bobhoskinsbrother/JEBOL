@@ -1,6 +1,8 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.AppIcon;
 import org.jebol.adapter.host.DesktopScreen;
+import org.jebol.adapter.host.WindowsAppIdentity;
 import org.jebol.adapter.host.DesktopWindows;
 import org.jebol.application.OneSurfaceScreen;
 import org.jebol.adapter.web.PageScreen;
@@ -11,6 +13,7 @@ import org.jebol.domain.host.HostPorts;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
@@ -86,10 +89,17 @@ final class ChosenScreen {
 
     private DesktopScreen windowScreen(PrintStream out, HostPorts ports) {
         DesktopScreen screen = DesktopScreen.onThisMachine(ports.carriedFiles());
+        PackagedApp.readFrom(arguments).ifPresent(app -> dressAsTheApp(screen, app));
         out.println(screen.hasDisplay()
                 ? "Screen: a native window."
                 : "Screen: asked for a window and this machine has no display.");
         return screen;
+    }
+
+    private static void dressAsTheApp(DesktopScreen screen, PackagedApp app) {
+        WindowsAppIdentity.declareForProcess(app.identity());
+        screen.belongingTo(app.identity());
+        app.icon().filter(Files::isRegularFile).map(AppIcon::readFrom).ifPresent(screen::wearing);
     }
 
     private HostPorts attachPage(HostPorts ports, PrintStream out, boolean forScript) {

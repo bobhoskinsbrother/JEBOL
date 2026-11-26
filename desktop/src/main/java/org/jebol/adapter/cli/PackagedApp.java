@@ -11,10 +11,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-record PackagedApp(String identity, Path carried) {
+record PackagedApp(String identity, Path carried, Optional<Path> icon) {
 
     static final String PACKAGED_SWITCH = "--packaged";
     static final String CARRIED_SWITCH = "--carried";
+    static final String ICON_SWITCH = "--icon";
 
     static Optional<PackagedApp> readFrom(String[] arguments) {
         Optional<String> identity = trailingArgument(PACKAGED_SWITCH, arguments);
@@ -26,7 +27,8 @@ record PackagedApp(String identity, Path carried) {
             throw new IllegalArgumentException("a packaged app is started with both " + PACKAGED_SWITCH
                     + " <identity> and " + CARRIED_SWITCH + " <folder>");
         }
-        return Optional.of(new PackagedApp(identity.get(), Path.of(carried.get()).toAbsolutePath().normalize()));
+        return Optional.of(new PackagedApp(identity.get(), Path.of(carried.get()).toAbsolutePath().normalize(),
+                trailingArgument(ICON_SWITCH, arguments).map(Path::of)));
     }
 
     private static Optional<String> trailingArgument(String switchName, String[] arguments) {
@@ -39,7 +41,7 @@ record PackagedApp(String identity, Path carried) {
     }
 
     static boolean isOwnSwitch(String argument) {
-        return argument.equals(PACKAGED_SWITCH) || argument.equals(CARRIED_SWITCH);
+        return argument.equals(PACKAGED_SWITCH) || argument.equals(CARRIED_SWITCH) || argument.equals(ICON_SWITCH);
     }
 
     Path store() {

@@ -15,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.stream.Stream;
 public abstract class DesktopPackage extends AppTask {
 
     public static final String CARRIED_FOLDER = "jebol-app";
+    public static final String APP_ICON_FILE = "jebol-app-icon.png";
     public static final String MAIN_JAR = "jebol.jar";
     public static final String MAIN_CLASS = "org.jebol.adapter.cli.JebolLauncher";
     public static final List<String> RUNTIME_MODULES = List.of("java.base", "java.desktop", "java.datatransfer",
@@ -56,6 +58,7 @@ public abstract class DesktopPackage extends AppTask {
         Path resources = work.resolve("resources");
         Path packages = work.resolve("package");
         AppFiles.overlay(declaration, platform, input.resolve(CARRIED_FOLDER));
+        copyTheAppsIcon(declaration, input);
         Carried.copy("runtime/desktop/" + MAIN_JAR, input.resolve(MAIN_JAR));
         for (String extension : declaration.requires()) {
             Carried.copyFolder("runtime/extensions/" + extension + "/jvm", input);
@@ -130,7 +133,16 @@ public abstract class DesktopPackage extends AppTask {
 
     private static String launchArguments(AppDeclaration declaration) {
         return String.join(" ", List.of("--packaged", declaration.identity(),
-                "--carried", "$APPDIR/" + CARRIED_FOLDER, "--screen=window", quotedIfSpaced(declaration.entry())));
+                "--carried", "$APPDIR/" + CARRIED_FOLDER, "--icon", "$APPDIR/" + APP_ICON_FILE,
+                "--screen=window", quotedIfSpaced(declaration.entry())));
+    }
+
+    private static void copyTheAppsIcon(AppDeclaration declaration, Path input) {
+        try {
+            Files.copy(declaration.icon(), input.resolve(APP_ICON_FILE), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException uncopied) {
+            throw new UncheckedIOException(uncopied);
+        }
     }
 
     private static String quotedIfSpaced(String argument) {

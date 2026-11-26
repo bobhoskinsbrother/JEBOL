@@ -21,9 +21,11 @@ import org.jebol.domain.value.PairValue;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.List;
+import java.util.function.IntFunction;
 
 public final class DesktopScreen extends GobScreen {
 
@@ -34,7 +36,8 @@ public final class DesktopScreen extends GobScreen {
     private static final String OPERATING_SYSTEM_PROPERTY = "os.name";
     private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000;
 
-    private final JebolIcon icon = new JebolIcon();
+    private IntFunction<BufferedImage> icon = new JebolIcon()::drawAt;
+    private Optional<String> identity = Optional.empty();
     private final boolean present;
     private final DefaultFont font;
     private final Font face;
@@ -94,8 +97,22 @@ public final class DesktopScreen extends GobScreen {
         post(ScreenEventType.UP, window, new ScreenEventDetail.At(across, down));
     }
 
-    private void showJebolIcon(JFrame frame) {
-        List<Image> everySize = ICON_SIZES.stream().<Image>map(icon::drawAt).toList();
+    public DesktopScreen wearing(AppIcon appsOwn) {
+        icon = appsOwn::drawAt;
+        return this;
+    }
+
+    public DesktopScreen belongingTo(String appIdentity) {
+        identity = Optional.of(appIdentity);
+        return this;
+    }
+
+    BufferedImage iconAt(int size) {
+        return icon.apply(size);
+    }
+
+    private void showIcon(JFrame frame) {
+        List<Image> everySize = ICON_SIZES.stream().<Image>map(icon::apply).toList();
         frame.setIconImages(everySize);
         if (Taskbar.isTaskbarSupported()
                 && Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
@@ -329,10 +346,11 @@ public final class DesktopScreen extends GobScreen {
     private JFrame showWindow(GobValue gob) {
         JFrame frame = new JFrame(windowTitle(gob));
         chosenCursor.ifPresent(frame::setCursor);
-        showJebolIcon(frame);
+        showIcon(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         frame.setContentPane(paintSurface(gob));
         frame.pack();
+        identity.ifPresent(appIdentity -> WindowsAppIdentity.declareForWindow(frame.getTitle(), appIdentity));
         frame.setLocationRelativeTo(null);
         attachListenersThatOnlyQueue(frame, gob);
         frame.setVisible(true);

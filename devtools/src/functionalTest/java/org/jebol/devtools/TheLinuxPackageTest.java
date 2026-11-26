@@ -72,6 +72,7 @@ class TheLinuxPackageTest {
                 "./opt/com.example.notes/lib/app/sqlite4j-3.54.1.0.jar",
                 "./opt/com.example.notes/lib/app/jebol-sqlite.jar",
                 "./opt/com.example.notes/lib/app/jebol-app/main.reb",
+                "./opt/com.example.notes/lib/app/jebol-app-icon.png",
                 "./opt/com.example.notes/lib/app/com.example.notes.desktop",
                 "./opt/com.example.notes/lib/notes.png",
                 "./opt/com.example.notes/lib/runtime/bin/java");
@@ -109,5 +110,17 @@ class TheLinuxPackageTest {
                 .contains("arguments=$APPDIR/jebol-app")
                 .contains("arguments=--screen=window")
                 .contains("arguments=main.reb");
+    }
+
+    @Test
+    @DisplayName("and tells the app where its own icon is, so its windows wear the app's icon rather than JEBOL's")
+    void itsLauncherNamesTheAppsIcon() throws Exception {
+        Path unpacked = directory.resolve("icon");
+        run("dpkg-deb", "-x", deb.toString(), unpacked.toString());
+
+        assertThat(unpacked.resolve("opt/com.example.notes/lib/app/notes.cfg")).content()
+                .contains("arguments=--icon")
+                .contains("arguments=$APPDIR/jebol-app-icon.png");
+        assertThat(unpacked.resolve("opt/com.example.notes/lib/app/jebol-app-icon.png")).isRegularFile();
     }
 }

@@ -145,6 +145,54 @@ $running = Start-Process $installed.FullName -PassThru
 Start-Sleep 20
 Check "the installed app is running" { -not $running.HasExited }
 Check "it keeps a store under its identity" { Test-Path $store }
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class JebolWindowCheck {
+    [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wide, IntPtr wordy);
+    [DllImport("user32.dll")] static extern IntPtr GetClassLongPtr(IntPtr window, int index);
+    [DllImport("shell32.dll")] static extern int SHGetPropertyStoreForWindow(IntPtr window, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out IPropertyStore store);
+    [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IPropertyStore {
+        int GetCount(out uint count);
+        int GetAt(uint index, out PropertyKey key);
+        int GetValue(ref PropertyKey key, out PropVariant value);
+        int SetValue(ref PropertyKey key, ref PropVariant value);
+        int Commit();
+    }
+    [StructLayout(LayoutKind.Sequential, Pack = 4)] struct PropertyKey { public Guid FormatId; public uint PropertyId; }
+    [StructLayout(LayoutKind.Sequential)] struct PropVariant { public ushort Kind; public ushort Spare1, Spare2, Spare3; public IntPtr Value; public IntPtr More; }
+    public static string AppUserModelId(IntPtr window) {
+        Guid iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+        IPropertyStore store;
+        if (SHGetPropertyStoreForWindow(window, ref iid, out store) != 0) { return null; }
+        PropertyKey key = new PropertyKey { FormatId = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), PropertyId = 5 };
+        PropVariant value;
+        if (store.GetValue(ref key, out value) != 0 || value.Kind != 31) { return null; }
+        return Marshal.PtrToStringUni(value.Value);
+    }
+    public static System.Drawing.Bitmap Icon(IntPtr window) {
+        IntPtr icon = SendMessage(window, 0x7F, new IntPtr(1), IntPtr.Zero);
+        if (icon == IntPtr.Zero) { icon = GetClassLongPtr(window, -14); }
+        return icon == IntPtr.Zero ? null : System.Drawing.Icon.FromHandle(icon).ToBitmap();
+    }
+}
+"@
+$running.Refresh()
+$window = $running.MainWindowHandle
+Check "the running app's window carries its AppUserModelID" {
+    $declared = [JebolWindowCheck]::AppUserModelId($window)
+    if ($declared -eq $identity) { $declared } else { $null }
+}
+Check "the running app's window wears the app's icon, not JEBOL's" {
+    $worn = [JebolWindowCheck]::Icon($window)
+    if ($worn -eq $null) { return $null }
+    $expected = (New-Object System.Drawing.Icon("$example\build\jebol\windows\resources\Notes.ico", $worn.Width, $worn.Height)).ToBitmap()
+    $a = $worn.GetPixel([int]($worn.Width / 2), [int]($worn.Height / 2))
+    $b = $expected.GetPixel([int]($expected.Width / 2), [int]($expected.Height / 2))
+    $distance = [Math]::Abs($a.R - $b.R) + [Math]::Abs($a.G - $b.G) + [Math]::Abs($a.B - $b.B)
+    if ($distance -lt 60) { "middle pixel $a against $b" } else { $null }
+}
 Add-Type -AssemblyName System.Windows.Forms
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $shot = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
