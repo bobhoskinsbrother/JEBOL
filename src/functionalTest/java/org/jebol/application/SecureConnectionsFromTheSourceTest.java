@@ -160,6 +160,18 @@ class SecureConnectionsFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("hears the close of a server that ends its session a moment after it has answered, not only one that ends it at once")
+        void hearsALateClose() throws Exception {
+            LocalTlsServer.Settings answeringThenPausing =
+                    LocalTlsServer.Settings.speaking(TLS_1_3).pausingBeforeClosing(Duration.ofMillis(500));
+            try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), answeringThenPausing)) {
+                String happened = openAndSayWhatHappened(makeAnInterpreterTrustingTheTestRoot(), "localhost", server.port());
+
+                assertThat(happened).startsWith("connect wrote read ").endsWith("close | " + LocalTlsServer.PAGE_BODY);
+            }
+        }
+
+        @Test
         @DisplayName("keeps the fields R3's protocols read: the connection under it and the port over it")
         void keepsRsFields() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(identityWithTheRsaKey("localhost-rsa", "test-intermediate"), TLS_1_3)) {

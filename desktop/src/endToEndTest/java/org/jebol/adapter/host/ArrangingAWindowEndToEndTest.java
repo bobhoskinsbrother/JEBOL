@@ -158,6 +158,10 @@ class ArrangingAWindowEndToEndTest {
         assertThat(run("win/size")).isEqualTo("320x200");
     }
 
+    private void takeEventsUntilHeard(String type) {
+        takeEventsUntil(() -> run("not none? find seen '" + type).equals("#(true)"));
+    }
+
     private void takeEventsUntilSeenEndsWith(String last) {
         takeEventsUntil(() -> run("seen").endsWith(last + "]"));
     }
@@ -205,7 +209,7 @@ class ArrangingAWindowEndToEndTest {
 
         run("clear seen gui-metric/set 'restore win");
         takeEventsUntil(() -> isInState(Frame.NORMAL));
-        takeEventsUntilSeenEndsWith("restore");
+        takeEventsUntilHeard("restore");
         takeEventsUntilTheWindowIsBackToItsOwnSize();
 
         assertThat(run("same? win gui-metric/set 'activate win")).isEqualTo("#(true)");
@@ -225,7 +229,7 @@ class ArrangingAWindowEndToEndTest {
 
         run("clear seen");
         onTheToolkit(() -> frame.setExtendedState(Frame.NORMAL));
-        takeEventsUntilSeenEndsWith("restore");
+        takeEventsUntilHeard("restore");
         assertThat(seenWithoutRepeatedResizes()).startsWith("[resize restore");
         takeEventsUntilTheWindowIsBackToItsOwnSize();
 

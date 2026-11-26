@@ -37,6 +37,7 @@ public final class LocalTlsServer implements AutoCloseable {
     private final SSLServerSocket listening;
     private final Thread acceptor;
     private final Function<String, String> bodyForPath;
+    private final Duration pauseBeforeClosing;
     private int connectionsAccepted;
     private int connectionsClosed;
     private int requestsReceived;
@@ -49,18 +50,23 @@ public final class LocalTlsServer implements AutoCloseable {
 
     public enum ClientCertificate { NOT_ASKED, WANTED, NEEDED }
 
-    public record Settings(List<String> protocols, List<String> cipherSuites, ClientCertificate clientCertificate) {
+    public record Settings(List<String> protocols, List<String> cipherSuites, ClientCertificate clientCertificate,
+                           Duration pauseBeforeClosing) {
 
         public static Settings speaking(String protocol) {
-            return new Settings(List.of(protocol), List.of(), ClientCertificate.NOT_ASKED);
+            return new Settings(List.of(protocol), List.of(), ClientCertificate.NOT_ASKED, Duration.ZERO);
         }
 
         public Settings offeringOnly(String... suites) {
-            return new Settings(protocols, List.of(suites), clientCertificate);
+            return new Settings(protocols, List.of(suites), clientCertificate, pauseBeforeClosing);
         }
 
         public Settings asking(ClientCertificate asked) {
-            return new Settings(protocols, cipherSuites, asked);
+            return new Settings(protocols, cipherSuites, asked, pauseBeforeClosing);
+        }
+
+        public Settings pausingBeforeClosing(Duration pause) {
+            return new Settings(protocols, cipherSuites, clientCertificate, pause);
         }
     }
 
@@ -78,6 +84,7 @@ public final class LocalTlsServer implements AutoCloseable {
 
     public LocalTlsServer(Identity identity, Settings settings, Function<String, String> bodyForPath) {
         this.bodyForPath = bodyForPath;
+        this.pauseBeforeClosing = settings.pauseBeforeClosing();
         try {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(new KeyManager[] {new FixedKeyManager(identity)}, new TrustManager[] {new TrustingNoClient()}, null);
@@ -171,6 +178,7 @@ public final class LocalTlsServer implements AutoCloseable {
             if (path != null) {
                 countRequest();
                 writePage(connection.getOutputStream(), bodyForPath.apply(path));
+                pauseBeforeClosing();
             }
         } catch (IOException ignored) {
         } finally {
@@ -222,6 +230,14 @@ public final class LocalTlsServer implements AutoCloseable {
                         hostsAskedFor.add(host);
                     }
                 });
+    }
+
+    private void pauseBeforeClosing() {
+        try {
+            Thread.sleep(pauseBeforeClosing);
+        } catch (InterruptedException stopped) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void writePage(OutputStream out, String page) throws IOException {

@@ -94,6 +94,26 @@ for the state to leave the dock, and only then maximises, while the reports
 are held as the X11 remap holds them. The script still hears
 `resize maximize`. Windows and X11 keep the remap.
 
+## The third run
+
+At 9e149fdf the run took 23 minutes, nothing hung, and `checkSpec` passed
+on the pinned allium. Two tests failed.
+
+**Restoring a maximised window from a script.** It worked, and the script
+heard `restore`. The test then waited for `seen` to end with `restore`, but
+macOS's un-zoom animation keeps sending resizes after it, so it never did.
+The restore steps now wait until `restore` has been heard at all.
+
+**A TLS conversation waited out its 30 seconds.** This was JEBOL's own bug,
+which the Mac's timing showed. The server's page and its `close_notify`
+reached the client in separate TCP reads. Once the session had closed,
+`prot-tls.reb` read no further, so the TCP close was never read and the
+script never heard `close`. On Linux the two usually arrived together. The
+session now keeps reading after it closes until the connection's own close
+comes. `LocalTlsServer` can pause before it closes, which makes this happen
+every time, and `SecureConnectionsFromTheSourceTest` has a test that uses
+it.
+
 ## Still to look out for
 
 - **Retina and Mac font smoothing in picture tests.** None failed on this

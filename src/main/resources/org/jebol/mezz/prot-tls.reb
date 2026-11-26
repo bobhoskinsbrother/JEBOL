@@ -134,6 +134,9 @@ apply-exchange: func [
 	if all [state <> 'closed any [not ctx/connected? ctx/asked-to-read?]] [
 		keep-reading ctx
 	]
+	if all [state = 'closed ctx/connected?] [
+		keep-reading ctx
+	]
 	events
 ]
 
