@@ -1026,6 +1026,26 @@ of 2e:
    from the same commit, so the end-to-end device suite comes from the
    cache when nothing it reads changed, which a devtools test holds; and
    the Android progress line stops counting past its total.
+6a. *Emulators beside the phones* (owner, 2026-11-26). The full device
+   suite took about two hours on the two phones in run 16 while the CI
+   machine sat at a load of 0.1 and the Windows machine did nothing after
+   its own stage. This is what Marathon was put in CI for (jebol-ci's plan,
+   step 4), and it has never run: `jebol.run` takes it only under
+   `ANDROID_RUNNER=marathon`, which nothing sets. So: Marathon runs the
+   unit and functional device suites in place of the build's shards, over
+   one pool of every Android that is free -- the two phones, emulators the
+   CI machine boots under KVM with `android/emulator.sh` once `allTests` has
+   finished, and emulators the Windows machine boots under the Windows
+   Hypervisor Platform, its adb reached over the network. jebol-ci's roles
+   install the SDK, the system images and the AVDs on both, and how many
+   each holds is read from its free memory. Marathon balances by past
+   times and moves work off a device that drops; retries stay off, because
+   a flake is a fail. Rebol's suite, one parameterised method of about
+   10,144 cases, is split so that it can be divided at all -- as it is, no
+   runner can, and it sets the floor of the whole stage. The end-to-end
+   suite still runs every test on each phone, because a phone is what it
+   proves. The Windows job and the Android stage run at the same time
+   where the Windows machine has the room.
 7. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
    test passed. The rules already exist, in CLAUDE.md and
@@ -1041,4 +1061,6 @@ of 2e:
 CLAUDE.md describes the new way, the first real fixer's commit has been
 checked, the Mac script reports the Intel app running, the Mac's stage is
 green in every run with the Apple Silicon app built and checked, and an
-untouched commit's run takes its device suites from the cache.
+untouched commit's run takes its device suites from the cache, and a run
+that changes the core has its device suites done in under half an hour
+across the phones and the emulators.
