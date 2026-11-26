@@ -3,6 +3,8 @@ package org.jebol.adapter.cli;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -51,6 +53,7 @@ class AWindowAskedForWithNoDisplayEndToEndTest {
     }
 
     @Test
+    @EnabledOnOs(value = OS.LINUX, disabledReason = "only X11 can have no display; macOS and Windows always have one")
     @DisplayName("asked for a window where X11 names no display, the command line says so and runs the script instead of crashing")
     void saysThereIsNoDisplay(@TempDir Path directory) throws Exception {
         Ran ran = runWithNoDisplay(directory, """
@@ -65,6 +68,7 @@ class AWindowAskedForWithNoDisplayEndToEndTest {
     }
 
     @Test
+    @EnabledOnOs(value = OS.LINUX, disabledReason = "only X11 can have no display; macOS and Windows always have one")
     @DisplayName("and with no display it still makes a gob into an image, its colour, its draw block and its pane")
     void makesGobsIntoImagesWithNoDisplay(@TempDir Path directory) throws Exception {
         Ran ran = runWithNoDisplay(directory, """

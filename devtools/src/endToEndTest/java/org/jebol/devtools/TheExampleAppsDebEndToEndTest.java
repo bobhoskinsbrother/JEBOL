@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.BufferedReader;
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("opens-a-real-window")
 @Timeout(600)
+@EnabledOnOs(value = OS.LINUX, disabledReason = "jpackage builds a .deb only on Linux")
 class TheExampleAppsDebEndToEndTest {
 
     private static final Duration PATIENCE = Duration.ofSeconds(60);

@@ -1,94 +1,72 @@
-# What to look out for when JEBOL first runs on a Mac
+# JEBOL on a Mac: what broke the first time, and what to look out for
 
-Written 2026-11-26, before JEBOL's suites have run on macOS, as predictions
-read from the code. Windows taught what this kind of list is for: CI's first
-Windows runs failed on paths, line endings, file locks, a code page and a
-quoting rule, and nearly every failure came from code that assumed how a
-file system or a command line behaves. macOS shares Linux's line endings,
-path separator and file locks, so those will not bite. Where it differs
-from Linux, they will. Goal 20 step 5 is where they get found; each entry
-says where to look and what R3 does, which is the answer to aim for.
+On 2026-11-26 the owner ran `./gradlew --continue allTests` on an Intel Mac,
+at commit 6713da66, before any Mac had been in CI. Of about 36,000 tests,
+129 failed, from eight causes. The functional suites, 26,978 tests, passed
+whole: the predictions written that morning, temporary folders behind the
+`/var` to `/private/var` link, a disk that ignores case, names stored
+decomposed, did not show. What did show is below, with what was done.
 
-## Very likely
+## What failed, and what was done
 
-### Temporary folders behind a link
+**The console's terminal was never "restored" (106 tests, one cause).**
+`TheCommandLinesConsoleAnswersAsR3EndToEndTest` compared `stty -g` before
+and after byte for byte. A new macOS pseudo-terminal starts with the
+kernel's PENDIN bit set in `lflag`, and the kernel clears it itself once
+input is read, so the two never matched whatever JEBOL did. The test now
+leaves out the two local-mode bits only the kernel sets, PENDIN and FLUSHO,
+and a mismatch names the fields that differ. If the Mac still says
+`changed`, those fields say what JEBOL failed to put back.
 
-`/var` is a link to `/private/var` and `/tmp` to `/private/tmp`. Java's
-temporary folders and JUnit's `@TempDir` are under `/var/folders/`, and the
-suites keep their own temporary files under `/var/tmp` (`JebolTests.kt`,
-`DISK_BACKED_TEMPORARY_ROOT`). Anything that resolves a path answers
-`/private/...` where JEBOL was handed `/var/...`: `to-real-file`,
-`clean-path`, `what-dir` against a resolved name, `query ... 'name`, and any
-JEBOL test that compares a host path it built with one the host resolved.
-It is the same family as Windows' 8.3 short names, which `SuiteHost` fixed
-by taking the run folder's real path, on Windows only (`realPathOf`). On a
-Mac the likely fix is the same, everywhere a root is set up.
+**Tests that assumed Linux (11).** The devtools tests named "on Linux" ran
+on the Mac and met a Mac's answers: `packageDeb` refuses there and
+`packageMac` builds. They run on Linux only now, and macOS has its own:
+`packageDeb` and `packageWindows` refuse, and `packageAll` builds the web
+and the `.app`. `TheLinuxPackageTest` and the `.deb` window test run on
+Linux only. The packaged-app store test looked in Linux's data folder; it
+asks `PackagedApp.storeFolder` now, and a Mac test checks
+`~/Library/Application Support`. The no-display tests take X11's `DISPLAY`
+away, which only Linux has; they run on Linux only. zlib-ng's gzip header
+names the host as zlib-ng's `OS_CODE` does, 19 on macOS, and the test
+expected Unix's 3; it now checks that byte for each system on its own.
 
-## Likely
+**bzip2 streams ran past 5 seconds (8).** Each test made 300,000 bytes of
+noise with a REBOL loop first, about 1.5 seconds on Linux and 5 on the
+Mac, before bzip2 ran at all. The same bytes come from Java now, and the
+tests take a tenth of a second.
 
-### A disk that ignores case, though JEBOL's file port minds it
+**The JDK's process reaper ran out of memory (1).** At start JEBOL asked
+`sh -c 'test -t 0'` whether its input was a terminal, which leaves the
+JDK's process reaper thread waiting 60 seconds. The slower Mac was still
+filling the heap when it woke, and it printed Java's own OutOfMemoryError.
+`StandardInput` now reads what the input is first: a file, a pipe or
+`/dev/null` is no terminal, and only a character device is asked about.
 
-APFS, as Macs ship it, ignores case and keeps it: `a.txt` and `A.txt` are
-one file. `FileSystemPort.ignoresCaseInNames()` answers yes only on Windows,
-so on a Mac JEBOL believes they are two. Look at wildcards, `exists?` and
-`read` of a directory against names written in another case, and at tests
-that make two files whose names differ only by case. Check what R3's POSIX
-build answers on a Mac before choosing: it asks the file system rather than
-deciding itself.
+**Firefox did not start (3 of its starts).** "Process unexpectedly closed
+with status 0", the Mac's sign of two Firefox launches meeting. The test
+processes each start their own browser, so `PageBrowsers` now starts one
+at a time across them, through a lock file, and tries a start that fails
+up to three times, keeping every reason.
 
-### Retina and Mac font smoothing in every picture test
+**Arranging a window (2): not fixed yet.** An operator's maximise was heard
+as a resize, a restore and a run of resizes, with the frame back in state 0;
+a script's minimise and restore hung until the owner stopped it after eight
+minutes. The class's 120-second limit ran on the stuck thread, so it never
+fired; it runs on a thread of its own now, and the test fails instead of
+hanging. What macOS reports is to be read before any change: the owner runs
+a probe that maximises, restores, minimises and brings back a window and
+records every state and resize macOS reports.
 
-A Retina screen draws at twice the size, and macOS smooths text its own way.
-The Java2D references painted on Linux
-(`Java2DParityReferencesFromTheSourceTest`), the browser against Java2D
-comparison (`PageRendersLikeTheDesktopTest`) and any test that reads a
-screen capture in pixels may meet doubled sizes and different edges. Find
-where a test assumes one pixel per point before loosening any tolerance.
+## Still to look out for
 
-### Screen Recording and Accessibility are asked for, not given
-
-macOS asks the user before a program may capture the screen or send input.
-Until it is granted, a screen capture shows the desktop without the
-window's content, and `Robot`'s keys and clicks never arrive, so the window
-tests that capture or type fail for no fault of JEBOL's. On the CI Mac they
-are granted once, by hand, to the Java the job runs; a failure that looks
-like a blank window should be checked against that first.
-
-## Possible
-
-### Names stored decomposed
-
-macOS file systems may hand back a name in decomposed form (`č` as `c` and a
-combining caron) or treat the two forms as one name. A name read back from
-a folder can then differ, byte for byte, from the same name written in a
-script; `čeština.txt` in Rebol's suite is the first to watch.
-
-### Cmd where Linux has Ctrl
-
-Copy, paste and select-all are Cmd chords, and Back and Forward come from
-other keys and buttons. `DesktopSystem` already knows macOS
-(`DesktopSystem.MACOS`, used by `BackForwardChords`); tests that send Ctrl
-chords, or that expect Linux's back and forward, may answer differently.
-
-### The packaged app on macOS
-
-- The menu bar names the app from `apple.awt.application.name`, which
-  `DesktopScreen` sets to `JebolIcon.APPLICATION_NAME`, "JEBOL", even for a
-  packaged app; a packaged app should be named by its title.
-- The Dock shows the window's icon, now the app's own when packaged
-  (`AppIcon`), and the `.app`'s `.icns` before it starts: check both agree.
-- An ad-hoc signed `.app` is quarantined when it is downloaded, and
-  Gatekeeper refuses to open it until it is cleared; `app-on-my-mac.sh`
-  builds and opens it locally, which does not meet that.
-- A Mac app does not quit when its last window closes; a test that expects
-  the process to end then may wait.
-- The store is already where macOS keeps app data
-  (`~/Library/Application Support/<identity>`, `PackagedApp.storeFolder`).
-
-## Unlikely
-
-Line endings and the path separator, as on Linux. Process numbers: process
-1 is `launchd`, which an ordinary user may not signal, so `access-os`
-answers permission-denied as on Linux. File locks, which are POSIX. The
-shell: `/bin/sh` runs scripts as Linux's does. Java's own encoding, which is
-UTF-8 for files and for the command line.
+- **Retina and Mac font smoothing in picture tests.** None failed on this
+  Mac's run, which may have been on a screen at one pixel per point.
+- **Screen Recording and Accessibility.** Window tests that capture or type
+  need both granted to the Java the job runs; a blank capture is that first.
+- **Cmd where Linux has Ctrl.** `DesktopSystem.MACOS` already chooses the
+  chords; no test failed on it.
+- **The packaged `.app`.** The menu bar names the app from
+  `apple.awt.application.name`, which `DesktopScreen` sets to "JEBOL" even
+  for a packaged app. Gatekeeper quarantines a downloaded ad-hoc signed
+  `.app`, which a locally built one never meets. A Mac app does not quit
+  when its last window closes.

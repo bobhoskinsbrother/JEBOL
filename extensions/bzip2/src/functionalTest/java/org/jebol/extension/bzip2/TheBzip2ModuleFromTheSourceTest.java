@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.HexFormat;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TheBzip2ModuleFromTheSourceTest {
@@ -19,17 +21,18 @@ class TheBzip2ModuleFromTheSourceTest {
             c: #{425A683631415926535902F8B0BD000003910040000244A00030CD00548696719B38A3C5DC914E142400BE2C2F40}
             arg-of: func [code] [attempt [get in try code 'arg1]]
             """;
-    private static final String NOISE = """
-            noise: func [n /local out x] [
-                out: make binary! n  x: 12345
-                loop n [
-                    x: (x * 1103515245 + 12345) and 2147483647
-                    append out (to integer! x / 65536) and 255
-                ]
-                out
-            ]
-            all-noise: noise 300000
-            """;
+    private static final int NOISE_OCTETS = 300_000;
+    private static final String NOISE = "all-noise: #{" + HexFormat.of().formatHex(noise(NOISE_OCTETS)) + "}\n";
+
+    private static byte[] noise(int octets) {
+        byte[] made = new byte[octets];
+        long x = 12345;
+        for (int at = 0; at < octets; at++) {
+            x = (x * 1103515245L + 12345) & 0x7FFF_FFFFL;
+            made[at] = (byte) (x / 65536);
+        }
+        return made;
+    }
 
     private static String answerTo(String source) {
         Interpreter interpreter = AnInterpreter.withBounds(Bounds.standard().add(new Bzip2Extension().provide()));

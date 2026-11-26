@@ -76,8 +76,18 @@ class TheZlibNgModuleFromTheSourceTest {
         @DisplayName("compress zlib and gzip as zlib-ng does, not as libdeflate does")
         void compressAsZlibNg() {
             assertThat(answerTo(HELLO + """
-                    reduce [compress/level hello 'zlib 6 compress/level hello 'gzip 6]""")).isEqualTo("""
+                    gzipped: compress/level hello 'gzip 6
+                    poke gzipped 10 3
+                    reduce [compress/level hello 'zlib 6 gzipped]""")).isEqualTo("""
                     [#{789CCB48CDC9C957C8402701680308B1} #{1F8B0800000000000003CB48CDC9C957C8402701E3513D8D17000000}]""");
+        }
+
+        @Test
+        @DisplayName("name the host in the gzip header as zlib-ng's OS_CODE does: 3 for Unix, 10 for Windows, 19 for macOS")
+        void nameTheHostInTheGzipHeader() {
+            assertThat(answerTo(HELLO + """
+                    expected: switch/default system/platform [Windows [10] macOS [19]] [3]
+                    expected = pick compress/level hello 'gzip 6 10""")).isEqualTo("#(true)");
         }
 
         @Test

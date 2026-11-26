@@ -170,6 +170,9 @@ public final class CommandLineConsole implements ConsolePort, TerminalLending, A
     }
 
     private static boolean isStandardInputATerminal() {
+        if (!StandardInput.canBeATerminal(StandardInput.ITSELF, StandardInput.NOTHING)) {
+            return false;
+        }
         try {
             Process asking = new ProcessBuilder("sh", "-c", "test -t 0")
                     .redirectInput(ProcessBuilder.Redirect.INHERIT)

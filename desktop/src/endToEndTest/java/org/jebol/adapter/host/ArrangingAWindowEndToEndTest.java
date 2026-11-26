@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("opens-a-real-window")
 @Execution(ExecutionMode.SAME_THREAD)
-@Timeout(120)
+@Timeout(value = 120, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 class ArrangingAWindowEndToEndTest {
 
     private static final String TITLE = "JEBOL arranging a window";

@@ -3,6 +3,8 @@ package org.jebol.adapter.cli;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -45,13 +47,21 @@ class APackagedAppKeepsAStoreOverItsCarriedFilesEndToEndTest {
         return carried;
     }
 
+    private Map<String, String> storeEnvironment(Path dataHome) {
+        return Map.of("XDG_DATA_HOME", dataHome.toString(),
+                "HOME", scratch.resolve("home").toString(),
+                "APPDATA", scratch.resolve("appdata").toString());
+    }
+
+    private Path storeOnThisSystem(Path dataHome) {
+        return PackagedApp.storeFolder(IDENTITY, System.getProperty("os.name", ""), storeEnvironment(dataHome), "");
+    }
+
     private Finished launch(Path carried, Path dataHome, String entry) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(List.of(javaHome.resolve("bin/java").toString(), "-jar",
                 shippedJar.toString(), "--packaged", IDENTITY, "--carried", carried.toString(), entry));
         ProcessBuilder starting = new ProcessBuilder(command).directory(scratch.toFile());
-        Map<String, String> environment = starting.environment();
-        environment.put("XDG_DATA_HOME", dataHome.toString());
-        environment.put("HOME", scratch.resolve("home").toString());
+        starting.environment().putAll(storeEnvironment(dataHome));
         Process running = starting.start();
         running.getOutputStream().close();
         String output = new String(running.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -74,7 +84,7 @@ class APackagedAppKeepsAStoreOverItsCarriedFilesEndToEndTest {
                 .contains("read: carried")
                 .contains("again: changed")
                 .contains("listed: [%.rebol/ %data.txt %notes.txt %start/]");
-        Path store = dataHome.resolve(IDENTITY);
+        Path store = storeOnThisSystem(dataHome);
         assertThat(store.resolve("data.txt")).hasContent("changed");
         assertThat(store.resolve("notes.txt")).hasContent("kept");
     }
@@ -94,6 +104,17 @@ class APackagedAppKeepsAStoreOverItsCarriedFilesEndToEndTest {
     }
 
     @Test
+    @EnabledOnOs(OS.MAC)
+    @DisplayName("on macOS the store is in ~/Library/Application Support, where a Mac keeps an app's data")
+    void theStoreOnAMacIsInApplicationSupport() throws Exception {
+        Finished finished = launch(carried(), scratch.resolve("data"), "start/notes.reb");
+
+        assertThat(finished.exitCode()).isZero();
+        assertThat(scratch.resolve("home/Library/Application Support/" + IDENTITY + "/notes.txt")).hasContent("kept");
+    }
+
+    @Test
+    @EnabledOnOs(OS.LINUX)
     @DisplayName("with no XDG_DATA_HOME, the store is in ~/.local/share")
     void theStoreDefaultsToLocalShare() throws Exception {
         Path carried = carried();

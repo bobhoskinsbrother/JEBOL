@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.openqa.selenium.MutableCapabilities;
+import org.openqa.selenium.SessionNotCreatedException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -12,6 +13,9 @@ import org.openqa.selenium.firefox.FirefoxProfile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -31,6 +35,11 @@ public final class PageBrowsers implements ExtensionContext.Store.CloseableResou
     private static final String BIDI = "webSocketUrl";
 
     private static final String FIREFOX_NAMED_BY_MACHINE = "JEBOL_FIREFOX";
+
+    private static final int ATTEMPTS_TO_START = 3;
+
+    private static final Path STARTING_LOCK =
+            Path.of(System.getProperty("java.io.tmpdir"), "jebol-page-browsers-starting.lock");
 
     record Configuration(String browserName, boolean everyPopupBlocked, boolean leavingWatched) {
 
@@ -74,11 +83,32 @@ public final class PageBrowsers implements ExtensionContext.Store.CloseableResou
 
     private AStartedBrowser start(Configuration wanted) {
         Path downloads = makeDownloadsFolder();
-        WebDriver driver = wanted.isFirefox()
-                ? openFirefox(wanted, downloads)
-                : openChrome(wanted);
+        WebDriver driver = openOneAtATime(wanted, downloads);
         driver.manage().window().maximize();
         return new AStartedBrowser(driver, downloads, driver.getWindowHandle(), new ReentrantLock());
+    }
+
+    private WebDriver openOneAtATime(Configuration wanted, Path downloads) {
+        SessionNotCreatedException refused = null;
+        for (int attempt = 1; attempt <= ATTEMPTS_TO_START; attempt++) {
+            try (FileChannel lockFile = FileChannel.open(STARTING_LOCK, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                FileLock held = lockFile.lock();
+                try {
+                    return wanted.isFirefox() ? openFirefox(wanted, downloads) : openChrome(wanted);
+                } finally {
+                    held.release();
+                }
+            } catch (SessionNotCreatedException startFailed) {
+                if (refused == null) {
+                    refused = startFailed;
+                } else {
+                    refused.addSuppressed(startFailed);
+                }
+            } catch (IOException noLock) {
+                throw new UncheckedIOException(noLock);
+            }
+        }
+        throw refused;
     }
 
     private void stopQuietly(AStartedBrowser browser) {

@@ -39,6 +39,9 @@ class TheCommandLinesConsoleAnswersAsR3EndToEndTest {
     private static final long WAIT_MILLISECONDS = 20_000;
     private static final int CASES_AT_ONCE = Math.max(1, Runtime.getRuntime().availableProcessors() / 4);
     private static final HexFormat HEX = HexFormat.of();
+    private static final String MACOS_LOCAL_MODES = "lflag=";
+    private static final long MACOS_PENDIN = 0x20000000L;
+    private static final long MACOS_FLUSHO = 0x00800000L;
 
     private static final Map<String, String> ANSWERED = new LinkedHashMap<>();
     private static final Map<String, String> RECORDED = new LinkedHashMap<>();
@@ -228,8 +231,7 @@ class TheCommandLinesConsoleAnswersAsR3EndToEndTest {
         Path after = folder.resolve("after");
         Path exit = folder.resolve("exit");
         Path stderr = folder.resolve("stderr");
-        String terminal = !Files.exists(before) ? "pipe"
-                : Arrays.equals(Files.readAllBytes(before), readIfThere(after)) ? "restored" : "changed";
+        String terminal = !Files.exists(before) ? "pipe" : comparedSettings(before, after);
         List<String> lines = new ArrayList<>(List.of(
                 "== " + name,
                 "stdout: " + escape(seen),
@@ -240,6 +242,36 @@ class TheCommandLinesConsoleAnswersAsR3EndToEndTest {
             lines.add("verdict: " + verdict);
         }
         return String.join("\n", lines);
+    }
+
+    private static String comparedSettings(Path before, Path after) throws IOException {
+        List<String> was = settingsTheProgramControls(Files.readString(before, StandardCharsets.UTF_8));
+        List<String> now = settingsTheProgramControls(new String(readIfThere(after), StandardCharsets.UTF_8));
+        if (was.equals(now)) {
+            return "restored";
+        }
+        List<String> differing = new ArrayList<>();
+        for (int at = 0; at < Math.max(was.size(), now.size()); at++) {
+            String from = at < was.size() ? was.get(at) : "";
+            String to = at < now.size() ? now.get(at) : "";
+            if (!from.equals(to)) {
+                differing.add(from + " -> " + to);
+            }
+        }
+        return "changed " + differing;
+    }
+
+    private static List<String> settingsTheProgramControls(String saved) {
+        List<String> fields = new ArrayList<>();
+        for (String field : saved.strip().split(":")) {
+            fields.add(field.startsWith(MACOS_LOCAL_MODES) ? withoutKernelsOwnLocalModes(field) : field);
+        }
+        return fields;
+    }
+
+    private static String withoutKernelsOwnLocalModes(String field) {
+        long modes = Long.parseLong(field.substring(MACOS_LOCAL_MODES.length()), 16);
+        return MACOS_LOCAL_MODES + Long.toHexString(modes & ~(MACOS_PENDIN | MACOS_FLUSHO));
     }
 
     private static byte[] readIfThere(Path file) throws IOException {
