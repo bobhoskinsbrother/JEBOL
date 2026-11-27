@@ -9,7 +9,9 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
 
 import org.jebol.testing.Needs;
 import org.jebol.testing.RunsOn;
@@ -24,6 +26,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,15 +63,15 @@ class TheSiteInChromeEndToEndTest {
         opening.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         instrumentation.getContext().startActivity(opening);
         try {
-            assertThat(waitUntilShowing(STARTING_GREEN)).as("the site opened at its first place").isTrue();
+            assertThat(waitUntilShowing(STARTING_GREEN))
+                    .as(() -> "the site opened at its first place; " + describeScreen()).isTrue();
             int middle = device.getDisplayHeight() / 2;
             device.click(device.getDisplayWidth() / 2, middle / 2);
-            assertThat(waitUntilShowing(SECOND_BLUE)).as("the tap took the site to its second place").isTrue();
-
-
+            assertThat(waitUntilShowing(SECOND_BLUE))
+                    .as(() -> "the tap took the site to its second place; " + describeScreen()).isTrue();
             device.swipe(1, middle, device.getDisplayWidth() / 2, middle, 30);
-
-            assertThat(waitUntilShowing(STARTING_GREEN)).as("the swipe took the site back to its first place").isTrue();
+            assertThat(waitUntilShowing(STARTING_GREEN))
+                    .as(() -> "the swipe took the site back to its first place; " + describeScreen()).isTrue();
         } finally {
             shell("am force-stop " + CHROME);
         }
@@ -100,6 +107,49 @@ class TheSiteInChromeEndToEndTest {
             }
         }
         return false;
+    }
+
+    private String describeScreen() {
+        return "in front: " + windowInFront() + "; text showing: " + textShowing() + "; commonest colours: " + commonestColours();
+    }
+
+    private String windowInFront() {
+        for (String line : shell("dumpsys window").split("\n")) {
+            if (line.contains("mCurrentFocus=")) {
+                return line.trim();
+            }
+        }
+        return "nothing focused";
+    }
+
+    private String textShowing() {
+        List<String> texts = new ArrayList<>();
+        for (UiObject2 found : device.findObjects(By.textContains(""))) {
+            String text = found.getText();
+            if (text != null && !text.isBlank() && texts.size() < 20) {
+                texts.add(text.strip());
+            }
+        }
+        return texts.isEmpty() ? "none" : String.join(" | ", texts);
+    }
+
+    private String commonestColours() {
+        File shot = new File(instrumentation.getContext().getCacheDir(), "chrome.png");
+        Bitmap screen = device.takeScreenshot(shot) ? BitmapFactory.decodeFile(shot.getPath()) : null;
+        if (screen == null) {
+            return "no screenshot";
+        }
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int y = 0; y < screen.getHeight(); y += SAMPLE_STEP) {
+            for (int x = 0; x < screen.getWidth(); x += SAMPLE_STEP) {
+                counts.merge(screen.getPixel(x, y) & 0xFFFFFF, 1, Integer::sum);
+            }
+        }
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .limit(5)
+                .map(entry -> String.format("#%06X x%d", entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(", "));
     }
 
     private void writeThroughTheShell(String path, String text) {
