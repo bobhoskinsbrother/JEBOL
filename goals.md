@@ -18,153 +18,63 @@ something a real 3.22.5 does not is a defect.
 
 ### 2. Android, with the interpreter running on Android's own Java
 
-Owner's decisions 2026-11-14, decision 73: API 35 at the least; the
-project's level is Java 21; Android draws the one way every platform draws
-(decision 35); the app is an `android/` build in this repo, in Java; Android
-has unit, functional and end-to-end suites as the other platforms do, run
-by an `androidTests` gate.
+What is left, in this order. Each stage gets its own plan commit (spec,
+failing tests, code, docs) before work starts. Touch left for later:
+long-press selection, pinch to zoom, more than one finger.
 
-The stages left, in this order, from 2e. Touch left for later: selecting text
-by long press, pinch to zoom, and more than one finger. Each is
-planned in full -- what is true today, spec, failing tests, code, docs -- in its own plan commit before work on it
-starts; what follows is each stage's reach, its done-when and the
-questions its plan has to settle. A defect that would hurt a stage is fixed
-on the JVM before that stage, not on Android after it.
+#### 2e. The portable Windows app registers itself
 
-The device suites, and how CI runs them, are in CLAUDE.md and
-`docs/android-port.md`.
-
-#### 2e. An app of one's own: the portable app on Windows
-
-Everything else in 2e is done and checked in every CI run by
-`scripts/app-on-my-windows.ps1` (decision 78); the Mac's part is in goal 21.
-
-**Left: the portable app registers itself.** A packaged app run without
-installing it, from jpackage's app image unzipped anywhere, writes
-`HKEY_CURRENT_USER\Software\Classes\AppUserModelId\<ID>` on first start,
-with its display name, its icon and a COM activator, so a click on a toast
-reaches it even when it is not running (decision 78). It removes that
-registration when the app removes itself, and the plan says how an app that
-is simply deleted leaves nothing harmful behind.
+A packaged app run unzipped, without installing, writes
+`HKEY_CURRENT_USER\Software\Classes\AppUserModelId\<ID>` on first start
+(name, icon, COM activator), so a toast click reaches it even when it is not
+running, and removes it when the app removes itself (decision 78). The plan
+says what a simply deleted app leaves behind.
 
 **Done when** CI's Windows app stage reports the portable app registered and
-raising a toast; `allTests` and `androidTests` pass.
+raising a toast.
 
-#### 2e2. Services: a script that keeps running when the app is not on screen
+#### 2e2. Services: a script keeps running with the app off screen
 
-The owner, 2026-11-17: Android needs a way of handling services, because
-nothing keeps working without one.
-- When the app leaves the screen, Doze and the app-standby buckets defer
-  its timers and cut its network.
-- The process can be ended at any time. Today a script that polls a server,
-  or waits on a long task, stops when the app is not in front. That never
-  happens on the desktop.
+On Android, Doze and app standby defer timers and cut the network, and the
+process can be ended at any time. Android's answers are a foreground service
+(with a type from API 34, and `POST_NOTIFICATIONS` from 33), WorkManager and
+alarms.
 
-Android's own answers:
-- a *foreground service*: work the user is told about by a notification
-  that stays while it runs. Since Android 14 each one must declare a type
-  (`dataSync`, `mediaPlayback`, `location`, `specialUse`, ...), and since
-  Android 13 the notification needs `POST_NOTIFICATIONS`;
-- *WorkManager*, for work that may wait for the system to choose when, such
-  as periodic or deferred jobs;
-- *alarms*, for a moment that must be kept.
+**The plan settles:** the REBOL a script asks with (searching Rebol's suite
+and ports first); whether a service runs the app's script or a second one;
+how it shares state with the app on screen (decision 70); what the desktop
+(keeps running) and the page (service workers) do with the same words; and
+whether 2e2 comes after 2f, whose notification permission it needs.
 
-**Its plan settles:**
-- what a script says to ask for each. Search Rebol's suite, the C and R3's
-  ports for a shape to follow before inventing one, as 2f to 2h do;
-- whether a service runs the app's own script, or a second one the app
-  names;
-- how a service and the app on screen share state, by decision 70's deep
-  copy between interpreters;
-- what the desktop and the page do with the same words. The desktop simply
-  keeps running. The page has service workers.
-
-The notification permission it needs is the one 2f asks for, so 2e2 may
-come after 2f; that order is this stage's to settle.
-
-**Done when** a script can keep a timer and a connection alive with the
-app off screen, under Doze on the emulator (`adb shell dumpsys deviceidle
-force-idle`), with the notification shown. An end-to-end test drives it.
+**Done when** a script keeps a timer and a connection alive off screen under
+forced Doze, with its notification shown, driven by an end-to-end test.
 
 #### 2f, 2g, 2h. Notifications, location and the camera, on every platform
 
-The owner, 2026-11-18 (decision 78): each is a feature of every platform JEBOL
-runs on, not of Android alone -- the web, Android, and the desktop on Linux,
-macOS and Windows -- and iOS answers the same three when goal 3 arrives.
+On the web, Android, and the desktop on Linux, macOS and Windows; iOS with
+goal 3 (decision 78). Rebol has none of the three, so the REBOL is JEBOL's
+own and goes into `spec/` first.
 
-**What is true today.**
-- `HostPorts` holds eighteen ports, and none of these three.
-- `HostService` has thirteen grants, and none of these three.
-- Rebol has nothing for any of them. Its C, its mezz, its boot files and its
-  suite were searched on 2026-11-18 for a camera, a webcam, location,
-  geolocation and notifications, and the only hit was JEBOL's own "camera"
-  example of an extension. So the REBOL is JEBOL's own, and each plan writes
-  it into `spec/` before any code.
-- The web's interpreter runs in a worker. It reaches the page by
-  `PageRoundTrip`, as `PageClipboard` does, and the page answers. A worker
-  can ask for none of the three itself: the Notifications API's permission,
-  the Geolocation API and `getUserMedia` are the window's.
-- The Android app asks for no runtime permission today.
-- The three need each operating system's own API, through FFM on Java 25, as
-  `WindowsAppIdentity` already calls `shell32`. Nothing is compiled in C, and
-  no native binary is shipped or fetched.
-- Each operating system gives the three only to an app it can name, and 2e's
-  packager gives an app that name.
-
-**Shared by all three.**
-- **A port scheme in the core:** `notification://`, `location://` and
-  `camera://`. Each is a `HostPorts` port, which each platform answers with
-  an adapter of its own and `none()` refuses, behind a `HostService` grant of
-  its own (`NOTIFICATIONS`, `LOCATION`, `CAMERA`). A packaged app is given
-  the grants its `app.reb` declares under `uses`. 2e only reads and checks
-  that list and writes it into Android's manifest and macOS's `Info.plist`;
-  each of 2f, 2g and 2h wires its own entry into its grant, and its plan
-  and done-when include an app that did not declare the use being refused
-  with `access no-service`.
-- **Events from a device thread.** Each platform's callback arrives on a
-  thread of its own and is queued for the interpreter, as the screen's events
-  are (decision 27). The interpreter's thread is never held by a device, and
-  a device never touches a value.
-- **The event types come from R3's catalogue** (`reb-evtypes.h`), which has
-  no `click`: `open`, `read`, `active`, `close` and `error` are the ones
-  proposed below, and each plan confirms them against how R3's own ports use
-  them.
-- **Refusals, the same on every platform.**
-  - Not granted, or no such device here: JEBOL's own `access no-service`, as
-    every host service answers today.
-  - The user said no: `access cannot-open`, with the port as `arg1` and
-    "the user refused" as `arg2`.
-  - The operating system needs an app it can name, and the script is not in
-    one: `access no-service`, saying so.
-  A script can catch each one, and tell them apart by `id` and `arg2`.
-- **Permission is asked at the moment of first use,** by each platform's own
-  means: Android's runtime permission through the activity, the browser's
-  prompt, macOS's privacy consent, Windows's first-use prompt. A script never
-  asks for permission separately. An app off screen (2e2) cannot be asked,
-  and refuses.
-- **The tests reach no real device and no site on the internet.** Each
-  platform is faked at its own boundary, as the table under each stage says.
-  The fakes are checked in, written in Java where the boundary is a protocol.
-- **New desktop machinery, written once and shared:**
-  - a D-Bus client for Linux, over a Unix-domain socket (Java 16 and up),
-    with SASL `EXTERNAL`, the marshalling of the types the three services
-    use, method calls and signals. It is tested against a real
-    `dbus-daemon` on a private bus. 2f writes it.
-  - an Objective-C bridge for macOS through FFM: `objc_msgSend` in each call
-    shape, classes made at run time with `objc_allocateClassPair` for
-    delegates, and blocks for completion handlers, built as the block ABI
-    lays them out with an upcall stub. Nothing found on 2026-11-18 shows Java
-    doing blocks this way, so 2f's first Mac step is a probe that proves it.
-  - a WinRT and COM bridge for Windows through FFM: `RoInitialize`,
-    `HSTRING`, `RoGetActivationFactory`, calls through a vtable, and
-    delegates implemented as COM objects with upcalls (`IUnknown`,
-    `IAgileObject`) for events and `IAsyncOperation` completions.
-- **macOS and Windows are checked in CI** by each machine's app stage,
-  extended per stage: Windows's today, the Mac's from goal 21.
+**Shared by all three:**
+- `notification://`, `location://`, `camera://`: each a `HostPorts` port
+  behind a `HostService` grant of its own, given to a packaged app only if
+  its `app.reb` declares it under `uses`.
+- Device callbacks are queued for the interpreter, as screen events are
+  (decision 27). Event types come from R3's catalogue: `open`, `read`,
+  `active`, `close`, `error`.
+- The same refusals everywhere: `access no-service` when not granted, absent,
+  or the script is not in a packaged app; `access cannot-open` with "the user
+  refused" when the user says no. Permission is asked at first use, by each
+  platform's own prompt.
+- Desktop machinery written once: a D-Bus client (Linux), an Objective-C
+  bridge with blocks over FFM (macOS; 2f's first step proves blocks work),
+  and a WinRT/COM bridge over FFM (Windows). No native binary.
+- Every platform is faked at its boundary for the functional suite and
+  driven for real in the end-to-end suite, as each table says. Clicks and
+  prompts on the desktop are `java.awt.Robot` at the system's fixed banner
+  place (SikuliX if that proves unreliable), and on Android UI Automator.
 
 **2f. Notifications.**
-
-The REBOL proposed, for the plan to settle:
 
 ```rebol
 write notification:// [title: "Backup" body: "Finished at 14:02"]
@@ -182,15 +92,9 @@ wait [n 60]
 close n
 ```
 
-`write` shows one and answers at once. A second `write` with the same `tag`
-replaces the first, rather than adding another. `close` takes back whatever
-the port showed.
-
-**One kind of notification, for now** (owner, 2026-11-18). Android has
-several: heads-up, ongoing, progress, the messaging and big-picture styles,
-action buttons, groups, and the importance a channel gives. 2f does one,
-the plain one with a title and a body, on one channel. The others are left
-for later, and so are their equivalents on the other platforms.
+`write` shows one at once; the same `tag` replaces it; `close` takes back what
+the port showed. One kind only for now: a title and a body, on one channel
+(owner, 2026-11-18).
 
 | Platform | Shown by | Asks the user | Click and dismiss | Faked, in the functional suite | Driven for real, in the end-to-end suite |
 | --- | --- | --- | --- | --- | --- |
@@ -200,26 +104,10 @@ for later, and so are their equivalents on the other platforms.
 | macOS | `UNUserNotificationCenter`, from the packaged `.app` | `requestAuthorizationWithOptions:completionHandler:` | a delegate's `didReceiveNotificationResponse:`, and a category with `customDismissAction` for a dismissal | none needed | `Robot` presses Allow or Don't Allow and the banner, top right, or its close button; two fixed bundle IDs, one always allowed and one always refused, so the state holds between runs. Needs Accessibility and Screen Recording given once by hand in goal 21's mac role, which fails the run at once without them |
 | Windows | `ToastNotificationManager.CreateToastNotifier`, with the app's AppUserModelID | none, as far as is known; the plan checks | the toast's `Activated` and `Dismissed` events | none needed | `Robot` clicks the toast, bottom right, or its close button; a refusal is the test user's `…\Notifications\Settings\<AUMID>\Enabled=0`; the windows role keeps Focus Assist off |
 
-Clicking stays this small on purpose: each system puts its banner in one
-place, `Robot` clicks there, and the script's `active` or `close` event is
-what proves the click landed. If a fixed place proves unreliable on a
-system, SikuliX is what to reach for, not a searcher written here. 2g and
-2h are driven the same way: their prompts by `Robot` or UI Automator, their
-devices by each platform's own fake.
-
-Steps:
-0. Plan commit: the REBOL, the event types, the refusals, and the order of
-   2e2 against 2f.
-1. The Mac probe: from the example `.app`, through FFM, ask for permission
-   with a block and show one notification. If FFM cannot do blocks, the plan
-   comes back to the owner before any other step.
-2. Spec: `spec/notification.allium`.
-3. Failing tests, then the adapters, one platform at a time: the web,
-   Android, Linux with the D-Bus client, macOS, Windows.
-4. The example app gains a notification. End to end: Chrome and Firefox; the
-   emulator; the `.deb` with the fake service; and CI's Windows and Mac app
-   stages.
-5. Docs: `using-jebol.md`, and decision 78 with what the plan settled.
+Steps: the plan; the Mac probe (ask permission with a block over FFM, show
+one notification; if blocks fail, back to the owner); `spec/notification.allium`;
+failing tests then adapters, one platform at a time; the example app shows a
+notification, end to end on every platform; `using-jebol.md`.
 
 **2g. Location.**
 
@@ -236,30 +124,11 @@ p/awake: func [event] [
 ]
 ```
 
-A position is an `object!` with `latitude` and `longitude` in degrees,
-`accuracy` in metres, `altitude` in metres or `none`, and `time`, the
-`date!` it was fixed at. `read` waits for one fix, up to the time the port's
-spec gives. An open port reports each move as `read`.
-
-**Coarse and fine are both offered** (owner, 2026-11-18), and the scheme's
-form leaves room for both and for what may follow. Proposed:
-`location://coarse` and `location://fine`, with the host naming the
-accuracy, and bare `location://` meaning coarse, the one that asks the user
-for less. A block spec (`open [scheme: 'location accuracy: 'fine
-timeout: 0:00:30]`) says the same and carries the port's other settings.
-Each platform's word for it:
-
-| Platform | Coarse | Fine |
-| --- | --- | --- |
-| The web | `enableHighAccuracy: false` | `enableHighAccuracy: true`. The browser has one permission for both, so `accuracy` is what tells them apart. |
-| Android | `ACCESS_COARSE_LOCATION` | `ACCESS_FINE_LOCATION`. From Android 12 the user may give only coarse when fine is asked for. |
-| Linux | GeoClue's `RequestedAccuracyLevel` city (4) | exact (8) |
-| macOS | `kCLLocationAccuracyReduced` | `kCLLocationAccuracyBest`. The user may switch off precise location for the app. |
-| Windows | `PositionAccuracy.Default` | `PositionAccuracy.High` |
-
-The plan settles what a script asking for fine is given when the user allowed
-only coarse. Proposed: the coarse position, with `accuracy` saying so and
-`query` naming the accuracy granted, rather than a refusal.
+A position is an `object!`: `latitude`, `longitude`, `accuracy`, `altitude`
+(or `none`) and `time`. `read` waits for one fix; an open port reports each
+move. `location://coarse` and `location://fine`, bare meaning coarse (owner,
+2026-11-18); fine asked for and only coarse allowed gives the coarse position,
+saying so.
 
 | Platform | Asked by | Asks the user | The test's fake |
 | --- | --- | --- | --- |
@@ -269,18 +138,9 @@ only coarse. Proposed: the coarse position, with `accuracy` saying so and
 | macOS | `CLLocationManager` with a delegate, from the packaged `.app` with `NSLocationUsageDescription` | `requestWhenInUseAuthorization` | CI's Mac: `Robot` answers the prompt; the position from `CLLocationManager`'s own simulation, which the plan checks |
 | Windows | `Windows.Devices.Geolocation.Geolocator`, `GetGeopositionAsync` | an unpackaged app shares the one "desktop apps" switch, and 24H2 prompts on first use; `RequestAccessAsync` is for packaged apps and throws outside an app container | CI's Windows machine: `Robot` answers the prompt; the plan finds how the position is faked |
 
-Two things the plan has to answer:
-- **A machine that cannot find itself.** Since Mozilla's location service
-  shut down in June 2024, a desktop with no GPS and no Wi-Fi database may
-  get no fix at all from GeoClue; Debian moved GeoClue to BeaconDB. Such a
-  machine answers `timeout`, or `no-service` if it never has a source: the
-  plan says which.
-- **The run loop on macOS.** `CLLocationManager` delivers on the run loop of
-  the thread that made it. The plan says which thread that is, beside the
-  window's AppKit thread.
-
-Steps: as 2f's, with `spec/location.allium`, and no probe beyond 2f's
-bridges.
+**The plan settles:** what a desktop with no location source answers
+(`timeout` or `no-service`), and which thread's run loop `CLLocationManager`
+uses on macOS. Steps as 2f's, with `spec/location.allium`.
 
 **2h. The camera.**
 
@@ -297,12 +157,9 @@ cam/awake: func [event] [
 query camera://
 ```
 
-`read` is one `image!`. An open port reports each frame as `read`, and
-`copy` takes the newest. A frame the script has not taken is replaced by the
-next, never queued, so a slow script misses frames and never runs a device
-out of memory. `query camera://` lists the cameras, and `camera://2` picks
-one. The plan settles how a script asks for a size and a rate, and what it is
-given when the device offers neither.
+`read` is one `image!`; an open port reports each frame and `copy` takes the
+newest, never queuing them. `query camera://` lists cameras; `camera://2`
+picks one.
 
 | Platform | Captured by | Its frames | Asks the user | The test's fake |
 | --- | --- | --- | --- | --- |
@@ -312,29 +169,16 @@ given when the device offers neither.
 | macOS | `AVCaptureSession` and `AVCaptureVideoDataOutput`, with a sample-buffer delegate, from the packaged `.app` with `NSCameraUsageDescription` | `CVPixelBuffer` in BGRA | `AVCaptureDevice requestAccessForMediaType:completionHandler:` | CI's Mac, which has no camera: `Robot` answers the prompt, and the plan finds a virtual camera |
 | Windows | Media Foundation: `MFEnumDeviceSources`, `IMFSourceReader` and a synchronous `ReadSample` | RGB32, through the reader's own video processing | the one "desktop apps" camera switch | CI's Windows machine, which has no camera: a virtual camera, such as OBS's, which the windows role installs |
 
-The plan has to answer:
-- what the fake pictures are, so a test checks pixels rather than only a
-  size: the Linux loopback's are the test's own; Chrome's and the emulator's
-  are theirs, and the plan reads what they draw;
-- how a frame crosses from the page to the worker without copying it more
-  than once.
+**The plan settles:** how a script asks for a size and a rate; what the fake
+pictures are, so tests check pixels; how a frame reaches the page's worker
+copied once. Steps as 2f's, with `spec/camera.allium`, the Linux loopback
+fixture first.
 
-Steps: as 2f's, with `spec/camera.allium`; the Linux loopback fixture first,
-since every Linux test stands on it.
-
-**Done when**, for each stage:
-- the port has its rules in `spec/`;
-- every platform above has an adapter with a unit test, a functional test
-  through REBOL in that platform's suite, and an end-to-end test that drives
-  the packaged example app;
-- the refusals are the same on every platform, with a test of each;
-- `using-jebol.md` says what a script may reach on each platform;
-- `allTests` and `androidTests` pass, and CI's Windows and Mac app stages
-  report it working.
-
-The research behind 2e to 2h, with every source and how far each can be
-trusted, is `docs/platform-services-research.md`. Each plan re-checks there
-what it builds on.
+**Done when**, for each of 2f, 2g and 2h: its rules are in `spec/`; every
+platform has an adapter with a unit, a functional and an end-to-end test
+driving the packaged example app; the refusals are tested on each; and
+`using-jebol.md` says what a script may reach where. Sources:
+`docs/platform-services-research.md`.
 
 ### 3. iOS, with the interpreter compiled ahead of time by GraalVM
 
