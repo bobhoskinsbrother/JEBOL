@@ -1,17 +1,21 @@
 package org.jebol.domain.eval.compression.brotli;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BrotliLevelsTwoToNineFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = AnInterpreter.create();
+        Interpreter interpreter = AnInterpreter.withBounds(Bounds.standard()
+                .withTimeLimit(Duration.ofMinutes(1)));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
