@@ -53,6 +53,7 @@ class TheSiteInChromeEndToEndTest {
     void aSwipeFromTheEdgeMovesTheSitesHistory() {
         String host = TheHost.address();
         String port = TheHost.port("hostSitePort");
+        TheApp.notLaunched().wakeAndPassSwipeScreen();
         shell("pm grant " + CHROME + " android.permission.POST_NOTIFICATIONS");
         shell("cmd overlay enable com.android.internal.systemui.navbar.gestural");
         shell("am set-debug-app --persistent " + CHROME);

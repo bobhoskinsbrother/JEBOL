@@ -248,7 +248,9 @@ examples are driven at both sizes. `TheSiteInChromeEndToEndTest` opens the
 shipped site in the device's own Chrome, served from the host by `HostSite`
 at the address the run gives the device as `hostAddress` -- `10.0.2.2` from
 an emulator, `localhost` through `adb reverse` from a phone, or what
-`-PhostAddress=<serial>=<address>` names -- with Chrome's first-run screens passed by its command-line file
+`-PhostAddress=<serial>=<address>` names. It wakes the screen and passes a
+swipe lock itself, as the app's tests do: a sleeping screen shows black and no
+window in front. Chrome's first-run screens are passed by its command-line file
 and gesture navigation switched on, and a swipe from the screen's left edge
 moves the site's history. The site's app moves to its second place on a tap,
 never as it loads: Chrome's back skips a history entry a page pushed without

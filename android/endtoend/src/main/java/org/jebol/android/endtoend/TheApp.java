@@ -116,7 +116,7 @@ final class TheApp {
     }
 
     private void startAfresh(Optional<String> script, Optional<String> roots) {
-        wakeAndPassTheSwipeScreen();
+        wakeAndPassSwipeScreen();
         shell("am force-stop " + packageName);
         shell("logcat -c");
         turnUpright();
@@ -188,7 +188,7 @@ final class TheApp {
         }
     }
 
-    private void wakeAndPassTheSwipeScreen() {
+    void wakeAndPassSwipeScreen() {
         try {
             device.wakeUp();
         } catch (RemoteException unwoken) {
