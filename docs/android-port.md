@@ -67,10 +67,14 @@ other, and the device stage took 2 hours 18 minutes. The suite is twelve
 classes now, `RebolSuitePart1Test` to `RebolSuitePart12Test`, each a whole set
 of files, and `DeviceShards` no longer splits by `numShards` at all: it lists
 the classes once in log mode (about 30 seconds for the functional suite's
-1,436), deals them in a fixed hash order into about twelve batches a device,
+1,436, 571 of them top-level), deals the top-level classes in a fixed hash
+order into about twelve batches a device,
 and each device takes the next batch from one queue as it comes free. A faster
 device takes more, a device that drops gives its batch back to the others,
-and the slowest tail is one small batch. Marathon was meant to do this and
+and the slowest tail is one small batch. The runner widens a nested class it
+is asked for to the class that holds it, so a batch that named nested classes
+ran their holder once for each: run 19 ran 70,552 cases for 25,985 tests, in
+271 minutes. Marathon was meant to do this and
 cannot: it lists a JUnit 5 test by its display name, which the runner cannot
 select (jebol-ci's plan, step 4). CI adds the Windows machine's emulators to
 the phones for the unit and functional suites, with `-PendToEndDevice`

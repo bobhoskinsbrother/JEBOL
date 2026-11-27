@@ -146,15 +146,17 @@ abstract class DeviceShards : DefaultTask() {
     private fun classesToRun(serial: String): List<String> {
         val named = runnerArguments.get()["class"]?.split(",")?.filter(String::isNotEmpty).orEmpty()
         if (named.isNotEmpty()) {
-            return named
+            return topLevelClasses(named)
         }
         val listing = Shard(-1, serial)
         runInstrumentation(serial, listing, runnerArguments.get() + ("log" to "true"))
         if (!listing.completed()) {
             throw GradleException("listing the tests on $serial failed: ${listing.unfinished.joinToString("; ")}")
         }
-        return listing.cases.map { it.className }.filter(String::isNotEmpty).distinct()
+        return topLevelClasses(listing.cases.map { it.className }.filter(String::isNotEmpty))
     }
+
+    private fun topLevelClasses(classes: List<String>): List<String> = classes.map { it.substringBefore('$') }.distinct()
 
     private fun batchesFor(classes: List<String>, deviceCount: Int): List<List<String>> {
         val wanted = deviceCount * BATCHES_EACH_DEVICE

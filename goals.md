@@ -1032,12 +1032,15 @@ of 2e:
    its own stage. Rebol's suite is twelve classes now and `DeviceShards`
    deals batches from one queue to every device it is given
    (`docs/android-port.md`); Marathon could not select a JUnit 5 test by
-   the name it lists, and is gone. What remains: the Windows machine's
-   emulators, which jebol-ci boots and tunnels, proved in a real run with
-   no test timing out on them; emulators the CI machine boots under KVM
-   with `android/emulator.sh` once `allTests` has finished, as many as its
-   free memory holds; and the Windows job running beside the Android stage
-   where the Windows machine has the room. Retries stay off, because a
+   the name it lists, and is gone. Run 19 proved the Windows machine's
+   three emulators, with no test timing out, but took 271 minutes: a batch
+   named nested classes, the runner widened each to the class holding it,
+   and 70,552 cases ran for 25,985 tests. Batches name top-level classes
+   now. The Windows machine's four threads were at 96 to 100% throughout,
+   so it holds no more emulators; the CI machine boots two of its own under
+   KVM for the Android stage. What remains: a run proving those two, and
+   the Windows job running beside the Android stage where the Windows
+   machine has the room. Retries stay off, because a
    flake is a fail, and the end-to-end suite still runs every test on each
    phone, because a phone is what it proves.
 7. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
