@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.view.View;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -37,6 +38,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -164,10 +167,9 @@ class AndroidPortsThroughRebolTest {
         Activity shown = instrumentation.startActivitySync(new Intent(context, JebolActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
-            long giveUpAt = System.nanoTime() + 20_000_000_000L;
-            while (!shown.hasWindowFocus() && System.nanoTime() < giveUpAt) {
-                Thread.sleep(50);
-            }
+            assertThat(focusArrives(instrumentation, shown).await(20, TimeUnit.SECONDS))
+                    .as("JebolActivity took the window's focus")
+                    .isTrue();
             inFront.set(true);
 
             assertThat(run(app(), "write clipboard:// {copied on Android} {copied on Android} = read clipboard://"))
@@ -175,6 +177,22 @@ class AndroidPortsThroughRebolTest {
         } finally {
             shown.finish();
         }
+    }
+
+    private static CountDownLatch focusArrives(Instrumentation instrumentation, Activity shown) {
+        CountDownLatch focused = new CountDownLatch(1);
+        instrumentation.runOnMainSync(() -> {
+            View decor = shown.getWindow().getDecorView();
+            decor.getViewTreeObserver().addOnWindowFocusChangeListener(hasFocus -> {
+                if (hasFocus) {
+                    focused.countDown();
+                }
+            });
+            if (decor.hasWindowFocus()) {
+                focused.countDown();
+            }
+        });
+        return focused;
     }
 
     @Test

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -39,7 +40,7 @@ class AFileAdmittedFromOutsideTheRootTest {
     @DisplayName("a file admitted by the name Rebol writes for it is read by that name, on every platform")
     void readsAdmittedFileByItsRebolName() throws IOException {
         Path root = Files.createDirectories(machine.resolve("root"));
-        Path outside = Files.writeString(machine.resolve("launcher.txt"), "started");
+        Path outside = Files.write(machine.resolve("launcher.txt"), "started".getBytes(StandardCharsets.UTF_8));
         String rebolName = asRebolNamesIt(outside);
 
         assertThat(answerTo(root, rebolName, """
