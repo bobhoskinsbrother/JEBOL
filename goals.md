@@ -54,7 +54,7 @@ The owner, 2026-11-18 (decision 78): JEBOL provides a packager, not an app.
 for the web, Android and Linux with their tests, SQLite on Android and the
 desktop's Java 25 are done (decision 78, "What building 2e settled";
 `using-jebol.md`, "An App of Your Own, on Every Platform"). The Mac's part
-is in goal 20.
+is in goal 21.
 
 `scripts/app-on-my-windows.ps1` runs unattended in every CI run, as the
 Windows job's last stage, and passes (run 8, 2026-11-25): a toast from an
@@ -95,7 +95,7 @@ sources in `docs/platform-services-research.md`:
   `.desktop` file.
 - jpackage builds a package only on the system it targets. The macOS app is
   built on the Mac and the Windows one on Windows, each by a script: the
-  Windows one in CI, the Mac's by the owner (goal 20). The build gains
+  Windows one in CI, the Mac's in CI too once it has a Mac (goal 21). The build gains
   nothing for either (owner, 2026-11-18).
 
 **The developer's part and the framework's** (owner, 2026-11-18). JEBOL is
@@ -973,7 +973,7 @@ decision 73.
 CI on the Android 13 phone beside the two on Android 17, and decision 73
 says Android 13.
 
-### 20. What is left of CI, and the app on a Mac
+### 20. What is left of CI
 
 CI runs on a machine of the owner's (decision 81; the machines and their
 roles are in the jebol-ci repository): every push runs everything, the full
@@ -982,8 +982,8 @@ comes from Gradle's build cache, a push of documents alone runs nothing,
 and only a green run reaches GitHub. A red run starts its own Sonnet fixer
 in tmux, with the project's memory and rules, a fix that does not fix
 alerts the owner, and every agent in JEBOL is told while CI is red (proved
-on CI's self-test job, 2026-11-25). What is left of that, and the Mac's part
-of 2e:
+on CI's self-test job, 2026-11-25). What is left of that; the Mac's part is
+goal 21:
 
 1. *Platform threads stand in for ART's races.* A functional run with
    platform threads where virtual threads are used, beside the tight-heap
@@ -999,65 +999,135 @@ of 2e:
    first, R3's answer where JEBOL and R3 differ, no `Co-Authored-By`
    trailer, no home hardware named. What it gets wrong goes into its first
    prompt.
-4. *The app on the owner's Mac.* The owner runs `scripts/app-on-my-mac.sh`
-   and pastes back `build/mac-app-report.txt` and its screenshot: the `.app`
-   built, its ad-hoc signature verified, its `Info.plist` and the `.icns`
-   (`iconutil`) read back, the app opened as Finder opens it, and its store
-   made. Whatever it finds wrong is fixed and the script run again. The
-   owner's Mac is Intel (2026-11-21), so this proves the Intel `.app`.
-5. *A Mac in CI, on every push.* No GitHub Actions (decision 81): an Apple
-   Silicon Mac of the owner's joins CI as the Windows machine did, set up by
-   jebol-ci's roles and driven by Laminar over SSH, its job a stage of every
-   run. It runs the suites, which on macOS are expected to meet what Linux
-   never shows: temporary folders behind the `/var` and `/tmp` links to
-   `/private`, a disk that ignores case though JEBOL's file port says it
-   minds it, names stored decomposed, Cmd where Linux has Ctrl, and Retina's
-   twice-sized pixels in every picture test (`docs/on-a-mac.md` says where
-   each is expected and what R3 does). The window tests run with
-   Screen Recording and Accessibility granted to it once, by hand. Then the
-   example app's `packageMac` and the checks `scripts/app-on-my-mac.sh`
-   makes, unattended: the bundle built for arm64, its signature verified,
-   its `Info.plist` and `.icns` read back, and the app started far enough to
-   make its store. jpackage builds for the processor it runs on, so this is
-   the only proof of the Apple Silicon `.app`.
-6. *Shorter runs.* The device suites shard across the phones by each
-   test's measured time rather than by count, so the slower phone does not
-   hold a run open; the example app's Android package builds byte-identical
-   from the same commit, so the end-to-end device suite comes from the
-   cache when nothing it reads changed, which a devtools test holds; and
-   the Android progress line stops counting past its total.
-6a. *Emulators beside the phones* (owner, 2026-11-26). The full device
-   suite took about two hours on the two phones in run 16 while the CI
-   machine sat at a load of 0.1 and the Windows machine did nothing after
-   its own stage. Rebol's suite is twelve classes now and `DeviceShards`
-   deals batches from one queue to every device it is given
-   (`docs/android-port.md`); Marathon could not select a JUnit 5 test by
-   the name it lists, and is gone. Run 19 proved the Windows machine's
-   three emulators, with no test timing out, but took 271 minutes: a batch
-   named nested classes, the runner widened each to the class holding it,
-   and 70,552 cases ran for 25,985 tests. Batches name top-level classes
-   now. The Windows machine's four threads were at 96 to 100% throughout,
-   so it holds no more emulators; the CI machine boots two of its own under
-   KVM for the Android stage. What remains: a run proving those two, and
-   the Windows job running beside the Android stage where the Windows
-   machine has the room. Retries stay off, because a
-   flake is a fail, and the end-to-end suite still runs every test on each
-   phone, because a phone is what it proves.
-7. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
+4. *Nothing runs against an app identical to one that passed* (owner,
+   2026-11-27). Each device suite takes the packages it installs, the app
+   and its test package, as its inputs, so a run whose packages are byte
+   for byte those of a passed run takes that suite from the cache, the
+   unit, functional and end-to-end suites alike; iOS's app does the same
+   when goal 3 has one. The packages build byte-identical from the same
+   sources, which a devtools test holds. Run 22 is the case: one Brotli
+   test's time limit changed, and the whole device stage ran again. The
+   Android progress line stops counting past its total.
+4a. *Emulators beside the phones* (owner, 2026-11-26). `DeviceShards`
+   deals batches of top-level classes from one queue to every device it is
+   given (`docs/android-port.md`). The CI machine boots two emulators of its
+   own under KVM for the Android stage. The Windows machine's three are left
+   out from 2026-11-27 (owner: little benefit seen): they were the slowest
+   devices in the pool, its processors were full with them, and their
+   traffic crossed Wi-Fi. Its role still installs them, and they return
+   only if runs prove the device stage the bottleneck and the Windows
+   machine's emulators shorten it. Retries stay off, because a flake is a
+   fail, and the end-to-end suite still runs every test on each phone,
+   because a phone is what it proves.
+4b. *Unit suites, then devices, then each system's own suites* (owner,
+   2026-11-27). A run goes in three steps. First the unit suites, on Linux
+   alone, a minute that fails a broken commit before anything long starts.
+   Then the functional and end-to-end suites on every kind of device, side
+   by side: the phones and emulators for Android, the Mac's simulators for
+   iOS. Last the functional and end-to-end suites of the native desktop
+   apps on Linux, Windows and macOS, each on its own machine, with the
+   desktop's own unit suite, because it meets the system.
+4c. *The suites are named for where they run* (owner, 2026-11-27). Today
+   every project has its own `unitTests`, `functionalTests` and
+   `endToEndTests`, beside `heapExhaustionTests`, `desktopWindowTests`,
+   `windowTests`, `functionalTestsOnAPhonesHeap`, `androidUnitTests`,
+   `androidPackagingTests` and the rest, and the Windows job picks three of
+   them by hand and runs no end-to-end suite. The names anyone runs become
+   these, suite then platform then system, and nothing else is documented
+   or called:
+
+   | Target | Where | What |
+   | --- | --- | --- |
+   | `unitTests` | Linux | every unit suite that touches no system: the core's, the web's, devtools', the extensions' and the optional compressors' |
+   | `functionalTestsAndroid` | phones and emulators | the core's functional tests from their jar, Android's own, SQLite's on ART, and Android's adapter tests, today's `androidUnitTests` |
+   | `endToEndTestsAndroid` | phones | the installed app driven by UI Automator, and today's `androidPackagingTests` |
+   | `functionalTestsIOS`, `endToEndTestsIOS` | the Mac's simulators | the same shape, built with goal 3 |
+   | `functionalTestsDesktop<System>` | Linux, Mac, Windows | the core's functional tests, the desktop's functional and unit suites, the extensions' and compressors' functional suites, the heap-exhaustion run |
+   | `functionalTestsWeb<System>` | Linux, Mac, Windows | the web's functional suite |
+   | `endToEndTestsDesktop<System>` | Linux, Mac, Windows | the command line, the window tests, devtools' and the extensions' end-to-end suites, and that system's app: the `.deb`, `app-on-my-mac.sh`, `app-on-my-windows.ps1` |
+   | `endToEndTestsWeb<System>` | Linux, Mac, Windows | the page in Chrome and Firefox, on every system; no Safari (owner) |
+   | `functionalTests<System>`, `endToEndTests<System>` | Linux, Mac, Windows | the web and desktop targets of that suite together |
+   | `networkTests` | Linux | as now |
+
+   A written test runs in every target that needs it: the core's
+   functional tests run in the three desktop targets and on Android. A
+   desktop or web target refuses the wrong system with a message naming
+   the one it runs on, rather than skipping its tests. Each target
+   archives under its own name. `allTests` is what the machine can run:
+   `unitTests` and its system's two targets. The per-project tasks stay as
+   the parts the targets are built from. `functionalTestsOnAPhonesHeap` is
+   dropped: the phones run the functional suite themselves. CI runs the
+   targets in `plan.md`'s three steps, and CLAUDE.md's section on running
+   the suite names only these. First a test per target that it holds
+   exactly the classes it should and refuses the wrong system; then the
+   build; then CLAUDE.md and CI.
+5. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
    test passed. The rules already exist, in CLAUDE.md and
    `docs/decisions.md`; they move into a skill the stage runs over the
    change, and a rejection is a failure like any other. Not part of this
    goal's done.
-8. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
+6. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
    push to jebol-ci's main converges the CI machine between runs, rather
    than an agent applying the play; the Vault password then lives on the CI
    machine, which is decided first. Not part of this goal's done.
 
 **Done when** the platform-threads run is part of every check-in,
 CLAUDE.md describes the new way, the first real fixer's commit has been
-checked, the Mac script reports the Intel app running, the Mac's stage is
-green in every run with the Apple Silicon app built and checked, and an
-untouched commit's run takes its device suites from the cache, and a run
-that changes the core has its device suites done in under half an hour
-across the phones and the emulators.
+checked, a run whose device packages are unchanged takes its device suites
+from the cache, a run that changes the core has its device suites done in
+under half an hour across the phones and the CI machine's emulators, a run
+goes unit suites, devices, then desktops, and every machine runs the
+targets of 4c and nothing else.
+
+### 21. A Mac in CI: the desktop suites, the app and iOS's simulators
+
+The owner, 2026-11-27: an Apple Silicon Mac of the owner's joins CI, due the
+week of 2026-11-30, and everything that builds or runs on macOS is this goal;
+its specifics are in jebol-ci-config.
+
+How a run is spread across the machines once it is here, devices first
+(goal 20, 4b):
+- the CI machine: the phones and its own emulators for Android, then
+  Linux's suites;
+- the Mac: iOS's simulators, beside the Android stage, once goal 3 has a
+  gate; then macOS's suites and the app;
+- the Windows machine: Windows's suites and its app stage. It lends no
+  emulators (goal 20, 4a).
+
+The Mac lends no Android emulators: its device time goes to iOS.
+
+1. *The machine, set up by jebol-ci's roles.* A `mac` role as `windows` is:
+   reached by Laminar over SSH, a test user that signs in at boot so the
+   window tests have a session, Screen Recording and Accessibility granted
+   to the runner once by hand, a JDK, and Xcode's command-line tools (Xcode
+   itself with goal 3). It is ready again after a power cycle with nobody at
+   it. Its own disk is small, so a 1 TB USB-C drive holds what grows:
+   Gradle's caches, Xcode's derived data and simulator runtimes, and the
+   run's working folder. The role formats it as APFS, mounts it at a fixed
+   path, points those folders at it, and a run that finds it missing fails
+   at once saying so, rather than filling the internal disk.
+2. *The desktop suites, every push.* `allTests` runs on it as a stage of
+   every run, beside the CI machine's. macOS is expected to meet what Linux
+   never shows: temporary folders behind the `/var` and `/tmp` links to
+   `/private`, a disk that ignores case though JEBOL's file port says it
+   minds it, names stored decomposed, Cmd where Linux has Ctrl, and Retina's
+   twice-sized pixels in every picture test (`docs/on-a-mac.md` says where
+   each is expected and what R3 does).
+3. *The app, every push.* The example app's `packageMac` and the checks
+   `scripts/app-on-my-mac.sh` makes, unattended: the bundle built for arm64,
+   its signature verified, its `Info.plist` and `.icns` (`iconutil`) read
+   back, and the app started far enough to make its store. jpackage builds
+   for the processor it runs on, so this is the only proof of the Apple
+   Silicon `.app`.
+4. *macOS's services.* The macOS probes of 2f to 2h -- notifications,
+   location and the camera, from the packaged `.app` -- run here. The steps
+   that need a person to click stay the owner's.
+5. *iOS's simulators.* Goal 3's simulator gate runs on this Mac at the start
+   of a run, beside the Android stage, and its app is skipped like Android's
+   when it is identical to one that passed (goal 20, 4).
+
+**Done when** the Mac's desktop job and app stage are green in every run,
+the Apple Silicon `.app` is built and checked unattended, and the external
+drive holds the Mac's caches with the internal disk's use flat from run to
+run.
