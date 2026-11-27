@@ -14,7 +14,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,11 +38,11 @@ class WhatEachOutputNativeDeclaresTest {
 
     Stream<Arguments> eachNameAndItsRefinements() {
         return Stream.of(
-                Arguments.of(new MoldNative(), "mold", Set.of("only", "all", "flat", "part")),
-                Arguments.of(new FormNative(), "form", Set.of()),
-                Arguments.of(new PrintNative(), "print", Set.of()),
-                Arguments.of(new PrinNative(), "prin", Set.of()),
-                Arguments.of(new QuitNative(), "quit", Set.of("return", "now")));
+                Arguments.of(new MoldNative(), "mold", List.of("only", "all", "flat", "part")),
+                Arguments.of(new FormNative(), "form", List.of()),
+                Arguments.of(new PrintNative(), "print", List.of()),
+                Arguments.of(new PrinNative(), "prin", List.of()),
+                Arguments.of(new QuitNative(), "quit", List.of("return", "now")));
     }
 
     Stream<Arguments> eachNativeTakingOneValueOfAnyType() {
@@ -58,9 +57,9 @@ class WhatEachOutputNativeDeclaresTest {
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to the name boot/natives.reb gives it, with the refinements it declares")
     void answersToItsNameWithItsRefinements(DefaultNative definition, String name,
-                                            Set<String> refinements) {
+                                            List<String> refinements) {
         assertThat(definition.nativeName()).isEqualTo(name);
-        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
+        assertThat(definition.refinementsDeclaredApart()).containsExactlyInAnyOrderElementsOf(refinements);
     }
 
     @ParameterizedTest(name = "{0} takes value of any type, unset included")

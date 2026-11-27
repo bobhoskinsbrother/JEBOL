@@ -25,7 +25,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
 import java.util.OptionalLong;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,27 +93,27 @@ class WhatEachRemainingNativeDeclaresTest {
     Stream<Arguments> eachNameAndItsRefinements() {
         GrantedServices granted = new GrantedServices();
         return Stream.of(
-                Arguments.of(new NowNative(granted), "now", Set.of("year", "month", "day",
+                Arguments.of(new NowNative(granted), "now", List.of("year", "month", "day",
                         "time", "zone", "date", "weekday", "yearday", "precise", "utc")),
-                Arguments.of(new AlsoNative(), "also", Set.of()),
-                Arguments.of(new CommentNative(), "comment", Set.of()),
-                Arguments.of(new ToValueNative(), "to-value", Set.of()),
-                Arguments.of(new TraceNative(), "trace", Set.of("back", "function")),
-                Arguments.of(new LoadExtensionNative(), "load-extension", Set.of("dispatch")),
-                Arguments.of(new DoCallbackNative(), "do-callback", Set.of()),
-                Arguments.of(new DoCommandsNative(), "do-commands", Set.of()),
-                Arguments.of(new AccessOsNative(granted), "access-os", Set.of("set")),
+                Arguments.of(new AlsoNative(), "also", List.of()),
+                Arguments.of(new CommentNative(), "comment", List.of()),
+                Arguments.of(new ToValueNative(), "to-value", List.of()),
+                Arguments.of(new TraceNative(), "trace", List.of("back", "function")),
+                Arguments.of(new LoadExtensionNative(), "load-extension", List.of("dispatch")),
+                Arguments.of(new DoCallbackNative(), "do-callback", List.of()),
+                Arguments.of(new DoCommandsNative(), "do-commands", List.of()),
+                Arguments.of(new AccessOsNative(granted), "access-os", List.of("set")),
                 Arguments.of(new RandomAction(new Encodings(new JvmDigests()), new JvmDigests()), "random",
-                        Set.of("seed", "secure", "only")));
+                        List.of("seed", "secure", "only")));
     }
 
     @ParameterizedTest(name = "{1} declares {2}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to the name boot/natives.reb or boot/actions.reb gives it, with the refinements it declares")
     void answersToItsNameWithItsRefinements(DefaultNative definition, String name,
-                                            Set<String> refinements) {
+                                            List<String> refinements) {
         assertThat(definition.nativeName()).isEqualTo(name);
-        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
+        assertThat(definition.refinementsDeclaredApart()).containsExactlyInAnyOrderElementsOf(refinements);
     }
 
     @Nested
