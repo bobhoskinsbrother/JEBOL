@@ -1018,10 +1018,29 @@ goal 21:
    `docs/decisions.md`; they move into a skill the stage runs over the
    change, and a rejection is a failure like any other. Not part of this
    goal's done.
-6. *Later: the CI machine applies its own play* (owner, 2026-11-25) -- a
-   push to jebol-ci's main converges the CI machine between runs, rather
-   than an agent applying the play; the Vault password then lives on the CI
-   machine, which is decided first. Not part of this goal's done.
+6. *CI provisions every environment* (owner, 2026-11-27; next, straight
+   after run 24 is green and every combination of tests it should have run
+   is checked). Machines change the way code does: jebol-ci and
+   jebol-ci-config are pushed to repositories on the CI machine, and a push
+   queues an `apply` job there that runs jebol-ci's tests, applies the play
+   to the CI machine, the Windows machine and the Mac at the pushed commits,
+   and on success mirrors both to GitHub. Coordination lives on CI; the
+   owner accepts the permissions that needs, kept narrow:
+   - an `apply` user alone holds the Vault password (0400) and the SSH keys
+     to the Windows machine and the Mac; `laminar`, `ben` and the red-run
+     fixer cannot read them;
+   - Laminar reaches it through one sudo rule that runs the apply script as
+     `apply`, with no arguments the caller chooses, so a job or the fixer
+     can queue an apply but run nothing else as `apply`;
+   - only pushed commits are applied, after jebol-ci's tests pass; the job
+     is queued in Laminar, so it never overlaps a test run, and runs in a
+     systemd scope of its own, so restarting Laminar does not end it;
+   - each apply is an archived run naming the commits and machines;
+   - the development machine stays the owner's to apply, and coding-one
+     keeps the guarded manual apply (`bin/refuse-unrecorded-changes`) for
+     bootstrapping and break-glass.
+   Its plan says how the job survives a play that breaks Laminar or SSH,
+   and how a first apply bootstraps the `apply` user from coding-one.
 
 **Done when** the platform-threads run is part of every check-in,
 CLAUDE.md describes the new way, the first real fixer's commit has been
