@@ -65,6 +65,9 @@ abstract class DeviceShards : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val hostServerIdentity: DirectoryProperty
 
+    @get:Internal
+    abstract val hostServerKey: Property<String>
+
     @get:Input
     @get:Optional
     abstract val everyTestOnEachDevice: Property<Boolean>
@@ -84,11 +87,17 @@ abstract class DeviceShards : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val runnerPage: RegularFileProperty
 
+    @get:Input
+    @get:Optional
+    abstract val hostAddresses: MapProperty<String, String>
+
     private val hostServerArguments = mutableMapOf<String, String>()
 
     private companion object {
         const val BATCHES_EACH_DEVICE = 12
         const val MIXING = -0x61c88647
+        const val EMULATORS_HOST = "10.0.2.2"
+        const val HOST_THROUGH_ADB_REVERSE = "localhost"
     }
 
     @TaskAction
@@ -109,7 +118,12 @@ abstract class DeviceShards : DefaultTask() {
             return
         }
         val identity = hostServerIdentity.get().asFile
-        HostServers(File(identity, "emulator-host.pem"), File(identity, "emulator-host-key.pem")).use { servers ->
+        val key = File(hostServerKey.get())
+        if (!key.isFile) {
+            throw GradleException("the host server's key is not at $key: the toolchain role installs it from " +
+                "jebol-ci-config's vault (device_host_private_key), or name another with -PdeviceHostKey=<file>")
+        }
+        HostServers(File(identity, "device-host.pem"), key).use { servers ->
             hostServerArguments["hostPlainPort"] = servers.plainPort.toString()
             hostServerArguments["hostSecurePort"] = servers.securePort.toString()
             runOnDevices()
@@ -122,7 +136,7 @@ abstract class DeviceShards : DefaultTask() {
         folder.listFiles()?.forEach { it.delete() }
         val pool = Executors.newFixedThreadPool(devices.size)
         try {
-            pool.invokeAll(devices.map { serial -> Callable { install(serial) } }).forEach { it.get() }
+            pool.invokeAll(devices.map { serial -> Callable { install(serial); reachHost(serial) } }).forEach { it.get() }
             if (everyTestOnEachDevice.getOrElse(false)) {
                 val shards = pool.invokeAll(devices.mapIndexed { index, serial ->
                     Callable { runEveryTest(serial, index) }
@@ -139,7 +153,41 @@ abstract class DeviceShards : DefaultTask() {
             shards.forEach { it.writeXmlInto(folder) }
             report(shards, queue.size)
         } finally {
+            devices.forEach(::releaseHost)
             pool.shutdownNow()
+        }
+    }
+
+    private fun hostPorts(): List<String> = hostServerArguments.filterKeys { it.endsWith("Port") }.values.toList()
+
+    private fun isReachedThroughAdbReverse(serial: String): Boolean =
+        !hostAddresses.getOrElse(emptyMap()).containsKey(serial) && !serial.startsWith("emulator-")
+
+    private fun hostAddressFor(serial: String): String = hostAddresses.getOrElse(emptyMap())[serial]
+        ?: if (serial.startsWith("emulator-")) EMULATORS_HOST else HOST_THROUGH_ADB_REVERSE
+
+    private fun argumentsFor(serial: String): Map<String, String> =
+        if (hostServerArguments.isEmpty()) emptyMap() else hostServerArguments + ("hostAddress" to hostAddressFor(serial))
+
+    private fun reachHost(serial: String) {
+        if (!isReachedThroughAdbReverse(serial)) {
+            return
+        }
+        hostPorts().forEach { port -> adbOn(serial, "reverse", "tcp:$port", "tcp:$port") }
+    }
+
+    private fun releaseHost(serial: String) {
+        if (!isReachedThroughAdbReverse(serial) || !isConnected(serial)) {
+            return
+        }
+        hostPorts().forEach { port -> adbOn(serial, "reverse", "--remove", "tcp:$port") }
+    }
+
+    private fun adbOn(serial: String, vararg arguments: String) {
+        val running = ProcessBuilder(listOf(adb.get(), "-s", serial) + arguments).redirectErrorStream(true).start()
+        val said = running.inputStream.bufferedReader().readText()
+        if (running.waitFor() != 0) {
+            throw GradleException("adb ${arguments.joinToString(" ")} on $serial failed: $said")
         }
     }
 
@@ -171,7 +219,7 @@ abstract class DeviceShards : DefaultTask() {
         while (true) {
             val batch = queue.pollFirst() ?: break
             val before = shard.cases.size
-            val exit = runInstrumentation(serial, shard, asked + hostServerArguments + ("class" to batch.joinToString(",")))
+            val exit = runInstrumentation(serial, shard, asked + argumentsFor(serial) + ("class" to batch.joinToString(",")))
             if (!shard.lastRunFinished() && !isConnected(serial)) {
                 shard.forgetCasesAfter(before)
                 shard.forgetLastRun()
@@ -205,7 +253,7 @@ abstract class DeviceShards : DefaultTask() {
 
     private fun runEveryTest(serial: String, index: Int): Shard {
         val shard = Shard(index, serial)
-        runInstrumentation(serial, shard, runnerArguments.get() + hostServerArguments)
+        runInstrumentation(serial, shard, runnerArguments.get() + argumentsFor(serial))
         return shard
     }
 

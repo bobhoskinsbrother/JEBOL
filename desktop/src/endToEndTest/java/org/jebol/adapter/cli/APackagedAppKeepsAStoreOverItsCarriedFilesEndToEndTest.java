@@ -2,9 +2,9 @@ package org.jebol.adapter.cli;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -104,7 +104,7 @@ class APackagedAppKeepsAStoreOverItsCarriedFilesEndToEndTest {
     }
 
     @Test
-    @EnabledOnOs(OS.MAC)
+    @RunsOn(value = TestTarget.DESKTOP_MAC, because = "Application Support is the Mac's own place for an app's data")
     @DisplayName("on macOS the store is in ~/Library/Application Support, where a Mac keeps an app's data")
     void theStoreOnAMacIsInApplicationSupport() throws Exception {
         Finished finished = launch(carried(), scratch.resolve("data"), "start/notes.reb");
@@ -114,7 +114,7 @@ class APackagedAppKeepsAStoreOverItsCarriedFilesEndToEndTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @RunsOn(value = TestTarget.DESKTOP_LINUX, because = "XDG_DATA_HOME and ~/.local/share are Linux's")
     @DisplayName("with no XDG_DATA_HOME, the store is in ~/.local/share")
     void theStoreDefaultsToLocalShare() throws Exception {
         Path carried = carried();

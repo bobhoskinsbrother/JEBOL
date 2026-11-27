@@ -43,7 +43,14 @@ val isOnEmulators = !device.isPresent
 // -PendToEndDevice=<serial>[,<serial>...] runs the end-to-end suite, every test
 // on each, on those devices alone, while the unit and functional suites share
 // every device -Pdevice names: CI names its phones here, and its phones and
-// emulators there (goal 20.6a).
+// emulators there (goal 20.4a).
+val hostAddressesGiven = providers.gradleProperty("hostAddress")
+    .map { given ->
+        given.split(",").map(String::trim).filter(String::isNotEmpty)
+            .associate { it.substringBefore("=") to it.substringAfter("=") }
+    }
+    .orElse(emptyMap())
+
 val endToEndSerials = providers.gradleProperty("endToEndDevice")
     .map { it.split(",").map(String::trim).filter(String::isNotEmpty) }
     .orElse(deviceSerials.map { if (isOnEmulators) it.take(2) else it })
@@ -106,9 +113,12 @@ val unitClasses = classesOf(isUnit)
 val functionalClasses = classesOf { !isUnit(it) && !isEndToEnd(it) }
 val endToEndClasses = classesOf(isEndToEnd)
 
+val requirementsMustBeMet = providers.gradleProperty("requirementsMustBeMet").orElse("false")
+
 fun argumentsFor(classes: Provider<List<String>>, packageFilter: Pair<String, String>) =
     classes.map { named -> mapOf(runnerBuilder, "class" to named.joinToString(",")) }
         .orElse(mapOf(runnerBuilder, packageFilter))
+        .zip(requirementsMustBeMet) { arguments, mustBeMet -> arguments + ("requirementsMustBeMet" to mustBeMet) }
 
 fun isWanted(classes: Provider<List<String>>) = !namedClasses.isPresent || classes.get().isNotEmpty()
 
@@ -184,6 +194,9 @@ val androidEndToEndTests = tasks.register<DeviceShards>("androidEndToEndTests") 
     instrumentation = "org.jebol.android.endtoend/androidx.test.runner.AndroidJUnitRunner"
     runnerArguments = argumentsFor(endToEndClasses, "package" to endToEndPackage)
     hostServerIdentity = layout.projectDirectory.dir("endtoend/host-server")
+    hostServerKey = providers.gradleProperty("deviceHostKey")
+        .orElse(providers.systemProperty("user.home").map { "$it/.config/jebol/device-host-key.pem" })
+    hostAddresses = hostAddressesGiven
     hostSiteApp = layout.projectDirectory.dir("endtoend/host-site")
     webBuild = layout.projectDirectory.dir("../build/generated/teavm/wasm-gc")
     runnerPage = layout.projectDirectory.file("../web/site/runner.html")

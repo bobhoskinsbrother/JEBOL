@@ -1,17 +1,18 @@
 package org.jebol.adapter.host;
 
+import org.jebol.testing.RunsOn;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
+import static org.jebol.testing.TestTarget.DESKTOP_WINDOWS;
 
 class AnAppDeclaresItsIdentityToWindowsTest {
 
     @Test
-    @EnabledOnOs(OS.WINDOWS)
+    @RunsOn(value = DESKTOP_WINDOWS, because = "only Windows has an AppUserModelID to declare")
     @DisplayName("on Windows the process declares the app's identity, so its windows group with the shortcut that carries it")
     void declaresTheProcesssIdentityOnWindows() {
         assertThat(WindowsAppIdentity.declareForProcess("org.jebol.test.identity")).isTrue();
@@ -20,7 +21,7 @@ class AnAppDeclaresItsIdentityToWindowsTest {
     }
 
     @Test
-    @DisabledOnOs(OS.WINDOWS)
+    @RunsOn(value = {DESKTOP_LINUX, DESKTOP_MAC}, because = "it checks that a system without AppUserModelIDs declares nothing")
     @DisplayName("elsewhere there is nothing to declare, and asking does nothing")
     void declaresNothingElsewhere() {
         assertThat(WindowsAppIdentity.declareForProcess("org.jebol.test.identity")).isFalse();

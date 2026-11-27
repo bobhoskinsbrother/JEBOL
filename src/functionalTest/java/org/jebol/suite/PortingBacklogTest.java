@@ -1,6 +1,8 @@
 package org.jebol.suite;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX, because = "it writes its report into the repository's build/, which only the repository has")
 class PortingBacklogTest {
 
     private static final int STILL_TO_PORT = 3;

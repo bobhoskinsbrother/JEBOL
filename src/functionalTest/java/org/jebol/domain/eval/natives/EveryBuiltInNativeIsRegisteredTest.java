@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.jebol.application.AnInterpreter;
@@ -26,6 +28,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+        because = "ArchUnit reads class files, and a device carries dex")
 class EveryBuiltInNativeIsRegisteredTest {
 
     private static final Set<String> THE_BUILT_INS_PACKAGES =

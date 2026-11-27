@@ -9,7 +9,6 @@ import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.awt.*;
 import java.util.List;
@@ -20,12 +19,8 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class DesktopWindowsTest {
 
-    private static final String ONLY_HEADLESS =
-            "java.awt.GraphicsEnvironment#isHeadless";
-
     @Nested
-    @DisplayName("with no screen, which is what a server is")
-    @EnabledIf(value = ONLY_HEADLESS, disabledReason = "this machine has a display")
+    @DisplayName("with no screen, which is what a server is, and what the functional suite's java.awt.headless makes it")
     class Headless {
 
         @Test

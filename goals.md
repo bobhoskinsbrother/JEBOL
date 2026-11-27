@@ -24,107 +24,31 @@ project's level is Java 21; Android draws the one way every platform draws
 has unit, functional and end-to-end suites as the other platforms do, run
 by an `androidTests` gate.
 
-The stages left, in this order, from 2e's Mac and Windows part; 2b, the app, is done (decision 75,
-`docs/android-port.md`), and so are the end-to-end suite's restart in place
-that came after it, 2c, Android's adapters (decision 77), 2c2, the user's own
-files through Android's picker and the dialogs (decision 80), and 2d, touch
-and layout for every screen (decision 79). Touch left for later: selecting text
+The stages left, in this order, from 2e. Touch left for later: selecting text
 by long press, pinch to zoom, and more than one finger. Each is
 planned in full -- what is true today, spec, failing tests, code, docs -- in its own plan commit before work on it
-starts, as 1l was; what follows is each stage's reach, its done-when and the
+starts; what follows is each stage's reach, its done-when and the
 questions its plan has to settle. A defect that would hurt a stage is fixed
 on the JVM before that stage, not on Android after it.
 
-**The suites, from 2a on.** `android/` holds three source sets that match the
-JVM's: `androidUnitTests` (Android's adapters on their own, no interpreter),
-`androidFunctionalTests` (an interpreter on ART with Android's ports, running
-REBOL, Rebol's suite included) and `androidEndToEndTests` (the installed app
-driven from outside, by UI Automator). All three run on the device, because
-ART and Android's own classes are what they test. `androidTests` runs them
-in shards across x86_64 emulators under KVM that `android/emulator.sh` boots
-and stops (decision 73), and archives into `test-history/` as `allTests`
-does. It is not part of `allTests`: it needs the Android SDK, which not every
-machine has. Run it at the close of every Android stage and after any change
-to the core.
+The device suites, and how CI runs them, are in CLAUDE.md and
+`docs/android-port.md`.
 
-#### 2e. An app of one's own: what is left on Windows
+#### 2e. An app of one's own: the portable app on Windows
 
-The owner, 2026-11-18 (decision 78): JEBOL provides a packager, not an app.
-`jebol-devtools`, the example app `examples/an-app-of-ones-own`, the packages
-for the web, Android and Linux with their tests, SQLite on Android and the
-desktop's Java 25 are done (decision 78, "What building 2e settled";
-`using-jebol.md`, "An App of Your Own, on Every Platform"). The Mac's part
-is in goal 21.
+Everything else in 2e is done and checked in every CI run by
+`scripts/app-on-my-windows.ps1` (decision 78); the Mac's part is in goal 21.
 
-`scripts/app-on-my-windows.ps1` runs unattended in every CI run, as the
-Windows job's last stage, and passes (run 8, 2026-11-25): a toast from an
-app registered under `HKEY_CURRENT_USER` alone is shown; the installer
-replaces an earlier install; its Start-menu shortcut, from JEBOL's own
-`windows/os-condition.wxf`, carries `System.AppUserModel.ID`; the installed
-app runs and keeps its store; the portable app runs from its folder.
+**Left: the portable app registers itself.** A packaged app run without
+installing it, from jpackage's app image unzipped anywhere, writes
+`HKEY_CURRENT_USER\Software\Classes\AppUserModelId\<ID>` on first start,
+with its display name, its icon and a COM activator, so a click on a toast
+reaches it even when it is not running (decision 78). It removes that
+registration when the app removes itself, and the plan says how an app that
+is simply deleted leaves nothing harmful behind.
 
-**Left.**
-1. **The running app declares its identity and icon.** Run 8's screenshot
-   shows the Notes window and its taskbar button with JEBOL's own icon, not
-   the app's: the app does not yet call
-   `SetCurrentProcessExplicitAppUserModelID`, so its taskbar button does not
-   group with its shortcut, and its window does not carry the app's icon.
-   The script checks both.
-2. **The portable app registers itself** on first start under
-   `HKEY_CURRENT_USER\Software\Classes\AppUserModelId`, which the script
-   found to serve, with a COM activator, removing it when the app removes
-   itself (the developer's part, below). The script checks the registration
-   and a toast from the portable app.
-
-**Done when** CI's Windows app stage reports the running app's identity and
-icon and the portable app registered and raising a toast; `allTests` and
-`androidTests` pass.
-
-**Why the desktop needs packaging.** Researched on 2026-11-18, with the
-sources in `docs/platform-services-research.md`:
-- macOS's `UNUserNotificationCenter` and CoreLocation need an app bundle
-  with an identifier, and usage strings in its `Info.plist`. A bare process
-  crashes (`bundleProxyForCurrentProcess is nil`) or is refused. The camera's
-  consent falls to whichever signed app launched the process, usually
-  Terminal, and a bundle without `NSCameraUsageDescription` is ended on
-  first use.
-- Windows raises a toast only for an app whose Start-menu shortcut carries
-  its `System.AppUserModel.ID`. jpackage has no option for that property.
-- Linux's GeoClue authorises an app by its desktop ID, through
-  `geoclue.conf` or the desktop's agent, which names the app from its
-  `.desktop` file.
-- jpackage builds a package only on the system it targets. The macOS app is
-  built on the Mac and the Windows one on Windows, each by a script: the
-  Windows one in CI, the Mac's in CI too once it has a Mac (goal 21). The build gains
-  nothing for either (owner, 2026-11-18).
-
-**The developer's part and the framework's** (owner, 2026-11-18). JEBOL is
-the framework other developers build their apps with, and the example app
-shows how. Each platform follows the convention other frameworks use, with
-the sources in `docs/platform-services-research.md`:
-- **Windows.** The developer declares the app's ID once, in `app.reb`, and
-  does nothing more, as with Electron and its installers. The packager's
-  installer puts that ID on the Start-menu shortcut as its
-  `System.AppUserModel.ID`, through a WiX template of JEBOL's own for the
-  fragment jpackage generates. The app declares the same ID to Windows when it starts
-  (`SetCurrentProcessExplicitAppUserModelID`), so its toasts and windows
-  match the shortcut.
-- **Windows, portable** (owner, 2026-11-18: in 2e, not later). A packaged app
-  run without installing it, from jpackage's app image unzipped anywhere,
-  registers its own ID when it first starts. It writes
-  `Software\Classes\AppUserModelId\<ID>` with its display name and icon, as
-  the Windows App SDK and Firefox's portable builds do, and a COM activator,
-  so a click on a toast reaches it even when it is not running. Its toasts
-  then work with no shortcut. It removes that registration when the app
-  removes itself, and the plan says how an app that is simply deleted leaves
-  nothing harmful behind. A bare `java -jar` never registers itself: the
-  command line keeps only what Windows gives an unpackaged program.
-
-**Settled by the owner, 2026-11-18:** the command line (`java -jar`) keeps
-whatever an operating system gives an unpackaged program: on Linux,
-notifications and the camera through V4L2; on Windows, location behind the
-one desktop-apps switch. It refuses, with `no-service` saying a packaged app
-is needed, only where the system will not serve a program it cannot name.
+**Done when** CI's Windows app stage reports the portable app registered and
+raising a toast; `allTests` and `androidTests` pass.
 
 #### 2e2. Services: a script that keeps running when the app is not on screen
 
@@ -181,9 +105,9 @@ macOS and Windows -- and iOS answers the same three when goal 3 arrives.
   can ask for none of the three itself: the Notifications API's permission,
   the Geolocation API and `getUserMedia` are the window's.
 - The Android app asks for no runtime permission today.
-- The desktop calls nothing native. The three need each operating system's
-  own API, through FFM on Java 25, which 2e step 1 moves the desktop to.
-  Nothing is compiled in C, and no native binary is shipped or fetched.
+- The three need each operating system's own API, through FFM on Java 25, as
+  `WindowsAppIdentity` already calls `shell32`. Nothing is compiled in C, and
+  no native binary is shipped or fetched.
 - Each operating system gives the three only to an app it can name, and 2e's
   packager gives an app that name.
 
@@ -235,9 +159,8 @@ macOS and Windows -- and iOS answers the same three when goal 3 arrives.
     `HSTRING`, `RoGetActivationFactory`, calls through a vtable, and
     delegates implemented as COM objects with upcalls (`IUnknown`,
     `IAgileObject`) for events and `IAsyncOperation` completions.
-- **macOS and Windows are checked by the owner's scripts** from 2e step 6,
-  each extended per stage, and their reports are pasted back. The build gains
-  nothing for either.
+- **macOS and Windows are checked in CI** by each machine's app stage,
+  extended per stage: Windows's today, the Mac's from goal 21.
 
 **2f. Notifications.**
 
@@ -269,13 +192,20 @@ action buttons, groups, and the importance a channel gives. 2f does one,
 the plain one with a title and a body, on one channel. The others are left
 for later, and so are their equivalents on the other platforms.
 
-| Platform | Shown by | Asks the user | Click and dismiss | The test's fake |
-| --- | --- | --- | --- | --- |
-| The web | the page, `new Notification` | the page, `Notification.requestPermission`. Firefox wants a click or a key first, so the page shows a bar of its own the user clicks. | `onclick`, `onclose` | a preload script replacing `Notification` with a recorder, plus `permissions.setPermission` over BiDi in Firefox and `Browser.grantPermissions` over CDP in Chrome |
-| Android | `NotificationManager`, with a channel made on first use | `POST_NOTIFICATIONS`, API 33 and up, through the activity | a `PendingIntent` to the activity, and a `deleteIntent` | UI Automator opens the shade, finds it by its text, and clicks or swipes it; `pm revoke` for a refusal |
-| Linux | `org.freedesktop.Notifications.Notify` on the session bus, with the `desktop-entry` hint | nothing: the desktop shows what it is sent | `ActionInvoked` for the `default` action, and `NotificationClosed` with reason 2 | a fake `Notifications` service on a private `dbus-daemon`, written with JEBOL's own D-Bus code |
-| macOS | `UNUserNotificationCenter`, from the packaged `.app` | `requestAuthorizationWithOptions:completionHandler:` | a delegate's `didReceiveNotificationResponse:`, and a category with `customDismissAction` for a dismissal | the owner's Mac script: the Mac shows it, and a person clicks it |
-| Windows | `ToastNotificationManager.CreateToastNotifier`, with the app's AppUserModelID | the first-use prompt | the toast's `Activated` and `Dismissed` events | the owner's Windows script, the same way |
+| Platform | Shown by | Asks the user | Click and dismiss | Faked, in the functional suite | Driven for real, in the end-to-end suite |
+| --- | --- | --- | --- | --- | --- |
+| The web | the page, `new Notification` | the page, `Notification.requestPermission`. Firefox wants a click or a key first, so the page shows a bar of its own the user clicks. | `onclick`, `onclose` | a preload script replacing `Notification` with a recorder, for click and dismiss; `permissions.setPermission` over BiDi in Firefox and `Browser.grantPermissions` over CDP in Chrome | WebDriver clicks the page's own bar; the browser hands the notification to the system, and it is clicked as that system's row says |
+| Android | `NotificationManager`, with a channel made on first use | `POST_NOTIFICATIONS`, API 33 and up, through the activity | a `PendingIntent` to the activity, and a `deleteIntent` | none needed | UI Automator opens the shade and clicks or swipes it; `pm grant` and `pm revoke` for the permission, which `jebol-phone`'s allow-list accepts for `org.jebol.*` alone |
+| Linux | `org.freedesktop.Notifications.Notify` on the session bus, with the `desktop-entry` hint | nothing: the desktop shows what it is sent | `ActionInvoked` for the `default` action, and `NotificationClosed` with reason 2 | a fake `Notifications` service on a private `dbus-daemon`, written with JEBOL's own D-Bus code, for click, dismiss and reasons | `java.awt.Robot` clicks GNOME's banner where GNOME puts it, top centre; the CI machine's session stays X11, which the ci role pins |
+| macOS | `UNUserNotificationCenter`, from the packaged `.app` | `requestAuthorizationWithOptions:completionHandler:` | a delegate's `didReceiveNotificationResponse:`, and a category with `customDismissAction` for a dismissal | none needed | `Robot` presses Allow or Don't Allow and the banner, top right, or its close button; two fixed bundle IDs, one always allowed and one always refused, so the state holds between runs. Needs Accessibility and Screen Recording given once by hand in goal 21's mac role, which fails the run at once without them |
+| Windows | `ToastNotificationManager.CreateToastNotifier`, with the app's AppUserModelID | none, as far as is known; the plan checks | the toast's `Activated` and `Dismissed` events | none needed | `Robot` clicks the toast, bottom right, or its close button; a refusal is the test user's `…\Notifications\Settings\<AUMID>\Enabled=0`; the windows role keeps Focus Assist off |
+
+Clicking stays this small on purpose: each system puts its banner in one
+place, `Robot` clicks there, and the script's `active` or `close` event is
+what proves the click landed. If a fixed place proves unreliable on a
+system, SikuliX is what to reach for, not a searcher written here. 2g and
+2h are driven the same way: their prompts by `Robot` or UI Automator, their
+devices by each platform's own fake.
 
 Steps:
 0. Plan commit: the REBOL, the event types, the refusals, and the order of
@@ -287,7 +217,8 @@ Steps:
 3. Failing tests, then the adapters, one platform at a time: the web,
    Android, Linux with the D-Bus client, macOS, Windows.
 4. The example app gains a notification. End to end: Chrome and Firefox; the
-   emulator; the `.deb` with the fake service; and the owner's two scripts.
+   emulator; the `.deb` with the fake service; and CI's Windows and Mac app
+   stages.
 5. Docs: `using-jebol.md`, and decision 78 with what the plan settled.
 
 **2g. Location.**
@@ -335,8 +266,8 @@ only coarse. Proposed: the coarse position, with `accuracy` saying so and
 | The web | the page: `getCurrentPosition` and `watchPosition` | the browser's prompt, which needs no click first | `emulation.setGeolocationOverride` and `permissions.setPermission` over BiDi in Firefox (139 and up); Chrome's CDP `Emulation.setGeolocationOverride`, or BiDi if Chrome has it by then |
 | Android | `LocationManager.getCurrentLocation` (API 30 and up) and `requestLocationUpdates`, through AOSP's own providers, never Google Play services | `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION` | `adb emu geo fix` on the emulator |
 | Linux | GeoClue2 on the system bus: `GetClient`, then `DesktopId` (the packaged app's), `RequestedAccuracyLevel`, `Start`, and the `LocationUpdated` signal | GeoClue's agent (GNOME Shell's), or `geoclue.conf` | a fake `org.freedesktop.GeoClue2` on a private bus, with `DBUS_SYSTEM_BUS_ADDRESS` pointed at it |
-| macOS | `CLLocationManager` with a delegate, from the packaged `.app` with `NSLocationUsageDescription` | `requestWhenInUseAuthorization` | the owner's Mac script |
-| Windows | `Windows.Devices.Geolocation.Geolocator`, `GetGeopositionAsync` | an unpackaged app shares the one "desktop apps" switch, and 24H2 prompts on first use; `RequestAccessAsync` is for packaged apps and throws outside an app container | the owner's Windows script |
+| macOS | `CLLocationManager` with a delegate, from the packaged `.app` with `NSLocationUsageDescription` | `requestWhenInUseAuthorization` | CI's Mac: `Robot` answers the prompt; the position from `CLLocationManager`'s own simulation, which the plan checks |
+| Windows | `Windows.Devices.Geolocation.Geolocator`, `GetGeopositionAsync` | an unpackaged app shares the one "desktop apps" switch, and 24H2 prompts on first use; `RequestAccessAsync` is for packaged apps and throws outside an app container | CI's Windows machine: `Robot` answers the prompt; the plan finds how the position is faked |
 
 Two things the plan has to answer:
 - **A machine that cannot find itself.** Since Mozilla's location service
@@ -378,8 +309,8 @@ given when the device offers neither.
 | The web | the page: `getUserMedia` | the page draws the newest into an `OffscreenCanvas` and hands the worker its pixels when asked | the browser's prompt | Chrome's `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream`; Firefox's `media.navigator.streams.fake` and `media.navigator.permission.disabled` |
 | Android | Camera2, with no `androidx.camera` dependency | an `ImageReader` in `YUV_420_888`, turned into RGB | `CAMERA` | the emulator's virtual scene (back) and emulated (front) cameras |
 | Linux | V4L2 through FFM: `VIDIOC_QUERYCAP`, `S_FMT`, `REQBUFS`, `mmap`, `QBUF`, `DQBUF`, `STREAMON` | `YUYV` turned into RGB; `MJPEG` through ImageIO, with the standard Huffman tables a camera leaves out put back | nothing: the device file's permissions | a `v4l2loopback` device the test writes frames of a known picture into. `scripts/setup-machine.sh` installs `v4l2loopback-dkms`, which needs `sudo` once. |
-| macOS | `AVCaptureSession` and `AVCaptureVideoDataOutput`, with a sample-buffer delegate, from the packaged `.app` with `NSCameraUsageDescription` | `CVPixelBuffer` in BGRA | `AVCaptureDevice requestAccessForMediaType:completionHandler:` | the owner's Mac script, with the Mac's own camera |
-| Windows | Media Foundation: `MFEnumDeviceSources`, `IMFSourceReader` and a synchronous `ReadSample` | RGB32, through the reader's own video processing | the one "desktop apps" camera switch | the owner's Windows script |
+| macOS | `AVCaptureSession` and `AVCaptureVideoDataOutput`, with a sample-buffer delegate, from the packaged `.app` with `NSCameraUsageDescription` | `CVPixelBuffer` in BGRA | `AVCaptureDevice requestAccessForMediaType:completionHandler:` | CI's Mac, which has no camera: `Robot` answers the prompt, and the plan finds a virtual camera |
+| Windows | Media Foundation: `MFEnumDeviceSources`, `IMFSourceReader` and a synchronous `ReadSample` | RGB32, through the reader's own video processing | the one "desktop apps" camera switch | CI's Windows machine, which has no camera: a virtual camera, such as OBS's, which the windows role installs |
 
 The plan has to answer:
 - what the fake pictures are, so a test checks pixels rather than only a
@@ -398,8 +329,8 @@ since every Linux test stands on it.
   the packaged example app;
 - the refusals are the same on every platform, with a test of each;
 - `using-jebol.md` says what a script may reach on each platform;
-- `allTests` and `androidTests` pass, and the owner's macOS and Windows
-  scripts report it working.
+- `allTests` and `androidTests` pass, and CI's Windows and Mac app stages
+  report it working.
 
 The research behind 2e to 2h, with every source and how far each can be
 trusted, is `docs/platform-services-research.md`. Each plan re-checks there
@@ -1061,6 +992,26 @@ goal 21:
    the suite names only these. First a test per target that it holds
    exactly the classes it should and refuses the wrong system; then the
    build; then CLAUDE.md and CI.
+
+   *Where a test runs is said one way, on the test* (owner, 2026-11-27):
+   `@RunsOn(value = {...}, because = "...")`, with `TestTarget`'s
+   constants naming the targets above one for one -- `DESKTOP_LINUX`,
+   `DESKTOP_MAC`, `DESKTOP_WINDOWS`, `WEB_LINUX`, `WEB_MAC`, `WEB_WINDOWS`,
+   `ANDROID`, `IOS`. A test with none runs in every target its source set
+   feeds; `because` is required. On a class, a nested class or a method,
+   the innermost wins. A test for another target is left out of the run
+   before it starts, by a `PostDiscoveryFilter` on the JVM and on ART, so a
+   run's results hold only what that target runs and a skip is a real one.
+   Each run names its target (`jebol.target`, which the build sets, and the
+   test APK's own); a run naming none, or another system's, is refused.
+   It replaces every other way: `@EnabledOnOs`, `@DisabledOnOs`, the
+   `assumeTrue` on X11, `@EnabledIf("rebolsOwnSourceIsHere")` (the
+   repository checks run on `DESKTOP_LINUX` alone), `NotOnADevice` and both
+   `not-on-a-device` lists (Rebol's suite entries become a Java table keyed
+   by the same constants). A unit test fails on any of those returning.
+   What a device must have is `requires`, a typed `Needs` the platform
+   answers; a test expecting each system's own answer uses `expected(...)`.
+   Both are built; CLAUDE.md, "Where a test runs".
 5. *Later: an architecture review in CI* (owner, 2026-11-24) -- further
    stages that review a change's design and can reject a build that every
    test passed. The rules already exist, in CLAUDE.md and

@@ -335,10 +335,42 @@ takes the core through `includeBuild("..")`, and the root build takes
 JetBrains' Android plugin to read them. A Mac gets its SDK from
 `scripts/setup-machine.sh` too, and `scripts/check-android-build.sh` proves a
 machine with one class on one emulator. The app on a phone of one's own is
-`scripts/android-on-my-phone.sh` (decision 75). Tests that cannot run on a
-device by their nature are listed with why in
-`android/app/src/androidTest/resources/not-on-a-device.txt`, and Rebol's suite
-entries in `not-on-a-device-in-rebols-suite.txt` beside it (decision 73).
+`scripts/android-on-my-phone.sh` (decision 75). A test that cannot run on a
+device says so with `@RunsOn`, below, and Rebol's suite entries a device
+withholds are in `WhereRebolsSuiteEntriesRun`, each with why.
+
+**Where a test runs is said one way: `@RunsOn` on the test.**
+`@RunsOn(value = {DESKTOP_LINUX, DESKTOP_MAC}, because = "...")` names the
+targets that run it, from `TestTarget`: `DESKTOP_LINUX`, `DESKTOP_MAC`,
+`DESKTOP_WINDOWS`, `WEB_LINUX`, `WEB_MAC`, `WEB_WINDOWS`, `ANDROID`, `IOS`,
+one for each of goal 20.4c's targets. A test with none runs wherever its
+source set runs. It goes on a class, a nested class or a method, and the
+innermost wins; `because` is required. A test for another target is left
+out of the run before it starts, by `RunsOnFilter`, so it is not reported
+as skipped. Each run names its target: the build sets `jebol.target`
+(`WEB_<system>` for `web/`, `DESKTOP_<system>` for everything else), and the
+test APK carries `ANDROID`; a run naming none, or another system's, is
+refused. They live in `test-targets/`, a jar with nothing of JEBOL's in it,
+which the core's test fixtures and Android's end-to-end APK both carry.
+
+**What a device must have is `requires`, typed.**
+`@RunsOn(value = ANDROID, requires = Needs.CHROME_WITH_EXNREF, because = "...")`
+names a `Needs` constant, which carries its own reason, and the platform's
+`RequirementCheck` answers it (on a device, `WhatThisDeviceHas`). A device that
+falls short leaves the test out, saying what it needs and what it has; a run
+given `-PrequirementsMustBeMet=true`, as CI's is, stops instead. A requirement
+nothing answers stops the run.
+
+**A test that runs on several systems and expects each one's own answer says
+so with `expected(...)`**, never with a branch:
+`assertThat(pid).isEqualTo(expected(on(DESKTOP_WINDOWS, "4"), elsewhere("1")))`.
+It picks the answer for this run's target, and fails if no answer covers it or
+a target is given two.
+
+Never use `@EnabledOnOs`, `@DisabledOnOs`, `@EnabledIf`, any `assume…`, a
+branch on the system (`File.separatorChar ==`, `os.name`, `Build.HARDWARE`) in
+a test, or a list in a file: `WhereATestRunsIsSaidOneWayTest` fails on any of
+them. A check of the repository itself runs on `DESKTOP_LINUX` alone.
 
 A fourth source set, `src/networkTest`, holds the one gate that reaches out:
 `./gradlew networkTests` runs the twelve suite assertions named in

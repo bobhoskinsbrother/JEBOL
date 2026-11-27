@@ -99,7 +99,7 @@ dependencies {
 
 // jqwik's engine cannot run on ART (it reads generics through
 // Class.getAnnotatedSuperclass), so the test APK carries none; the core's test
-// fixtures would otherwise bring it in. not-on-a-device.txt says the same.
+// fixtures would otherwise bring it in.
 configurations.configureEach {
     if (name.endsWith("AndroidTestRuntimeClasspath")) {
         exclude(group = "net.jqwik")

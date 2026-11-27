@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.Bounds;
 import org.jebol.adapter.host.FileSystemPort;
@@ -27,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(LetsGoOfHeldFiles.class)
@@ -174,13 +178,17 @@ class WhatEachPortNativeDeclaresTest {
 
     @Test
     @DisplayName("a program that is not there is refused with call-fail, naming the system's reason")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)")
     void refusesAProgramThatIsNotThere(@TempDir Path directory) throws IOException {
+        String systemsReason = expected(
+                on(TestTarget.DESKTOP_WINDOWS, "The system cannot find the file specified."),
+                elsewhere("No such file or directory"));
+
         assertThat(answerBesideAFileAndADirectory(directory, """
                 e: try [call/wait {surely-no-such-program-here}] reduce [e/id e/arg1 e/arg2]"""))
                 .isEqualTo("""
-                        [call-fail "REASON" _]""".replace("REASON", File.separatorChar == '\\'
-                        ? "The system cannot find the file specified."
-                        : "No such file or directory"));
+                        [call-fail "%s" _]""".formatted(systemsReason));
     }
 
     @ParameterizedTest(name = "change-dir {0} is cannot-open with {1}")

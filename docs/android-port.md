@@ -26,9 +26,9 @@ on ART in shards, and archives the results into
 | An app of one's own | `examples/an-app-of-ones-own`, packaged by `jebol-devtools` in the end-to-end suite and installed beside JEBOL's own app; `androidPackagingTests` runs the plugin's Android packaging tests through the core build |
 | The device suites | `androidUnitTests` and `androidFunctionalTests` are the app's `androidTest`, told apart by package (`org.jebol.android.unit` against the rest); `androidEndToEndTests` is `android/endtoend`, a self-instrumenting `com.android.test` APK that drives the installed app with UI Automator. All run under Jupiter (android-junit5); `TheAndroidPlatform` is the `PlatformUnderTest` the core's tests find through `ServiceLoader` on a device |
 | The emulators | `android/emulator.sh` creates a Pixel Tablet AVD (1280 by 800 dp) from the API 35 image and a Pixel 7 phone AVD (412 by 915 dp) from the API 37 image, for the machine's processor, boots N read-only instances with no window, the phone second, and waits for `sys.boot_completed`; two by default |
-| The shards | `androidUnitTests` and `androidFunctionalTests` each install both APKs on every device and run `am instrument -r` with `numShards`/`shardIndex` on all at once, writing `TEST-shard-i.xml`; `androidEndToEndTests` runs every test on each device (`DeviceShards.everyTestOnEachDevice`). Classes named by `-Pclasses` are dealt out whole, one device's share each, with no `numShards`: given a class and a shard, the runner splits the class's tests, and a device whose share of a class is no test at all reports it as `initializationError: No test methods found` |
-| A phone | `-Pdevice=<serial>,<serial>` runs the suites on phones over USB, sharded across them, and starts no emulator; `scripts/android-on-my-phone.sh` installs the app, measures it and writes `build/phone-timings.txt` |
-| What a device cannot run | `not-on-a-device.txt` (the core's tests, by class or method) and `not-on-a-device-in-rebols-suite.txt` (Rebol's, by file, group or test), each entry with why |
+| The shards | `androidUnitTests` and `androidFunctionalTests` install the APKs on every device, list the top-level classes once, deal them into about twelve batches a device, and each device takes the next batch from one queue as it comes free (`DeviceShards`, below); each device writes `TEST-shard-i.xml`. `androidEndToEndTests` runs every test on each of its devices (`DeviceShards.everyTestOnEachDevice`). Classes named by `-Pclasses` are dealt the same way, without the listing |
+| A phone | `-Pdevice=<serial>,<serial>` runs the suites on those devices, phones over USB or emulators already running, and starts no emulator; `-PendToEndDevice=<serial>,<serial>` keeps the end-to-end suite on those alone. `scripts/android-on-my-phone.sh` installs the app, measures it and writes `build/phone-timings.txt` |
+| What a device cannot run | `@RunsOn` without `ANDROID` on the test, with its `because` (CLAUDE.md, "Where a test runs"), and `WhereRebolsSuiteEntriesRun` for Rebol's suite, by file, group or test; the test APK names its target in the resource `jebol-target` |
 | The API check | `scripts/AndroidApiGaps.java`, run by `./gradlew checkCoreForAndroid` with `--fail-on-gaps` over the core's jar |
 | The SDK | `scripts/setup-machine.sh` installs it in `~/Android/Sdk` on Ubuntu and `~/Library/Android/sdk` on a Mac; the root build finds it there, or by `ANDROID_HOME`, and takes `android/` in (decision 73). Checked on Ubuntu only: the Mac's branch and `scripts/check-android-build.sh` there were left unrun when goal 2b closed (owner, 2026-11-17) |
 
@@ -49,7 +49,7 @@ Against the JVM's 26,902 the difference is all named:
 | Cases | Why they do not run on a device |
 | --- | --- |
 | 1,139 | `EvaluationCorpusTest` reads `corpus/`, which only the repository has |
-| 25 | Rebol's suite withholds what `not-on-a-device-in-rebols-suite.txt` names: programs, creation times, the launcher |
+| 25 | Rebol's suite withholds what `WhereRebolsSuiteEntriesRun` names for `ANDROID`: programs, creation times, the launcher |
 | 21 | `WhatEachRemainingNativeDeclaresTest$AccessOs` compares with `ProcessHandle`, which Android lacks |
 | 13 | `ReadingHttpFromALocalServerFromTheSourceTest` and `TheThruCacheFunctionsFromTheSourceTest` serve from the JDK's `com.sun.net.httpserver` |
 | 1 | `ScreenAndGobTreeAgreeProperties`: jqwik's engine reads generics through `Class.getAnnotatedSuperclass`, which ART lacks |
@@ -76,9 +76,11 @@ is asked for to the class that holds it, so a batch that named nested classes
 ran their holder once for each: run 19 ran 70,552 cases for 25,985 tests, in
 271 minutes. Marathon was meant to do this and
 cannot: it lists a JUnit 5 test by its display name, which the runner cannot
-select (jebol-ci's plan, step 4). CI adds the Windows machine's emulators to
-the phones for the unit and functional suites, with `-PendToEndDevice`
-keeping the end-to-end suite on the phones. Three emulators ran the same
+select (jebol-ci's plan, step 4). CI runs the unit and functional suites on
+the phones and the CI machine's two emulators, with `-PendToEndDevice`
+keeping the end-to-end suite on the phones; the Windows machine's emulators
+were left out on 2026-11-27, and come back only if runs prove the device
+stage the bottleneck (goal 20.4a). Three emulators ran the same
 suite in 63 minutes on 2026-11-15, and four do not fit beside the IDE: each
 holds about 3.6 GB beyond what Android is given. On a machine running
 IntelliJ, two leave room; `-Pemulators=N` sets how many.
@@ -243,8 +245,10 @@ tablet the Chrome test skips itself, saying so. The
 unit and functional suites shard across both as before, and the end-to-end
 suite runs every test on each (`DeviceShards.everyTestOnEachDevice`), so the
 examples are driven at both sizes. `TheSiteInChromeEndToEndTest` opens the
-shipped site in the image's own Chrome, served from the host by `HostSite`
-at 10.0.2.2, with Chrome's first-run screens passed by its command-line file
+shipped site in the device's own Chrome, served from the host by `HostSite`
+at the address the run gives the device as `hostAddress` -- `10.0.2.2` from
+an emulator, `localhost` through `adb reverse` from a phone, or what
+`-PhostAddress=<serial>=<address>` names -- with Chrome's first-run screens passed by its command-line file
 and gesture navigation switched on, and a swipe from the screen's left edge
 moves the site's history. The site's app moves to its second place on a tap,
 never as it loads: Chrome's back skips a history entry a page pushed without

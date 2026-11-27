@@ -6,14 +6,12 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.tls.LocalTlsServer;
 import org.jebol.tls.LocalTlsServer.Identity;
+import org.jebol.testing.RunsOn;
 import org.jebol.tls.TestCertificates;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -29,6 +27,11 @@ import java.time.ZoneOffset;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.TestTarget.ANDROID;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
+import static org.jebol.testing.TestTarget.DESKTOP_WINDOWS;
+import static org.jebol.testing.TestTarget.IOS;
 
 @Timeout(120)
 class AFetchedModuleIsCheckedAgainstItsDigestFromTheSourceTest {
@@ -400,7 +403,7 @@ class AFetchedModuleIsCheckedAgainstItsDigestFromTheSourceTest {
     }
 
     @Nested
-    @EnabledOnOs(OS.WINDOWS)
+    @RunsOn(value = DESKTOP_WINDOWS, because = "R3's library asks for a Windows extension without .gz")
     @DisplayName("on Windows a compiled extension, which R3's library asks for without .gz")
     class PlainOnWindows {
 
@@ -449,7 +452,8 @@ class AFetchedModuleIsCheckedAgainstItsDigestFromTheSourceTest {
     }
 
     @Nested
-    @DisabledOnOs(OS.WINDOWS)
+    @RunsOn(value = {DESKTOP_LINUX, DESKTOP_MAC, ANDROID, IOS},
+            because = "R3's library asks for every extension but Windows' gzipped")
     @DisplayName("everywhere but Windows a compiled extension, which is served gzipped")
     class Gzipped {
 

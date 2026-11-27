@@ -21,10 +21,6 @@ public interface PlatformUnderTest {
 
     HostNames hostNames();
 
-    default List<String> suiteEntriesItCannotRun() {
-        return List.of();
-    }
-
     default int timeLimitFactor() {
         return 1;
     }

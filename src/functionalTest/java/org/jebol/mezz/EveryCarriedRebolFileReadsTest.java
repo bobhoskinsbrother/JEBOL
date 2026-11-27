@@ -1,6 +1,8 @@
 package org.jebol.mezz;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.TranscodeResult;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +21,8 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX,
+        because = "it reads every REBOL file in the repository, rebol3-source/, examples/ and scripts/ among them")
 class EveryCarriedRebolFileReadsTest {
 
     private static final List<Path> ROOTS = List.of(

@@ -35,6 +35,8 @@ configurations.named("implementation") {
 
 val core = project(":")
 
+nameTestTarget()
+
 dependencies {
     "compileOnly"(core)
 }

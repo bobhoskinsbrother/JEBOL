@@ -27,6 +27,7 @@ includeBuild("..") {
     dependencySubstitution {
         substitute(module("org.jebol:jebol")).using(project(":"))
         substitute(module("org.jebol:sqlite")).using(project(":extensions:sqlite"))
+        substitute(module("org.jebol:test-targets")).using(project(":test-targets"))
     }
 }
 

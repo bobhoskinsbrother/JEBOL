@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Bounds;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
@@ -21,13 +23,15 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.File;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WhatEachRemainingNativeDeclaresTest {
@@ -273,6 +277,8 @@ class WhatEachRemainingNativeDeclaresTest {
 
     @Nested
     @DisplayName("access-os asks the host who the process runs as")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it compares the process number with ProcessHandle, which Android does not have")
     class AccessOs {
 
         @ParameterizedTest(name = "access-os ''{0} is {1}")
@@ -318,10 +324,11 @@ class WhatEachRemainingNativeDeclaresTest {
         }
 
         @Test
-        @DisplayName("ending a process the operator may not signal is permission-denied, naming nothing")
+        @DisplayName("ending the system's own process, 4 on Windows and 1 elsewhere, is permission-denied, naming nothing")
         void permissionDeniedNamesNothing() {
-            assertThat(errorArgumentsWithProcesses("access-os/set 'pid "
-                    + (File.separatorChar == '\\' ? 4 : 1)))
+            String systemsOwn = expected(on(TestTarget.DESKTOP_WINDOWS, "4"), elsewhere("1"));
+
+            assertThat(errorArgumentsWithProcesses("access-os/set 'pid " + systemsOwn))
                     .isEqualTo("[permission-denied _ _ _]");
         }
     }

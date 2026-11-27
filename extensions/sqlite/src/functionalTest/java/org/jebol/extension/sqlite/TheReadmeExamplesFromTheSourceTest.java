@@ -1,5 +1,7 @@
 package org.jebol.extension.sqlite;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +16,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX, because = "it reads extensions/sqlite/README.md, which only the repository has")
 class TheReadmeExamplesFromTheSourceTest {
 
     private static final Pattern REBOL_BLOCK = Pattern.compile("```rebol\n(.*?)```", Pattern.DOTALL);

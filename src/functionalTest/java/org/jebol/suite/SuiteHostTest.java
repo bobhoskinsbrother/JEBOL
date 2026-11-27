@@ -1,6 +1,8 @@
 package org.jebol.suite;
 
 import org.jebol.application.Interpreter;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +39,8 @@ class SuiteHostTest {
 
     @Test
     @DisplayName("a process can be started, rather than refused")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)")
     void aprocessCanBeStarted() {
         assertThat(readTheErrorIdFrom("call/shell/wait \"exit 0\""))
                 .as("evaluation-test and module-test shell out; 'no way to start "

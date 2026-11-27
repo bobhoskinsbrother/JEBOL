@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.FileSystemPort;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +42,8 @@ class QueryingAFilesDatesFromTheSourceTest {
 
     @Test
     @DisplayName("an append moves modified on and leaves created where it was, as file-test asserts")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "Android's file system keeps no creation time, so created moves on with modified")
     void anAppendMovesOnlyModified() {
         assertThat(answerTo("""
                 write %dates "test"

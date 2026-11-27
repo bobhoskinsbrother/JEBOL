@@ -2,13 +2,13 @@ package org.jebol.application;
 
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +22,9 @@ import java.util.Set;
 
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 @ExtendWith(LetsGoOfHeldFiles.class)
 class TheRebolBugsTranscriptFromTheSourceTest {
@@ -142,21 +145,18 @@ class TheRebolBugsTranscriptFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("every probe that is not a deliberate difference answers what a real 3.22.5 answers")
+    @DisplayName("every probe that is not a deliberate difference answers what a real 3.22.5 answers on this system")
     void agreesWithRebolOutsideTheDeliberateLines() {
+        Map<String, String> answeredOtherwiseByR3 = expected(
+                on(TestTarget.DESKTOP_WINDOWS, ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS),
+                elsewhere(Map.of()));
         List<String> disagreeing = rebol.keySet().stream()
                 .filter(label -> !DELIBERATE.containsKey(label))
-                .filter(label -> !answerOnThisSystem(label).equals(jebol.get(label)))
-                .map(label -> label + SEPARATOR + "R3 " + answerOnThisSystem(label) + SEPARATOR + "JEBOL " + jebol.get(label))
+                .filter(label -> !answeredOtherwiseByR3.getOrDefault(label, rebol.get(label)).equals(jebol.get(label)))
+                .map(label -> label + SEPARATOR + "R3 " + answeredOtherwiseByR3.getOrDefault(label, rebol.get(label))
+                        + SEPARATOR + "JEBOL " + jebol.get(label))
                 .toList();
         assertThat(disagreeing).isEmpty();
-    }
-
-    private static String answerOnThisSystem(String label) {
-        boolean onWindows = File.separatorChar == '\\';
-        return onWindows && ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS.containsKey(label)
-                ? ANSWERED_OTHERWISE_BY_R3_ON_WINDOWS.get(label)
-                : rebol.get(label);
     }
 
     @Test

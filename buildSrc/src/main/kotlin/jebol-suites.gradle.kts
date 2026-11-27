@@ -22,6 +22,8 @@ val testLibraries = listOf(
 
 val core = rootProject
 
+nameTestTarget()
+
 dependencies {
     testLibraries.forEach { "testFixturesImplementation"(it) }
     if (project != core) {
@@ -30,7 +32,7 @@ dependencies {
     testSuites.forEach { suite ->
         add(suite.implementationConfigurationName, testFixtures(project))
         testLibraries.forEach { add(suite.implementationConfigurationName, it) }
-        add(suite.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+        add(suite.implementationConfigurationName, "org.junit.platform:junit-platform-launcher")
     }
 }
 

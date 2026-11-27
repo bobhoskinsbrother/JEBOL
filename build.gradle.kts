@@ -84,6 +84,7 @@ val functionalTest = sourceSets["functionalTest"]
 // they find through ServiceLoader as a PlatformUnderTest. On the JVM that is
 // the desktop's; on a phone, Android's.
 dependencies {
+    "testFixturesApi"(project(":test-targets"))
     listOf("unitTest", "functionalTest", "endToEndTest", "networkTest").forEach { suite ->
         add(sourceSets[suite].runtimeOnlyConfigurationName, testFixtures(project(":desktop")))
     }
@@ -98,6 +99,13 @@ val unitTests = tasks.named<Test>("unitTests") {
     }
     readsAlsoFrom("the editor grammar", fileTree("editors"))
     readsAlsoFrom("the shipped examples", fileTree("examples"))
+    readsAlsoFrom(
+        "every test source, Android's included, for where each test runs",
+        fileTree(".") {
+            include("**/src/*Test/**", "**/src/testFixtures/**", "android/endtoend/src/**")
+            exclude("**/build/**", "**/.gradle/**", ".claude/**", "rebol3-source/**")
+        },
+    )
 }
 
 val functionalTests = tasks.named<Test>("functionalTests") {

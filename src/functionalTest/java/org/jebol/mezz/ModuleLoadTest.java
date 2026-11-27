@@ -1,5 +1,7 @@
 package org.jebol.mezz;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +13,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX, because = "it reads Rebol's modules from rebol3-source/, which only the repository has")
 class ModuleLoadTest {
 
     private static final Path SOURCE = Path.of("rebol3-source", "src", "modules");

@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.ProcessEnvironment;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
@@ -123,6 +125,8 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("a program started afterwards inherits what was set")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it starts a program, and an Android app runs none: CALL refuses as a page's does (decision 77)")
     void passesItToAStartedProgram() {
         Interpreter interpreter = Interpreter.createOn(
                 AnInterpreter.standardPorts()

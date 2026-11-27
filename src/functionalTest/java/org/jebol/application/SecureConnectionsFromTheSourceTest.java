@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.domain.host.CertificateAuthority;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.SecureTransport;
@@ -221,6 +223,8 @@ class SecureConnectionsFromTheSourceTest {
 
         @Test
         @DisplayName("ends the handshake saying the chain is broken when the server sends its certificates out of order")
+        @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+                because = "its server must send a chain out of order, and Android's TLS (BoringSSL) refuses to serve one")
         void endsSayingTheChainIsBroken() throws Exception {
             endsSayingWhy("test-intermediate localhost-rsa", "localhost",
                     "the certificate chain for localhost is broken");

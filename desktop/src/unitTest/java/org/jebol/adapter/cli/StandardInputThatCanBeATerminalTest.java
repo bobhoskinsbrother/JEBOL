@@ -1,17 +1,18 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.testing.RunsOn;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
 
-@DisabledOnOs(value = OS.WINDOWS, disabledReason = "Windows asks its console, not a device file")
+@RunsOn(value = {DESKTOP_LINUX, DESKTOP_MAC}, because = "Windows asks its console, not a device file")
 class StandardInputThatCanBeATerminalTest {
 
     private static final Path NOTHING = Path.of("/dev/null");

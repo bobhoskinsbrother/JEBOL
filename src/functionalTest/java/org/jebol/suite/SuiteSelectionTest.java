@@ -1,8 +1,9 @@
 package org.jebol.suite;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -18,14 +19,12 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX,
+        because = "it compares the vendored suite with rebol3-source/, which only the repository has")
 class SuiteSelectionTest {
 
     private static final Path VENDORED = Path.of("src", "testFixtures", "resources", "rebol-suite");
     private static final Path REBOL_TESTS = Path.of("rebol3-source", "src", "tests");
-
-    static boolean rebolsOwnSourceIsHere() {
-        return Files.exists(REBOL_TESTS.resolve("run-tests.r3"));
-    }
 
     private static Set<String> listWhatRebolRuns() {
         try {
@@ -75,7 +74,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every file Rebol runs is either vendored here or written down as left out")
     void accountsForEveryFile() {
         Set<String> unaccounted = new TreeSet<>(listWhatRebolRuns());
@@ -92,7 +90,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("nothing is written down as left out and vendored at the same time")
     void neverBothLeavesOutAndVendors() {
         Set<String> both = new TreeSet<>(deliberatelyLeftOut());
@@ -105,7 +102,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("nothing is left out that Rebol does not run either")
     void leavesOutNothingThatIsNotThere() {
         Set<String> phantom = new TreeSet<>(deliberatelyLeftOut());
@@ -234,7 +230,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every vendored file is the upstream file, byte for byte, unless it is registered as edited here")
     void keepsEveryVendoredFileUnchanged() {
         List<String> altered = listWhatIsVendoredHere().stream()
@@ -253,7 +248,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every file registered as edited here is vendored, and really differs from upstream")
     void registersOnlyRealEdits() {
         List<String> stale = editedHere().stream()
@@ -272,7 +266,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("a file edited here keeps every assertion upstream has: its text, group, test and number")
     void editsKeepEveryAssertionInPlace() {
         List<String> drifted = editedHere().stream()
@@ -335,7 +328,6 @@ class SuiteSelectionTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every bundled module is Rebol's own module")
     void keepsEveryBundledModuleUnchanged() {
         Path upstream = Path.of("rebol3-source", "src", "modules");

@@ -14,6 +14,13 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
+import static org.jebol.testing.TestTarget.ANDROID;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
+import static org.jebol.testing.TestTarget.DESKTOP_WINDOWS;
 
 class InterpreterStateFromTheSourceTest {
 
@@ -371,25 +378,24 @@ class InterpreterStateFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and it agrees with what the JVM was told it is running on")
-        void agreesWithTheJvm() {
-            String reported = System.getProperty("os.name", "");
-            String expected = reported.startsWith("Windows") ? "Windows"
-                    : reported.startsWith("Mac") ? "macOS"
-                    : reported.startsWith("Linux") ? "Linux"
-                    : reported;
-            assertThat(answerTo("system/platform")).isEqualTo(expected);
+        @DisplayName("and it is the system this runs on: Windows, macOS, or Linux, which Android's runtime says it is too")
+        void isTheSystemThisRunsOn() {
+            assertThat(answerTo("system/platform")).isEqualTo(expected(
+                    on(DESKTOP_WINDOWS, "Windows"),
+                    on(DESKTOP_MAC, "macOS"),
+                    on(DESKTOP_LINUX, ANDROID, "Linux")));
         }
 
         @Test
-        @DisplayName("so the library's Windows branches take the right arm here")
-        void thelibraryBranchesTheRightWay() {
-            boolean onWindows = System.getProperty("os.name", "").startsWith("Windows");
+        @DisplayName("so the library's Windows branches take the Windows arm on Windows alone, and PATH splits on ; there and : elsewhere")
+        void theLibraryBranchesTheRightWay() {
             assertThat(answerTo("system/platform = 'Windows"))
-                    .isEqualTo(onWindows ? TRUE : "#(false)");
-            assertThat(answerTo("pick \";:\" system/platform = 'Windows"))
+                    .isEqualTo(expected(on(DESKTOP_WINDOWS, TRUE), elsewhere("#(false)")));
+            String pathSeparator = expected(on(DESKTOP_WINDOWS, ";"), elsewhere(":"));
+            assertThat(answerTo("""
+                    #"%s" = pick {;:} system/platform = 'Windows""".formatted(pathSeparator)))
                     .as("sys-start.reb splits PATH on this")
-                    .isEqualTo(onWindows ? "#\";\"" : "#\":\"");
+                    .isEqualTo(TRUE);
         }
     }
 }

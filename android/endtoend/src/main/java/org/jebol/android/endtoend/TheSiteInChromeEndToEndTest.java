@@ -6,12 +6,14 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.ParcelFileDescriptor;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 
+import org.jebol.testing.Needs;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,43 +24,34 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class TheSiteInChromeEndToEndTest {
 
     private static final String CHROME = "com.android.chrome";
-    private static final String EMULATORS_OWN_HARDWARE = "ranchu";
     private static final Duration PATIENCE = Duration.ofSeconds(90);
     private static final int[] STARTING_GREEN = {40, 160, 60};
     private static final int[] SECOND_BLUE = {40, 60, 200};
     private static final int SAMPLE_STEP = 16;
-    private static final int FIRST_CHROME_WITH_EXNREF = 137;
-    private static final Pattern VERSION_NAME = Pattern.compile("versionName=(\\d+)\\.");
     private static final String CHROMES_FLAGS = "_ --disable-fre --no-default-browser-check --no-first-run\n";
 
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final UiDevice device = UiDevice.getInstance(instrumentation);
 
     @Test
+    @RunsOn(value = TestTarget.ANDROID, requires = Needs.CHROME_WITH_EXNREF,
+            because = "it opens the shipped web build in the device's own Chrome")
     @DisplayName("Chrome on the device opens the shipped site, and a swipe from the screen's edge moves the site's history")
     void aSwipeFromTheEdgeMovesTheSitesHistory() {
-        String port = InstrumentationRegistry.getArguments().getString("hostSitePort");
-        assumeTrue(Build.HARDWARE.equals(EMULATORS_OWN_HARDWARE), "10.0.2.2 is the host only from an emulator");
-        assumeTrue(port != null, "the run starts the host's site");
-        int chromes = readChromesMajorVersion();
-        assumeTrue(chromes >= FIRST_CHROME_WITH_EXNREF,
-                "this image's Chrome is " + chromes + ", and the web build's WebAssembly needs exnref, from Chrome "
-                        + FIRST_CHROME_WITH_EXNREF);
+        String host = TheHost.address();
+        String port = TheHost.port("hostSitePort");
         shell("pm grant " + CHROME + " android.permission.POST_NOTIFICATIONS");
         shell("cmd overlay enable com.android.internal.systemui.navbar.gestural");
         shell("am set-debug-app --persistent " + CHROME);
         writeThroughTheShell("/data/local/tmp/chrome-command-line", CHROMES_FLAGS);
         shell("am force-stop " + CHROME);
-        Intent opening = new Intent(Intent.ACTION_VIEW, Uri.parse("http://10.0.2.2:" + port + "/"));
+        Intent opening = new Intent(Intent.ACTION_VIEW, Uri.parse("http://" + host + ":" + port + "/"));
         opening.setPackage(CHROME);
         opening.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         instrumentation.getContext().startActivity(opening);
@@ -75,11 +68,6 @@ class TheSiteInChromeEndToEndTest {
         } finally {
             shell("am force-stop " + CHROME);
         }
-    }
-
-    private int readChromesMajorVersion() {
-        Matcher version = VERSION_NAME.matcher(shell("dumpsys package " + CHROME));
-        return version.find() ? Integer.parseInt(version.group(1)) : 0;
     }
 
     private boolean waitUntilShowing(int[] colour) {

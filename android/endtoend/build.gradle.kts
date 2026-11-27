@@ -35,6 +35,7 @@ dependencies {
     implementation(platform("org.junit:junit-bom:5.11.4"))
     implementation("org.junit.jupiter:junit-jupiter-api")
     implementation("org.assertj:assertj-core:3.26.3")
+    implementation("org.jebol:test-targets")
     implementation("androidx.test:runner:1.6.2")
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
     implementation("de.mannodermaus.junit5:android-test-core:2.0.2")

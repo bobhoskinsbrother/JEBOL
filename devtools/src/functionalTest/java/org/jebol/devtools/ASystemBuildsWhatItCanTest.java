@@ -4,13 +4,14 @@ import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
+import org.jebol.testing.RunsOn;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
 
 class ASystemBuildsWhatItCanTest {
 
@@ -18,7 +19,7 @@ class ASystemBuildsWhatItCanTest {
     Path directory;
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @RunsOn(value = DESKTOP_LINUX, because = "jpackage builds for the system it runs on, so this is what Linux builds and refuses")
     @DisplayName("on Linux, packageMac refuses and names the system that builds it")
     void packageMacRefusesOnLinux() {
         BuildResult failed = AnAppBuild.of(ATestApp.smallestIn(directory)).fail("packageMac");
@@ -27,7 +28,7 @@ class ASystemBuildsWhatItCanTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @RunsOn(value = DESKTOP_LINUX, because = "jpackage builds for the system it runs on, so this is what Linux builds and refuses")
     @DisplayName("on Linux, packageWindows refuses and names the system that builds it")
     void packageWindowsRefusesOnLinux() {
         BuildResult failed = AnAppBuild.of(ATestApp.smallestIn(directory)).fail("packageWindows");
@@ -36,7 +37,7 @@ class ASystemBuildsWhatItCanTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @RunsOn(value = DESKTOP_LINUX, because = "jpackage builds for the system it runs on, so this is what Linux builds and refuses")
     @DisplayName("on Linux, packageAll builds the web and the .deb, and neither macOS's nor Windows' package; jebol.skip leaves Android out")
     void packageAllBuildsWhatThisMachineCan() {
         BuildResult made = AnAppBuild.of(ATestApp.smallestIn(directory)).run("packageAll", "-Pjebol.skip=android");
@@ -50,7 +51,7 @@ class ASystemBuildsWhatItCanTest {
     }
 
     @Test
-    @EnabledOnOs(OS.MAC)
+    @RunsOn(value = DESKTOP_MAC, because = "jpackage builds for the system it runs on, so this is what macOS builds and refuses")
     @DisplayName("on macOS, packageDeb refuses and names the system that builds it")
     void packageDebRefusesOnAMac() {
         BuildResult failed = AnAppBuild.of(ATestApp.smallestIn(directory)).fail("packageDeb");
@@ -59,7 +60,7 @@ class ASystemBuildsWhatItCanTest {
     }
 
     @Test
-    @EnabledOnOs(OS.MAC)
+    @RunsOn(value = DESKTOP_MAC, because = "jpackage builds for the system it runs on, so this is what macOS builds and refuses")
     @DisplayName("on macOS, packageWindows refuses and names the system that builds it")
     void packageWindowsRefusesOnAMac() {
         BuildResult failed = AnAppBuild.of(ATestApp.smallestIn(directory)).fail("packageWindows");
@@ -68,7 +69,7 @@ class ASystemBuildsWhatItCanTest {
     }
 
     @Test
-    @EnabledOnOs(OS.MAC)
+    @RunsOn(value = DESKTOP_MAC, because = "jpackage builds for the system it runs on, so this is what macOS builds and refuses")
     @DisplayName("on macOS, packageAll builds the web and the .app, and neither Linux's nor Windows' package; jebol.skip leaves Android out")
     void packageAllBuildsWhatAMacCan() {
         BuildResult made = AnAppBuild.of(ATestApp.smallestIn(directory)).run("packageAll", "-Pjebol.skip=android");

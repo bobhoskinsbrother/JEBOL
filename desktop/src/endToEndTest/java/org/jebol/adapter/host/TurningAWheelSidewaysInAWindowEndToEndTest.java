@@ -5,6 +5,8 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +30,6 @@ import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag("opens-a-real-window")
 @Execution(ExecutionMode.SAME_THREAD)
@@ -145,9 +146,8 @@ class TurningAWheelSidewaysInAWindowEndToEndTest {
 
     @Test
     @DisplayName("on Linux, buttons four and five are a sideways turn: no down, no up, and the history stays")
+    @RunsOn(value = TestTarget.DESKTOP_LINUX, because = "Java numbers a sideways turn as buttons four and five only on X11")
     void onLinuxFourAndFiveAreNothing() {
-        assumeTrue(DesktopSystem.named(System.getProperty("os.name", "")) == DesktopSystem.X11,
-                "Java numbers a sideways turn as buttons four and five only on X11");
         for (int sideways : new int[] {4, 5}) {
             post(button(MouseEvent.MOUSE_PRESSED, sideways));
             post(button(MouseEvent.MOUSE_RELEASED, sideways));
@@ -162,9 +162,8 @@ class TurningAWheelSidewaysInAWindowEndToEndTest {
 
     @Test
     @DisplayName("on Linux, button six is the mouse's back: a down, an up, and a move back")
+    @RunsOn(value = TestTarget.DESKTOP_LINUX, because = "Java numbers the back button six only on X11")
     void onLinuxSixIsBack() {
-        assumeTrue(DesktopSystem.named(System.getProperty("os.name", "")) == DesktopSystem.X11,
-                "Java numbers the back button six only on X11");
         post(button(MouseEvent.MOUSE_PRESSED, 6));
         post(button(MouseEvent.MOUSE_RELEASED, 6));
 

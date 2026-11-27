@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.AnInterpreter;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -79,6 +81,8 @@ class RoomASeriesCannotHaveFromTheSourceTest {
 
     @Test
     @Tag("exhausts-the-heap")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it runs the heap out on purpose, which on a device ends the instrumentation process")
     @DisplayName("a count the host cannot serve is the same failure, not a host exception")
     void aCountTheHostCannotServeIsTheSameFailure() {
         assertThat(failureOf("make string! " + A_COUNT_NO_HEAP_CAN_SERVE))

@@ -3459,9 +3459,11 @@ classes.
   kernel killed Gradle's daemon.
 - **Gradle Managed Devices' own sharding was not used,** for the reason above.
 
-**What Android cannot run is named, with why.** `not-on-a-device.txt` lists
-the core's tests a device cannot run, by class or method, and Rebol's suite
-withholds what `TheAndroidPlatform` names in `not-on-a-device-in-rebols-suite.txt`.
+**What Android cannot run is named, with why.** Amended 2026-11-27 (goal
+20.4c): a test a device cannot run says so with `@RunsOn` and its `because`,
+and Rebol's suite withholds what `WhereRebolsSuiteEntriesRun` names for
+`ANDROID`. The two text files that did this, `not-on-a-device.txt` and its
+twin for Rebol's suite, are gone.
 Withholding a suite test withholds every step of it, its setup included, and
 a step holding several tests is judged by the tests inside it. The causes:
 no programs and no picture codec until 2c; the repository's own folders; a TLS

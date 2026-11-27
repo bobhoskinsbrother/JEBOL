@@ -8,12 +8,12 @@ import org.jebol.application.TheShell;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -22,6 +22,9 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 class AConfinedCommandLineTellsStartItsHomeTest {
 
@@ -66,49 +69,8 @@ class AConfinedCommandLineTellsStartItsHomeTest {
         return interpreter;
     }
 
-    private static String hostWrites(String elsewhere, String onWindows) {
-        return File.separatorChar == '\\' ? onWindows : elsewhere;
-    }
-
     private String answer(Interpreter interpreter, String source) {
         return interpreter.run(source).display();
-    }
-
-    @Test
-    @DisplayName("a machine home outside the root is the root, data is /.rebol/ beside it, and HOME says so")
-    void placesHomeOutsideRootAtRoot() {
-        environment.assign("HOME", outside.toString());
-
-        Interpreter interpreter = startConfined();
-
-        assertThat(answer(interpreter, """
-                reduce [system/options/home  system/options/data  get-env {HOME}]"""))
-                .isEqualTo("""
-                        [%/ %/.rebol/ "HOME"]""".replace("HOME", hostWrites("/", "")));
-    }
-
-    @Test
-    @DisplayName("a machine home inside the root is written beneath it, and data follows")
-    void translatesHomeInsideRoot() throws IOException {
-        Files.createDirectories(root.resolve("u/me"));
-        environment.assign("HOME", root.resolve("u/me").toString());
-
-        Interpreter interpreter = startConfined();
-
-        assertThat(answer(interpreter, """
-                reduce [system/options/home  system/options/data  get-env {HOME}]"""))
-                .isEqualTo("""
-                        [%/u/me/ %/u/me/.rebol/ "HOME"]""".replace("HOME", hostWrites("/u/me", "u:\\me")));
-    }
-
-    @Test
-    @DisplayName("a home exactly at the root is the root")
-    void placesHomeAtRootItself() {
-        environment.assign("HOME", root.toString());
-
-        assertThat(answer(startConfined(), """
-                reduce [system/options/home  get-env {HOME}]""")).isEqualTo("""
-                [%/ "HOME"]""".replace("HOME", hostWrites("/", "")));
     }
 
     @Test
@@ -135,35 +97,12 @@ class AConfinedCommandLineTellsStartItsHomeTest {
     }
 
     @Test
-    @DisplayName("USERPROFILE is answered with the same home, where the machine sets it")
-    void answersUserProfileWithConfinedHome() {
-        environment.assign("HOME", outside.toString());
-        environment.assign("USERPROFILE", outside.toString());
-
-        assertThat(answer(startConfined(), """
-                reduce [get-env {USERPROFILE}]""")).isEqualTo("""
-                ["%s"]""".formatted(hostWrites("/", "")));
-    }
-
-    @Test
     @DisplayName("a name the machine does not set stays unset")
     void leavesUnsetNamesUnset() {
         environment.assign("HOME", outside.toString());
 
         assertThat(answer(startConfined(), """
                 reduce [get-env {USERPROFILE}  get-env {APPDATA}]""")).isEqualTo("[_ _]");
-    }
-
-    @Test
-    @DisplayName("APPDATA inside the root is written beneath it")
-    void translatesAppDataInsideRoot() throws IOException {
-        Files.createDirectories(root.resolve("roaming"));
-        environment.assign("HOME", outside.toString());
-        environment.assign("APPDATA", root.resolve("roaming").toString());
-
-        assertThat(answer(startConfined(), """
-                reduce [get-env {APPDATA}]""")).isEqualTo("""
-                ["%s"]""".formatted(hostWrites("/roaming", "\\\\roaming")));
     }
 
     @Test
@@ -200,13 +139,85 @@ class AConfinedCommandLineTellsStartItsHomeTest {
                 ["/elsewhere" "/elsewhere"]""");
     }
 
+    private void placeHomeOutsideRoot() {
+        environment.assign("HOME", outside.toString());
+    }
+
+    private void placeHomeInsideRootAt(String beneath) throws IOException {
+        Files.createDirectories(root.resolve(beneath));
+        environment.assign("HOME", root.resolve(beneath).toString());
+    }
+
+    private void placeAppDataInsideRootAt(String beneath) throws IOException {
+        Files.createDirectories(root.resolve(beneath));
+        environment.assign("HOME", outside.toString());
+        environment.assign("APPDATA", root.resolve(beneath).toString());
+    }
+
+    private static String rootsLocalName() {
+        return expected(on(TestTarget.DESKTOP_WINDOWS, ""), elsewhere("/"));
+    }
+
+    @Test
+    @DisplayName("a machine home outside the root is the root, data is /.rebol/ beside it, and HOME says so")
+    void placesHomeOutsideRootAtRoot() {
+        placeHomeOutsideRoot();
+
+        assertThat(answer(startConfined(), """
+                reduce [system/options/home  system/options/data  get-env {HOME}]""")).isEqualTo("""
+                [%%/ %%/.rebol/ "%s"]""".formatted(rootsLocalName()));
+    }
+
+    @Test
+    @DisplayName("a machine home inside the root is written beneath it, as a drive on Windows, and data follows")
+    void translatesHomeInsideRoot() throws IOException {
+        placeHomeInsideRootAt("u/me");
+        String homesLocalName = expected(on(TestTarget.DESKTOP_WINDOWS, "u:\\me"), elsewhere("/u/me"));
+
+        assertThat(answer(startConfined(), """
+                reduce [system/options/home  system/options/data  get-env {HOME}]""")).isEqualTo("""
+                [%%/u/me/ %%/u/me/.rebol/ "%s"]""".formatted(homesLocalName));
+    }
+
+    @Test
+    @DisplayName("a home exactly at the root is the root")
+    void placesHomeAtRootItself() {
+        environment.assign("HOME", root.toString());
+
+        assertThat(answer(startConfined(), """
+                reduce [system/options/home  get-env {HOME}]""")).isEqualTo("""
+                [%%/ "%s"]""".formatted(rootsLocalName()));
+    }
+
+    @Test
+    @DisplayName("USERPROFILE is answered with the same home, where the machine sets it")
+    void answersUserProfileWithConfinedHome() {
+        placeHomeOutsideRoot();
+        environment.assign("USERPROFILE", outside.toString());
+
+        assertThat(answer(startConfined(), """
+                reduce [get-env {USERPROFILE}]""")).isEqualTo("""
+                ["%s"]""".formatted(rootsLocalName()));
+    }
+
+    @Test
+    @DisplayName("APPDATA inside the root is written beneath it, with backslashes on Windows")
+    void translatesAppDataInsideRoot() throws IOException {
+        placeAppDataInsideRootAt("roaming");
+        String appDatasLocalName = expected(on(TestTarget.DESKTOP_WINDOWS, "\\\\roaming"), elsewhere("/roaming"));
+
+        assertThat(answer(startConfined(), """
+                reduce [get-env {APPDATA}]""")).isEqualTo("""
+                ["%s"]""".formatted(appDatasLocalName));
+    }
+
     @Test
     @DisplayName("LIST-ENV agrees with GET-ENV about HOME")
     void listsConfinedHome() {
-        environment.assign("HOME", outside.toString());
+        placeHomeOutsideRoot();
 
         assertThat(answer(startConfined(), """
                 reduce [select list-env {HOME}]""")).isEqualTo("""
-                ["%s"]""".formatted(hostWrites("/", "")));
+                ["%s"]""".formatted(rootsLocalName()));
     }
 }

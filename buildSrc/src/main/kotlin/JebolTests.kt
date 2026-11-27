@@ -11,6 +11,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.withType
 import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
@@ -82,6 +83,20 @@ fun Test.keepsTemporaryFilesOnDisk() {
         temporaryFolder.deleteRecursively()
         temporaryFolder.mkdirs()
     }
+}
+
+fun Project.nameTestTarget() {
+    tasks.withType<Test>().configureEach { systemProperty("jebol.target", testTarget()) }
+}
+
+fun Project.testTarget(): String {
+    val system = providers.systemProperty("os.name").get()
+    val named = when {
+        system.startsWith("Windows") -> "WINDOWS"
+        system.startsWith("Mac") -> "MAC"
+        else -> "LINUX"
+    }
+    return (if (path == ":web") "WEB_" else "DESKTOP_") + named
 }
 
 fun Test.runsTheTestsIn(

@@ -1,18 +1,21 @@
 package org.jebol.domain.eval;
 
-import org.jebol.application.PlatformUnderTest;
-import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
+import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.PlatformUnderTest;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 class AccessOsFromTheSourceTest {
 
@@ -39,6 +42,8 @@ class AccessOsFromTheSourceTest {
 
     @Nested
     @DisplayName("reading a field")
+    @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+            because = "it compares the process number with ProcessHandle, which Android does not have")
     class Reading {
 
         @Test
@@ -116,13 +121,14 @@ class AccessOsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a process nobody may signal answers permission-denied")
+        @DisplayName("and the system's own process, 4 on Windows and 1 elsewhere, nobody may signal: permission-denied, as a real Rebol says")
+        @RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+                because = "it signals a process, and an Android app starts none to signal: its process port refuses as a page's does (decision 77)")
         void deniesSignallingWhatCannotBeSignalled() {
-            assertThat(answerAllowingProcesses(
-                    "either error? e: try [access-os/set 'pid PID] [e/id] ['accepted]"
-                            .replace("PID", Long.toString(File.separatorChar == '\\' ? 4 : 1))))
-                    .as("process 1 elsewhere and process 4 on Windows belong to the system, "
-                            + "and a real Rebol says the same word for each")
+            String systemsOwn = expected(on(TestTarget.DESKTOP_WINDOWS, "4"), elsewhere("1"));
+
+            assertThat(answerAllowingProcesses("""
+                    either error? e: try [access-os/set 'pid %s] [e/id] ['accepted]""".formatted(systemsOwn)))
                     .isEqualTo("permission-denied");
         }
     }

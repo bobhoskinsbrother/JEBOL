@@ -22,6 +22,7 @@
 /desktop/build/
 /web/build/
 /devtools/build/
+/test-targets/build/
 /examples/*/build/
 /examples/*/.gradle/
 /examples/*/.kotlin/
@@ -60,3 +61,6 @@
 *.iml
 .vscode/
 .claude/settings.local.json
+
+# The Android end-to-end host server's private key lives in jebol-ci-config's vault, never here
+/android/endtoend/host-server/*-key.pem

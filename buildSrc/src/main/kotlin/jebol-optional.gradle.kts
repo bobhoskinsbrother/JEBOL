@@ -26,6 +26,8 @@ tasks.withType<JavaCompile>().configureEach {
 
 val core = project(":")
 
+nameTestTarget()
+
 dependencies {
     "compileOnly"(core)
 }

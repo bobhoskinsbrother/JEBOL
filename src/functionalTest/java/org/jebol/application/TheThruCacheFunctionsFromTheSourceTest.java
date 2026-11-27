@@ -1,6 +1,8 @@
 package org.jebol.application;
 
 import com.sun.net.httpserver.HttpServer;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.adapter.host.FileSystemPort;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.domain.host.HostService;
@@ -23,6 +25,8 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+        because = "it serves from the JDK's com.sun.net.httpserver, which Android does not have")
 class TheThruCacheFunctionsFromTheSourceTest {
 
     private static final String TLS_1_3 = "TLSv1.3";

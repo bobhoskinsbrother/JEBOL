@@ -6,6 +6,7 @@ import org.jebol.application.PlatformUnderTest;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.eval.OptionalCompression;
 import org.jebol.domain.eval.OptionalCompressions;
+import org.jebol.testing.TestTarget;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -411,7 +412,7 @@ final class SuiteGrading {
     }
 
     private static final class TheWithheldEntriesReadOncePerProcess {
-        static final List<NetworkEntry> ENTRIES = readEntries(PlatformUnderTest.current().suiteEntriesItCannotRun());
+        static final List<NetworkEntry> ENTRIES = readEntries(WhereRebolsSuiteEntriesRun.entriesNotRunOn(TestTarget.current()));
         static final Set<String> ASSERTIONS = listEveryAssertionWithheldWithItsStep(ENTRIES);
     }
 

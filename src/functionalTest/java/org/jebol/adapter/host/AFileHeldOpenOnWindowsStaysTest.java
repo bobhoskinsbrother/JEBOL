@@ -1,10 +1,10 @@
 package org.jebol.adapter.host;
 
 import org.jebol.domain.host.FilePort;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.charset.StandardCharsets;
@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@EnabledOnOs(OS.WINDOWS)
+@RunsOn(value = TestTarget.DESKTOP_WINDOWS, because = "only Windows refuses to delete a file another handle holds open")
 class AFileHeldOpenOnWindowsStaysTest {
 
     @TempDir

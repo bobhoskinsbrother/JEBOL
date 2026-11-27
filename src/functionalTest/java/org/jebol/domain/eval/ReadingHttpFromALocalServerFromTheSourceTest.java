@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
 import com.sun.net.httpserver.HttpServer;
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.jebol.application.Bounds;
 import org.jebol.application.AnInterpreter;
 import org.jebol.application.Interpreter;
@@ -19,6 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = {TestTarget.DESKTOP_LINUX, TestTarget.DESKTOP_MAC, TestTarget.DESKTOP_WINDOWS},
+        because = "it serves from the JDK's com.sun.net.httpserver, which Android does not have")
 class ReadingHttpFromALocalServerFromTheSourceTest {
 
     private HttpServer server;

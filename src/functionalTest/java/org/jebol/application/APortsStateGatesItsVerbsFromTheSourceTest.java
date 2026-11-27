@@ -3,12 +3,10 @@ package org.jebol.application;
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
+import org.jebol.testing.RunsOn;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,6 +18,11 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.TestTarget.ANDROID;
+import static org.jebol.testing.TestTarget.DESKTOP_LINUX;
+import static org.jebol.testing.TestTarget.DESKTOP_MAC;
+import static org.jebol.testing.TestTarget.DESKTOP_WINDOWS;
+import static org.jebol.testing.TestTarget.IOS;
 
 @ExtendWith(LetsGoOfHeldFiles.class)
 class APortsStateGatesItsVerbsFromTheSourceTest {
@@ -119,7 +122,7 @@ class APortsStateGatesItsVerbsFromTheSourceTest {
         }
 
         @Test
-        @EnabledOnOs(OS.WINDOWS)
+        @RunsOn(value = DESKTOP_WINDOWS, because = "R3 opens a file on Windows without delete sharing")
         @DisplayName("on Windows renaming the file by its name is no-rename and nothing moves, as R3 opens it there without delete sharing")
         void refusesRenamingItByNameOnWindows(@TempDir Path root) throws IOException {
             holding(root, "named.txt");
@@ -131,7 +134,8 @@ class APortsStateGatesItsVerbsFromTheSourceTest {
         }
 
         @Test
-        @DisabledOnOs(OS.WINDOWS)
+        @RunsOn(value = {DESKTOP_LINUX, DESKTOP_MAC, ANDROID, IOS},
+                because = "every system but Windows moves a file another handle holds open")
         @DisplayName("elsewhere renaming the file by its name, not its port, still moves it")
         void movesItByName(@TempDir Path root) throws IOException {
             holding(root, "named.txt");

@@ -1,13 +1,13 @@
 package org.jebol.adapter.cli;
 
 import org.jebol.application.TheShell;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,6 +20,9 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jebol.testing.OnEachTarget.elsewhere;
+import static org.jebol.testing.OnEachTarget.expected;
+import static org.jebol.testing.OnEachTarget.on;
 
 @Timeout(180)
 class AConfinedScriptsHomeEndToEndTest {
@@ -79,13 +82,15 @@ class AConfinedScriptsHomeEndToEndTest {
     }
 
     @Test
-    @DisplayName("under --root a script's home is the root, its data is beside it, and HOME agrees")
+    @DisplayName("under --root a script's home is the root, its data is beside it, and HOME is the root's local name, nothing on Windows")
     void reportsHomeInsideRoot() throws Exception {
+        String rootsLocalName = expected(on(TestTarget.DESKTOP_WINDOWS, ""), elsewhere("/"));
+
         Ran ran = runConfined("""
                 print mold reduce [system/options/home  system/options/data  get-env {HOME}]""");
 
         assertThat(ran.lines()).containsExactly("""
-                [%/ %/.rebol/ "HOME"]""".replace("HOME", File.separatorChar == '\\' ? "" : "/"));
+                [%%/ %%/.rebol/ "%s"]""".formatted(rootsLocalName));
         assertThat(ran.exitStatus()).isZero();
     }
 

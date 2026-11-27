@@ -1,8 +1,9 @@
 package org.jebol.application;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -17,14 +18,11 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX, because = "it reads sysobj.reb from rebol3-source/, which only the repository has")
 class TheModuleTableIsRebolsFromTheSourceTest {
 
     private static final Path SYSOBJ =
             Path.of("rebol3-source", "src", "boot", "sysobj.reb");
-
-    static boolean rebolsOwnSourceIsHere() {
-        return Files.exists(SYSOBJ);
-    }
 
     private static Map<String, String> listWhatRebolPublishes() {
         String source;
@@ -54,7 +52,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("the block read out of Rebol's own source is not empty")
     void readsAFilledBlockOutOfRebolsOwnSource() {
         assertThat(listWhatRebolPublishes())
@@ -66,7 +63,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every name offered is Rebol's, read out of this build")
     void offersOnlyRebolsNames() {
         Map<String, String> published = listWhatRebolPublishes();
@@ -114,7 +110,6 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     }
 
     @Test
-    @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and no compiled extension is offered, because none can be loaded")
     void offersNoCompiledExtension() {
         List<String> offered = listWhatThisBuildOffers();

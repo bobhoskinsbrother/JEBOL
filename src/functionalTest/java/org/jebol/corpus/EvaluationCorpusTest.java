@@ -1,5 +1,7 @@
 package org.jebol.corpus;
 
+import org.jebol.testing.RunsOn;
+import org.jebol.testing.TestTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +11,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunsOn(value = TestTarget.DESKTOP_LINUX, because = "it reads corpus/, which only the repository has")
 class EvaluationCorpusTest {
 
     static Stream<CorpusEntry> runnableEntries() {
