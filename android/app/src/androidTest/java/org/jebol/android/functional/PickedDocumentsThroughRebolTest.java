@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -35,7 +36,9 @@ class PickedDocumentsThroughRebolTest {
 
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     private final Path documents = TestDocuments.folder(context);
-    private final StringBuffer printed = new StringBuffer();
+    private static final String TASK_DONE = "the task is done";
+
+    private final PrintedOutput printed = new PrintedOutput();
 
     @BeforeEach
     void startWithNothingPicked() throws IOException {
@@ -86,7 +89,7 @@ class PickedDocumentsThroughRebolTest {
 
     private Interpreter app() {
         return Interpreter.createOn(AndroidHost.appPorts(context, ListedFiles.of(List.of(), name -> new byte[0]),
-                () -> false, AppSession.appBounds()), printed::append, AppSession.appBounds());
+                () -> false, AppSession.appBounds()), printed, AppSession.appBounds());
     }
 
     private static String run(Interpreter interpreter, String source) {
@@ -320,13 +323,12 @@ class PickedDocumentsThroughRebolTest {
         document("notes.txt", "from a task");
         pickFile("notes.txt");
 
-        run(app(), "do make task! [write %copied.txt read %/picked/1/notes.txt]");
+        run(app(), "do make task! [write %copied.txt read %/picked/1/notes.txt print {" + TASK_DONE + "}]");
 
+        assertThat(printed.awaitPrinted(TASK_DONE, Duration.ofSeconds(30)))
+                .as(() -> "the task printed that it was done; it printed: " + printed.text())
+                .isTrue();
         Path written = AndroidHost.storeFolder(context).resolve("copied.txt");
-        long giveUpAt = System.nanoTime() + 30_000_000_000L;
-        while (!Files.exists(written) && System.nanoTime() < giveUpAt) {
-            Thread.sleep(50);
-        }
         assertThat(contents(written)).isEqualTo("from a task");
         Files.delete(written);
     }

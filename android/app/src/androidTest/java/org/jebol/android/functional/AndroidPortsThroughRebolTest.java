@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.os.ParcelFileDescriptor;
+import android.os.PowerManager;
 import android.view.View;
 
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -26,7 +28,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -34,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -56,7 +61,9 @@ class AndroidPortsThroughRebolTest {
 
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     private final AtomicBoolean inFront = new AtomicBoolean();
-    private final StringBuffer printed = new StringBuffer();
+    private static final String TASK_DONE = "the task is done";
+
+    private final PrintedOutput printed = new PrintedOutput();
     private final Path store = AndroidHost.storeFolder(context);
 
     @BeforeEach
@@ -87,7 +94,7 @@ class AndroidPortsThroughRebolTest {
     }
 
     private Interpreter app() {
-        return Interpreter.createOn(appPorts(), printed::append, AppSession.appBounds());
+        return Interpreter.createOn(appPorts(), printed, AppSession.appBounds());
     }
 
     private static String run(Interpreter interpreter, String source) {
@@ -164,11 +171,17 @@ class AndroidPortsThroughRebolTest {
     @DisplayName("the clipboard read in front gives back what the script wrote")
     void theClipboardInFrontReadsBack() throws Exception {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        wakeAndPassSwipeScreen(instrumentation);
         Activity shown = instrumentation.startActivitySync(new Intent(context, JebolActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
             assertThat(focusArrives(instrumentation, shown).await(20, TimeUnit.SECONDS))
-                    .as("JebolActivity took the window's focus")
+                    .as(() -> "JebolActivity took the window's focus; the screen is "
+                            + (context.getSystemService(PowerManager.class).isInteractive() ? "on" : "off")
+                            + ", and the window in front is " + shell(instrumentation, "dumpsys window").lines()
+                                    .filter(line -> line.contains("mCurrentFocus"))
+                                    .findFirst()
+                                    .orElse("not named").trim())
                     .isTrue();
             inFront.set(true);
 
@@ -176,6 +189,20 @@ class AndroidPortsThroughRebolTest {
                     .isEqualTo("#(true)");
         } finally {
             shown.finish();
+        }
+    }
+
+    private static void wakeAndPassSwipeScreen(Instrumentation instrumentation) {
+        shell(instrumentation, "input keyevent KEYCODE_WAKEUP");
+        shell(instrumentation, "wm dismiss-keyguard");
+    }
+
+    private static String shell(Instrumentation instrumentation, String command) {
+        try (InputStream answered = new ParcelFileDescriptor.AutoCloseInputStream(
+                instrumentation.getUiAutomation().executeShellCommand(command))) {
+            return new String(answered.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException unread) {
+            throw new UncheckedIOException("the shell did not answer " + command, unread);
         }
     }
 
@@ -276,7 +303,7 @@ class AndroidPortsThroughRebolTest {
 
             Interpreter trusting = Interpreter.createOn(appPorts().withCertificateAuthority(new JavaCertificateAuthority(
                     fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
-                    printed::append, AppSession.appBounds());
+                    printed, AppSession.appBounds());
             assertThat(run(trusting, open.formatted(server.port()))).isEqualTo("#(true)");
         }
     }
@@ -284,14 +311,13 @@ class AndroidPortsThroughRebolTest {
     @Test
     @DisplayName("a task runs on the app's own ports, so what it writes is in the store")
     void aTaskRunsOnTheAppsPorts() throws Exception {
-        run(app(), "do make task! [write %from-a-task.txt {the task wrote this}]");
+        run(app(), "do make task! [write %from-a-task.txt {the task wrote this} print {" + TASK_DONE + "}]");
 
-        Path written = store.resolve("from-a-task.txt");
-        long giveUpAt = System.nanoTime() + 30_000_000_000L;
-        while (!Files.exists(written) && System.nanoTime() < giveUpAt) {
-            Thread.sleep(50);
-        }
-        assertThat(Files.readAllBytes(written)).isEqualTo("the task wrote this".getBytes(StandardCharsets.UTF_8));
+        assertThat(printed.awaitPrinted(TASK_DONE, Duration.ofSeconds(30)))
+                .as(() -> "the task printed that it was done; it printed: " + printed.text())
+                .isTrue();
+        assertThat(Files.readAllBytes(store.resolve("from-a-task.txt")))
+                .isEqualTo("the task wrote this".getBytes(StandardCharsets.UTF_8));
     }
 
     @Test
