@@ -29,6 +29,13 @@ val REPOSITORY_FILES_TESTS_READ_BY_PATH = listOf(
     "rebol3-source/src", "examples", "scripts", "editors", "web/site",
 )
 
+val SUITE_JVM_ARGUMENTS = listOf("-Xss2m")
+
+val SUITE_SYSTEM_PROPERTIES = mapOf(
+    "java.awt.headless" to "true",
+    "junit.jupiter.execution.parallel.enabled" to "true",
+)
+
 // The core's suites keep the names they always had; a subproject's carry its
 // name first, so test-history/ can tell desktopUnitTests from unitTests.
 fun Project.suiteResultsName(task: String): String =
@@ -118,8 +125,7 @@ fun Test.runsTheTestsIn(
     useJUnitPlatform()
     val jqwikDatabase = root.layout.buildDirectory.file("jqwik-database")
     jvmArgumentProviders.add(PlacesOnThisMachine(jqwikDatabase.map { listOf("-Djqwik.database=${it.asFile.path}") }))
-    systemProperty("java.awt.headless", "true")
-    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    SUITE_SYSTEM_PROPERTIES.forEach { (name, value) -> systemProperty(name, value) }
     jvmArgumentProviders.add(ClassesTheTestsRead(project.classesOf(listOf("main")), "jebol.mainClassesDirs"))
     jvmArgumentProviders.add(ClassesTheTestsRead(project.classesOf(SUITE_SOURCE_SETS), "jebol.testClassesDirs"))
     // How deep a test can recurse is its thread's stack, and HotSpot takes
@@ -128,7 +134,7 @@ fun Test.runsTheTestsIn(
     // needs about 850 KB measured, so under JUnit's own frames it fits on an
     // arm64 Mac and overflows on an x86_64 one. Pinning it to the larger of
     // the two defaults makes the gate answer the same on both.
-    jvmArgs("-Xss2m")
+    jvmArgs(SUITE_JVM_ARGUMENTS)
     leavesJvmEvidenceBesideItsResults(dumpsTheHeapWhenItRunsOut)
     keepsTemporaryFilesOnDisk()
     maxParallelForks = Runtime.getRuntime().availableProcessors()

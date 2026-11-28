@@ -190,6 +190,97 @@ tasks.named<Test>("endToEndTests") {
     }
 }
 
+val windowsTryLauncher = configurations.create("windowsTryLauncher") {
+    isCanBeConsumed = false
+}
+
+dependencies {
+    "windowsTryLauncher"("org.junit.platform:junit-platform-console-standalone:1.11.4")
+}
+
+val coreSourceSets = core.extensions.getByType<SourceSetContainer>()
+val windowsTryClasspath = files(
+    coreSourceSets["functionalTest"].runtimeClasspath,
+    sourceSets["unitTest"].runtimeClasspath,
+    sourceSets["functionalTest"].runtimeClasspath,
+)
+val windowsTryEntries = windowsTryClasspath.elements.map { entries ->
+    entries.map { it.asFile }.filter { it.exists() && !isCarriedByTheConsoleLauncher(it.name) }
+}
+
+val mergeWindowsTryServices = tasks.register("mergeWindowsTryServices") {
+    group = "build"
+    description = "Merge every services file on the Windows try bundle's classpath into one of each"
+    val merged = layout.buildDirectory.dir("generated/windows-try-services")
+    val entries = windowsTryEntries
+    inputs.files(windowsTryClasspath).withPropertyName("classpath")
+    outputs.dir(merged)
+    doLast {
+        val found = entries.get().flatMap { servicesNamedIn(it) }
+        val folder = merged.get().asFile.resolve("META-INF/services")
+        folder.deleteRecursively()
+        folder.mkdirs()
+        mergedServices(found).forEach { (service, providers) ->
+            folder.resolve(service).writeText(providers.joinToString("\n", postfix = "\n"))
+        }
+    }
+}
+
+interface ArchivesForTheWindowsTryJar {
+    @get:Inject
+    val archives: ArchiveOperations
+}
+
+val windowsTryArchives = objects.newInstance<ArchivesForTheWindowsTryJar>().archives
+
+val windowsTryJar = tasks.register<Jar>("windowsTryJar") {
+    group = "build"
+    description = "The desktop's unit and functional tests and the core's functional tests, with every library but JUnit's"
+    archiveFileName = "jebol-tests.jar"
+    destinationDirectory = layout.buildDirectory.dir("windows-try-jar")
+    isZip64 = true
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    val archives = windowsTryArchives
+    from(windowsTryEntries.map { entries -> entries.map { if (it.isDirectory) it else archives.zipTree(it) } }) {
+        exclude(
+            "META-INF/MANIFEST.MF", "META-INF/services/**", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA",
+            "module-info.class", "META-INF/versions/*/module-info.class",
+        )
+    }
+    from(mergeWindowsTryServices)
+}
+
+val projectsWhoseClassesAreScanned = listOf(core, project(":desktop"), project(":web"), project(":devtools"))
+
+tasks.register<Sync>("windowsTryBundle") {
+    group = "build"
+    description = "The tests CI runs on Windows, in one jar beside JUnit's console launcher and the files they read"
+    into(core.layout.buildDirectory.dir("windows-try"))
+    from(windowsTryJar)
+    from(windowsTryLauncher) {
+        rename { "junit-platform-console-standalone.jar" }
+    }
+    into("tree") {
+        from(core.layout.projectDirectory) {
+            TRY_BUNDLE_TREE.forEach { include(if (core.file(it).isDirectory) "$it/**" else it) }
+            exclude("**/build/**", "**/.gradle/**")
+        }
+    }
+    projectsWhoseClassesAreScanned.forEach { owner ->
+        into("classes/main/${owner.name}") {
+            from(owner.extensions.getByType<SourceSetContainer>()["main"].output.classesDirs)
+        }
+    }
+    val options = layout.buildDirectory.dir("generated/windows-try-options")
+    doFirst {
+        val folder = options.get().asFile
+        folder.mkdirs()
+        folder.resolve("jvm-options.txt").writeText(tryBundleJvmOptions().joinToString("\n", postfix = "\n"))
+        folder.resolve("launcher-options.txt").writeText(tryBundleLauncherOptions().joinToString("\n", postfix = "\n"))
+    }
+    from(options)
+}
+
 // Every other suite runs headless, and a JVM decides that once, when AWT
 // starts. A test that opens a real desktop window -- tagged
 // `opens-a-real-window` -- runs here instead, in one fork with the toolkit
